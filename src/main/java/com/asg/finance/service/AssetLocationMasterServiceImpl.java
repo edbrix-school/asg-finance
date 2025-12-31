@@ -1,0 +1,143 @@
+package com.asg.finance.service;
+
+import com.asg.common.lib.dto.FilterDto;
+import com.asg.common.lib.dto.FilterRequestDto;
+import com.asg.common.lib.dto.RawSearchResult;
+import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.finance.dto.AssetLocationMasterRequestDto;
+import com.asg.finance.dto.AssetLocationMasterResponseDto;
+import com.asg.finance.entity.AssetLocation;
+import com.asg.finance.repository.AssetLocationMasterRepository;
+import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.utility.PaginationUtil;
+import jakarta.persistence.EntityManager;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import org.springframework.data.domain.Pageable;
+
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+
+@Service
+public class AssetLocationMasterServiceImpl implements AssetLocationMasterService {
+
+    @Autowired
+    private AssetLocationMasterRepository repository;
+
+    @Autowired
+    private EntityManager entityManager;
+
+    @Autowired
+    private DocumentSearchService documentService;
+
+
+    @Transactional
+    public AssetLocationMasterResponseDto createAssetLocationMaster(AssetLocationMasterRequestDto dto) {
+        if (repository.existsByLocationCode(dto.getLocationCode())) {
+            throw new IllegalArgumentException("Location Code already exists");
+        }
+
+        if (repository.existsByDescription(dto.getDescription())) {
+            throw new IllegalArgumentException("Description already exists");
+        }
+
+        String currentUser = getCurrentUser();
+
+        AssetLocation entity = new AssetLocation();
+        entity.setLocationCode(dto.getLocationCode());
+        entity.setDescription(dto.getDescription());
+        entity.setSeqNo(dto.getSeqNo());
+        entity.setGroupPoid(dto.getGroupPoid());
+        entity.setDeleted("N");
+        entity.setActive(String.valueOf(dto.getActive()));
+        entity.setCreatedBy(currentUser);
+        entity.setCreatedDate(LocalDateTime.now());
+        entity.setLastModifiedBy(currentUser);
+        entity.setLastModifiedDate(LocalDateTime.now());
+
+        entity = repository.save(entity);
+        return convertEntityToResponseDto(entity);
+    }
+
+    private AssetLocationMasterResponseDto convertEntityToResponseDto(AssetLocation entity) {
+        AssetLocationMasterResponseDto assetLocationMasterResponseDto = new AssetLocationMasterResponseDto();
+        BeanUtils.copyProperties(entity, assetLocationMasterResponseDto);
+        return assetLocationMasterResponseDto;
+    }
+
+    @Override
+    @Transactional
+    public AssetLocationMasterResponseDto updateAssetLocationMaster(Long locationPoid, AssetLocationMasterRequestDto dto) {
+        AssetLocation entity = repository.findById(locationPoid)
+                .orElseThrow(() -> new ResourceNotFoundException("Asset Location not found for Location POID: ", "locationPoid", locationPoid));
+
+        // Uniqueness checks (excluding current record)
+        if (repository.existsByLocationCodeAndLocationPoidNot(dto.getLocationCode(), locationPoid)) {
+            throw new IllegalArgumentException("Location Code already exists");
+        }
+
+        if (repository.existsByDescriptionAndLocationPoidNot(dto.getDescription(), locationPoid)) {
+            throw new IllegalArgumentException("Description already exists");
+        }
+
+        entity.setLocationCode(dto.getLocationCode());
+        entity.setDescription(dto.getDescription());
+        entity.setSeqNo(dto.getSeqNo());
+        entity.setGroupPoid(dto.getGroupPoid());
+        entity.setDeleted("N");
+        entity.setActive(String.valueOf(dto.getActive()));
+        entity.setLastModifiedBy(getCurrentUser());
+        entity.setLastModifiedDate(LocalDateTime.now());
+
+        return convertEntityToResponseDto(repository.save(entity));
+    }
+
+    @Override
+    @Transactional
+    public void softDeleteAssetLocationMaster(Long locationPoid) {
+        AssetLocation entity = repository.findById(locationPoid)
+                .orElseThrow(() -> new IllegalArgumentException("Asset Location not found for POID: " + locationPoid));
+
+        entity.setDeleted("Y");
+        entity.setActive("N");
+        entity.setLastModifiedDate(LocalDateTime.now());
+        entity.setLastModifiedBy(getCurrentUser());
+        repository.save(entity);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AssetLocationMasterResponseDto getAssetLocationMasterById(Long locationPoid) {
+        AssetLocation assetLocation = repository.findById(locationPoid)
+                .orElseThrow(() -> new IllegalArgumentException("Asset Location not found for POID: " + locationPoid));
+        return convertEntityToResponseDto(assetLocation);
+    }
+
+    private String getCurrentUser() {
+        return UserContext.getUserId() != null ? String.valueOf(UserContext.getUserId()) : "SYSTEM";
+    }
+
+
+    @Override
+    public Map<String, Object> listAssetLocations(String documentId, FilterRequestDto request, Pageable pageable) {
+        String operator = documentService.resolveOperator(request);
+        String isDeleted = documentService.resolveIsDeleted(request);
+        List<FilterDto> filters = documentService.resolveFilters(request);
+
+        RawSearchResult raw = documentService.search(documentId, filters, operator, pageable, isDeleted,
+                "LOCATION_CODE",   // label (was DIVISION_NAME)
+                "LOCATION_POID");  // value (was DIVISION_POID)
+
+        Page<Map<String, Object>> page = new PageImpl<>(raw.records(), pageable, raw.totalRecords());
+
+        return PaginationUtil.wrapPage(page, raw.displayFields());
+    }
+}

@@ -1,0 +1,18 @@
+package com.asg.finance.service;
+
+import com.asg.finance.dto.TaxMasterRequestDTO;
+import com.asg.finance.dto.TaxMasterResponseDTO;
+import com.asg.common.lib.dto.FilterRequestDto;
+import org.springframework.data.domain.Pageable;
+
+import java.util.List;
+import java.util.Map;
+
+public interface TaxMasterService {
+    TaxMasterResponseDTO createTaxMaster(TaxMasterRequestDTO request);
+    TaxMasterResponseDTO updateTaxMaster(Long taxPoid, TaxMasterRequestDTO request);
+    TaxMasterResponseDTO getTaxMasterById(Long taxPoid);
+    List<TaxMasterResponseDTO> getTaxMastersByIds(List<Long> taxPoids);
+    void softDeleteTaxMaster(Long taxPoid);
+    Map<String, Object> listTaxMaster(String documentId, FilterRequestDto filters, Pageable pageable);
+}

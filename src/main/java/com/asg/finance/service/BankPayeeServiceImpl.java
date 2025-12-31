@@ -1,0 +1,162 @@
+package com.asg.finance.service;
+
+import com.asg.common.lib.exception.ResourceAlreadyExistsException;
+import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.common.lib.utility.ASGHelperUtils;
+import com.asg.finance.dto.BankPayeeRequest;
+import com.asg.finance.dto.BankPayeeResponse;
+import com.asg.common.lib.dto.FilterDto;
+import com.asg.common.lib.dto.RawSearchResult;
+import com.asg.common.lib.dto.FilterRequestDto;
+import com.asg.finance.entity.BankPayee;
+import com.asg.finance.repository.BankPayeeRepository;
+import com.asg.common.lib.utility.PaginationUtil;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+
+@Service
+public class BankPayeeServiceImpl implements IBankPayeeService {
+
+    @Autowired
+    private BankPayeeRepository repository;
+
+    @Autowired
+    private DocumentSearchService documentService;
+
+    @Transactional
+    public BankPayeeResponse createPayee(BankPayeeRequest request) {
+        repository.findByPayingName(request.getPayingName()).ifPresent(p -> {
+            throw new ResourceAlreadyExistsException("Paying Name", request.getPayingName());
+        });
+        // validate active flag
+        if (request.getActive() != null && !request.getActive().matches("Y|N")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Active must be Y or N");
+        }
+        BankPayee payee = new BankPayee();
+        payee.setPayingName(request.getPayingName());
+        payee.setPayingName2(request.getPayingName2());
+        payee.setRemarks(request.getRemarks());
+        payee.setActive(request.getActive() != null ? request.getActive() : "N");
+        payee.setDeleted("N");
+        payee.setSeqNo(request.getSeqNo());
+
+        BankPayee saved = repository.save(payee);
+
+        BankPayeeResponse response = new BankPayeeResponse();
+        response.setPoid(saved.getPayingPoid());
+        response.setPayingName(saved.getPayingName());
+        response.setPayingName2(saved.getPayingName2());
+        response.setRemarks(saved.getRemarks());
+        response.setActive(saved.getActive());
+        response.setSeqNo(saved.getSeqNo());
+
+        return response;
+    }
+    @Transactional(readOnly = true)
+    public BankPayeeResponse getPayeeById(Long payingPoid) {
+        BankPayee payee = repository.findByPayingPoid(payingPoid)
+                .orElseThrow(() -> new ResourceNotFoundException("Bankpay Master","payingPoid ",payingPoid));
+        BankPayeeResponse response = new BankPayeeResponse();
+        response.setPoid(payee.getPayingPoid());
+        response.setPayingName(payee.getPayingName());
+        response.setPayingName2(payee.getPayingName2());
+        response.setRemarks(payee.getRemarks());
+        response.setActive(payee.getActive());
+        response.setSeqNo(payee.getSeqNo());
+        return response;
+    }
+
+    public void softDeleteBypPayingPoid(Long payingPoid) {
+        BankPayee entity = repository.findByPayingPoidAndDeleted(payingPoid , "N")
+                .orElseThrow(() -> new RuntimeException("Payee with ID " + payingPoid + " not found"));
+        entity.setActive("N");
+        entity.setDeleted("Y");
+        entity.setLastModifiedDate(LocalDateTime.now());
+        entity.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
+        repository.save(entity);
+    }
+
+    @Override
+    @Transactional
+    public BankPayeeResponse updatePayee(Long payingPoid, BankPayeeRequest request) {
+        BankPayee entity = repository.findByPayingPoidAndDeleted(payingPoid, "N")
+                .orElseThrow(() -> new RuntimeException("Payee not found"));
+
+        if (request.getPayingName() != null &&
+                !request.getPayingName().equalsIgnoreCase(entity.getPayingName())) {
+
+            boolean exists = repository.existsByPayingNameIgnoreCaseAndDeleted(request.getPayingName(), "N");
+            if (exists) {
+                throw new IllegalArgumentException("Payee Name already exists");
+            }
+            entity.setPayingName(request.getPayingName());
+        }
+
+        if (request.getPayingName2() != null) {
+            entity.setPayingName2(request.getPayingName2());
+        }
+
+        if (request.getRemarks() != null) {
+            entity.setRemarks(request.getRemarks());
+        }
+
+        if (request.getActive() != null) {
+            if (!request.getActive().matches("Y|N")) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Active must be Y or N");
+            }
+            entity.setActive(request.getActive());
+        }
+        if (request.getSeqNo() != null) {
+            entity.setSeqNo(request.getSeqNo());
+        }
+        entity.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
+        entity.setLastModifiedDate(LocalDateTime.now());
+
+        repository.save(entity);
+
+        BankPayeeResponse response = new BankPayeeResponse();
+        response.setPoid(entity.getPayingPoid());
+        response.setPayingName(entity.getPayingName());
+        response.setPayingName2(entity.getPayingName2());
+        response.setRemarks(entity.getRemarks());
+        response.setActive(entity.getActive());
+        response.setActive("Y".equalsIgnoreCase(entity.getActive()) ? "Y" : "N");
+        response.setSeqNo(entity.getSeqNo());
+
+        return response;
+    }
+
+    @Override
+    public Map<String, Object> listPayees(String documentId, FilterRequestDto request, Pageable pageable) {
+        String operator = documentService.resolveOperator(request);
+        String isDeleted = documentService.resolveIsDeleted(request);
+        List<FilterDto> filters = documentService.resolveFilters(request);
+
+        RawSearchResult raw = documentService.search(
+                documentId,
+                filters,
+                operator,
+                pageable,
+                isDeleted,
+                "PAYING_NAME",  // label
+                "PAYING_POID"   // value
+        );
+
+        Page<Map<String, Object>> page = new PageImpl<>(raw.records(), pageable, raw.totalRecords());
+        return PaginationUtil.wrapPage(page, raw.displayFields());
+    }
+
+
+
+}

@@ -1,0 +1,21 @@
+package com.asg.finance.repository;
+
+
+import com.asg.finance.entity.PdcChqBatchDtlEntity;
+import com.asg.finance.entity.PdcChqBatchDtlId;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public interface PdcChqBatchDtlRepository extends JpaRepository<PdcChqBatchDtlEntity, PdcChqBatchDtlId> {
+    PdcChqBatchDtlEntity findTopByTransactionPoidOrderByDetRowIdDesc(Long transactionPoid);
+    List<PdcChqBatchDtlEntity> findByTransactionPoidOrderByDetRowIdAsc(Long transactionPoid);
+    @Modifying
+    @Query("DELETE FROM PdcChqBatchDtlEntity d WHERE d.transactionPoid = :transactionPoid")
+    void deleteByTransactionPoid(@Param("transactionPoid") Long transactionPoid);
+}

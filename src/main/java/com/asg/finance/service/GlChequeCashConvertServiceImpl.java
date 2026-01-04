@@ -5,8 +5,10 @@ import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
+import com.asg.common.lib.service.PrintService;
 import com.asg.finance.dto.GlChequeCashConvertHdrDto;
 import com.asg.finance.dto.GlChequeCashConvertInDtlDto;
 import com.asg.finance.dto.GlChequeCashConvertOutDtlDto;
@@ -27,12 +29,14 @@ import lombok.extern.slf4j.Slf4j;
 import com.asg.common.lib.exception.ValidationException;
 
 
+import net.sf.jasperreports.engine.JasperReport;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 
+import javax.sql.DataSource;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -55,7 +59,8 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
     private final GlChequeCashConvertRepository glChequeCashConvertRepository;
     private final DocumentSearchService documentService;
     private final LovDataService lovService;
-
+    private final PrintService printService;
+    private final DataSource dataSource;
 
     @Override
     public GlChequeCashConvertHdrDto getGlChequeCashConvert(Long transactionPoid) {
@@ -462,6 +467,13 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         if (transactionDate != null && transactionDate.isAfter(LocalDate.now())) {
             throw new ValidationException("Transaction date cannot be in future");
         }
+    }
+
+    @Override
+    public byte[] print(Long transactionPoid) throws Exception {
+        Map<String, Object> params = printService.buildBaseParams(transactionPoid, "400-110");
+        JasperReport mainReport = printService.load("Finance/GL/Cheque_Cash_Conversion.jrxml");
+        return printService.fillReportToPdf(mainReport, params, dataSource);
     }
 }
 

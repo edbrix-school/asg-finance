@@ -1,6 +1,8 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.FilterRequestDto;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.BankDepositVoucherDtlDto;
 import com.asg.finance.dto.BankDepositVoucherRequestDto;
@@ -17,8 +19,11 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,7 +33,7 @@ import java.util.Map;
 
 import static com.asg.common.lib.dto.response.ApiResponse.*;
 
-
+@Slf4j
 @RestController
 @RequestMapping("/v1/bank-deposit-voucher")
 @Tag(name = "Bank Deposit Voucher", description = "APIs for managing Bank Deposit Voucher (Doc ID: 400-109)")
@@ -246,5 +251,34 @@ public class BankDepositVoucherController {
     ) {
         List<BankDepositVoucherDtlDto> pendingPayments = service.loadPendingPayments(bankPoid, type, bankFilter);
         return success("Pending payments loaded successfully", pendingPayments);
+    }
+
+
+    @AllowedAction(UserRolesRightsEnum.PRINT)
+    @Operation(
+            summary = "Generate PDF for Bank Deposit Voucher",
+            description = "Generate PDF report for a specific Bank Deposit Voucher transaction",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "PDF generated successfully",
+                            content = @Content(mediaType = "application/pdf")),
+                    @ApiResponse(responseCode = "404", description = "Bank Deposit Voucher not found"),
+                    @ApiResponse(responseCode = "500", description = "Failed to generate PDF")
+            }
+    )
+    @GetMapping("/print/{transactionPoid}")
+    public ResponseEntity<?> print(
+            @Parameter(description = "Transaction POID", example = "69789")
+            @PathVariable Long transactionPoid) {
+        try {
+            byte[] pdf = service.print(transactionPoid);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=bank-deposit-voucher-" + transactionPoid + ".pdf")
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .body(pdf);
+        } catch (Exception e) {
+            log.error("Failed to generate PDF for Bank Deposit Voucher: {}", transactionPoid, e);
+            return error("Failed to generate PDF: " + e.getMessage(), 500);
+        }
     }
 }

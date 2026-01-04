@@ -6,6 +6,7 @@ import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.service.PrintService;
 import com.asg.finance.projection.CurrencyRateProjection;
 import com.asg.finance.repository.GLMasterRepository;
 import com.asg.common.lib.service.DocumentSearchService;
@@ -24,6 +25,7 @@ import com.asg.finance.repository.GlJournalVoucherHdrRepository;
 import com.asg.finance.repository.master.FixedAssetRepository;
 import com.asg.common.lib.utility.PaginationUtil;
 import lombok.RequiredArgsConstructor;
+import net.sf.jasperreports.engine.JasperReport;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
@@ -44,6 +46,8 @@ import java.util.stream.Collectors;
 import static com.asg.common.lib.utility.ASGHelperUtils.*;
 import static com.asg.finance.utility.Constants.*;
 import lombok.extern.slf4j.Slf4j;
+
+import javax.sql.DataSource;
 
 @Slf4j
 @Service
@@ -73,6 +77,8 @@ public class JournalVoucherServiceImpl implements JournalVoucherService{
     private final CostCenterBreakupService costCenterBreakupService;
     private final BillwiseBreakupService billwiseBreakupService;
     private final DocumentSearchService documentService;
+    private final PrintService printService;
+    private final DataSource dataSource;
 
     @Override
     @Transactional
@@ -934,6 +940,16 @@ public class JournalVoucherServiceImpl implements JournalVoucherService{
 
     private String toStringOrNull(Object value) {
         return value == null ? null : value.toString();
+    }
+
+
+    @Override
+    public byte[] print(Long transactionPoid) throws Exception {
+        Map<String, Object> params = printService.buildBaseParams(transactionPoid, "400-100");
+        params.put("SUB_GENERAL", printService.load("Finance/GL/JournalVoucher_subreport1.jrxml"));
+        params.put("SUB_ASSET_DISPOSAL", printService.load("Finance/GL/JournalVoucherAssetDisposalSubreport2.jrxml"));
+        JasperReport mainReport = printService.load("Finance/GL/JournalVoucher.jrxml");
+        return printService.fillReportToPdf(mainReport, params, dataSource);
     }
 
 

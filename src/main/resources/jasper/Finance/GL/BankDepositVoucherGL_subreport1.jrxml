@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="BankDepositVoucherGL_subreport1" language="groovy" pageWidth="530" pageHeight="802" columnWidth="530" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="cbf93c39-a9d0-4d6e-b2d5-91e68c6c66ff">
+    <property name="ireport.zoom" value="1.2100000000000009"/>
+    <property name="ireport.x" value="0"/>
+    <property name="ireport.y" value="0"/>
+    <style name="table">
+        <box>
+            <pen lineWidth="1.0" lineColor="#FFFFFF"/>
+        </box>
+    </style>
+    <style name="table_TH" mode="Opaque" backcolor="#F0F8FF">
+        <box>
+            <pen lineWidth="0.5" lineColor="#FFFFFF"/>
+        </box>
+    </style>
+    <style name="table_CH" mode="Opaque" backcolor="#BFE1FF">
+        <box>
+            <pen lineWidth="0.5" lineColor="#FFFFFF"/>
+        </box>
+    </style>
+    <style name="table_TD" mode="Opaque" backcolor="#FFFFFF">
+        <box>
+            <pen lineWidth="0.5" lineColor="#FFFFFF"/>
+        </box>
+    </style>
+    <subDataset name="Amount In Words" uuid="f36acf5f-374a-4f68-b49b-afc809cd09a3">
+        <parameter name="TOTAL_AMT" class="java.math.BigDecimal"/>
+        <queryString language="SQL">
+            <![CDATA[SELECT FN_AMOUNT_IN_WORDS($P{TOTAL_AMT}) AS  AMOUNT_IN_WORDS FROM DUAL]]>
+        </queryString>
+        <field name="AMOUNT_IN_WORDS" class="java.lang.String"/>
+    </subDataset>
+    <parameter name="DOC_KEY_POID" class="java.lang.String">
+        <defaultValueExpression><![CDATA[]]></defaultValueExpression>
+    </parameter>
+    <queryString>
+        <![CDATA[SELECT SUM(BDVD.AMOUNT) AS AMOUNT
+FROM GL_BANK_DEPOSIT_VOUCHER_DTL BDVD
+WHERE BDVD.TRANSACTION_POID=$P{DOC_KEY_POID}
+order by nvl(CHQ_SEQ_NUM,0)]]>
+    </queryString>
+    <field name="AMOUNT" class="java.math.BigDecimal"/>
+    <pageHeader>
+        <band height="20">
+            <staticText>
+                <reportElement x="1" y="1" width="529" height="18" uuid="1b786dca-0237-4d85-a063-4c8f4a522342"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="12" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Cash Details]]></text>
+            </staticText>
+            <line>
+                <reportElement x="0" y="0" width="530" height="1" forecolor="#999999" uuid="e79e7021-d54d-4911-8296-69e8b7330635"/>
+            </line>
+            <line>
+                <reportElement x="0" y="19" width="530" height="1" forecolor="#999999" uuid="3e016ad3-204e-4ac2-b0a2-1724404638f3"/>
+            </line>
+        </band>
+    </pageHeader>
+    <columnHeader>
+        <band height="21" splitType="Stretch">
+            <line>
+                <reportElement x="0" y="20" width="530" height="1" forecolor="#999999" uuid="7d68b8b5-07c2-43ab-a39d-29164de59c68"/>
+            </line>
+            <staticText>
+                <reportElement x="0" y="0" width="39" height="20" uuid="c94f8c73-1c98-44d6-a485-7bd0e8690e9c"/>
+                <textElement verticalAlignment="Middle">
+                    <font isBold="true"/>
+                </textElement>
+                <text><![CDATA[Sl No ]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="39" y="0" width="327" height="20" uuid="88963563-e20e-4121-bac3-558597f3fa8a"/>
+                <textElement verticalAlignment="Middle">
+                    <font isBold="true"/>
+                </textElement>
+                <text><![CDATA[Description]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="430" y="0" width="100" height="20" uuid="851aed29-87a9-4731-96eb-dc92918550c1"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font isBold="true"/>
+                </textElement>
+                <text><![CDATA[Amount]]></text>
+            </staticText>
+        </band>
+    </columnHeader>
+    <detail>
+        <band height="22" splitType="Stretch">
+            <line>
+                <reportElement x="0" y="21" width="530" height="1" forecolor="#999999" uuid="50fb5b2e-691d-4772-ba1e-046fe706c49a"/>
+                <graphicElement>
+                    <pen lineWidth="0.5" lineStyle="Dashed"/>
+                </graphicElement>
+            </line>
+            <textField isBlankWhenNull="true">
+                <reportElement x="0" y="0" width="39" height="20" uuid="ea3b0a98-7e5c-4e00-8587-0887503f8d9f"/>
+                <textElement verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$V{REPORT_COUNT}]]></textFieldExpression>
+            </textField>
+            <textField pattern="###0.000" isBlankWhenNull="true">
+                <reportElement x="430" y="0" width="100" height="20" uuid="df59374a-8fef-46d8-ad75-e9ac6ced5fc1"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{AMOUNT}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement x="50" y="0" width="100" height="20" uuid="3a0cf5f7-b3b2-4aa3-90f9-50d99d326d69"/>
+                <text><![CDATA[Cash]]></text>
+            </staticText>
+        </band>
+    </detail>
+    <lastPageFooter>
+        <band height="37">
+            <componentElement>
+                <reportElement key="table" style="table" stretchType="RelativeToBandHeight" x="116" y="0" width="415" height="35" isPrintWhenDetailOverflows="true" uuid="5fded88b-72bb-4fa5-9be4-cccd5b27c747"/>
+                <jr:table xmlns:jr="http://jasperreports.sourceforge.net/jasperreports/components" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports/components http://jasperreports.sourceforge.net/xsd/components.xsd">
+                    <datasetRun subDataset="Amount In Words" uuid="f9371b51-0672-4583-a6d8-19908a04ab4b">
+                        <datasetParameter name="TOTAL_AMT">
+                            <datasetParameterExpression><![CDATA[$F{AMOUNT}]]></datasetParameterExpression>
+                        </datasetParameter>
+                        <connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+                    </datasetRun>
+                    <jr:column width="300" uuid="05419196-1f18-44d0-b43a-d80085a6aabf">
+                        <jr:detailCell style="table_TD" height="20" rowSpan="1">
+                            <textField isStretchWithOverflow="true" isBlankWhenNull="true">
+                                <reportElement stretchType="RelativeToBandHeight" x="0" y="0" width="300" height="20" uuid="71dad002-dacd-4035-aace-3ace864d32c5"/>
+                                <textElement verticalAlignment="Middle">
+                                    <font isBold="true"/>
+                                </textElement>
+                                <textFieldExpression><![CDATA[$F{AMOUNT_IN_WORDS}]]></textFieldExpression>
+                            </textField>
+                        </jr:detailCell>
+                    </jr:column>
+                </jr:table>
+            </componentElement>
+            <staticText>
+                <reportElement x="1" y="0" width="115" height="20" uuid="1fca8061-b8ed-4a12-bc66-5516ce06cc46"/>
+                <textElement verticalAlignment="Middle">
+                    <font isBold="true"/>
+                </textElement>
+                <text><![CDATA[Amount in Words BHD :]]></text>
+            </staticText>
+        </band>
+    </lastPageFooter>
+</jasperReport>

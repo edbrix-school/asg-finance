@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="PettyCashPaymentDtl_subreport1" language="groovy" pageWidth="530" pageHeight="802" columnWidth="530" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="0319529c-65c6-4237-91b6-37d0881a43d9">
+    <property name="ireport.zoom" value="1.9487171000000025"/>
+    <property name="ireport.x" value="0"/>
+    <property name="ireport.y" value="0"/>
+    <parameter name="DOC_KEY_POID" class="java.lang.String">
+        <defaultValueExpression><![CDATA[]]></defaultValueExpression>
+    </parameter>
+    <queryString>
+        <![CDATA[SELECT TRANSACTION_POID, TYPE, COMPANY_POID, GL_DESCRIPTION,
+CASE WHEN NVL(DR_AMT,0)!=0 THEN NVL(DR_AMT,0)
+     WHEN NVL(CR_AMT,0)!=0 THEN NVL(CR_AMT,0)*-1 END AS AMOUNT, REMARKS
+FROM(
+    SELECT PCPD.TRANSACTION_POID, PCPD.TYPE, PCPD.COMPANY_POID, NVL(PCPD.REMARKS,GM.GL_DESCRIPTION) AS GL_DESCRIPTION,
+    PCPD.DR_AMT, PCPD.CR_AMT, PCPD.REMARKS
+    FROM GL_PETTY_CASH_PAYMENT_DTL PCPD
+    INNER JOIN GL_PETTY_CASH_PAYMENT_HDR PCPH ON PCPH.TRANSACTION_POID=PCPD.TRANSACTION_POID
+    LEFT JOIN GL_MASTER GM ON GM.GL_POID=PCPD.GL_POID
+    WHERE PCPD.TRANSACTION_POID=$P{DOC_KEY_POID} AND PCPD.GL_POID!=PCPH.PETTY_CASH_GL_POID
+    )]]>
+    </queryString>
+    <field name="TRANSACTION_POID" class="java.math.BigDecimal"/>
+    <field name="TYPE" class="java.lang.String"/>
+    <field name="COMPANY_POID" class="java.math.BigDecimal"/>
+    <field name="GL_DESCRIPTION" class="java.lang.String"/>
+    <field name="AMOUNT" class="java.math.BigDecimal"/>
+    <field name="REMARKS" class="java.lang.String"/>
+    <variable name="TOTAL" class="java.math.BigDecimal" calculation="Sum">
+        <variableExpression><![CDATA[$F{AMOUNT}]]></variableExpression>
+    </variable>
+    <columnHeader>
+        <band height="23" splitType="Stretch">
+            <staticText>
+                <reportElement x="52" y="0" width="214" height="20" uuid="5db4a7c2-d5e4-447f-94ea-43264811faf6"/>
+                <textElement verticalAlignment="Middle">
+                    <font isBold="true"/>
+                </textElement>
+                <text><![CDATA[Description]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="444" y="0" width="86" height="20" uuid="c47df4be-698c-4db1-9786-c893f0188471"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font isBold="true"/>
+                </textElement>
+                <text><![CDATA[Amount [BHD]]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="266" y="0" width="178" height="20" uuid="a8635280-ac84-470a-9121-8dd4dea23d56"/>
+                <textElement verticalAlignment="Middle">
+                    <font isBold="true"/>
+                </textElement>
+                <text><![CDATA[Remarks]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="0" y="0" width="52" height="20" uuid="ec07f2a0-fcf3-4dfc-a570-ff2e78328864"/>
+                <textElement verticalAlignment="Middle">
+                    <font isBold="true"/>
+                </textElement>
+                <text><![CDATA[ Sl No]]></text>
+            </staticText>
+            <line>
+                <reportElement x="0" y="21" width="530" height="1" forecolor="#999999" uuid="8458845f-d129-4596-b289-1b9df14f53b5"/>
+            </line>
+            <line>
+                <reportElement x="0" y="0" width="530" height="1" forecolor="#999999" uuid="e40515e0-e5cb-4785-915c-583315d60e5d"/>
+            </line>
+        </band>
+    </columnHeader>
+    <detail>
+        <band height="23" splitType="Stretch">
+            <textField isStretchWithOverflow="true" isBlankWhenNull="true">
+                <reportElement x="52" y="0" width="214" height="20" uuid="b7968593-44a0-486f-b37a-3f7a4fa96a1e"/>
+                <textElement verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$F{GL_DESCRIPTION}]]></textFieldExpression>
+            </textField>
+            <textField isBlankWhenNull="true">
+                <reportElement x="3" y="0" width="52" height="20" uuid="d45120e1-e7d9-438b-b8f6-ccdee0250355"/>
+                <textElement verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$V{REPORT_COUNT}]]></textFieldExpression>
+            </textField>
+            <line>
+                <reportElement positionType="FixRelativeToBottom" x="0" y="20" width="530" height="1" forecolor="#999999" uuid="756e3c60-d0d8-4a86-9c00-8e7219e2f86c"/>
+                <graphicElement>
+                    <pen lineWidth="0.5" lineStyle="Dashed"/>
+                </graphicElement>
+            </line>
+            <textField pattern="###0.000" isBlankWhenNull="true">
+                <reportElement x="444" y="0" width="86" height="20" uuid="6990998a-7fbf-44b4-be47-3451f249c56f"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$F{AMOUNT}]]></textFieldExpression>
+            </textField>
+        </band>
+    </detail>
+</jasperReport>

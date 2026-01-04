@@ -39,4 +39,6 @@ public interface BankDebitVoucherService {
 
     @Transactional
     void revertReconciliation(Long transactionPoid, String comments);
+
+    byte[] print(Long transactionPoid) throws Exception;
 }

@@ -28,4 +28,6 @@ public interface ContraVoucherService {
     void deleteContraVoucher(Long transactionPoid);
 
     String checkGlNature(Long creditGlId);
+
+    byte[] print(Long transactionPoid) throws Exception;
 }

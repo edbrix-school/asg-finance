@@ -46,4 +46,7 @@ public interface BankPaymentVoucherService {
     String revertReconciliation(Long transactionPoid, String documentId);
     
     Map<String, Object> listBankPaymentVouchers(String documentId, FilterRequestDto filters, java.time.LocalDate startDateValue, java.time.LocalDate endDateValue, Pageable pageable);
+
+    byte[] print(Long transactionPoid) throws Exception;
+
 }

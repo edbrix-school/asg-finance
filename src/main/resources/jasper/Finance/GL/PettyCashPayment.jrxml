@@ -1,0 +1,400 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="PettyCashPayment" language="groovy" pageWidth="595" pageHeight="842" columnWidth="535" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="51f26c1c-332c-43f0-beb9-5722768520c7">
+	<property name="ireport.zoom" value="1.210000000000002"/>
+	<property name="ireport.x" value="0"/>
+	<property name="ireport.y" value="0"/>
+	<style name="Title" fontName="Times New Roman" fontSize="50" isBold="true" pdfFontName="Times-Bold"/>
+	<style name="SubTitle" forecolor="#736343" fontName="Arial" fontSize="18"/>
+	<style name="Column header" forecolor="#666666" fontName="Arial" fontSize="12" isBold="true"/>
+	<style name="Detail" fontName="Arial" fontSize="12"/>
+	<style name="Row" mode="Transparent">
+		<conditionalStyle>
+			<conditionExpression><![CDATA[$V{REPORT_COUNT}%2 == 0]]></conditionExpression>
+			<style backcolor="#E6DAC3"/>
+		</conditionalStyle>
+	</style>
+	<parameter name="LOGIN_GROUP_POID" class="java.lang.String">
+		<defaultValueExpression><![CDATA[1]]></defaultValueExpression>
+	</parameter>
+	<parameter name="LOGIN_COMP_POID" class="java.lang.String">
+		<defaultValueExpression><![CDATA[1]]></defaultValueExpression>
+	</parameter>
+	<parameter name="LOGIN_USER_POID" class="java.lang.String"/>
+	<parameter name="LOGIN_DIV_POID" class="java.lang.String"/>
+	<parameter name="DOC_ID" class="java.lang.String">
+		<defaultValueExpression><![CDATA["000-000"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="DOC_KEY_POID" class="java.lang.String"/>
+	<parameter name="SUBREPORT_DIR" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA["\\\\shippingbahrain.com\\data\\ERP_REPORTS\\Reports\\"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="SUB_HEADER" class="net.sf.jasperreports.engine.JasperReport"/>
+	<parameter name="SUB_FOOTER" class="net.sf.jasperreports.engine.JasperReport"/>
+	<parameter name="SUB_PAYMENT_DTL" class="net.sf.jasperreports.engine.JasperReport"/>
+	<parameter name="SUB_ITEM_DTL_1" class="net.sf.jasperreports.engine.JasperReport"/>
+	<parameter name="SUB_ITEM_DTL_2" class="net.sf.jasperreports.engine.JasperReport"/>
+	<queryString>
+		<![CDATA[SELECT PCP.TRANSACTION_DATE,PCP.DOC_REF,PCP.CURRENCY_CODE,PCP.CURRENCY_RATE,GM.GL_DESCRIPTION,PCP.BALANCE,
+PCP.AMOUNT,PCP.PAYING_TO,PCP.NARRATION,PCP.ADVANCE,PCP.REF_TYPE,PCP.FDA_REF,PCP.FF_REF,PCP.SETTLED_DATE,
+PCP.SETTLED_TOTAL,PCP.REMARKS,FN_AMOUNT_IN_WORDS(PCP.AMOUNT) CRSUM,PCP.STATUS,
+GET_COMPANY_NAME(PCP.COMPANY_POID) COMPANY,PCP.GRAND_TOTAL,PCP.ROUNDING_AMOUNT,
+CASE WHEN PCP.REF_TYPE= 'MTA RFQ' THEN TO_CHAR(RFQ.DOC_REF) ||'/ '||PCP.MTA_REF
+     WHEN PCP.REF_TYPE= 'FDA JOBS' THEN TO_CHAR(PFH.DOC_REF)
+     WHEN PCP.REF_TYPE= 'FF JOBS' THEN TO_CHAR(T.FF_DOC_REF)
+END AS DOC_REF_TYPE, PCP.COMPANY_DIV_POID
+FROM GL_PETTY_CASH_PAYMENT_HDR PCP
+LEFT JOIN GL_MASTER GM ON GM.GL_POID=PCP.PETTY_CASH_GL_POID
+LEFT JOIN PDA_FDA_HDR PFH ON PFH.TRANSACTION_POID=PCP.FDA_REF
+LEFT JOIN AP_REQUEST_FOR_QTN_HDR RFQ ON RFQ.TRANSACTION_POID=PCP.SALES_QTN_REF
+LEFT JOIN (SELECT LISTAGG (FMH.DOC_REF, '; ') WITHIN GROUP (ORDER BY FMH.DOC_REF) AS FF_DOC_REF,PCP.FF_REF
+            FROM FF_MANIEST_HDR FMH
+            LEFT JOIN GL_PETTY_CASH_PAYMENT_HDR PCP ON FMH.TRANSACTION_POID IN (SELECT * FROM TABLE(FUNC_GLOB_SPLIT_STRING(PCP.FF_REF,';')))
+            WHERE PCP.TRANSACTION_POID=$P{DOC_KEY_POID}
+            GROUP BY PCP.FF_REF
+            )T  ON  T.FF_REF=PCP.FF_REF
+WHERE PCP.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
+	</queryString>
+	<field name="TRANSACTION_DATE" class="java.sql.Timestamp"/>
+	<field name="DOC_REF" class="java.lang.String"/>
+	<field name="CURRENCY_CODE" class="java.lang.String"/>
+	<field name="CURRENCY_RATE" class="java.math.BigDecimal"/>
+	<field name="GL_DESCRIPTION" class="java.lang.String"/>
+	<field name="BALANCE" class="java.math.BigDecimal"/>
+	<field name="AMOUNT" class="java.math.BigDecimal"/>
+	<field name="PAYING_TO" class="java.lang.String"/>
+	<field name="NARRATION" class="java.lang.String"/>
+	<field name="ADVANCE" class="java.lang.String"/>
+	<field name="REF_TYPE" class="java.lang.String"/>
+	<field name="FDA_REF" class="java.lang.String"/>
+	<field name="FF_REF" class="java.lang.String"/>
+	<field name="SETTLED_DATE" class="java.sql.Timestamp"/>
+	<field name="SETTLED_TOTAL" class="java.math.BigDecimal"/>
+	<field name="REMARKS" class="java.lang.String"/>
+	<field name="CRSUM" class="java.lang.String"/>
+	<field name="STATUS" class="java.lang.String"/>
+	<field name="COMPANY" class="java.lang.String"/>
+	<field name="GRAND_TOTAL" class="java.math.BigDecimal"/>
+	<field name="ROUNDING_AMOUNT" class="java.math.BigDecimal"/>
+	<field name="DOC_REF_TYPE" class="java.lang.String"/>
+	<field name="COMPANY_DIV_POID" class="java.math.BigDecimal"/>
+	<variable name="RETURN_AMOUNT" class="java.math.BigDecimal"/>
+	<variable name="RETURN_CAMOUNT" class="java.math.BigDecimal"/>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="56" splitType="Stretch">
+			<subreport>
+				<reportElement x="0" y="0" width="555" height="55" uuid="11dd97b8-4c92-45fe-85bb-3b9358474446"/>
+				<subreportParameter name="LOGIN_DIV_POID">
+					<subreportParameterExpression><![CDATA[$P{LOGIN_DIV_POID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="LOGIN_COMP_POID">
+					<subreportParameterExpression><![CDATA[$P{LOGIN_COMP_POID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUB_HEADER}]]></subreportExpression>
+			</subreport>
+		</band>
+	</title>
+	<pageHeader>
+		<band height="128" splitType="Stretch">
+			<staticText>
+				<reportElement x="389" y="30" width="62" height="20" uuid="7cb7ae3a-7df1-4250-b5ed-62c1800c7e76"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Doc Ref]]></text>
+			</staticText>
+			<rectangle>
+				<reportElement x="453" y="30" width="100" height="20" forecolor="#999999" uuid="f412c6fb-d368-4fd1-9d4f-d2edcca10dd7"/>
+			</rectangle>
+			<textField isBlankWhenNull="true">
+				<reportElement x="457" y="31" width="93" height="18" uuid="29e54298-e721-4e7a-9f7c-933884dedf44"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{DOC_REF}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="389" y="54" width="62" height="20" uuid="e646c78e-1aa4-476b-b250-2b5832797a50"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Date]]></text>
+			</staticText>
+			<rectangle>
+				<reportElement x="453" y="54" width="100" height="20" forecolor="#999999" uuid="1ee3a143-6fec-48e4-8379-a84c34c5b195"/>
+			</rectangle>
+			<textField pattern="dd-MMM-yyyy" isBlankWhenNull="true">
+				<reportElement x="457" y="55" width="94" height="18" uuid="545194d0-622b-4089-b87f-587d56706b9b"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{TRANSACTION_DATE}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="389" y="78" width="62" height="20" uuid="58a8c90f-8b4a-41a4-be32-7e82596b4b63"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Ref Type]]></text>
+			</staticText>
+			<rectangle>
+				<reportElement x="453" y="78" width="100" height="20" forecolor="#999999" uuid="a8dadebc-8ead-465e-8f0d-fdc9998a7af3"/>
+			</rectangle>
+			<textField isBlankWhenNull="true">
+				<reportElement x="457" y="79" width="94" height="18" uuid="8686d4ee-689b-46ed-90c1-8f8be425ad17"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{REF_TYPE}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="25" y="28" width="53" height="20" uuid="7680aab6-f58c-4337-ae6a-c090af3db0de"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Paid To :]]></text>
+			</staticText>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement x="78" y="28" width="221" height="20" uuid="456129ed-38f8-4f3d-b048-08a8fe9567f6"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{PAYING_TO}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="25" y="50" width="53" height="20" uuid="0c951a95-c08c-413d-969a-08bc7081d889"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Narration :]]></text>
+			</staticText>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement x="78" y="50" width="221" height="20" uuid="7a135243-1b80-4707-aa71-da038a60c52b"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{NARRATION}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="0" y="1" width="555" height="21" uuid="09ab43af-8c6b-4a43-a160-5dc690c0c010"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="14" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Petty Cash Payment Voucher]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="389" y="102" width="62" height="20" uuid="c9fc8751-fd7f-4257-993d-32a6c9b0adbf">
+					<printWhenExpression><![CDATA[$F{REF_TYPE}!="GENERAL"]]></printWhenExpression>
+				</reportElement>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Ref Doc Ref]]></text>
+			</staticText>
+			<rectangle>
+				<reportElement stretchType="RelativeToBandHeight" x="453" y="102" width="100" height="20" forecolor="#999999" uuid="015fd755-dc18-42bf-82ae-b95254ca08aa">
+					<printWhenExpression><![CDATA[$F{REF_TYPE}!="GENERAL"]]></printWhenExpression>
+				</reportElement>
+			</rectangle>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement x="457" y="103" width="94" height="18" uuid="14bfbf60-f643-4864-b651-88e1fd0b3ea3">
+					<printWhenExpression><![CDATA[$F{REF_TYPE}!="GENERAL"]]></printWhenExpression>
+				</reportElement>
+				<textElement verticalAlignment="Middle">
+					<font size="9" isBold="true" isStrikeThrough="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{DOC_REF_TYPE}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="383" y="1" width="86" height="21" uuid="3f9634cc-17f6-4af4-8b21-b30232e73acd">
+					<printWhenExpression><![CDATA[$F{STATUS}.equalsIgnoreCase("ADVANCE")]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[(Advance)]]></text>
+			</staticText>
+			<textField pattern="#,##0.000" isBlankWhenNull="true">
+				<reportElement x="115" y="74" width="72" height="20" uuid="0a905846-d53a-4e1b-8524-82b9f0da0ebc">
+					<printWhenExpression><![CDATA[$F{STATUS}.equalsIgnoreCase("ADVANCE")]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{AMOUNT}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="25" y="74" width="90" height="20" uuid="83d8637d-d59e-4af2-984a-44d39a501d02">
+					<printWhenExpression><![CDATA[$F{STATUS}.equalsIgnoreCase("ADVANCE")]]></printWhenExpression>
+				</reportElement>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Advance Amount :]]></text>
+			</staticText>
+			<line>
+				<reportElement x="25" y="124" width="530" height="1" forecolor="#999999" uuid="a51945b8-c88c-44a6-8dd8-ce0b7cd125cc">
+					<printWhenExpression><![CDATA[$F{STATUS}.equalsIgnoreCase("ADVANCE")]]></printWhenExpression>
+				</reportElement>
+				<graphicElement>
+					<pen lineWidth="1.25" lineStyle="Solid"/>
+				</graphicElement>
+			</line>
+		</band>
+	</pageHeader>
+	<detail>
+		<band height="16" splitType="Stretch">
+			<frame>
+				<reportElement style="Row" mode="Opaque" x="0" y="0" width="555" height="15" uuid="6979ffce-27d2-4b83-82e4-886c2188c707"/>
+			</frame>
+			<subreport>
+				<reportElement x="25" y="3" width="530" height="12" uuid="5da6b8cb-0c01-4633-88e3-49ce584935e9"/>
+				<subreportParameter name="DOC_KEY_POID">
+					<subreportParameterExpression><![CDATA[$P{DOC_KEY_POID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="LOGIN_COMP_POID">
+					<subreportParameterExpression><![CDATA[$P{LOGIN_COMP_POID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<returnValue subreportVariable="TOTAL" toVariable="RETURN_AMOUNT"/>
+				<subreportExpression><![CDATA[$P{SUB_PAYMENT_DTL}]]></subreportExpression>
+			</subreport>
+		</band>
+		<band height="12">
+			<subreport>
+				<reportElement x="25" y="0" width="529" height="12" uuid="9d7b6847-fe82-42a9-860f-d01e6eabfa5f"/>
+				<subreportParameter name="DOC_KEY_POID">
+					<subreportParameterExpression><![CDATA[$P{DOC_KEY_POID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="LOGIN_COMP_POID">
+					<subreportParameterExpression><![CDATA[$P{LOGIN_COMP_POID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<returnValue subreportVariable="TOTAL_AMOUNT" toVariable="RETURN_CAMOUNT"/>
+				<subreportExpression><![CDATA[$P{SUB_ITEM_DTL_2}]]></subreportExpression>
+			</subreport>
+		</band>
+		<band height="19">
+			<subreport>
+				<reportElement x="25" y="0" width="530" height="17" uuid="117b44d8-453b-421f-b9be-4c84e47357ef"/>
+				<subreportParameter name="DOC_KEY_POID">
+					<subreportParameterExpression><![CDATA[$P{DOC_KEY_POID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="LOGIN_COMP_POID">
+					<subreportParameterExpression><![CDATA[$P{LOGIN_COMP_POID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUB_ITEM_DTL_1}]]></subreportExpression>
+			</subreport>
+		</band>
+	</detail>
+	<pageFooter>
+		<band height="24" splitType="Stretch">
+			<subreport>
+				<reportElement x="25" y="0" width="530" height="24" uuid="326ecd66-b7ad-4850-8e0f-10877494dc9d"/>
+				<subreportParameter name="DOC_ID">
+					<subreportParameterExpression><![CDATA[$P{DOC_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="LOGIN_COMP_POID">
+					<subreportParameterExpression><![CDATA[$P{LOGIN_COMP_POID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUB_FOOTER}]]></subreportExpression>
+			</subreport>
+		</band>
+	</pageFooter>
+	<lastPageFooter>
+		<band height="126">
+			<line>
+				<reportElement x="25" y="0" width="530" height="1" forecolor="#999999" uuid="275f79e7-d5e1-404c-a1b4-3da7e6a521ee"/>
+			</line>
+			<line>
+				<reportElement x="383" y="76" width="113" height="1" forecolor="#999999" uuid="0df782bc-85ed-402d-ac7e-03f3fc40f001"/>
+				<graphicElement>
+					<pen lineWidth="1.5"/>
+				</graphicElement>
+			</line>
+			<staticText>
+				<reportElement x="383" y="76" width="112" height="20" uuid="bff20e8d-f143-4754-a327-7719328711e9"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Received By]]></text>
+			</staticText>
+			<line>
+				<reportElement x="208" y="76" width="113" height="1" forecolor="#999999" uuid="2a7e4882-88d9-4473-9e1a-02cd24b2001e"/>
+				<graphicElement>
+					<pen lineWidth="1.5"/>
+				</graphicElement>
+			</line>
+			<staticText>
+				<reportElement x="208" y="76" width="113" height="18" uuid="76688d31-49ca-4b8d-8418-841a50e44509"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Approved By]]></text>
+			</staticText>
+			<line>
+				<reportElement x="27" y="76" width="113" height="1" forecolor="#999999" uuid="11c48af1-323c-4492-915f-d29f14c705ce"/>
+				<graphicElement>
+					<pen lineWidth="1.5"/>
+				</graphicElement>
+			</line>
+			<staticText>
+				<reportElement x="27" y="76" width="113" height="18" uuid="915dcde7-f131-413f-816f-6ee55671f814"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Prepared By]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="25" y="18" width="125" height="20" uuid="5e3174d2-52ea-4321-82e3-e85ddc80eadf"/>
+				<textElement verticalAlignment="Middle">
+					<font size="9" isBold="true" isUnderline="false" isStrikeThrough="false"/>
+				</textElement>
+				<text><![CDATA[Amount in Words(BHD):]]></text>
+			</staticText>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement x="145" y="18" width="244" height="20" uuid="9984b26b-40b6-4061-b23a-424fcb4573bb"/>
+				<textElement verticalAlignment="Middle">
+					<font size="9" isBold="true" isItalic="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{CRSUM}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.000" isBlankWhenNull="true">
+				<reportElement x="469" y="18" width="84" height="20" uuid="dbc74da6-65dc-4894-98f9-7b6a54f7b109"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{AMOUNT}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.000" isBlankWhenNull="true">
+				<reportElement x="495" y="1" width="58" height="17" uuid="fc0cc245-9126-47dc-a5cf-dfbade9bbf3f"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{ROUNDING_AMOUNT}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="389" y="1" width="106" height="17" uuid="5519e7d8-66af-4045-ab69-a72cec7cf012"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Rounding Amount]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="389" y="19" width="64" height="19" uuid="8cb9c994-3435-4464-b104-c51eaa4d7900"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Total]]></text>
+			</staticText>
+		</band>
+	</lastPageFooter>
+	<summary>
+		<band splitType="Stretch"/>
+	</summary>
+</jasperReport>

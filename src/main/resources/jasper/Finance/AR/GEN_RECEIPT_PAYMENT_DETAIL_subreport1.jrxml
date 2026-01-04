@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="GEN_RECEIPT_PAYMENT_DETAIL_subreport1" language="groovy" pageWidth="555" pageHeight="802" columnWidth="555" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="27e681ce-65a9-4ea2-987a-c93555e28946">
+    <property name="ireport.zoom" value="1.771561000000002"/>
+    <property name="ireport.x" value="0"/>
+    <property name="ireport.y" value="0"/>
+    <style name="style1" mode="Opaque" isBlankWhenNull="true" isBold="false" isItalic="false" isUnderline="false" isStrikeThrough="false">
+        <box>
+            <topPen lineWidth="0.5" lineColor="#999999"/>
+            <leftPen lineWidth="0.5" lineColor="#999999"/>
+            <bottomPen lineWidth="0.5" lineColor="#999999"/>
+            <rightPen lineWidth="0.5" lineColor="#999999"/>
+        </box>
+        <paragraph leftIndent="3"/>
+    </style>
+    <style name="style2" mode="Opaque" isBlankWhenNull="true" isBold="false" isItalic="false" isUnderline="false" isStrikeThrough="false">
+        <box>
+            <topPen lineWidth="0.5" lineColor="#999999"/>
+            <leftPen lineWidth="0.5" lineColor="#999999"/>
+            <bottomPen lineWidth="0.5" lineColor="#999999"/>
+            <rightPen lineWidth="0.5" lineColor="#999999"/>
+        </box>
+        <paragraph leftIndent="3"/>
+    </style>
+    <parameter name="DOC_KEY_POID" class="java.lang.String"/>
+    <queryString>
+        <![CDATA[SELECT PYMT_TYPE AS PYMT_TYPE, AMOUNT, CHQ_DATE, CHQ_CARDNO, ACCOUNT_NAME, ACCOUNT_NO, CBM.BANK_CODE
+FROM AR_GEN_RECEIPT_PYMT_DETAILS RPD
+LEFT JOIN GLOBAL_CUSTOMER_BANK_MASTER CBM ON CBM.BANK_POID=RPD.BANK_POID
+WHERE TRANSACTION_POID=$P{DOC_KEY_POID}]]>
+    </queryString>
+    <field name="PYMT_TYPE" class="java.lang.String"/>
+    <field name="AMOUNT" class="java.math.BigDecimal"/>
+    <field name="CHQ_DATE" class="java.sql.Timestamp"/>
+    <field name="CHQ_CARDNO" class="java.lang.String"/>
+    <field name="ACCOUNT_NAME" class="java.lang.String"/>
+    <field name="ACCOUNT_NO" class="java.lang.String"/>
+    <field name="BANK_CODE" class="java.lang.String"/>
+    <background>
+        <band splitType="Stretch"/>
+    </background>
+    <pageHeader>
+        <band height="18" splitType="Stretch">
+            <staticText>
+                <reportElement x="0" y="0" width="220" height="18" uuid="4b69517c-6c60-4448-bf78-3476e238a654"/>
+                <textElement>
+                    <font size="12" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Payment Details]]></text>
+            </staticText>
+        </band>
+    </pageHeader>
+    <columnHeader>
+        <band height="18" splitType="Stretch">
+            <staticText>
+                <reportElement style="style1" x="20" y="0" width="50" height="18" uuid="60d8eb06-b59e-44a7-95c6-cf6b3136f75a"/>
+                <textElement verticalAlignment="Middle">
+                    <font isBold="true"/>
+                    <paragraph leftIndent="3"/>
+                </textElement>
+                <text><![CDATA[Type]]></text>
+            </staticText>
+            <staticText>
+                <reportElement style="style1" x="258" y="0" width="75" height="18" uuid="ed9b1f2f-ba3a-4173-86bf-d96a42ff8294">
+                    <printWhenExpression><![CDATA[$F{PYMT_TYPE}.equalsIgnoreCase( "CHEQUE" )]]></printWhenExpression>
+                </reportElement>
+                <textElement verticalAlignment="Middle">
+                    <font isBold="true"/>
+                    <paragraph leftIndent="3"/>
+                </textElement>
+                <text><![CDATA[Amount]]></text>
+            </staticText>
+            <staticText>
+                <reportElement style="style1" x="0" y="0" width="20" height="18" uuid="b3a7164a-0b33-45d5-bfce-6b8698e2356e"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font isBold="true"/>
+                </textElement>
+                <text><![CDATA[SN]]></text>
+            </staticText>
+            <staticText>
+                <reportElement style="style2" x="70" y="0" width="68" height="18" uuid="ae8090a8-bdac-4bc7-bf48-cd78734b3e15">
+                    <printWhenExpression><![CDATA[$F{PYMT_TYPE}.equalsIgnoreCase( "CHEQUE" )]]></printWhenExpression>
+                </reportElement>
+                <textElement verticalAlignment="Middle">
+                    <font isBold="true"/>
+                    <paragraph leftIndent="3"/>
+                </textElement>
+                <text><![CDATA[Cheque Date]]></text>
+            </staticText>
+            <staticText>
+                <reportElement style="style2" x="138" y="0" width="68" height="18" uuid="d32cf0c4-2460-4331-a03c-c160fc498edb">
+                    <printWhenExpression><![CDATA[$F{PYMT_TYPE}.equalsIgnoreCase( "CHEQUE" )]]></printWhenExpression>
+                </reportElement>
+                <textElement verticalAlignment="Middle">
+                    <font isBold="true"/>
+                    <paragraph leftIndent="3"/>
+                </textElement>
+                <text><![CDATA[Cheque No]]></text>
+            </staticText>
+            <staticText>
+                <reportElement style="style2" x="333" y="0" width="140" height="18" uuid="92613e85-5ebe-4046-8b02-69f6bbfe61c3">
+                    <printWhenExpression><![CDATA[$F{PYMT_TYPE}.equalsIgnoreCase( "CHEQUE" )]]></printWhenExpression>
+                </reportElement>
+                <textElement verticalAlignment="Middle">
+                    <font isBold="true"/>
+                    <paragraph leftIndent="3"/>
+                </textElement>
+                <text><![CDATA[Account Name]]></text>
+            </staticText>
+            <staticText>
+                <reportElement style="style2" x="473" y="0" width="82" height="18" uuid="ba4aa241-bcf1-477c-8484-e0e41f4a57f8">
+                    <printWhenExpression><![CDATA[$F{PYMT_TYPE}.equalsIgnoreCase( "CHEQUE" )]]></printWhenExpression>
+                </reportElement>
+                <textElement verticalAlignment="Middle">
+                    <font isBold="true"/>
+                    <paragraph leftIndent="3"/>
+                </textElement>
+                <text><![CDATA[Account No]]></text>
+            </staticText>
+            <staticText>
+                <reportElement style="style2" x="206" y="0" width="52" height="18" uuid="d4b1d52b-ccf9-41d7-93ac-0ed5ee00ec3a">
+                    <printWhenExpression><![CDATA[$F{PYMT_TYPE}.equalsIgnoreCase( "CHEQUE" )]]></printWhenExpression>
+                </reportElement>
+                <textElement verticalAlignment="Middle">
+                    <font isBold="true"/>
+                    <paragraph leftIndent="3"/>
+                </textElement>
+                <text><![CDATA[Bank]]></text>
+            </staticText>
+            <staticText>
+                <reportElement style="style1" x="70" y="0" width="75" height="18" uuid="971277e6-00a4-4a9f-96c1-dc93e87c4a85">
+                    <printWhenExpression><![CDATA[!$F{PYMT_TYPE}.equalsIgnoreCase( "CHEQUE" )]]></printWhenExpression>
+                </reportElement>
+                <textElement verticalAlignment="Middle">
+                    <font isBold="true"/>
+                    <paragraph leftIndent="3"/>
+                </textElement>
+                <text><![CDATA[Amount]]></text>
+            </staticText>
+        </band>
+    </columnHeader>
+    <detail>
+        <band height="18" splitType="Stretch">
+            <textField isBlankWhenNull="true">
+                <reportElement style="style2" x="20" y="0" width="50" height="18" uuid="e03f622f-e192-4938-84ac-b9e85b12d845"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="9"/>
+                    <paragraph leftIndent="3"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{PYMT_TYPE}]]></textFieldExpression>
+            </textField>
+            <textField pattern="#,##0.000" isBlankWhenNull="true">
+                <reportElement style="style2" x="258" y="0" width="75" height="18" uuid="24cacfb7-4b89-4617-aa1b-e468ca39a192">
+                    <printWhenExpression><![CDATA[$F{PYMT_TYPE}.equalsIgnoreCase( "CHEQUE" )]]></printWhenExpression>
+                </reportElement>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font size="9"/>
+                    <paragraph rightIndent="3"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{AMOUNT}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement style="style2" x="0" y="0" width="20" height="18" uuid="ba17abc8-d12d-4627-a6c9-a97ed57876e8"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font size="9"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$V{REPORT_COUNT}]]></textFieldExpression>
+            </textField>
+            <textField pattern="dd-MMM-yyyy" isBlankWhenNull="true">
+                <reportElement style="style2" x="70" y="0" width="68" height="18" uuid="65dd0e00-9dea-4ca7-a25e-1cb4ae4afb60">
+                    <printWhenExpression><![CDATA[$F{PYMT_TYPE}.equalsIgnoreCase( "CHEQUE" )]]></printWhenExpression>
+                </reportElement>
+                <textElement verticalAlignment="Middle">
+                    <font size="9"/>
+                    <paragraph leftIndent="3"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{CHQ_DATE}]]></textFieldExpression>
+            </textField>
+            <textField isBlankWhenNull="true">
+                <reportElement style="style2" x="138" y="0" width="68" height="18" uuid="e8176e57-88ba-4396-8dc5-68867e865a02">
+                    <printWhenExpression><![CDATA[$F{PYMT_TYPE}.equalsIgnoreCase( "CHEQUE" )]]></printWhenExpression>
+                </reportElement>
+                <textElement verticalAlignment="Middle">
+                    <font size="9"/>
+                    <paragraph leftIndent="3"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{CHQ_CARDNO}]]></textFieldExpression>
+            </textField>
+            <textField isBlankWhenNull="true">
+                <reportElement style="style2" x="333" y="0" width="140" height="18" uuid="fcf3a52a-633b-4542-b637-e1b17d7a2a25">
+                    <printWhenExpression><![CDATA[$F{PYMT_TYPE}.equalsIgnoreCase( "CHEQUE" )]]></printWhenExpression>
+                </reportElement>
+                <textElement verticalAlignment="Middle">
+                    <font size="9"/>
+                    <paragraph leftIndent="3"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{ACCOUNT_NAME}]]></textFieldExpression>
+            </textField>
+            <textField isBlankWhenNull="true">
+                <reportElement style="style2" x="473" y="0" width="82" height="18" uuid="496072ef-5c86-46c2-9757-717229191458">
+                    <printWhenExpression><![CDATA[$F{PYMT_TYPE}.equalsIgnoreCase( "CHEQUE" )]]></printWhenExpression>
+                </reportElement>
+                <textElement verticalAlignment="Middle">
+                    <font size="9"/>
+                    <paragraph leftIndent="3"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{ACCOUNT_NO}]]></textFieldExpression>
+            </textField>
+            <textField isBlankWhenNull="true">
+                <reportElement style="style2" x="206" y="0" width="52" height="18" uuid="0d926195-4273-4c97-8694-52c6effe0126">
+                    <printWhenExpression><![CDATA[$F{PYMT_TYPE}.equalsIgnoreCase( "CHEQUE" )]]></printWhenExpression>
+                </reportElement>
+                <textElement verticalAlignment="Middle">
+                    <font size="9"/>
+                    <paragraph leftIndent="3"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{BANK_CODE}]]></textFieldExpression>
+            </textField>
+            <textField pattern="#,##0.000" isBlankWhenNull="true">
+                <reportElement style="style2" x="70" y="0" width="75" height="18" uuid="ed54e7d8-1415-4b61-8131-b63f5faf9db4">
+                    <printWhenExpression><![CDATA[!$F{PYMT_TYPE}.equalsIgnoreCase( "CHEQUE" )]]></printWhenExpression>
+                </reportElement>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font size="9"/>
+                    <paragraph rightIndent="3"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{AMOUNT}]]></textFieldExpression>
+            </textField>
+        </band>
+    </detail>
+</jasperReport>

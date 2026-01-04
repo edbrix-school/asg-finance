@@ -1,5 +1,7 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.finance.dto.DebitNoteHeaderDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.finance.service.DebitNoteService;
@@ -12,8 +14,11 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,7 +27,7 @@ import java.util.Map;
 
 import static com.asg.common.lib.dto.response.ApiResponse.*;
 
-
+@Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/v1/debit-note")
@@ -318,5 +323,33 @@ public class DebitNoteController {
     ) {
         return success("Party default values loaded",
                 debitNoteService.getPartyDefaults(partyPoid, partyType));
+    }
+
+    @AllowedAction(UserRolesRightsEnum.PRINT)
+    @Operation(
+            summary = "Generate PDF for Debit Note",
+            description = "Generate PDF report for a specific Debit Note",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "PDF generated successfully",
+                            content = @Content(mediaType = "application/pdf")),
+                    @ApiResponse(responseCode = "404", description = "Debit Note not found"),
+                    @ApiResponse(responseCode = "500", description = "Failed to generate PDF")
+            }
+    )
+    @GetMapping("/print/{transactionPoid}")
+    public ResponseEntity<?> print(
+            @Parameter(description = "Transaction POID", example = "35657")
+            @PathVariable Long transactionPoid) {
+        try {
+            byte[] pdf = debitNoteService.print(transactionPoid);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=debit-note-" + transactionPoid + ".pdf")
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .body(pdf);
+        } catch (Exception e) {
+            log.error("Failed to generate PDF for Debit Note: {}", transactionPoid, e);
+            return error("Failed to generate PDF: " + e.getMessage(), 500);
+        }
     }
 }

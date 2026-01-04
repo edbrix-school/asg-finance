@@ -1,5 +1,7 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.GlChequeCashConvertHdrDto;
 import com.asg.finance.dto.GlChequeConversionLoadResponseDto;
@@ -14,15 +16,20 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+import static com.asg.common.lib.dto.response.ApiResponse.error;
 import static com.asg.common.lib.dto.response.ApiResponse.success;
 
+@Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/v1/gl-cheque-cash-conversion")
@@ -395,6 +402,34 @@ public class GlChequeCashConvertController {
     ) {
         java.util.List<GlChequeConversionLoadResponseDto> data = service.loadGlChequeConversion(chequeNumber, chequeAccNumber, type);
         return success("GL Cheque Cash Conversion load fetched successfully", data);
+    }
+
+    @AllowedAction(UserRolesRightsEnum.PRINT)
+    @Operation(
+            summary = "Generate PDF for Recurring JV",
+            description = "Generate PDF report for a specific Recurring JV transaction",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "PDF generated successfully",
+                            content = @Content(mediaType = "application/pdf")),
+                    @ApiResponse(responseCode = "404", description = "Recurring JV not found"),
+                    @ApiResponse(responseCode = "500", description = "Failed to generate PDF")
+            }
+    )
+    @GetMapping("/print/{transactionPoid}")
+    public ResponseEntity<?> print(
+            @Parameter(description = "Transaction POID", example = "21")
+            @PathVariable Long transactionPoid) {
+        try {
+            byte[] pdf = service.print(transactionPoid);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=cheque-and-cash-conversion-" + transactionPoid + ".pdf")
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .body(pdf);
+        } catch (Exception e) {
+            log.error("Failed to generate PDF for Cheque and Cash Conversion: {}", transactionPoid, e);
+            return error("Failed to generate PDF: " + e.getMessage(), 500);
+        }
     }
 
 }

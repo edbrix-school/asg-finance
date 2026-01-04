@@ -30,4 +30,6 @@ public interface PurchaseOrderService {
             String rfqPoid
     );
 
+    byte[] print(Long transactionPoid) throws Exception;
+
 }

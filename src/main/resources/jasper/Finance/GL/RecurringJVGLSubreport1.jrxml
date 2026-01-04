@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="RecurringJVGLSubreport1" language="groovy" pageWidth="555" pageHeight="802" columnWidth="555" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="0319529c-65c6-4237-91b6-37d0881a43d9">
+	<property name="ireport.zoom" value="1.0"/>
+	<property name="ireport.x" value="0"/>
+	<property name="ireport.y" value="0"/>
+	<parameter name="DOC_KEY_POID" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="LOGIN_COMP_POID" class="java.lang.String">
+		<defaultValueExpression><![CDATA[1]]></defaultValueExpression>
+	</parameter>
+	<queryString>
+		<![CDATA[SELECT 
+    RJD.DET_ROW_ID,
+    RJD.TYPE,
+    GM.GL_DESCRIPTION,
+    RJD.DR_AMT,
+    RJD.CR_AMT,
+    RJD.REMARKS
+FROM GL_RECURRING_JV_DTL RJD
+LEFT JOIN GL_MASTER GM ON GM.GL_POID = RJD.GL_POID
+WHERE RJD.TRANSACTION_POID = $P{DOC_KEY_POID}
+ORDER BY RJD.DET_ROW_ID]]>
+	</queryString>
+	<field name="DET_ROW_ID" class="java.math.BigDecimal"/>
+	<field name="TYPE" class="java.lang.String"/>
+	<field name="GL_DESCRIPTION" class="java.lang.String"/>
+	<field name="DR_AMT" class="java.math.BigDecimal"/>
+	<field name="CR_AMT" class="java.math.BigDecimal"/>
+	<field name="REMARKS" class="java.lang.String"/>
+	<variable name="DR_TOTAL" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$F{DR_AMT}]]></variableExpression>
+	</variable>
+	<variable name="CR_TOTAL" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$F{CR_AMT}]]></variableExpression>
+	</variable>
+	<pageHeader>
+		<band height="20" splitType="Stretch">
+			<line>
+				<reportElement x="0" y="0" width="555" height="1" forecolor="#999999" uuid="06570997-c6bb-4c4f-ae60-6750f700feb2"/>
+			</line>
+			<staticText>
+				<reportElement x="0" y="2" width="555" height="18" uuid="d025e350-9af8-4359-8947-d4ca0da5777f"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[GL Details]]></text>
+			</staticText>
+			<line>
+				<reportElement x="0" y="18" width="555" height="1" forecolor="#999999" uuid="7620fa20-ebc0-4d17-920b-1628ffaddbcb"/>
+			</line>
+		</band>
+	</pageHeader>
+	<columnHeader>
+		<band height="23" splitType="Stretch">
+			<staticText>
+				<reportElement x="0" y="0" width="30" height="20" uuid="ec07f2a0-fcf3-4dfc-a570-ff2e78328864"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Sl No]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="30" y="0" width="200" height="20" uuid="5db4a7c2-d5e4-447f-94ea-43264811faf6"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[GL Description]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="230" y="0" width="80" height="20" uuid="a8635280-ac84-470a-9121-8dd4dea23d56"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Debit [BHD]]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="310" y="0" width="80" height="20" uuid="c47df4be-698c-4db1-9786-c893f0188471"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Credit [BHD]]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="390" y="0" width="165" height="20" uuid="a8635280-ac84-470a-9121-8dd4dea23d57"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Remarks]]></text>
+			</staticText>
+			<line>
+				<reportElement x="0" y="21" width="555" height="1" forecolor="#999999" uuid="8458845f-d129-4596-b289-1b9df14f53b5"/>
+			</line>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="23" splitType="Stretch">
+			<textField isBlankWhenNull="true">
+				<reportElement x="0" y="0" width="30" height="20" uuid="d45120e1-e7d9-438b-b8f6-ccdee0250355"/>
+				<textElement verticalAlignment="Middle"/>
+				<textFieldExpression><![CDATA[$V{REPORT_COUNT}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement x="30" y="0" width="200" height="20" uuid="b7968593-44a0-486f-b37a-3f7a4fa96a1e"/>
+				<textElement verticalAlignment="Middle"/>
+				<textFieldExpression><![CDATA[$F{GL_DESCRIPTION}]]></textFieldExpression>
+			</textField>
+			<textField pattern="###0.000" isBlankWhenNull="true">
+				<reportElement x="230" y="0" width="80" height="20" uuid="6990998a-7fbf-44b4-be47-3451f249c56f"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle"/>
+				<textFieldExpression><![CDATA[$F{DR_AMT}]]></textFieldExpression>
+			</textField>
+			<textField pattern="###0.000" isBlankWhenNull="true">
+				<reportElement x="310" y="0" width="80" height="20" uuid="6990998a-7fbf-44b4-be47-3451f249c570"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle"/>
+				<textFieldExpression><![CDATA[$F{CR_AMT}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement x="390" y="0" width="165" height="20" uuid="b7968593-44a0-486f-b37a-3f7a4fa96a22"/>
+				<textElement verticalAlignment="Middle"/>
+				<textFieldExpression><![CDATA[$F{REMARKS}]]></textFieldExpression>
+			</textField>
+			<line>
+				<reportElement positionType="FixRelativeToBottom" x="0" y="20" width="555" height="1" forecolor="#999999" uuid="756e3c60-d0d8-4a86-9c00-8e7219e2f86c"/>
+				<graphicElement>
+					<pen lineWidth="0.5" lineStyle="Dashed"/>
+				</graphicElement>
+			</line>
+		</band>
+	</detail>
+	<summary>
+		<band height="25">
+			<staticText>
+				<reportElement x="30" y="2" width="200" height="20" uuid="34ac0baa-fc51-44df-bb48-354a47526f44"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Total:]]></text>
+			</staticText>
+			<textField pattern="###0.000" isBlankWhenNull="true">
+				<reportElement x="230" y="2" width="80" height="20" uuid="6990998a-7fbf-44b4-be47-3451f249c571"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{DR_TOTAL}]]></textFieldExpression>
+			</textField>
+			<textField pattern="###0.000" isBlankWhenNull="true">
+				<reportElement x="310" y="2" width="80" height="20" uuid="6990998a-7fbf-44b4-be47-3451f249c572"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{CR_TOTAL}]]></textFieldExpression>
+			</textField>
+			<line>
+				<reportElement x="0" y="0" width="555" height="1" forecolor="#999999" uuid="8458845f-d129-4596-b289-1b9df14f53b6"/>
+			</line>
+		</band>
+	</summary>
+</jasperReport>

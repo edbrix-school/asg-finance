@@ -1,6 +1,8 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.FilterRequestDto;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.finance.dto.ContraVoucherRequest;
 import com.asg.finance.dto.ContraVoucherFullResponse;
 import com.asg.finance.service.ContraVoucherService;
@@ -17,14 +19,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.Map;
 
-import static com.asg.common.lib.dto.response.ApiResponse.badRequest;
-import static com.asg.common.lib.dto.response.ApiResponse.success;
+import static com.asg.common.lib.dto.response.ApiResponse.*;
 
 @RestController
 @RequestMapping("/v1/contra-vouchers")
@@ -289,6 +292,34 @@ public class ContraVoucherController {
         log.info("checkGlNature completed for creditGlId={}", creditGlId);
         
         return success("GL nature checked successfully", result);
+    }
+
+    @AllowedAction(UserRolesRightsEnum.PRINT)
+    @Operation(
+            summary = "Generate PDF for Contra Voucher",
+            description = "Generate PDF report for a specific Contra Voucher transaction",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "PDF generated successfully",
+                            content = @Content(mediaType = "application/pdf")),
+                    @ApiResponse(responseCode = "404", description = "Contra Voucher not found"),
+                    @ApiResponse(responseCode = "500", description = "Failed to generate PDF")
+            }
+    )
+    @GetMapping("/print/{transactionPoid}")
+    public ResponseEntity<?> print(
+            @Parameter(description = "Transaction POID", example = "21")
+            @PathVariable Long transactionPoid) {
+        try {
+            byte[] pdf = contraVoucherService.print(transactionPoid);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=contra-voucher-" + transactionPoid + ".pdf")
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .body(pdf);
+        } catch (Exception e) {
+            log.error("Failed to generate PDF for Contra Voucher: {}", transactionPoid, e);
+            return error("Failed to generate PDF: " + e.getMessage(), 500);
+        }
     }
 }
 

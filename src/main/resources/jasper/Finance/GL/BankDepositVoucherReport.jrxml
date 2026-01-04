@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="BankDepositVoucherReport" language="groovy" pageWidth="595" pageHeight="842" columnWidth="535" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="51f26c1c-332c-43f0-beb9-5722768520c7">
+	<property name="ireport.zoom" value="1.331000000000001"/>
+	<property name="ireport.x" value="0"/>
+	<property name="ireport.y" value="0"/>
+	<style name="Title" fontName="Times New Roman" fontSize="50" isBold="true" pdfFontName="Times-Bold"/>
+	<style name="SubTitle" forecolor="#736343" fontName="Arial" fontSize="18"/>
+	<style name="Column header" forecolor="#666666" fontName="Arial" fontSize="12" isBold="true"/>
+	<style name="Detail" fontName="Arial" fontSize="12"/>
+	<style name="Row" mode="Transparent">
+		<conditionalStyle>
+			<conditionExpression><![CDATA[$V{REPORT_COUNT}%2 == 0]]></conditionExpression>
+			<style backcolor="#E6DAC3"/>
+		</conditionalStyle>
+	</style>
+	<parameter name="LOGIN_GROUP_POID" class="java.lang.String">
+		<defaultValueExpression><![CDATA[1]]></defaultValueExpression>
+	</parameter>
+	<parameter name="LOGIN_COMP_POID" class="java.lang.String">
+		<defaultValueExpression><![CDATA[1]]></defaultValueExpression>
+	</parameter>
+	<parameter name="LOGIN_USER_POID" class="java.lang.String"/>
+	<parameter name="LOGIN_DIV_POID" class="java.lang.String"/>
+	<parameter name="DOC_ID" class="java.lang.String">
+		<defaultValueExpression><![CDATA["000-000"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="DOC_KEY_POID" class="java.lang.String"/>
+	<parameter name="SUBREPORT_DIR" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+	</parameter>
+	<parameter name="SUB_HEADER" class="net.sf.jasperreports.engine.JasperReport"/>
+	<parameter name="SUB_FOOTER" class="net.sf.jasperreports.engine.JasperReport"/>
+	<parameter name="SUB_CHEQUE" class="net.sf.jasperreports.engine.JasperReport"/>
+	<parameter name="SUB_CASH" class="net.sf.jasperreports.engine.JasperReport"/>
+	<queryString>
+		<![CDATA[SELECT TRUNC(BDV.TRANSACTION_DATE) AS TRANSACTION_DATE,BDV.DOC_REF,BM.BANK_DESCRIPTION,BDV.CURRENCY_CODE,
+BDV.CURRENCY_RATE,BDV.DR_TOTAL,BDV.CR_TOTAL,BDV.POSTING_NARRATION,BDV.REMARKS,BM.BANK_DESCRIPTION,BDV.REF_TYPE,
+BDV.CREATED_BY
+FROM GL_BANK_DEPOSIT_VOUCHER_HDR BDV
+INNER JOIN GL_BANK_MASTER BM ON BM.GL_POID=BDV.BANK_POID
+WHERE NVL(ACCOUNT_TYPE,'BANK')='BANK' AND NVL(BM.ACTIVE,'Y')='Y' AND BDV.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
+	</queryString>
+	<field name="TRANSACTION_DATE" class="java.sql.Timestamp"/>
+	<field name="DOC_REF" class="java.lang.String"/>
+	<field name="BANK_DESCRIPTION" class="java.lang.String"/>
+	<field name="CURRENCY_CODE" class="java.lang.String"/>
+	<field name="CURRENCY_RATE" class="java.math.BigDecimal"/>
+	<field name="DR_TOTAL" class="java.math.BigDecimal"/>
+	<field name="CR_TOTAL" class="java.math.BigDecimal"/>
+	<field name="POSTING_NARRATION" class="java.lang.String"/>
+	<field name="REMARKS" class="java.lang.String"/>
+	<field name="REF_TYPE" class="java.lang.String"/>
+	<field name="CREATED_BY" class="java.lang.String"/>
+	<variable name="RETURN_AMT" class="java.math.BigDecimal"/>
+	<variable name="SUB_REPORT_COUNT" class="java.math.BigDecimal"/>
+	<variable name="SUB_REPORT_CHEQUE_COUNT" class="java.math.BigDecimal"/>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="49" splitType="Stretch">
+			<subreport>
+				<reportElement x="0" y="0" width="555" height="49" uuid="11dd97b8-4c92-45fe-85bb-3b9358474446"/>
+				<subreportParameter name="LOGIN_DIV_POID">
+					<subreportParameterExpression><![CDATA[$P{LOGIN_DIV_POID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="LOGIN_COMP_POID">
+					<subreportParameterExpression><![CDATA[$P{LOGIN_COMP_POID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUB_HEADER}]]></subreportExpression>
+			</subreport>
+		</band>
+	</title>
+	<pageHeader>
+		<band height="129" splitType="Stretch">
+			<staticText>
+				<reportElement x="0" y="3" width="555" height="20" uuid="4a44dffe-305b-4005-94b1-f19bd4473099"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="14" isBold="true" isUnderline="true"/>
+				</textElement>
+				<text><![CDATA[Bank Deposit Voucher]]></text>
+			</staticText>
+			<rectangle radius="10">
+				<reportElement x="300" y="27" width="255" height="95" forecolor="#999999" uuid="d7a02e4a-c67b-4044-bc26-22842e5120bd"/>
+			</rectangle>
+			<staticText>
+				<reportElement x="303" y="31" width="83" height="20" uuid="cbad3f61-9c42-4581-bf4a-09aa4097fd43"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Doc Date :]]></text>
+			</staticText>
+			<textField pattern="dd-MMM-yyyy" isBlankWhenNull="true">
+				<reportElement x="386" y="31" width="169" height="20" uuid="d215db99-a494-4092-9ffe-063ca7de0525"/>
+				<textElement verticalAlignment="Middle">
+					<font size="9" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{TRANSACTION_DATE}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="303" y="53" width="83" height="20" uuid="1c30b8b2-eb3b-4b9f-8693-1f67fbdd7b8d"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Doc Ref :]]></text>
+			</staticText>
+			<textField isBlankWhenNull="true">
+				<reportElement x="386" y="53" width="169" height="20" uuid="5f9fbd59-997b-4efb-911c-d182c8c28931"/>
+				<textElement verticalAlignment="Middle">
+					<font size="9" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{DOC_REF}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="303" y="76" width="83" height="20" uuid="ae880deb-9f82-4ad6-ab31-c824764c2907"/>
+				<textElement verticalAlignment="Top">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Account No :]]></text>
+			</staticText>
+			<rectangle radius="10">
+				<reportElement x="25" y="27" width="265" height="95" forecolor="#999999" uuid="64a586e3-53cf-455c-91d3-00047374af20"/>
+			</rectangle>
+			<staticText>
+				<reportElement x="27" y="33" width="123" height="18" uuid="70734e23-105b-4610-87f1-1003638bae34"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Person of Contact :]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="27" y="50" width="123" height="17" uuid="c7bcf0d9-bd3c-4e50-8799-fc9cb2cc1dee"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Manu Joy]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="27" y="67" width="171" height="16" uuid="64429fc1-4b87-4017-8967-6897c1e7548a"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Financial Controller]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="27" y="83" width="263" height="16" uuid="351bf27d-f543-43f3-84b1-5640e0695fe9"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Email : mgr.accts@shippingbahrain.com]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="27" y="99" width="171" height="17" uuid="05f1f102-6dc1-44f1-b82c-753ca99bf4f5"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Ph : (00973) 17515090.]]></text>
+			</staticText>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement positionType="Float" x="386" y="76" width="169" height="40" uuid="68c84801-49a5-4444-9939-7b043698eeec"/>
+				<textElement verticalAlignment="Top">
+					<font size="9" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{BANK_DESCRIPTION}]]></textFieldExpression>
+			</textField>
+		</band>
+	</pageHeader>
+	<columnHeader>
+		<band height="2" splitType="Stretch"/>
+	</columnHeader>
+	<detail>
+		<band height="30" splitType="Stretch">
+			<subreport>
+				<reportElement stretchType="RelativeToTallestObject" x="25" y="2" width="530" height="26" uuid="c62be8f0-7fc6-4a31-be94-4d3b66dfa2af">
+					<printWhenExpression><![CDATA[$F{REF_TYPE}.equals("CHEQUE") || $F{REF_TYPE}.equals("IMCO_DEPOSIT_CHEQUE")]]></printWhenExpression>
+				</reportElement>
+				<subreportParameter name="DOC_KEY_POID">
+					<subreportParameterExpression><![CDATA[$P{DOC_KEY_POID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="LOGIN_COMP_POID">
+					<subreportParameterExpression><![CDATA[$P{LOGIN_COMP_POID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<returnValue subreportVariable="TOTAL" toVariable="RETURN_AMT" calculation="Count"/>
+				<subreportExpression><![CDATA[$P{SUB_CHEQUE}]]></subreportExpression>
+			</subreport>
+		</band>
+		<band height="31">
+			<subreport>
+				<reportElement stretchType="RelativeToTallestObject" x="25" y="0" width="530" height="29" isRemoveLineWhenBlank="true" uuid="274c9957-a786-4976-9994-b7c9b89b8d1c">
+					<printWhenExpression><![CDATA[$F{REF_TYPE}.equals("CASH")]]></printWhenExpression>
+				</reportElement>
+				<subreportParameter name="DOC_KEY_POID">
+					<subreportParameterExpression><![CDATA[$P{DOC_KEY_POID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<returnValue subreportVariable="REPORT_COUNT" toVariable="SUB_REPORT_COUNT" calculation="Count"/>
+				<subreportExpression><![CDATA[$P{SUB_CASH}]]></subreportExpression>
+			</subreport>
+		</band>
+	</detail>
+	<lastPageFooter>
+		<band height="73">
+			<line>
+				<reportElement positionType="FixRelativeToBottom" x="25" y="1" width="530" height="1" uuid="d289b3ef-2b1e-48fd-b978-d9a4aded8371"/>
+				<graphicElement>
+					<pen lineWidth="0.5" lineColor="#999999"/>
+				</graphicElement>
+			</line>
+			<subreport>
+				<reportElement x="25" y="49" width="530" height="24" uuid="326ecd66-b7ad-4850-8e0f-10877494dc9d"/>
+				<subreportParameter name="DOC_ID">
+					<subreportParameterExpression><![CDATA[$P{DOC_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="LOGIN_COMP_POID">
+					<subreportParameterExpression><![CDATA[$P{LOGIN_COMP_POID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUB_FOOTER}]]></subreportExpression>
+			</subreport>
+			<staticText>
+				<reportElement x="25" y="12" width="81" height="20" uuid="34ac0baa-fc51-44df-bb48-354a47526f43"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Deposited By :]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="25" y="32" width="81" height="17" uuid="f4a0c6a5-341f-4d68-a526-81c63710766b"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Tel / Mobile No :]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="370" y="29" width="100" height="20" uuid="326c5fa4-d797-41af-a938-4465974b4793"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Signature :]]></text>
+			</staticText>
+		</band>
+	</lastPageFooter>
+	<summary>
+		<band splitType="Stretch"/>
+	</summary>
+</jasperReport>

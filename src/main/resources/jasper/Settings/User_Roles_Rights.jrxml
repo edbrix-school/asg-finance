@@ -1,0 +1,301 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports
+              http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
+              name="User_Roles_Rights"
+              language="groovy"
+              pageWidth="595"
+              pageHeight="842"
+              whenNoDataType="AllSectionsNoDetail"
+              columnWidth="535"
+              leftMargin="20"
+              rightMargin="20"
+              topMargin="20"
+              bottomMargin="20">
+
+    <!-- ===================== STYLES ===================== -->
+    <style name="ColumnHeader" fontName="Arial" fontSize="11" isBold="true"/>
+    <style name="Detail" fontName="Arial" fontSize="10"/>
+    <style name="Row" mode="Opaque">
+        <conditionalStyle>
+            <conditionExpression><![CDATA[$V{REPORT_COUNT} % 2 == 0]]></conditionExpression>
+            <style backcolor="#F2F2F2"/>
+        </conditionalStyle>
+    </style>
+
+    <!-- ===================== PARAMETERS ===================== -->
+    <parameter name="DOC_KEY_POID" class="java.lang.Long"/>
+    <parameter name="DOC_ID" class="java.lang.String"/>
+    <parameter name="LOGIN_COMP_POID" class="java.lang.String"/>
+    <parameter name="LOGIN_DIV_POID" class="java.lang.String"/>
+    <parameter name="SUB_HEADER" class="net.sf.jasperreports.engine.JasperReport"/>
+    <parameter name="SUB_FOOTER" class="net.sf.jasperreports.engine.JasperReport"/>
+    <parameter name="SUB_1" class="net.sf.jasperreports.engine.JasperReport"/>
+
+    <!-- ===================== QUERY ===================== -->
+    <queryString>
+        <![CDATA[SELECT R.DOC_ID,
+                 D.DOC_TYPE,
+                 D.DOC_NAME,
+                 SUBSTR(R.RIGHTS,1,1) AS CAN_VIEW,
+                 SUBSTR(R.RIGHTS,2,1) AS CAN_ADD,
+                 SUBSTR(R.RIGHTS,3,1) AS CAN_EDIT,
+                 SUBSTR(R.RIGHTS,4,1) AS CAN_DELETE,
+                 SUBSTR(R.RIGHTS,5,1) AS CAN_PRINT,
+                 SUBSTR(R.RIGHTS,6,1) AS CAN_EMAIL,
+                 SYSDATE AS DATE_TIME
+                 FROM GLOBAL_USER_ROLES_RIGHTS_DTL R
+                 LEFT JOIN GLOBAL_DOC_MASTER D ON R.DOC_ID = D.DOC_ID
+                 WHERE R.USER_ROLE_POID = $P{DOC_KEY_POID}
+                 ORDER BY D.DOC_TYPE, R.DOC_ID]]>
+    </queryString>
+
+    <field name="DOC_NAME" class="java.lang.String"/>
+    <field name="DOC_ID" class="java.lang.String"/>
+    <field name="DOC_TYPE" class="java.lang.String"/>
+    <field name="CAN_VIEW" class="java.lang.String"/>
+    <field name="CAN_ADD" class="java.lang.String"/>
+    <field name="CAN_EDIT" class="java.lang.String"/>
+    <field name="CAN_DELETE" class="java.lang.String"/>
+    <field name="CAN_PRINT" class="java.lang.String"/>
+    <field name="CAN_EMAIL" class="java.lang.String"/>
+    <field name="DATE_TIME" class="java.sql.Timestamp"/>
+
+
+    <!-- ===================== TITLE ===================== -->
+    <title>
+        <band height="60">
+            <subreport>
+                <reportElement x="0" y="0" width="555" height="60"/>
+                <subreportParameter name="LOGIN_COMP_POID">
+                    <subreportParameterExpression><![CDATA[$P{LOGIN_COMP_POID}]]></subreportParameterExpression>
+                </subreportParameter>
+                <subreportParameter name="LOGIN_DIV_POID">
+                    <subreportParameterExpression><![CDATA[$P{LOGIN_DIV_POID}]]></subreportParameterExpression>
+                </subreportParameter>
+                <connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+                <subreportExpression><![CDATA[$P{SUB_HEADER}]]></subreportExpression>
+            </subreport>
+        </band>
+    </title>
+
+    <!-- ===================== COLUMN HEADERS ===================== -->
+    <columnHeader>
+        <band height="220">
+            <subreport>
+                <reportElement x="0" y="0" width="555" height="180"/>
+                <subreportParameter name="DOC_KEY_POID">
+                    <subreportParameterExpression><![CDATA[$P{DOC_KEY_POID}]]></subreportParameterExpression>
+                </subreportParameter>
+                <connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+                <subreportExpression><![CDATA[$P{SUB_1}]]></subreportExpression>
+            </subreport>
+            <!--            <staticText>-->
+            <!--                <reportElement x="0" y="185" width="555" height="15"/>-->
+            <!--                <textElement><font isBold="true" size="11"/></textElement>-->
+            <!--                <text><![CDATA[Menu Rights Table]]></text>-->
+            <!--            </staticText>-->
+            <staticText>
+                <reportElement x="0" y="185" width="200" height="20"/>
+                <textElement textAlignment="Left" verticalAlignment="Middle">
+                    <font size="9" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Menu]]></text>
+            </staticText>
+
+            <staticText>
+                <reportElement x="200" y="185" width="80" height="20"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font size="9" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Doc Type]]></text>
+            </staticText>
+
+            <staticText>
+                <reportElement x="280" y="185" width="70" height="20"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font size="9" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Menu ID]]></text>
+            </staticText>
+
+            <staticText>
+                <reportElement x="350" y="185" width="30" height="20"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font size="8" isBold="true"/>
+                </textElement>
+                <text><![CDATA[View]]></text>
+            </staticText>
+
+            <staticText>
+                <reportElement x="380" y="185" width="30" height="20"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font size="8" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Create]]></text>
+            </staticText>
+
+            <staticText>
+                <reportElement x="410" y="185" width="30" height="20"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font size="8" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Edit]]></text>
+            </staticText>
+
+            <staticText>
+                <reportElement x="440" y="185" width="30" height="20"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font size="8" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Delete]]></text>
+            </staticText>
+
+            <staticText>
+                <reportElement x="470" y="185" width="30" height="20"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font size="8" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Print]]></text>
+            </staticText>
+
+            <staticText>
+                <reportElement x="500" y="185" width="35" height="20"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font size="8" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Email]]></text>
+            </staticText>
+
+            <line>
+                <reportElement x="0" y="205" width="555" height="1"/>
+            </line>
+        </band>
+    </columnHeader>
+
+    <!-- ===================== DETAIL ===================== -->
+    <detail>
+        <band height="20">
+
+            <!-- MENU NAME -->
+            <textField>
+                <reportElement x="0" y="0" width="200" height="20"/>
+                <textElement textAlignment="Left" verticalAlignment="Middle">
+                    <font size="9"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{DOC_NAME}]]></textFieldExpression>
+            </textField>
+
+            <!-- DOC TYPE -->
+            <textField>
+                <reportElement x="200" y="0" width="80" height="20"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font size="9"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{DOC_TYPE}]]></textFieldExpression>
+            </textField>
+
+            <!-- MENU ID -->
+            <textField>
+                <reportElement x="280" y="0" width="70" height="20"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font size="9"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{DOC_ID}]]></textFieldExpression>
+            </textField>
+
+            <!-- VIEW -->
+            <textField>
+                <reportElement x="350" y="0" width="30" height="20"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font size="9" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[
+                "1".equals($F{CAN_VIEW}) ? "V" : "X"
+            ]]></textFieldExpression>
+            </textField>
+
+            <!-- CREATE -->
+            <textField>
+                <reportElement x="380" y="0" width="30" height="20"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font size="9" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[
+                "1".equals($F{CAN_ADD}) ? "V" : "X"
+            ]]></textFieldExpression>
+            </textField>
+
+            <!-- EDIT -->
+            <textField>
+                <reportElement x="410" y="0" width="30" height="20"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font size="9" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[
+                "1".equals($F{CAN_EDIT}) ? "V" : "X"
+            ]]></textFieldExpression>
+            </textField>
+
+            <!-- DELETE -->
+            <textField>
+                <reportElement x="440" y="0" width="30" height="20"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font size="9" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[
+                "1".equals($F{CAN_DELETE}) ? "V" : "X"
+            ]]></textFieldExpression>
+            </textField>
+
+            <!-- PRINT -->
+            <textField>
+                <reportElement x="470" y="0" width="30" height="20"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font size="9" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[
+                "1".equals($F{CAN_PRINT}) ? "V" : "X"
+            ]]></textFieldExpression>
+            </textField>
+
+            <!-- EMAIL -->
+            <textField>
+                <reportElement x="500" y="0" width="35" height="20"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font size="9" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[
+                "1".equals($F{CAN_EMAIL}) ? "V" : "X"
+            ]]></textFieldExpression>
+            </textField>
+
+        </band>
+    </detail>
+
+    <!-- ===================== PAGE FOOTER ===================== -->
+    <pageFooter>
+        <band height="44">
+            <subreport>
+                <reportElement x="0" y="3" width="555" height="26"/>
+                <subreportParameter name="DOC_ID">
+                    <subreportParameterExpression><![CDATA[$P{DOC_ID}]]></subreportParameterExpression>
+                </subreportParameter>
+                <subreportParameter name="LOGIN_COMP_POID">
+                    <subreportParameterExpression><![CDATA[$P{LOGIN_COMP_POID}]]></subreportParameterExpression>
+                </subreportParameter>
+                <connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+                <subreportExpression><![CDATA[$P{SUB_FOOTER}]]></subreportExpression>
+            </subreport>
+            <textField>
+                <reportElement x="313" y="32" width="242" height="12"/>
+                <textElement textAlignment="Right">
+                    <font size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{DATE_TIME}]]></textFieldExpression>
+            </textField>
+        </band>
+    </pageFooter>
+
+</jasperReport>

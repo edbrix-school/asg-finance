@@ -6,6 +6,7 @@ import com.asg.common.lib.dto.request.GlobalTermsInsertRequestDto;
 import com.asg.common.lib.dto.response.GlobalTermsResponseDto;
 import com.asg.common.lib.exception.ResourceAlreadyExistsException;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.service.PrintService;
 import com.asg.finance.client.GlobalTermsServiceClient;
 import com.asg.finance.repository.GLMasterRepository;
 import com.asg.finance.repository.TaxMasterRepository;
@@ -21,9 +22,11 @@ import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.validator.BankDebitVoucherValidator;
 import com.nimbusds.oauth2.sdk.util.CollectionUtils;
+import jakarta.persistence.ParameterMode;
 import jakarta.persistence.StoredProcedureQuery;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.sf.jasperreports.engine.JasperReport;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -33,6 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.persistence.EntityManager;
 
+import javax.sql.DataSource;
 import java.math.BigDecimal;
 import java.sql.Date;
 import java.sql.ResultSet;
@@ -70,6 +74,8 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
     private final EntityManager entityManager;
     private final GlobalTermsServiceClient globalTermsServiceClient;
     private final GlobalTermsCustomChangesRepository globalTermsCustomChangesRepository;
+    private final PrintService printService;
+    private final DataSource dataSource;
 
     @Override
     public BankDebitVoucherResponse createBankDebitVoucher(BankDebitVoucherRequest request, String documentId) {
@@ -990,14 +996,14 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                 .createStoredProcedureQuery("PROC_DEBIT_PAYMENT_RECON_DATE");
 
         // Register IN parameters
-        query.registerStoredProcedureParameter("P_LOGIN_GROUP_POID", Long.class, jakarta.persistence.ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_LOGIN_COMPANY_POID", Long.class, jakarta.persistence.ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_LOGIN_USER_POID", Long.class, jakarta.persistence.ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_DOC_ID", String.class, jakarta.persistence.ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_DOC_KEY_POID", Long.class, jakarta.persistence.ParameterMode.IN);
+        query.registerStoredProcedureParameter("P_LOGIN_GROUP_POID", Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("P_LOGIN_COMPANY_POID", Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("P_LOGIN_USER_POID", Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("P_DOC_ID", String.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("P_DOC_KEY_POID", Long.class, ParameterMode.IN);
 
         // Register OUT cursor
-        query.registerStoredProcedureParameter("OUTDATA", void.class, jakarta.persistence.ParameterMode.REF_CURSOR);
+        query.registerStoredProcedureParameter("OUTDATA", void.class, ParameterMode.REF_CURSOR);
 
         // Set input values
         query.setParameter("P_LOGIN_GROUP_POID", UserContext.getGroupPoid());
@@ -1030,6 +1036,27 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         }
 
         return new ReconcileResultDto(null, null);
+    }
+
+    @Override
+    public byte[] print(Long transactionPoid) throws Exception {
+        GlBankDebitHdr header = headerRepository.findByTransactionPoidAndNotDeleted(transactionPoid)
+                .orElseThrow(() -> new ResourceNotFoundException("Bank Debit Voucher", "transactionPoid", transactionPoid));
+
+        Map<String, Object> params = printService.buildBaseParams(transactionPoid, "400-111");
+        JasperReport mainReport = null;
+        if (header.getPayingType() != null) {
+            String payingType = header.getPayingType();
+            if (payingType.contains("3")) {
+                mainReport = printService.load("Finance/BankPayments/BankDebitVouherCreditCard.jrxml");
+            } else if(payingType.contains("4")){
+                mainReport = printService.load("Finance/BankPayments/BankDebitVouherBankCharges.jrxml");
+            }else {
+                mainReport = printService.load("Finance/BankPayments/BankDebitVoucher.jrxml");
+            }
+        }
+        params.put("BANK_DEBIT_VOUCHER_SUBREPORT_1", printService.load("Finance/BankPayments/BankDebitVoucher_subreport1.jrxml"));
+        return printService.fillReportToPdf(mainReport, params, dataSource);
     }
 
 }

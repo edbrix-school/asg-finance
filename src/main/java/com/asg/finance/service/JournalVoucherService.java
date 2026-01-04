@@ -33,4 +33,6 @@ public interface JournalVoucherService {
     CreateFixedAssetResponse createFixedAsset(CreateFixedAssetRequest request);
 
     CurrencyConversionResponse calculateCurrencyConversion(CurrencyConversionRequest request);
+
+    byte[] print(Long transactionPoid) throws Exception;
 }

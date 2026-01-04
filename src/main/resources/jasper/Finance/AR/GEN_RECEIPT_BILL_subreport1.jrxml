@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="GEN_RECEIPT_BILL_subreport1" language="groovy" columnCount="2" printOrder="Horizontal" pageWidth="530" pageHeight="340" columnWidth="265" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="eb2c90cd-ce6b-40d0-a941-35e7f4f0b12a">
+    <property name="ireport.zoom" value="2.143588810000003"/>
+    <property name="ireport.x" value="0"/>
+    <property name="ireport.y" value="0"/>
+    <style name="style1" mode="Opaque" isBlankWhenNull="true" fontSize="10" isBold="true" isItalic="false" isUnderline="false" isStrikeThrough="false">
+        <box topPadding="0">
+            <topPen lineWidth="0.5" lineStyle="Solid" lineColor="#999999"/>
+            <leftPen lineWidth="0.5" lineColor="#999999"/>
+            <bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#999999"/>
+            <rightPen lineWidth="0.5" lineColor="#999999"/>
+        </box>
+    </style>
+    <style name="style2" mode="Opaque" isBlankWhenNull="true" fontSize="10" isBold="false" isItalic="false" isUnderline="false" isStrikeThrough="false">
+        <box>
+            <topPen lineWidth="0.0"/>
+            <leftPen lineWidth="0.5" lineColor="#999999"/>
+            <bottomPen lineWidth="0.5" lineColor="#999999"/>
+            <rightPen lineWidth="0.5" lineColor="#999999"/>
+        </box>
+    </style>
+    <style name="style3" mode="Opaque" isBlankWhenNull="true" fontSize="10" isBold="false" isItalic="false" isUnderline="false" isStrikeThrough="false">
+        <box>
+            <topPen lineWidth="0.0"/>
+            <leftPen lineWidth="0.5" lineColor="#999999"/>
+            <bottomPen lineWidth="0.5" lineColor="#999999"/>
+            <rightPen lineWidth="0.0"/>
+        </box>
+    </style>
+    <style name="style4" mode="Opaque" isBlankWhenNull="true" fontSize="10" isBold="false" isItalic="false" isUnderline="false" isStrikeThrough="false">
+        <box>
+            <topPen lineWidth="0.0"/>
+            <leftPen lineWidth="0.0"/>
+            <bottomPen lineWidth="0.5" lineColor="#999999"/>
+            <rightPen lineWidth="0.5" lineColor="#999999"/>
+        </box>
+    </style>
+    <parameter name="DOC_KEY_POID" class="java.lang.String">
+        <defaultValueExpression><![CDATA[]]></defaultValueExpression>
+    </parameter>
+    <queryString>
+        <![CDATA[select DTL.BILL_REF_TYPE, DTL.BILL_REFNO, DTL.BILL_DUE_DATE, DTL.AMOUNT,
+DECODE(DTL.CR_DR_TYPE,'DEBIT','Dr','Cr') as CR_DR_TYPE,
+case when DTL.CR_DR_TYPE LIKE 'DEBIT' then DTL.AMOUNT*-1 else DTL.AMOUNT end as AMOUNT_WITH_SIGN
+from AR_GEN_RECEIPT_BILL_DTL DTL
+INNER JOIN AR_GEN_RECEIPT_HDR HDR ON HDR.TRANSACTION_POID=DTL.TRANSACTION_POID
+WHERE DTL.CHECKALL='Y' AND DTL.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
+    </queryString>
+    <field name="BILL_REF_TYPE" class="java.lang.String"/>
+    <field name="BILL_REFNO" class="java.lang.String"/>
+    <field name="BILL_DUE_DATE" class="java.sql.Timestamp"/>
+    <field name="AMOUNT" class="java.math.BigDecimal"/>
+    <field name="CR_DR_TYPE" class="java.lang.String"/>
+    <field name="AMOUNT_WITH_SIGN" class="java.math.BigDecimal"/>
+    <variable name="TOTAL_AMOUNT" class="java.math.BigDecimal" calculation="Sum">
+        <variableExpression><![CDATA[$F{AMOUNT_WITH_SIGN}]]></variableExpression>
+    </variable>
+    <background>
+        <band splitType="Stretch"/>
+    </background>
+    <title>
+        <band splitType="Stretch"/>
+    </title>
+    <pageHeader>
+        <band height="18" splitType="Stretch">
+            <staticText>
+                <reportElement x="1" y="0" width="257" height="18" uuid="a1b3b665-328c-414b-8000-8c249267bcc5"/>
+                <textElement>
+                    <font size="12" isBold="true" isUnderline="false"/>
+                </textElement>
+                <text><![CDATA[Bill Details]]></text>
+            </staticText>
+        </band>
+    </pageHeader>
+    <columnHeader>
+        <band height="15" splitType="Stretch">
+            <staticText>
+                <reportElement style="style1" mode="Transparent" x="0" y="0" width="52" height="15" uuid="3d7b8052-5b94-471c-94b0-8234ea9351ae"/>
+                <textElement>
+                    <font isBold="true"/>
+                    <paragraph leftIndent="1"/>
+                </textElement>
+                <text><![CDATA[Ref. Type]]></text>
+            </staticText>
+            <staticText>
+                <reportElement style="style1" x="52" y="0" width="116" height="15" uuid="43653ca7-ec3b-43fd-85ca-a18a8b63ef27"/>
+                <textElement>
+                    <font isBold="true"/>
+                    <paragraph leftIndent="3"/>
+                </textElement>
+                <text><![CDATA[Ref No]]></text>
+            </staticText>
+            <staticText>
+                <reportElement style="style1" x="168" y="0" width="93" height="15" uuid="1b4e689d-083f-4cb0-830f-da777dce3c01"/>
+                <textElement>
+                    <font isBold="true"/>
+                    <paragraph leftIndent="3"/>
+                </textElement>
+                <text><![CDATA[Amount BHD]]></text>
+            </staticText>
+        </band>
+    </columnHeader>
+    <detail>
+        <band height="16" splitType="Stretch">
+            <textField isBlankWhenNull="true">
+                <reportElement style="style2" x="0" y="1" width="52" height="15" uuid="7a17ac9e-aa48-41c7-b24f-b1f4cb156b1c"/>
+                <textElement verticalAlignment="Top">
+                    <font size="9"/>
+                    <paragraph leftIndent="1"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{BILL_REF_TYPE}]]></textFieldExpression>
+            </textField>
+            <textField isStretchWithOverflow="true" isBlankWhenNull="true">
+                <reportElement style="style2" x="52" y="1" width="116" height="15" uuid="adef116b-b492-4779-bddf-87d55e2f071f"/>
+                <textElement verticalAlignment="Top">
+                    <font size="9"/>
+                    <paragraph leftIndent="3"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{BILL_REFNO}]]></textFieldExpression>
+            </textField>
+            <textField pattern="#,##0.000" isBlankWhenNull="true">
+                <reportElement style="style3" mode="Opaque" x="168" y="1" width="74" height="15" uuid="c9b63603-7735-4e4f-9316-ada66355593c"/>
+                <textElement textAlignment="Right" verticalAlignment="Top">
+                    <paragraph tabStopWidth="40"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{AMOUNT}]]></textFieldExpression>
+            </textField>
+            <textField isBlankWhenNull="true">
+                <reportElement style="style4" x="242" y="1" width="19" height="15" uuid="190bb522-0042-4a2e-9a49-1e41f0e545e6"/>
+                <textElement textAlignment="Center" verticalAlignment="Top">
+                    <font size="10"/>
+                    <paragraph leftIndent="1"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{CR_DR_TYPE}]]></textFieldExpression>
+            </textField>
+        </band>
+    </detail>
+    <columnFooter>
+        <band splitType="Stretch"/>
+    </columnFooter>
+    <pageFooter>
+        <band height="18" splitType="Stretch">
+            <staticText>
+                <reportElement x="0" y="0" width="157" height="18" uuid="4fc2ee67-6d48-4140-aacd-2a9e4aaf8aed"/>
+                <textElement textAlignment="Left" verticalAlignment="Middle">
+                    <font size="12" isBold="true"/>
+                    <paragraph rightIndent="3"/>
+                </textElement>
+                <text><![CDATA[Total Bill Amount]]></text>
+            </staticText>
+            <textField pattern="#,##0.000" isBlankWhenNull="true">
+                <reportElement x="169" y="0" width="92" height="18" uuid="d53ff22c-c64b-4e03-a3c0-5420c9788729"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font size="12" isBold="true"/>
+                    <paragraph rightIndent="3"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$V{TOTAL_AMOUNT}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement x="158" y="0" width="10" height="18" uuid="85a1ff35-8bb1-4be9-ad3b-4b95cdb70088"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font isBold="true"/>
+                </textElement>
+                <text><![CDATA[:]]></text>
+            </staticText>
+        </band>
+    </pageFooter>
+    <summary>
+        <band height="2" splitType="Stretch"/>
+    </summary>
+</jasperReport>

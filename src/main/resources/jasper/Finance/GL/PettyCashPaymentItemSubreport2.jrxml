@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="PettyCashPaymentItemSubreport2" language="groovy" pageWidth="530" pageHeight="802" columnWidth="530" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="b6815a42-1680-4b48-8ae9-7b342271d025">
+    <property name="ireport.zoom" value="1.1000000000000008"/>
+    <property name="ireport.x" value="0"/>
+    <property name="ireport.y" value="0"/>
+    <parameter name="DOC_KEY_POID" class="java.lang.String">
+        <defaultValueExpression><![CDATA[]]></defaultValueExpression>
+    </parameter>
+    <queryString>
+        <![CDATA[SELECT
+    GPCC.TRANSACTION_POID, GPCC.DET_ROW_ID,SCM.CHARGE_NAME, GPCC.CHARGE_AMOUNT,
+    GPCC.DESCRIPTION, GPCC.REMARKS, GPCC.REF_DOC_ID, GPCC.REF_DOC_POID
+  FROM
+   GL_PETTY_CASH_CHARGE_DTL GPCC
+  LEFT JOIN SHIP_CHARGE_MASTER SCM
+  ON
+    SCM.CHARGE_POID=GPCC.CHARGE_POID
+WHERE GPCC.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
+    </queryString>
+    <field name="TRANSACTION_POID" class="java.math.BigDecimal"/>
+    <field name="DET_ROW_ID" class="java.math.BigDecimal"/>
+    <field name="CHARGE_NAME" class="java.lang.String"/>
+    <field name="CHARGE_AMOUNT" class="java.math.BigDecimal"/>
+    <field name="DESCRIPTION" class="java.lang.String"/>
+    <field name="REMARKS" class="java.lang.String"/>
+    <field name="REF_DOC_ID" class="java.lang.String"/>
+    <field name="REF_DOC_POID" class="java.math.BigDecimal"/>
+    <variable name="TOTAL_AMOUNT" class="java.math.BigDecimal" calculation="Sum">
+        <variableExpression><![CDATA[$F{CHARGE_AMOUNT}]]></variableExpression>
+    </variable>
+    <pageHeader>
+        <band height="25" splitType="Stretch">
+            <staticText>
+                <reportElement x="0" y="2" width="530" height="20" uuid="fdb19650-b1a3-4e98-a4b3-8575522fadf4"/>
+                <textElement>
+                    <font size="12" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Charge Detail]]></text>
+            </staticText>
+            <line>
+                <reportElement x="0" y="1" width="530" height="1" forecolor="#999999" uuid="5e34e422-35bd-4aa4-a280-a16bdc016cf2"/>
+            </line>
+            <line>
+                <reportElement x="0" y="24" width="530" height="1" forecolor="#999999" uuid="afe33deb-1ea9-44b7-8fbf-1ccdb35211c5"/>
+            </line>
+        </band>
+    </pageHeader>
+    <columnHeader>
+        <band height="21" splitType="Stretch">
+            <staticText>
+                <reportElement x="0" y="0" width="40" height="20" uuid="1e6f026c-4709-4352-9103-c6b1a796b05f"/>
+                <textElement verticalAlignment="Middle">
+                    <font isBold="true"/>
+                </textElement>
+                <text><![CDATA[Sl No]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="40" y="0" width="189" height="20" uuid="b405cab9-51d1-44ca-a01e-85ebcda9d57a"/>
+                <textElement verticalAlignment="Middle">
+                    <font isBold="true"/>
+                </textElement>
+                <text><![CDATA[Charge]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="229" y="0" width="201" height="20" uuid="7a6d2dd8-e6ed-4b3b-a030-a0f2bd881348"/>
+                <textElement verticalAlignment="Middle">
+                    <font isBold="true"/>
+                </textElement>
+                <text><![CDATA[Remarks]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="430" y="0" width="100" height="20" uuid="dc5315d3-d889-41fc-9d78-0b5a49457fc8"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font isBold="true"/>
+                </textElement>
+                <text><![CDATA[Amount [BHD]]]></text>
+            </staticText>
+            <line>
+                <reportElement x="0" y="20" width="530" height="1" forecolor="#999999" uuid="6e687a7c-4eb3-4c19-a8bd-10e536c175a8"/>
+                <graphicElement>
+                    <pen lineWidth="1.0"/>
+                </graphicElement>
+            </line>
+        </band>
+    </columnHeader>
+    <detail>
+        <band height="20" splitType="Stretch">
+            <textField>
+                <reportElement x="0" y="0" width="40" height="20" uuid="4226303e-2681-49f9-8592-9354c703145d"/>
+                <textFieldExpression><![CDATA[$V{REPORT_COUNT}]]></textFieldExpression>
+            </textField>
+            <textField isStretchWithOverflow="true" isBlankWhenNull="true">
+                <reportElement x="40" y="0" width="189" height="20" uuid="44aa6fdc-90df-490a-aa04-48377332b2f5"/>
+                <textFieldExpression><![CDATA[$F{CHARGE_NAME}]]></textFieldExpression>
+            </textField>
+            <textField isStretchWithOverflow="true" isBlankWhenNull="true">
+                <reportElement x="229" y="0" width="201" height="20" uuid="102a1567-6b23-44b9-9dd8-c8b64d5d447d"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{REMARKS}]]></textFieldExpression>
+            </textField>
+            <textField pattern="#,##0.000" isBlankWhenNull="true">
+                <reportElement x="430" y="0" width="100" height="20" uuid="7ef2df35-d4c7-4e1a-99c9-1e5c41cc8d1b"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$F{CHARGE_AMOUNT}]]></textFieldExpression>
+            </textField>
+            <line>
+                <reportElement positionType="FixRelativeToBottom" x="0" y="18" width="530" height="1" forecolor="#999999" uuid="b5284924-f72f-4f9e-9f4e-4dfb4e2fa5be"/>
+                <graphicElement>
+                    <pen lineWidth="0.5" lineStyle="Dashed"/>
+                </graphicElement>
+            </line>
+        </band>
+    </detail>
+    <lastPageFooter>
+        <band height="22"/>
+    </lastPageFooter>
+</jasperReport>

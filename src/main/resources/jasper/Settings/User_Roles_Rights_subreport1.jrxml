@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="User_Roles_Rights_subreport1" language="groovy" pageWidth="555" pageHeight="802" columnWidth="535" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="51f26c1c-332c-43f0-beb9-5722768520c7">
+    <property name="ireport.zoom" value="1.3310000000000004"/>
+    <property name="ireport.x" value="0"/>
+    <property name="ireport.y" value="0"/>
+    <style name="Title" fontName="Times New Roman" fontSize="50" isBold="true" pdfFontName="Times-Bold"/>
+    <style name="SubTitle" forecolor="#736343" fontName="Arial" fontSize="18"/>
+    <style name="Column header" forecolor="#666666" fontName="Arial" fontSize="12" isBold="true"/>
+    <style name="Detail" fontName="Arial" fontSize="12"/>
+    <style name="Row" mode="Transparent">
+        <conditionalStyle>
+            <conditionExpression><![CDATA[$V{REPORT_COUNT}%2 == 0]]></conditionExpression>
+            <style backcolor="#E6DAC3"/>
+        </conditionalStyle>
+    </style>
+    <parameter name="LOGIN_GROUP_POID" class="java.lang.String">
+        <defaultValueExpression><![CDATA[1]]></defaultValueExpression>
+    </parameter>
+    <parameter name="LOGIN_COMP_POID" class="java.lang.String">
+        <defaultValueExpression><![CDATA[1]]></defaultValueExpression>
+    </parameter>
+    <parameter name="LOGIN_USER_POID" class="java.lang.String"/>
+    <parameter name="DOC_ID" class="java.lang.String">
+        <defaultValueExpression><![CDATA["000-000"]]></defaultValueExpression>
+    </parameter>
+    <parameter name="DOC_KEY_POID" class="java.lang.Long"/>
+    <parameter name="SUBREPORT_DIR" class="java.lang.String" isForPrompting="false">
+        <defaultValueExpression><![CDATA["\\\\shippingbahrain.com\\data\\ERP_REPORTS\\Reports\\"]]></defaultValueExpression>
+    </parameter>
+    <queryString>
+        <![CDATA[SELECT 'User Rights - ' || R.USER_ROLE_NAME AS USER_ROLE_TITLE,
+                 R.USER_ROLE_NAME,
+                 (SELECT LISTAGG(U.USER_NAME, ', ') WITHIN GROUP (ORDER BY U.USER_NAME)
+                  FROM GLOBAL_USERS U
+                  JOIN GLOBAL_USERS_AUTH_ROLES_DTL UR ON U.USER_POID = UR.USER_POID
+                  WHERE UR.USER_ROLE_POID = $P{DOC_KEY_POID} AND U.ACTIVE = 'Y') AS USER_LIST
+                 FROM GLOBAL_USER_ROLES R
+                 WHERE R.USER_ROLE_POID = $P{DOC_KEY_POID}]]>
+    </queryString>
+    <field name="USER_ROLE_TITLE" class="java.lang.String"/>
+    <field name="USER_ROLE_NAME" class="java.lang.String"/>
+    <field name="USER_LIST" class="java.lang.String"/>
+    <background>
+        <band splitType="Stretch"/>
+    </background>
+    <title>
+        <band height="180" splitType="Stretch">
+            <textField>
+                <reportElement x="0" y="5" width="555" height="20"
+                               uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567890"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="Arial Black" size="12"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{USER_ROLE_TITLE}]]></textFieldExpression>
+            </textField>
+            <!--            <line>-->
+            <!--                <reportElement x="0" y="30" width="555" height="1" uuid="e5f6a7b8-c9d0-1234-ef12-345678901234"/>-->
+            <!--            </line>-->
+            <!--            <staticText>-->
+            <!--                <reportElement x="0" y="38" width="100" height="15" uuid="b2c3d4e5-f6a7-8901-bcde-f12345678901"/>-->
+            <!--                <textElement verticalAlignment="Middle"><font isBold="true" size="11"/></textElement>-->
+            <!--                <text><![CDATA[User Role]]></text>-->
+            <!--            </staticText>-->
+            <!--            <textField isStretchWithOverflow="true">-->
+            <!--                <reportElement x="0" y="55" width="555" height="20" uuid="c3d4e5f6-a7b8-9012-cdef-123456789012"/>-->
+            <!--                <textElement verticalAlignment="Middle"><font size="10"/></textElement>-->
+            <!--                <textFieldExpression><![CDATA[$F{USER_ROLE_NAME}]]></textFieldExpression>-->
+            <!--            </textField>-->
+            <staticText>
+                <reportElement x="0" y="82" width="100" height="15" uuid="d4e5f6a7-b8c9-0123-def1-234567890123"/>
+                <textElement verticalAlignment="Middle"><font isBold="true" size="11"/></textElement>
+                <text><![CDATA[User List:]]></text>
+            </staticText>
+            <textField isStretchWithOverflow="true">
+                <reportElement x="0" y="99" width="555" height="70" uuid="e6f7a8b9-c0d1-2345-ef12-345678901234"/>
+                <textElement verticalAlignment="Top"><font size="10"/></textElement>
+                <textFieldExpression><![CDATA[$F{USER_LIST}]]></textFieldExpression>
+            </textField>
+            <!--            <line>-->
+            <!--                <reportElement x="0" y="175" width="555" height="1" uuid="f6a7b8c9-d0e1-2345-f123-456789012345"/>-->
+            <!--            </line>-->
+        </band>
+    </title>
+</jasperReport>

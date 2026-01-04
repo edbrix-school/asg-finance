@@ -1,0 +1,462 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="BankPaymentVoucher_ManualCheque" language="groovy" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="51f26c1c-332c-43f0-beb9-5722768520c7">
+    <property name="ireport.zoom" value="1.3310000000000004"/>
+    <property name="ireport.x" value="0"/>
+    <property name="ireport.y" value="144"/>
+    <style name="Title" fontName="Times New Roman" fontSize="50" isBold="true" pdfFontName="Times-Bold"/>
+    <style name="SubTitle" forecolor="#736343" fontName="Arial" fontSize="18"/>
+    <style name="Column header" forecolor="#666666" fontName="Arial" fontSize="12" isBold="true"/>
+    <style name="Detail" fontName="Arial" fontSize="12"/>
+    <style name="Row" mode="Transparent">
+        <conditionalStyle>
+            <conditionExpression><![CDATA[$V{REPORT_COUNT}%2 == 0]]></conditionExpression>
+            <style backcolor="#E6DAC3"/>
+        </conditionalStyle>
+    </style>
+    <subDataset name="PayDetails" uuid="a6f0ed3d-495c-4189-ad01-6a77a3cab81a">
+        <parameter name="DOC_KEY_POID" class="java.lang.String"/>
+        <queryString>
+            <![CDATA[SELECT DISTINCT
+            DOCUMENT_NO,DOCUMENT_DATE,AMOUNT,CRDR_TYPE
+      FROM
+            (SELECT
+                        PHDR.DOC_REF DOCUMENT_NO,TO_CHAR(PHDR.TRANSACTION_DATE,'DD-MON-YYYY') DOCUMENT_DATE, ROUND(SUM(NVL(BKID.PO_QTY,0)*NVL(
+                        BKID.PRICE,0)),3) AS AMOUNT,'Dr' CRDR_TYPE
+                  FROM
+                        GL_BANK_PAYMENT_ITEM_DTL BKID
+                  INNER JOIN GL_BANK_PAYMENT_HDR HDR    ON BKID.TRANSACTION_POID = HDR.TRANSACTION_POID
+                  INNER JOIN AP_PURCHASE_ORDER_HDR PHDR ON HDR.PO_REF            = PHDR.TRANSACTION_POID
+                  WHERE
+                        BKID.TRANSACTION_POID= $P{DOC_KEY_POID} AND HDR.REF_TYPE = 'GENERAL PO'
+                  GROUP BY
+                        PHDR.DOC_REF,TO_CHAR(PHDR.TRANSACTION_DATE,'DD-MON-YYYY')
+            UNION ALL
+            SELECT
+                        PHDR.DOC_REF DOCUMENT_NO,TO_CHAR(PHDR.TRANSACTION_DATE,'DD-MON-YYYY') DOCUMENT_DATE, ROUND(SUM(NVL(BKID.PO_QTY,0)*NVL(
+                        BKID.PRICE,0)),3) AS AMOUNT,'Dr' CRDR_TYPE
+                  FROM
+                        GL_BANK_PAYMENT_ITEM_DTL BKID
+                  INNER JOIN GL_BANK_PAYMENT_HDR HDR     ON BKID.TRANSACTION_POID = HDR.TRANSACTION_POID
+                  INNER JOIN AP_REQUEST_FOR_QTN_HDR PHDR ON HDR.SALES_QTN_REF     = PHDR.TRANSACTION_POID
+                  WHERE
+                        BKID.TRANSACTION_POID= $P{DOC_KEY_POID} AND HDR.REF_TYPE = 'MTA RFQ'
+                  GROUP BY
+                        PHDR.DOC_REF,TO_CHAR(PHDR.TRANSACTION_DATE,'DD-MON-YYYY')
+            UNION ALL
+            SELECT
+                        FHDR.DOC_REF DOCUMENT_NO ,TO_CHAR(FHDR.TRANSACTION_DATE,'DD-MON-YYYY') DOCUMENT_DATE ,SUM(CHARGE_AMOUNT) AS AMOUNT,'Dr'
+                        CRDR_TYPE
+                  FROM
+                        GL_BANK_PAYMENT_CHARGE_DTL BKID
+                  INNER JOIN GL_BANK_PAYMENT_HDR HDR ON BKID.TRANSACTION_POID = HDR.TRANSACTION_POID
+                  INNER JOIN FF_MANIEST_HDR FHDR     ON BKID.REF_DOC_POID     = FHDR.TRANSACTION_POID
+                  WHERE
+                        BKID.TRANSACTION_POID= $P{DOC_KEY_POID} AND HDR.REF_TYPE = 'FF JOBS'
+                  GROUP BY
+                        FHDR.DOC_REF,TO_CHAR(FHDR.TRANSACTION_DATE,'DD-MON-YYYY')
+            UNION ALL
+            SELECT
+                        FHDR.DOC_REF DOCUMENT_NO ,TO_CHAR(HDR.TRANSACTION_DATE,'DD-MON-YYYY') DOCUMENT_DATE ,SUM(BKID.CHARGE_AMOUNT) AMOUNT,'Dr'
+                        CRDR_TYPE
+                  FROM
+                        GL_BANK_PAYMENT_CHARGE_DTL BKID
+                  INNER JOIN GL_BANK_PAYMENT_HDR HDR ON BKID.TRANSACTION_POID = HDR.TRANSACTION_POID
+                  INNER JOIN PDA_FDA_HDR FHDR        ON HDR.FDA_REF           = FHDR.TRANSACTION_POID
+                  WHERE
+                        BKID.TRANSACTION_POID= $P{DOC_KEY_POID} AND HDR.REF_TYPE = 'FDA JOBS'
+                  GROUP BY
+                        FHDR.DOC_REF,TO_CHAR(HDR.TRANSACTION_DATE,'DD-MON-YYYY')
+            UNION ALL
+            SELECT
+                        BRKUP.BILL_REF DOCUMENT_NO ,TO_CHAR(GLB1.BILL_DUE_DATE,'DD-MON-YYYY') DOCUMENT_DATE ,NVL(SUM(DR_AMT),SUM(NVL(CR_AMT,0)))
+                        AMOUNT,DECODE(SUM(DR_AMT),NULL,'Cr',0,'Cr','Dr') CRDR_TYPE
+                  FROM
+                        GL_BANK_PAYMENT_HDR BHDR
+                  INNER JOIN GL_VOUCHER_BILL_BREAKUP_DTL BRKUP ON BHDR.TRANSACTION_POID = BRKUP.TRANSACTION_POID AND DOC_ID = '400-107'
+                  LEFT JOIN
+                        (
+                        SELECT GL_POID, BILL_REF, MIN(BILL_DUE_DATE) as BILL_DUE_DATE
+                        FROM Gl_Ledger_Billwise_Breakup
+                        WHERE BILL_REF_TYPE IN ('NEW', 'ON-ACCOUNT') AND BILL_DUE_DATE IS NOT NULL
+                        GROUP BY GL_POID, BILL_REF) GLB1 ON BRKUP.GL_POID  = GLB1.GL_POID AND BRKUP.BILL_REF = GLB1.BILL_REF
+                  WHERE
+                        BHDR.TRANSACTION_POID = $P{DOC_KEY_POID}   AND BHDR.REF_TYPE='GENERAL'
+                  GROUP BY
+                        BRKUP.BILL_REF,TO_CHAR(GLB1.BILL_DUE_DATE,'DD-MON-YYYY')
+            UNION ALL
+            SELECT
+                        DTL.REMARKS DOCUMENT_NO,TO_CHAR(CHQ_DATE,'DD-MON-YYYY') DOCUMENT_DATE,CURRENCY_AMOUNT AMOUNT,type CRDR_TYPE
+                  FROM
+                        GL_BANK_PAYMENT_HDR HDR
+                  INNER JOIN GL_BANK_PAYMENT_DTL_GL DTL ON HDR.TRANSACTION_POID = DTL.TRANSACTION_POID
+                  WHERE
+                        HDR.TRANSACTION_POID = $P{DOC_KEY_POID}   AND HDR.REF_TYPE='GENERAL'   AND DTL.REMARKS IS NOT NULL
+            )
+      ORDER BY
+            DOCUMENT_NO]]>
+        </queryString>
+        <field name="DOCUMENT_NO" class="java.lang.String"/>
+        <field name="DOCUMENT_DATE" class="java.lang.String"/>
+        <field name="AMOUNT" class="java.math.BigDecimal"/>
+        <field name="CRDR_TYPE" class="java.lang.String"/>
+    </subDataset>
+    <parameter name="LOGIN_GROUP_POID" class="java.lang.String">
+        <defaultValueExpression><![CDATA[1]]></defaultValueExpression>
+    </parameter>
+    <parameter name="LOGIN_COMP_POID" class="java.lang.String">
+        <defaultValueExpression><![CDATA[1]]></defaultValueExpression>
+    </parameter>
+    <parameter name="LOGIN_USER_POID" class="java.lang.String"/>
+    <parameter name="LOGIN_DIV_POID" class="java.lang.String">
+        <defaultValueExpression><![CDATA["1"]]></defaultValueExpression>
+    </parameter>
+    <parameter name="DOC_ID" class="java.lang.String">
+        <defaultValueExpression><![CDATA["000-000"]]></defaultValueExpression>
+    </parameter>
+    <parameter name="DOC_KEY_POID" class="java.lang.String"/>
+    <parameter name="SUBREPORT_DIR" class="java.lang.String" isForPrompting="false">
+        <defaultValueExpression><![CDATA["////10.100.100.159//ERP_Reports//Reports//"]]></defaultValueExpression>
+    </parameter>
+    <parameter name="P_PRINT_WITHOUT_BILL" class="java.lang.String">
+        <defaultValueExpression><![CDATA["N"]]></defaultValueExpression>
+    </parameter>
+    <parameter name="SUB_HEADER" class="net.sf.jasperreports.engine.JasperReport"/>
+    <parameter name="SUB_DETAIL" class="net.sf.jasperreports.engine.JasperReport"/>
+    <parameter name="SUB_FOOTER_ISO" class="net.sf.jasperreports.engine.JasperReport"/>
+    <queryString>
+        <![CDATA[select distinct HDR.TRANSACTION_POID,HDR.paying_to,HDR.doc_ref,TO_CHAR(HDR.transaction_date,'DD-MON-YYYY') transaction_date,TO_CHAR(HDR.CHQ_DATE,'DD-MON-YYYY')CHQ_DATE,
+HDR.CURRENCY_AMOUNT,HDR.REF_TYPE,HDR.CHQ_CARDNO AS CURRENT_CHQ_NO, BKHDR.BANK_PREFIX,HDR.long_narration,BKHDR.bank_description,HDR.PRINT_WITHOUT_BILLWISE,
+'BD:'||' '||FN_AMOUNT_IN_WORDS_COMMON(HDR.CURRENCY_AMOUNT,'BHD') AMOUNT_IN_WORD,
+HDR.CREATED_BY
+FROM GL_BANK_PAYMENT_HDR HDR
+INNER JOIN GL_BANK_MASTER BKHDR
+ON HDR.BANK_POID = BKHDR.BANK_POID
+WHERE TRANSACTION_POID = $P{DOC_KEY_POID}]]>
+    </queryString>
+    <field name="TRANSACTION_POID" class="java.math.BigDecimal"/>
+    <field name="PAYING_TO" class="java.lang.String"/>
+    <field name="DOC_REF" class="java.lang.String"/>
+    <field name="TRANSACTION_DATE" class="java.lang.String"/>
+    <field name="CHQ_DATE" class="java.lang.String"/>
+    <field name="CURRENCY_AMOUNT" class="java.math.BigDecimal"/>
+    <field name="REF_TYPE" class="java.lang.String"/>
+    <field name="CURRENT_CHQ_NO" class="java.lang.String"/>
+    <field name="BANK_PREFIX" class="java.lang.String"/>
+    <field name="LONG_NARRATION" class="java.lang.String"/>
+    <field name="BANK_DESCRIPTION" class="java.lang.String"/>
+    <field name="PRINT_WITHOUT_BILLWISE" class="java.lang.String"/>
+    <field name="AMOUNT_IN_WORD" class="java.lang.String"/>
+    <field name="CREATED_BY" class="java.lang.String"/>
+    <background>
+        <band splitType="Stretch"/>
+    </background>
+    <title>
+        <band height="212" splitType="Stretch">
+            <subreport>
+                <reportElement x="0" y="0" width="555" height="74" uuid="11dd97b8-4c92-45fe-85bb-3b9358474446"/>
+                <subreportParameter name="LOGIN_DIV_POID">
+                    <subreportParameterExpression><![CDATA[$P{LOGIN_DIV_POID}]]></subreportParameterExpression>
+                </subreportParameter>
+                <subreportParameter name="LOGIN_COMP_POID">
+                    <subreportParameterExpression><![CDATA[$P{LOGIN_COMP_POID}]]></subreportParameterExpression>
+                </subreportParameter>
+                <connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+                <subreportExpression><![CDATA[$P{SUB_HEADER}]]></subreportExpression>
+            </subreport>
+            <staticText>
+                <reportElement x="10" y="150" width="67" height="18" uuid="908e9de2-5946-4fbb-b583-182c9cb42ccb"/>
+                <textElement>
+                    <font isBold="true"/>
+                </textElement>
+                <text><![CDATA[Cheque # :]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="10" y="110" width="44" height="18" uuid="be743463-bf4c-4c3f-9239-e6f07dcc0a27"/>
+                <textElement>
+                    <font isBold="true"/>
+                </textElement>
+                <text><![CDATA[Paid To :]]></text>
+            </staticText>
+            <textField isBlankWhenNull="true">
+                <reportElement x="454" y="130" width="98" height="18" uuid="158a2ce6-89c4-4629-8731-0f8871df3ca6"/>
+                <textElement>
+                    <font isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{TRANSACTION_DATE}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement x="10" y="190" width="67" height="18" uuid="49cc48a0-b564-4569-92fc-4f3eeb6a3842"/>
+                <textElement>
+                    <font isBold="true"/>
+                </textElement>
+                <text><![CDATA[Narration:]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="397" y="110" width="57" height="18" uuid="5efa5988-76af-4432-843f-d6fd38d5c61f"/>
+                <textElement>
+                    <font isBold="true"/>
+                </textElement>
+                <text><![CDATA[PV No    :]]></text>
+            </staticText>
+            <textField isBlankWhenNull="true">
+                <reportElement x="78" y="110" width="281" height="18" uuid="bceb8477-bef2-4846-99ea-2cec831cfb2d"/>
+                <textElement>
+                    <font isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{PAYING_TO}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement x="10" y="130" width="33" height="18" uuid="54683078-9fca-4c1f-9709-e2d6a9c8aed9"/>
+                <textElement>
+                    <font isBold="true"/>
+                </textElement>
+                <text><![CDATA[Bank :]]></text>
+            </staticText>
+            <textField isBlankWhenNull="true">
+                <reportElement x="78" y="130" width="281" height="18" uuid="35e835d1-afed-443e-aeb5-db5bf4408171"/>
+                <textFieldExpression><![CDATA[$F{BANK_DESCRIPTION}]]></textFieldExpression>
+            </textField>
+            <textField isBlankWhenNull="true">
+                <reportElement x="454" y="110" width="98" height="18" uuid="03e59fa0-eb5a-41f5-8c36-15807f5fbc8b"/>
+                <textElement>
+                    <font isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{DOC_REF}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement x="397" y="130" width="57" height="18" uuid="c458a47c-c53e-414a-a11b-97c6d96903e2"/>
+                <textElement>
+                    <font isBold="true"/>
+                </textElement>
+                <text><![CDATA[Date       :    ]]></text>
+            </staticText>
+            <textField isBlankWhenNull="true">
+                <reportElement x="78" y="150" width="238" height="17" uuid="5397fe23-5b84-4739-8f8b-c1262c5d2ce8"/>
+                <textFieldExpression><![CDATA[$F{CURRENT_CHQ_NO}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement x="0" y="83" width="555" height="18" uuid="fd59bc30-5f25-497b-a50c-c72050298721"/>
+                <textElement textAlignment="Center">
+                    <font size="14" isBold="true"/>
+                </textElement>
+                <text><![CDATA[PAYMENT VOUCHER]]></text>
+            </staticText>
+            <textField isStretchWithOverflow="true" isBlankWhenNull="true">
+                <reportElement x="78" y="190" width="281" height="18" uuid="275cd47e-5fd7-4dc3-b7b9-80e9791f6551"/>
+                <textFieldExpression><![CDATA[$F{LONG_NARRATION}]]></textFieldExpression>
+            </textField>
+            <textField pattern="#,##,##0.000" isBlankWhenNull="true">
+                <reportElement x="454" y="150" width="95" height="20" uuid="a3b88329-7648-42ca-a6a6-8917242dd150"/>
+                <textElement>
+                    <font isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{CURRENCY_AMOUNT}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement x="397" y="150" width="57" height="20" uuid="62530077-bcec-4118-af9e-a01cd1281ab6"/>
+                <textElement>
+                    <font isBold="true"/>
+                </textElement>
+                <text><![CDATA[Amount  :]]></text>
+            </staticText>
+            <textField pattern="dd-MMM-yyyy" isBlankWhenNull="true">
+                <reportElement x="78" y="170" width="238" height="17" uuid="bab74d56-2ab5-4df3-b318-22309ee597e7"/>
+                <textFieldExpression><![CDATA[$F{CHQ_DATE}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement x="10" y="170" width="68" height="17" uuid="8881198e-c1eb-4dd4-8e05-0f1a135c5b32"/>
+                <textElement>
+                    <font isBold="true"/>
+                </textElement>
+                <text><![CDATA[Cheque Date :]]></text>
+            </staticText>
+        </band>
+    </title>
+    <pageHeader>
+        <band height="15">
+            <printWhenExpression><![CDATA[$V{PAGE_NUMBER}>1]]></printWhenExpression>
+            <textField evaluationTime="Report">
+                <reportElement x="10" y="1" width="545" height="14" uuid="0fe1ef69-dd2e-4b36-ae1b-6336ea1faeaa">
+                    <printWhenExpression><![CDATA[$V{PAGE_NUMBER}.compareTo( 1 )==1]]></printWhenExpression>
+                </reportElement>
+                <textElement textAlignment="Right">
+                    <font isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA["Continuation of Previous Page (PV No : "+$F{DOC_REF}+")"]]></textFieldExpression>
+            </textField>
+        </band>
+    </pageHeader>
+    <detail>
+        <band height="27" splitType="Stretch">
+            <subreport>
+                <reportElement x="10" y="0" width="545" height="27" uuid="2f697f6e-42a4-4d20-ba33-d66ba77dea39"/>
+                <subreportParameter name="DOC_KEY_POID">
+                    <subreportParameterExpression><![CDATA[$P{DOC_KEY_POID}]]></subreportParameterExpression>
+                </subreportParameter>
+                <connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+<!--                <subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "BankPayments/BankPaymentVoucher_ManualCheque1_subreport1.jasper"]]></subreportExpression>-->
+                <subreportExpression><![CDATA[$P{SUB_DETAIL}]]></subreportExpression>
+            </subreport>
+        </band>
+    </detail>
+    <pageFooter>
+        <band height="103" splitType="Stretch">
+            <subreport>
+                <reportElement x="10" y="80" width="418" height="19" uuid="94a37c79-321c-47c7-aaa7-465eb0be030d"/>
+                <subreportParameter name="DOC_ID">
+                    <subreportParameterExpression><![CDATA["400-107"]]></subreportParameterExpression>
+                </subreportParameter>
+                <subreportParameter name="LOGIN_COMP_POID"/>
+                <connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+<!--                <subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "Templates/DocFooterSubReport-ISO.jasper"]]></subreportExpression>-->
+                <subreportExpression><![CDATA[$P{SUB_FOOTER_ISO}]]></subreportExpression>
+            </subreport>
+            <textField evaluationTime="Report">
+                <reportElement style="Column header" x="516" y="80" width="24" height="18" forecolor="#000000" uuid="9f52c44c-f0e2-489b-a5c8-5bff55f347d4"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="10" isBold="false"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$V{PAGE_NUMBER}]]></textFieldExpression>
+            </textField>
+            <textField isStretchWithOverflow="true">
+                <reportElement style="Column header" stretchType="RelativeToBandHeight" x="489" y="80" width="13" height="18" forecolor="#000000" uuid="9ab54769-5351-4357-b3a6-81df9ab89213"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="10" isBold="false" isItalic="false"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$V{PAGE_NUMBER}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement style="Column header" x="505" y="80" width="10" height="18" forecolor="#000000" uuid="05a1d35c-f84d-4a60-bab3-92deb436d316"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="10" isBold="false"/>
+                </textElement>
+                <text><![CDATA[of]]></text>
+            </staticText>
+            <staticText>
+                <reportElement style="Column header" x="464" y="80" width="25" height="18" forecolor="#000000" uuid="efc619ed-467c-427e-8d4f-4ae6939f7563"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="10" isBold="false"/>
+                </textElement>
+                <text><![CDATA[Page]]></text>
+            </staticText>
+        </band>
+    </pageFooter>
+    <lastPageFooter>
+        <band height="103">
+            <line>
+                <reportElement x="10" y="1" width="542" height="1" uuid="cb6f4e5d-d429-4c06-9840-b0089257afae"/>
+                <graphicElement>
+                    <pen lineWidth="1.0" lineColor="#999999"/>
+                </graphicElement>
+            </line>
+            <staticText>
+                <reportElement x="15" y="58" width="62" height="18" uuid="ed12b98b-e751-48ac-8b82-f3abb055f6e1"/>
+                <textElement>
+                    <font isBold="true"/>
+                </textElement>
+                <text><![CDATA[Prepared By]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="246" y="58" width="62" height="18" uuid="cb39c25d-7b8b-4949-b1fb-3f229f91b6e7"/>
+                <textElement>
+                    <font isBold="true"/>
+                </textElement>
+                <text><![CDATA[Checked By]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="467" y="58" width="62" height="18" uuid="87f42c79-c18d-468d-a9e1-ea0c3d265e9a"/>
+                <textElement>
+                    <font isBold="true"/>
+                </textElement>
+                <text><![CDATA[Received By]]></text>
+            </staticText>
+            <line>
+                <reportElement x="11" y="56" width="70" height="1" uuid="60ee70e1-09d2-4457-a60b-698919279a84"/>
+                <graphicElement>
+                    <pen lineWidth="0.5" lineColor="#999999"/>
+                </graphicElement>
+            </line>
+            <line>
+                <reportElement x="242" y="56" width="70" height="1" uuid="762cbcba-ac78-479b-b3db-a07b16a97758"/>
+                <graphicElement>
+                    <pen lineWidth="0.5" lineColor="#999999"/>
+                </graphicElement>
+            </line>
+            <line>
+                <reportElement x="463" y="56" width="70" height="1" uuid="fed5a3af-dd26-4375-8302-684cebf9cbd8"/>
+                <graphicElement>
+                    <pen lineWidth="0.5" lineColor="#999999"/>
+                </graphicElement>
+            </line>
+            <textField pattern="#,##,##0.000" isBlankWhenNull="true">
+                <reportElement x="467" y="3" width="82" height="20" uuid="ce9e7561-7d74-4af2-9b11-25f9735572d0"/>
+                <textElement textAlignment="Right">
+                    <font size="11" isBold="true" isStrikeThrough="false"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{CURRENCY_AMOUNT}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement x="434" y="3" width="33" height="20" uuid="8f9d8bf8-f3ab-497e-875c-7a7864b35844"/>
+                <textElement>
+                    <font size="11" isBold="true" isStrikeThrough="false"/>
+                </textElement>
+                <text><![CDATA[Total:]]></text>
+            </staticText>
+            <textField isStretchWithOverflow="true" isBlankWhenNull="true">
+                <reportElement x="10" y="3" width="424" height="18" uuid="8c8f7fe2-d7e0-4c59-babd-9b647c289366"/>
+                <textElement>
+                    <font size="10" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{AMOUNT_IN_WORD}]]></textFieldExpression>
+            </textField>
+            <subreport>
+                <reportElement x="10" y="80" width="413" height="19" uuid="c3a93b4b-fcc1-473c-801a-7673830bf003"/>
+                <subreportParameter name="DOC_ID">
+                    <subreportParameterExpression><![CDATA["400-107"]]></subreportParameterExpression>
+                </subreportParameter>
+                <subreportParameter name="LOGIN_COMP_POID"/>
+                <connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+<!--                <subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "Templates/DocFooterSubReport-ISO.jasper"]]></subreportExpression>-->
+                <subreportExpression><![CDATA[$P{SUB_FOOTER_ISO}]]></subreportExpression>
+            </subreport>
+            <textField evaluationTime="Report">
+                <reportElement style="Column header" x="516" y="80" width="24" height="18" forecolor="#000000" uuid="b7df11b5-b228-465b-abb7-b815790cb113"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="10" isBold="false"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$V{PAGE_NUMBER}]]></textFieldExpression>
+            </textField>
+            <textField isStretchWithOverflow="true">
+                <reportElement style="Column header" stretchType="RelativeToBandHeight" x="489" y="80" width="13" height="18" forecolor="#000000" uuid="a16bfc80-c024-4c2b-912f-7974858eed39"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="10" isBold="false" isItalic="false"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$V{PAGE_NUMBER}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement style="Column header" x="505" y="80" width="10" height="18" forecolor="#000000" uuid="49c2536b-c00c-451f-be6c-b7ee7b69f09b"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="10" isBold="false"/>
+                </textElement>
+                <text><![CDATA[of]]></text>
+            </staticText>
+            <staticText>
+                <reportElement style="Column header" x="464" y="80" width="25" height="18" forecolor="#000000" uuid="3537514a-139c-4a50-836e-a15a301432cf"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="10" isBold="false"/>
+                </textElement>
+                <text><![CDATA[Page]]></text>
+            </staticText>
+            <textField isBlankWhenNull="true">
+                <reportElement x="11" y="40" width="70" height="17" uuid="40bf7ed4-c878-4f3c-b60e-831655f70a7c"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{CREATED_BY}]]></textFieldExpression>
+            </textField>
+        </band>
+    </lastPageFooter>
+    <summary>
+        <band splitType="Stretch"/>
+    </summary>
+</jasperReport>

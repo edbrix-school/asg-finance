@@ -6,6 +6,7 @@ import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.service.PrintService;
 import com.asg.finance.repository.GLMasterRepository;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
@@ -21,12 +22,14 @@ import com.asg.finance.repository.GlRecurringJvProcRepository;
 import com.asg.common.lib.utility.PaginationUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.sf.jasperreports.engine.JasperReport;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.sql.DataSource;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.sql.Timestamp;
@@ -55,6 +58,8 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
     private final BillwiseBreakupService billwiseBreakupService;
     private final GlRecurringJvProcRepository procRepository;
     private final LovDataService lovService;
+    private final PrintService printService;
+    private final DataSource dataSource;
 
     @Override
     public Map<String, Object> listRecurringJvs(String documentId, FilterRequestDto filters, LocalDate startDate, LocalDate endDate, Pageable pageable) {
@@ -582,6 +587,15 @@ GlRecurringJvHdr header = GlRecurringJvHdr.builder()
             log.warn("Failed to load billwise breakup for transaction: {}, detRowId: {}", transactionPoid, detRowId, e);
         }
         return Collections.emptyList();
+    }
+
+    @Override
+    public byte[] print(Long transactionPoid) throws Exception {
+        Map<String, Object> params = printService.buildBaseParams(transactionPoid, "400-102");
+        params.put("SUB_GL", printService.load("Finance/GL/RecurringJVGLSubreport1.jrxml"));
+        params.put("SUB_SCHEDULE", printService.load("Finance/GL/RecurringJVScheduleWiseSubreport2.jrxml"));
+        JasperReport mainReport = printService.load("Finance/GL/RecurringJVReport.jrxml");
+        return printService.fillReportToPdf(mainReport, params, dataSource);
     }
 
 

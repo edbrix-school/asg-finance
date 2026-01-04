@@ -1,0 +1,569 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="BankDebitVoucher" language="groovy" pageWidth="595" pageHeight="842" columnWidth="520" leftMargin="50" rightMargin="25" topMargin="20" bottomMargin="20" uuid="51f26c1c-332c-43f0-beb9-5722768520c7">
+	<property name="ireport.zoom" value="1.4641000000000013"/>
+	<property name="ireport.x" value="0"/>
+	<property name="ireport.y" value="384"/>
+	<style name="Title" fontName="Times New Roman" fontSize="50" isBold="true" pdfFontName="Times-Bold"/>
+	<style name="SubTitle" forecolor="#736343" fontName="Arial" fontSize="18"/>
+	<style name="Column header" forecolor="#666666" fontName="Arial" fontSize="12" isBold="true"/>
+	<style name="Detail" fontName="Arial" fontSize="12"/>
+	<style name="Row" mode="Transparent">
+		<conditionalStyle>
+			<conditionExpression><![CDATA[$V{REPORT_COUNT}%2 == 0]]></conditionExpression>
+			<style backcolor="#E6DAC3"/>
+		</conditionalStyle>
+	</style>
+	<subDataset name="Special_instruction" uuid="bf8ed664-51fd-4350-9cf5-14e366d62135">
+		<parameter name="DOC_KEY_POID" class="java.lang.String" isForPrompting="false"/>
+		<parameter name="TT_REMARKS" class="java.math.BigDecimal"/>
+		<queryString>
+			<![CDATA[select CLAUSE_DETAILS from
+ GLOBAL_TERMS_TEMPLATE_DTL dtl
+WHERE  dtl.TERMS_POID = $P{TT_REMARKS}]]>
+		</queryString>
+		<field name="CLAUSE_DETAILS" class="java.lang.String"/>
+	</subDataset>
+	<subDataset name="dataset1" uuid="8a4f6c86-9786-459c-a7f7-b0b3dd48e88d"/>
+	<parameter name="LOGIN_GROUP_POID" class="java.lang.String">
+		<defaultValueExpression><![CDATA[1]]></defaultValueExpression>
+	</parameter>
+	<parameter name="LOGIN_COMP_POID" class="java.lang.String">
+		<defaultValueExpression><![CDATA[1]]></defaultValueExpression>
+	</parameter>
+	<parameter name="LOGIN_USER_POID" class="java.lang.String"/>
+	<parameter name="DOC_ID" class="java.lang.String">
+		<defaultValueExpression><![CDATA["000-000"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="DOC_KEY_POID" class="java.lang.String"/>
+	<parameter name="SUBREPORT_DIR" class="java.lang.String" isForPrompting="false">
+        <defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+	</parameter>
+	<queryString>
+		<![CDATA[SELECT TO_CHAR(HDR.TRANSACTION_DATE,'DD-MON-YYYY') TRANSACTION_DATE, DECODE(PAYING_TYPE,'1','Telex Transfer','2','Direct Transfer','3','Credit card')
+      SUB, DOC_REF,
+      BMASTER.BANK_DESCRIPTION HDR_BANK_NAME,
+      BMASTER.BANK_ACCOUNT_NO HDR_BANK_ACCOUNT,
+      BMASTER.BANK_ADDRESS HDR_BANK_ADDRESS,
+      NVL(NVL(NVL(DTL.BENEFICIARY_NAME,SDTL.BENEFICIARY_NAME),GMP.BENEFICIARY_NAME) , PAYING_TO_NAME) DTL_BENEFICIARY_NAME,
+      NVL(NVL(DTL.ADDRESS,SDTL.ADDRESS),GMP.ADDRESS) DTL_BENEFICIARY_ADDR,
+      NVL(NVL(NVL(DTL.ACCOUNT_NUMBER, SDTL.ACCOUNT_NUMBER),GMP.ACCOUNT_NUMBER), BENEFICIARY_IBAN) DTL_ACCOUNT_NUMBER,
+      NVL(NVL(NVL(DTL.BANK,SDTL.BANK),GMP.BANK) , GBM.BANK_DESCRIPTION) DTL_BANK,
+      NVL(NVL(NVL(DTL.IBAN,SDTL.IBAN),GMP.IBAN),BENEFICIARY_IBAN) DTL_IBAN,
+      NVL(NVL(DTL.SWIFT_CODE,SDTL.SWIFT_CODE),GMP.SWIFT_CODE) DTL_BANK_SWIFT_CODE,
+      NVL(NVL(DTL.BANK_ADDRESS,SDTL.BANK_ADDRESS),GMP.BANK_ADDRESS) DTL_BANK_ADDRESS,
+      NVL(NVL(DTL.INTERMEDIARY_BANK,SDTL.INTERMEDIARY_BANK),GMP.INTERMEDIARY_BANK) DTL_INTERMEDIARY_BANK,
+      NVL(NVL(DTL.INTERMEDIARY_ACCT,SDTL.INTERMEDIARY_ACCT),GMP.INTERMEDIARY_ACCT) DTL_INTERMEDIARY_ACCOUNT_BANK,
+      NVL(NVL(DTL.BANK_SWIFT_CODE,SDTL.BANK_SWIFT_CODE),GMP.BANK_SWIFT_CODE) INTERMEDIARY_SWIFT_CODE,
+      HDR.AMOUNT, HDR.CURRENCY_CODE,
+      FN_AMOUNT_IN_WORDS_COMMON(HDR.AMOUNT,HDR.CURRENCY_CODE) AMOUNT_IN_WORD,
+      FN_AMOUNT_IN_WORDS_COMMON(ROUND(NVL(HDR.CURRENCY_AMT, HDR.AMOUNT),CURRENCY_DECIMALS),
+      HDR.CURRENCY_CODE) CURRENCY_AMOUNT_IN_WORD,
+      TO_CHAR(HDR.TT_DATE,'DD-MON-YYYY') TT_DATE, CMAST.COMPANY_NAME, HDR.LONG_NARRATION
+      REMITTANCE_DETAIL, NVL(NVL(DTL.SPECIAL_INSTRUCTION,SDTL.SPECIAL_INSTRUCTION),GMP.SPECIAL_INSTRUCTION) SPECIAL_INSTRUCTION, 'We hereby request you to do the '||DECODE(TRIM(
+      PAYING_TYPE),'3','Credit card','1','Telex Transfer','2','Direct Transfer')||
+      ' as detailed below. All the relevant charges can be debited to our above mention current account. Also send us Swift copy along with debit advice.'
+      TEXT, HDR.PAYING_TYPE, NVL(HDR.CURRENCY_CODE,'BHD') CURRENCY_CODE, TRIM(TO_CHAR(ROUND( NVL(HDR.CURRENCY_AMT, HDR.AMOUNT),CURRENCY_DECIMALS),
+      NUMBER_FORMAT_CURRENCY)) CURRENCY_AMT, TT_REMARK_POID, BPC.BANK_PURPOSE_CODE
+FROM  GL_BANK_DEBIT_HDR HDR
+INNER JOIN GL_BANK_MASTER BMASTER ON HDR.BANK_POID       = BMASTER.BANK_POID
+LEFT JOIN SHIP_PRINCIPAL_MASTER_PYMT_DTL DTL ON DTL.BENEFICIARY_ID  = PAYING_TO
+LEFT JOIN AP_SUPPLIER_MASTER_PYMT_DTL SDTL ON SDTL.BENEFICIARY_ID = PAYING_TO
+LEFT JOIN GL_MASTER_PYMT_DTL GMP ON GMP.BENEFICIARY_ID = PAYING_TO
+LEFT JOIN GLOBAL_COMPANY_MASTER CMAST ON HDR.COMPANY_POID    = CMAST.COMPANY_POID
+LEFT JOIN GLOBAL_CURRENCY_MASTER CURR ON HDR.CURRENCY_CODE   = CURR.CURRENCY_CODE
+LEFT JOIN GLOBAL_CUSTOMER_BANK_MASTER GBM ON HDR.BENEFICIARY_BANK_POID = GBM.BANK_POID
+LEFT JOIN BANK_PURPOSE_CODE_MASTER BPC ON BPC.BANK_PURPOSE_POID = HDR.BANK_PURPOSE_POID
+WHERE HDR.TRANSACTION_POID = $P{DOC_KEY_POID}]]>
+	</queryString>
+	<field name="TRANSACTION_DATE" class="java.lang.String"/>
+	<field name="SUB" class="java.lang.String"/>
+	<field name="DOC_REF" class="java.lang.String"/>
+	<field name="HDR_BANK_NAME" class="java.lang.String"/>
+	<field name="HDR_BANK_ACCOUNT" class="java.lang.String"/>
+	<field name="HDR_BANK_ADDRESS" class="java.lang.String"/>
+	<field name="DTL_BENEFICIARY_NAME" class="java.lang.String"/>
+	<field name="DTL_BENEFICIARY_ADDR" class="java.lang.String"/>
+	<field name="DTL_ACCOUNT_NUMBER" class="java.lang.String"/>
+	<field name="DTL_BANK" class="java.lang.String"/>
+	<field name="DTL_IBAN" class="java.lang.String"/>
+	<field name="DTL_BANK_SWIFT_CODE" class="java.lang.String"/>
+	<field name="DTL_BANK_ADDRESS" class="java.lang.String"/>
+	<field name="DTL_INTERMEDIARY_BANK" class="java.lang.String"/>
+	<field name="DTL_INTERMEDIARY_ACCOUNT_BANK" class="java.lang.String"/>
+	<field name="INTERMEDIARY_SWIFT_CODE" class="java.lang.String"/>
+	<field name="AMOUNT" class="java.math.BigDecimal"/>
+	<field name="CURRENCY_CODE" class="java.lang.String"/>
+	<field name="AMOUNT_IN_WORD" class="java.lang.String"/>
+	<field name="CURRENCY_AMOUNT_IN_WORD" class="java.lang.String"/>
+	<field name="TT_DATE" class="java.lang.String"/>
+	<field name="COMPANY_NAME" class="java.lang.String"/>
+	<field name="REMITTANCE_DETAIL" class="java.lang.String"/>
+	<field name="SPECIAL_INSTRUCTION" class="java.lang.String"/>
+	<field name="TEXT" class="java.lang.String"/>
+	<field name="PAYING_TYPE" class="java.lang.String"/>
+	<field name="CURRENCY_AMT" class="java.lang.String"/>
+	<field name="TT_REMARK_POID" class="java.math.BigDecimal"/>
+	<field name="BANK_PURPOSE_CODE" class="java.lang.String"/>
+	<variable name="Address" class="java.lang.String">
+		<initialValueExpression><![CDATA[$F{HDR_BANK_ADDRESS}]]></initialValueExpression>
+	</variable>
+	<variable name="variable1" class="java.lang.String"/>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="605" splitType="Stretch">
+			<staticText>
+				<reportElement x="365" y="99" width="60" height="16" uuid="5f800924-d3e8-44ba-acfd-cbca7f4c79b2"/>
+				<text><![CDATA[Date]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="365" y="117" width="60" height="16" uuid="9ce91dca-ae5d-4dba-bfe2-fc11fb23f6f8"/>
+				<text><![CDATA[Ref No]]></text>
+			</staticText>
+			<textField isBlankWhenNull="true">
+				<reportElement x="434" y="99" width="84" height="16" uuid="a4a8d648-8f70-4fd5-a1c1-11a3e960a39a"/>
+				<textFieldExpression><![CDATA[$F{TRANSACTION_DATE}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="434" y="117" width="84" height="16" uuid="4f7a44de-7197-4289-9a02-4bf626d3d9dc"/>
+				<textFieldExpression><![CDATA[$F{DOC_REF}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="0" y="99" width="100" height="16" uuid="0d453ecd-0302-4ef3-b319-5019cc9e95bf"/>
+				<text><![CDATA[The Manager,]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="0" y="188" width="180" height="16" uuid="55524d9f-2382-496e-ab4a-45a6ef4309ca"/>
+				<textElement>
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Ref :- Bank Account Number #]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="0" y="215" width="45" height="14" uuid="47756fed-e1c6-45cf-a475-31e4f4d299f4"/>
+				<text><![CDATA[Dear Sir,]]></text>
+			</staticText>
+			<textField isBlankWhenNull="true">
+				<reportElement x="170" y="188" width="348" height="16" uuid="aebd51c2-1a2f-4aca-84f7-487f59e1444c"/>
+				<textElement>
+					<font isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{HDR_BANK_ACCOUNT}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToTallestObject" x="170" y="368" width="327" height="35" isPrintWhenDetailOverflows="true" uuid="3dd27205-2f53-4076-91af-5f7965ac5a51"/>
+				<textElement>
+					<font size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{DTL_BANK_ADDRESS}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="170" y="333" width="327" height="16" uuid="a5f4bba1-585f-460d-a778-906317a96f34"/>
+				<textElement>
+					<font size="9" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{DTL_ACCOUNT_NUMBER}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="170" y="352" width="327" height="16" uuid="1e339467-8a8b-4e45-bf9e-e740003ee514"/>
+				<textElement>
+					<font size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{DTL_BANK}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="0" y="280" width="127" height="16" uuid="62f7713a-e167-4640-84f2-ec280f761ee1"/>
+				<text><![CDATA[Beneficiary Name]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="0" y="264" width="127" height="16" uuid="50a46e51-90b3-4eb0-b45c-3cc16de6116d"/>
+				<textElement>
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Beneficiary Details :-]]></text>
+			</staticText>
+			<textField isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToTallestObject" x="170" y="280" width="350" height="23" isPrintWhenDetailOverflows="true" uuid="f8550f21-85be-4b00-844d-22db89f51e69"/>
+				<textElement>
+					<font size="9" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{DTL_BENEFICIARY_NAME}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToTallestObject" x="170" y="303" width="350" height="28" isPrintWhenDetailOverflows="true" uuid="1da7ec94-6b47-4f1f-ad79-50cad0abf64c"/>
+				<textElement>
+					<font size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{DTL_BENEFICIARY_ADDR}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="0" y="333" width="127" height="16" uuid="83fc4966-f47b-4d38-920b-1f99bd303720"/>
+				<text><![CDATA[Beneficiary Account Number]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="0" y="352" width="127" height="16" uuid="3e2a0de0-8af4-44ba-ac93-6b1dfd172fe4"/>
+				<text><![CDATA[Beneficiary Bank Name]]></text>
+			</staticText>
+			<textField isBlankWhenNull="true">
+				<reportElement x="170" y="403" width="327" height="16" uuid="1ca8e02b-c6ce-4f59-9914-d0b3bbdabef0"/>
+				<textElement>
+					<font size="9" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{DTL_IBAN}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="0" y="478" width="100" height="16" uuid="8d1c9e9b-08bb-4df9-b45d-2d5b56167fec"/>
+				<textElement>
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Value Date]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="0" y="422" width="100" height="16" uuid="c74ad3b6-5a51-4ba1-a10a-7c342a66fbc9"/>
+				<text><![CDATA[Swift Code]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="0" y="403" width="30" height="16" uuid="7874564b-8c82-4bf5-a7a9-a8dc670e6ec5"/>
+				<text><![CDATA[IBAN]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="0" y="440" width="100" height="16" uuid="10d94416-e699-4055-a242-1c0924ed2afb"/>
+				<textElement>
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Amount]]></text>
+			</staticText>
+			<textField isBlankWhenNull="true">
+				<reportElement x="170" y="422" width="327" height="16" uuid="1d3c460a-6125-45d3-90f9-99141df45280"/>
+				<textElement>
+					<font size="9" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{DTL_BANK_SWIFT_CODE}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="170" y="478" width="115" height="16" uuid="71ea1b74-4ea0-41d0-be05-ede42922a49b"/>
+				<textElement>
+					<font size="9" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{TT_DATE}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="0" y="497" width="170" height="16" uuid="f9593d4d-29c7-4087-bf88-2034d4ae8917">
+					<printWhenExpression><![CDATA[$F{DTL_INTERMEDIARY_BANK} != null && $F{INTERMEDIARY_SWIFT_CODE} != null]]></printWhenExpression>
+				</reportElement>
+				<textElement>
+					<font isBold="true" isUnderline="false"/>
+				</textElement>
+				<text><![CDATA[Correspondent Bank Details :-]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="0" y="568" width="100" height="16" uuid="654567d6-e480-434b-9800-572f6577ff41">
+					<printWhenExpression><![CDATA[$F{REMITTANCE_DETAIL} != null]]></printWhenExpression>
+				</reportElement>
+				<textElement verticalAlignment="Top"/>
+				<text><![CDATA[Remittance Details]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="0" y="515" width="100" height="16" isRemoveLineWhenBlank="true" uuid="fb6860d7-87c4-4241-ae40-8433512da9f2">
+					<printWhenExpression><![CDATA[$F{DTL_INTERMEDIARY_BANK} != null]]></printWhenExpression>
+				</reportElement>
+				<text><![CDATA[Intermediary Bank]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="0" y="549" width="100" height="16" uuid="8e52228d-aaab-44f1-adca-3de5c074106a">
+					<printWhenExpression><![CDATA[$F{INTERMEDIARY_SWIFT_CODE} != null]]></printWhenExpression>
+				</reportElement>
+				<text><![CDATA[Swift Code]]></text>
+			</staticText>
+			<textField isBlankWhenNull="true">
+				<reportElement x="0" y="117" width="188" height="60" uuid="00753ac4-9705-4260-9e04-aeaab40bcab5"/>
+				<textFieldExpression><![CDATA[$V{Address}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="170" y="515" width="327" height="16" isRemoveLineWhenBlank="true" uuid="750ada3c-a77e-488e-bb0b-f101ed155e95"/>
+				<textElement>
+					<font size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{DTL_INTERMEDIARY_BANK}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="155" y="280" width="10" height="16" uuid="a539b814-acdd-47ed-b95f-89a6100d2aee"/>
+				<textElement textAlignment="Center" verticalAlignment="Top"/>
+				<text><![CDATA[:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="155" y="333" width="10" height="16" uuid="8e396cb2-24f2-4725-b339-39b84e213a28"/>
+				<textElement textAlignment="Center" verticalAlignment="Top"/>
+				<text><![CDATA[:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="155" y="352" width="10" height="16" uuid="80385f96-0a15-4573-bfe0-12e6d949e957"/>
+				<textElement textAlignment="Center" verticalAlignment="Top"/>
+				<text><![CDATA[:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="155" y="403" width="10" height="16" uuid="1daad144-abea-4213-aeb7-3893559e918e"/>
+				<textElement textAlignment="Center" verticalAlignment="Top"/>
+				<text><![CDATA[:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="155" y="422" width="10" height="16" uuid="c6962178-d603-4fae-924e-4825a48b2442"/>
+				<textElement textAlignment="Center" verticalAlignment="Top"/>
+				<text><![CDATA[:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="155" y="440" width="10" height="16" uuid="fbe60dd6-49e1-4e04-af67-7fdf0f74338c"/>
+				<textElement textAlignment="Center" verticalAlignment="Top"/>
+				<text><![CDATA[:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="155" y="478" width="10" height="16" uuid="6e4d9f37-c118-4d97-a03c-ce2867cae5dd"/>
+				<textElement textAlignment="Center" verticalAlignment="Top"/>
+				<text><![CDATA[:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="155" y="515" width="10" height="16" isRemoveLineWhenBlank="true" uuid="5655e61f-a447-404d-8014-27467192711e">
+					<printWhenExpression><![CDATA[$F{DTL_INTERMEDIARY_BANK} != null]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Center" verticalAlignment="Top"/>
+				<text><![CDATA[:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="155" y="549" width="10" height="16" uuid="51c4f89a-46f1-467d-88c9-a6c5ae85e924">
+					<printWhenExpression><![CDATA[$F{INTERMEDIARY_SWIFT_CODE} != null]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Center" verticalAlignment="Top"/>
+				<text><![CDATA[:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="155" y="568" width="10" height="16" uuid="e3ad98d8-e9e6-4bff-9330-634622c63c48">
+					<printWhenExpression><![CDATA[$F{REMITTANCE_DETAIL} != null]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Center" verticalAlignment="Top"/>
+				<text><![CDATA[:]]></text>
+			</staticText>
+			<textField isBlankWhenNull="true">
+				<reportElement x="237" y="148" width="189" height="20" uuid="5377af15-2562-47c5-9c3c-aa756b1d4c13"/>
+				<textElement verticalAlignment="Middle">
+					<font size="14" isBold="true" isUnderline="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{SUB}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="170" y="549" width="327" height="16" uuid="a82cac3f-052d-4ddd-9364-995c75353679"/>
+				<textElement>
+					<font size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{INTERMEDIARY_SWIFT_CODE}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="188" y="148" width="49" height="20" uuid="29fd92f1-01a3-488e-978c-c60a8d1e351c"/>
+				<textElement verticalAlignment="Middle">
+					<font size="14" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Sub :- ]]></text>
+			</staticText>
+			<textField isStretchWithOverflow="true">
+				<reportElement stretchType="RelativeToBandHeight" x="0" y="228" width="520" height="16" uuid="224e52d5-9408-46e7-9a3c-1d41a63e6436"/>
+				<textFieldExpression><![CDATA[$F{TEXT}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="170" y="458" width="29" height="18" uuid="6e02a2af-3eaa-4ee3-a512-4583397306e2"/>
+				<textElement>
+					<font size="8" isBold="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{CURRENCY_CODE}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="199" y="440" width="140" height="18" uuid="c421593c-6dd5-4ae7-9a8c-3cbc55480cc1"/>
+				<textElement textAlignment="Left">
+					<font size="9" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{CURRENCY_AMT}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToTallestObject" x="200" y="458" width="312" height="18" uuid="a76c58c9-e926-4e9b-a0a8-882a65db63bd"/>
+				<textElement>
+					<font size="8" isBold="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{CURRENCY_AMOUNT_IN_WORD}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="170" y="440" width="29" height="18" uuid="ea43a5fb-04da-4613-9f66-1f1ac86f2ec5"/>
+				<textElement>
+					<font size="9" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{CURRENCY_CODE}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="170" y="568" width="327" height="16" uuid="ef5b05ef-3be8-4211-9521-287f02596915"/>
+				<textElement>
+					<font size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{REMITTANCE_DETAIL}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="155" y="533" width="10" height="16" uuid="0beefa8a-da1e-4697-ac26-6b67950c1845">
+					<printWhenExpression><![CDATA[$F{INTERMEDIARY_SWIFT_CODE} != null]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Center" verticalAlignment="Top"/>
+				<text><![CDATA[:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="0" y="533" width="150" height="16" uuid="57ebe5d4-7bb2-4efd-bb66-70047d5f07ad">
+					<printWhenExpression><![CDATA[$F{INTERMEDIARY_SWIFT_CODE} != null]]></printWhenExpression>
+				</reportElement>
+				<text><![CDATA[Intermediary Bank Account]]></text>
+			</staticText>
+			<textField isBlankWhenNull="true">
+				<reportElement x="170" y="533" width="327" height="16" uuid="e71abfcf-d5f6-4ff0-be9c-d6f537286925"/>
+				<textElement>
+					<font size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{DTL_INTERMEDIARY_ACCOUNT_BANK}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement positionType="Float" x="0" y="585" width="100" height="16" uuid="8a759ac3-d2a9-4b06-b1fc-710907d4f63d">
+					<printWhenExpression><![CDATA[$F{BANK_PURPOSE_CODE} != null]]></printWhenExpression>
+				</reportElement>
+				<textElement verticalAlignment="Middle"/>
+				<text><![CDATA[Purpose Code]]></text>
+			</staticText>
+			<staticText>
+				<reportElement positionType="Float" x="155" y="585" width="10" height="16" uuid="a1e53a85-777b-46ac-819f-ed2dad389032">
+					<printWhenExpression><![CDATA[$F{BANK_PURPOSE_CODE} != null]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Center" verticalAlignment="Top"/>
+				<text><![CDATA[:]]></text>
+			</staticText>
+			<textField isBlankWhenNull="true">
+				<reportElement positionType="Float" x="170" y="585" width="255" height="16" uuid="a8702825-9ce5-4f1c-8c50-5389c30f27a6"/>
+				<textElement verticalAlignment="Middle">
+					<font size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{BANK_PURPOSE_CODE}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="426" y="99" width="8" height="16" uuid="ed83a384-302c-4125-817c-5f978d236275"/>
+				<textElement textAlignment="Center" verticalAlignment="Top"/>
+				<text><![CDATA[:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="426" y="117" width="8" height="16" uuid="d994da01-6abd-467e-ad72-7d78bd57dbda"/>
+				<textElement textAlignment="Center" verticalAlignment="Top"/>
+				<text><![CDATA[:]]></text>
+			</staticText>
+		</band>
+	</title>
+	<detail>
+		<band height="42">
+			<staticText>
+				<reportElement x="0" y="0" width="127" height="18" uuid="2ece0c15-9995-4e94-ae49-712c7ff75e27"/>
+				<textElement>
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Special Instruction :]]></text>
+			</staticText>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="127" y="0" width="391" height="42" uuid="c4ae624c-3383-4386-ba72-a47495d88a06">
+					<printWhenExpression><![CDATA[$F{PAYING_TYPE} != "1"]]></printWhenExpression>
+				</reportElement>
+				<textElement>
+					<font isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{SPECIAL_INSTRUCTION}]]></textFieldExpression>
+			</textField>
+			<subreport>
+				<reportElement x="127" y="0" width="391" height="40" isRemoveLineWhenBlank="true" uuid="eb43c343-228f-4e7a-9412-a79930bb0c3e">
+					<printWhenExpression><![CDATA[$F{PAYING_TYPE} == "1"]]></printWhenExpression>
+				</reportElement>
+				<subreportParameter name="DOC_KEY_POID">
+					<subreportParameterExpression><![CDATA[$P{DOC_KEY_POID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="DOC_ID">
+					<subreportParameterExpression><![CDATA[$P{DOC_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="TT_REMARK_POID">
+					<subreportParameterExpression><![CDATA[$F{TT_REMARK_POID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="LOGIN_COMP_POID">
+					<subreportParameterExpression><![CDATA[$P{LOGIN_COMP_POID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+                <subreportExpression><![CDATA[$P{BANK_DEBIT_VOUCHER_SUBREPORT_1}]]></subreportExpression>
+			</subreport>
+		</band>
+	</detail>
+	<pageFooter>
+		<band height="25">
+			<subreport>
+				<reportElement x="0" y="0" width="518" height="24" uuid="93a2f703-9bca-48bf-808c-41c7105b9720"/>
+				<subreportParameter name="LOGIN_COMP_POID">
+					<subreportParameterExpression><![CDATA[$P{LOGIN_COMP_POID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+                <subreportExpression><![CDATA[$P{SUB_FOOTER}]]></subreportExpression>
+			</subreport>
+		</band>
+	</pageFooter>
+	<lastPageFooter>
+		<band height="141">
+			<staticText>
+				<reportElement x="0" y="35" width="16" height="16" uuid="860b4bc3-20b6-4e79-bfcf-541820ee352e"/>
+				<text><![CDATA[For]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="30" y="89" width="120" height="16" uuid="703100fc-9894-4e6e-8acc-a57e53f7ce9a"/>
+				<textElement verticalAlignment="Middle"/>
+				<text><![CDATA[Authorized Signatory]]></text>
+			</staticText>
+			<textField isBlankWhenNull="true">
+				<reportElement x="19" y="35" width="272" height="16" uuid="04fee377-f227-4233-bb02-d64a043e372e"/>
+				<textFieldExpression><![CDATA[$F{COMPANY_NAME}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="0" y="18" width="100" height="16" uuid="bf2fe88b-d59b-4c2f-b891-5ed70d43e775"/>
+				<text><![CDATA[Yours Faithfully]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="0" y="2" width="100" height="16" uuid="68d27cf6-3ae2-4344-b80e-dfc90eccdda5"/>
+				<text><![CDATA[Thanking you]]></text>
+			</staticText>
+			<line>
+				<reportElement x="0" y="88" width="200" height="1" uuid="15614d47-11a6-4693-915b-65fecd004faf"/>
+				<graphicElement>
+					<pen lineWidth="0.25"/>
+				</graphicElement>
+			</line>
+			<staticText>
+				<reportElement style="Column header" x="430" y="90" width="35" height="18" forecolor="#000000" uuid="a546dc34-d8aa-47ee-9822-da377d2a45e1"/>
+				<textElement verticalAlignment="Middle">
+					<font fontName="SansSerif" size="10" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Page]]></text>
+			</staticText>
+			<staticText>
+				<reportElement style="Column header" x="476" y="90" width="11" height="18" forecolor="#000000" uuid="41bc18b6-84af-4660-b605-dd663933a6fe"/>
+				<textElement verticalAlignment="Middle">
+					<font fontName="SansSerif" size="10" isBold="false"/>
+				</textElement>
+				<text><![CDATA[of]]></text>
+			</staticText>
+			<textField evaluationTime="Report">
+				<reportElement style="Column header" x="488" y="90" width="24" height="18" forecolor="#000000" uuid="00ff0581-3ae3-4f67-be28-7d57498ce32b"/>
+				<textElement verticalAlignment="Middle">
+					<font fontName="SansSerif" size="10" isBold="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{PAGE_NUMBER}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
+				<reportElement style="Column header" stretchType="RelativeToBandHeight" x="461" y="90" width="13" height="18" forecolor="#000000" uuid="8173b125-a5e9-4cd1-88d8-6ba361d0c54f"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="SansSerif" size="10" isBold="false" isItalic="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{PAGE_NUMBER}]]></textFieldExpression>
+			</textField>
+		</band>
+	</lastPageFooter>
+</jasperReport>

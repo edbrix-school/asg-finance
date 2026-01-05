@@ -1,11 +1,11 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="DocHeaderSubReport" language="groovy" pageWidth="555" pageHeight="802" whenNoDataType="BlankPage" columnWidth="535" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="2251512a-18e7-4baf-9c34-046ea92395be">
     <property name="ireport.zoom" value="1.1000000000000008"/>
     <property name="ireport.x" value="0"/>
     <property name="ireport.y" value="0"/>
     <style name="Title" fontName="Times New Roman" fontSize="50" isBold="true" pdfFontName="Times-Bold"/>
     <style name="SubTitle" forecolor="#736343" fontName="SansSerif" fontSize="18"/>
-    <style name="Column header" forecolor="#666666" fontName="SansSerif" fontSize="12" isBold="true"/>
+    <style name="Column header" forecolor="#666666" fontName="SansSerif" fontSize="12" isBold="true" pdfFontName="Helvetica-Bold"/>
     <style name="Detail" fontName="SansSerif" fontSize="12"/>
     <style name="Row" mode="Transparent">
         <conditionalStyle>

@@ -86,6 +86,9 @@
 	<parameter name="LOGIN_COMP_POID" class="java.lang.String">
 		<defaultValueExpression><![CDATA[1]]></defaultValueExpression>
 	</parameter>
+	<parameter name="LOGIN_DIV_POID" class="java.lang.String">
+		<defaultValueExpression><![CDATA["1"]]></defaultValueExpression>
+	</parameter>
 	<parameter name="LOGIN_USER_POID" class="java.lang.String"/>
 	<parameter name="DOC_ID" class="java.lang.String">
 		<defaultValueExpression><![CDATA["000-000"]]></defaultValueExpression>
@@ -160,6 +163,9 @@ INNER JOIN GL_BANK_MASTER BM ON BM.BANK_POID=$P{BANK_POID}]]>
 				<subreportParameter name="LOGIN_COMP_POID">
 					<subreportParameterExpression><![CDATA[$P{LOGIN_COMP_POID}]]></subreportParameterExpression>
 				</subreportParameter>
+                <subreportParameter name="LOGIN_DIV_POID">
+                    <subreportParameterExpression><![CDATA[$P{LOGIN_DIV_POID}]]></subreportParameterExpression>
+                </subreportParameter>
 				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
 				<subreportExpression><![CDATA[$P{SUB_HEADER}]]></subreportExpression>
 			</subreport>

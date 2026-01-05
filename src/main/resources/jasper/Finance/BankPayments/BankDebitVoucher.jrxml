@@ -30,6 +30,9 @@ WHERE  dtl.TERMS_POID = $P{TT_REMARKS}]]>
 	<parameter name="LOGIN_COMP_POID" class="java.lang.String">
 		<defaultValueExpression><![CDATA[1]]></defaultValueExpression>
 	</parameter>
+	<parameter name="LOGIN_DIV_POID" class="java.lang.String">
+		<defaultValueExpression><![CDATA["1"]]></defaultValueExpression>
+	</parameter>
 	<parameter name="LOGIN_USER_POID" class="java.lang.String"/>
 	<parameter name="DOC_ID" class="java.lang.String">
 		<defaultValueExpression><![CDATA["000-000"]]></defaultValueExpression>

@@ -71,4 +71,5 @@ public interface ApPurchaseServiceJournal {
             Long partyPoid
     );
 
+    byte[] print(Long transactionPoid) throws Exception;
 }

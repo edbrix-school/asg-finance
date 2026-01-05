@@ -1,5 +1,6 @@
 package com.asg.finance.service;
 
+import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
 
@@ -31,4 +32,6 @@ public interface BankReconciliationService {
 			Long loginCompanyPoid, String mailAlert);
 
 	BankReconcileReportResponse fetchReport(BankReconcileReportRequest request);
+
+    byte[] print(Long transactionPoid, Long bankPoid, Date dateFrom, Date dateTill, String balanceAsPerBank) throws Exception;
 }

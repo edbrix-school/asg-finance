@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="PurchaseInvoiceChargeSubReport" language="groovy" pageWidth="542" pageHeight="802" columnWidth="542" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="652ca39c-24eb-4a80-9831-fc23cc418a45">
+	<property name="ireport.zoom" value="1.4641000000000017"/>
+	<property name="ireport.x" value="0"/>
+	<property name="ireport.y" value="0"/>
+	<parameter name="DOC_KEY_POID" class="java.lang.String"/>
+	<queryString>
+		<![CDATA[SELECT PIC.TRANSACTION_POID, PIC.DET_ROW_ID, SCM.CHARGE_NAME, PIC.CHARGE_BASE_AMOUNT, PIC.TAX_AMOUNT, PIC.CHARGE_AMOUNT
+FROM AP_PURCHASE_INVOICE_CHARGE_DTL PIC
+INNER JOIN SHIP_CHARGE_MASTER SCM ON SCM.CHARGE_POID = PIC.CHARGE_POID
+WHERE PIC.TRANSACTION_POID = $P{DOC_KEY_POID}]]>
+	</queryString>
+	<field name="TRANSACTION_POID" class="java.math.BigDecimal"/>
+	<field name="DET_ROW_ID" class="java.math.BigDecimal"/>
+	<field name="CHARGE_NAME" class="java.lang.String"/>
+	<field name="CHARGE_BASE_AMOUNT" class="java.math.BigDecimal"/>
+	<field name="TAX_AMOUNT" class="java.math.BigDecimal"/>
+	<field name="CHARGE_AMOUNT" class="java.math.BigDecimal"/>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="16" splitType="Stretch">
+			<staticText>
+				<reportElement x="0" y="0" width="290" height="15" uuid="e3c81c62-db60-4994-9981-a0e0d7069f39"/>
+				<textElement verticalAlignment="Middle"/>
+				<text><![CDATA[Charge Details]]></text>
+			</staticText>
+			<line>
+				<reportElement x="0" y="14" width="542" height="1" uuid="bb8ca88c-a511-4823-b799-9fcc26e4bbdd"/>
+				<graphicElement>
+					<pen lineWidth="1.5" lineStyle="Double" lineColor="#999999"/>
+				</graphicElement>
+			</line>
+			<line>
+				<reportElement x="0" y="0" width="542" height="1" uuid="b0245be5-344c-4453-8da0-8a29fc4bc219"/>
+				<graphicElement>
+					<pen lineWidth="1.25" lineStyle="Double" lineColor="#999999"/>
+				</graphicElement>
+			</line>
+		</band>
+	</title>
+	<columnHeader>
+		<band height="15" splitType="Stretch">
+			<staticText>
+				<reportElement x="27" y="0" width="215" height="14" uuid="788999f7-c006-4d94-8d81-1f34a336f517"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true"/>
+					<paragraph leftIndent="3"/>
+				</textElement>
+				<text><![CDATA[Charge Description]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="242" y="0" width="100" height="14" uuid="cc0da4ed-6903-4488-8fe6-3c3c69ebf20c"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font isBold="true"/>
+					<paragraph leftIndent="3" rightIndent="3"/>
+				</textElement>
+				<text><![CDATA[Base Amount]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="342" y="0" width="100" height="14" uuid="7a002a38-def0-4a48-998e-b65d17cfb472"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font isBold="true"/>
+					<paragraph leftIndent="3" rightIndent="3"/>
+				</textElement>
+				<text><![CDATA[Tax Amount]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="442" y="0" width="100" height="14" uuid="56449cf4-d390-4dd5-b965-557c449a01fe"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font isBold="true"/>
+					<paragraph leftIndent="3" rightIndent="3"/>
+				</textElement>
+				<text><![CDATA[Total Amount]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="0" y="0" width="27" height="14" uuid="b20d379e-f4fe-4a6f-8017-e7cc2460d2c2"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="true"/>
+					<paragraph leftIndent="3"/>
+				</textElement>
+				<text><![CDATA[SN]]></text>
+			</staticText>
+			<line>
+				<reportElement x="0" y="14" width="542" height="1" uuid="0597cebf-d454-4f34-a5ec-eb5142164599"/>
+				<graphicElement>
+					<pen lineWidth="1.25" lineStyle="Double" lineColor="#999999"/>
+				</graphicElement>
+			</line>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="18" splitType="Stretch">
+			<textField>
+				<reportElement x="27" y="0" width="215" height="15" uuid="cfd40349-f949-4ee9-aa9d-75018eacd6eb"/>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font size="9"/>
+					<paragraph leftIndent="5"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{CHARGE_NAME}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.000" isBlankWhenNull="true">
+				<reportElement x="242" y="0" width="100" height="15" uuid="e937dd45-22d3-474e-b331-ad03adce7160"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font size="9"/>
+					<paragraph rightIndent="3"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{CHARGE_BASE_AMOUNT}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.000" isBlankWhenNull="true">
+				<reportElement x="342" y="0" width="100" height="15" uuid="ad54bada-f653-4d25-815e-cf28198d0e22"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font size="9"/>
+					<paragraph rightIndent="3"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{TAX_AMOUNT}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.000" isBlankWhenNull="true">
+				<reportElement x="442" y="0" width="100" height="15" uuid="d43d7f27-dd25-471b-a4f3-970362d4d4e0"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font size="9"/>
+					<paragraph rightIndent="3"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{CHARGE_AMOUNT}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="0" y="0" width="27" height="15" uuid="b6aecfda-1077-42e0-8f28-deb4308f0327"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{REPORT_COUNT}]]></textFieldExpression>
+			</textField>
+			<line>
+				<reportElement x="0" y="14" width="542" height="1" uuid="44bcf601-2dd2-4aee-baf8-60ce6f2a0132"/>
+				<graphicElement>
+					<pen lineWidth="0.5" lineStyle="Dotted" lineColor="#999999"/>
+				</graphicElement>
+			</line>
+		</band>
+	</detail>
+</jasperReport>

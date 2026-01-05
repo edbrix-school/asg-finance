@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="BankReconciliationSubreport2" language="groovy" pageWidth="530" pageHeight="802" columnWidth="530" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="125671eb-0607-4748-8e57-b35618dff34e">
+	<property name="ireport.zoom" value="1.0"/>
+	<property name="ireport.x" value="0"/>
+	<property name="ireport.y" value="0"/>
+	<parameter name="DOC_FROM_DATE" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="BANK_POID" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="LOGIN_COM_POID" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="DOC_TO_DATE" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<queryString>
+		<![CDATA[SELECT 'Balance As'||' '||GBM.BANK_DESCRIPTION||' '||'in Our Book' AS  BANK,
+        NVL(SUM(NVL(DR_AMT,0)) - SUM(NVL(CR_AMT,0)),0) as DR_AMT
+        FROM
+              GL_LEDGER GL
+          INNER JOIN GL_BANK_MASTER GBM ON GBM.GL_POID=GL.GL_POID
+            WHERE
+                  GL.GL_POID=GBM.GL_POID AND GBM.BANK_POID=$P{BANK_POID} AND TRUNC(TRANSACTION_DATE) <= $P{DOC_TO_DATE}
+                  AND GL.GL_COMPANY_POID=$P{LOGIN_COM_POID}
+            GROUP BY
+                  GBM.BANK_DESCRIPTION]]>
+	</queryString>
+	<field name="BANK" class="java.lang.String"/>
+	<field name="DR_AMT" class="java.math.BigDecimal"/>
+	<variable name="DR_AMOUNT" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$F{DR_AMT}]]></variableExpression>
+	</variable>
+	<detail>
+		<band height="20" splitType="Stretch">
+			<textField pattern="#,##0.000" isBlankWhenNull="true">
+				<reportElement x="422" y="0" width="86" height="20" uuid="4a75a0d0-a6cc-4fae-9658-ec47202d8410"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{DR_AMT}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="0" y="0" width="422" height="20" uuid="e7b816bb-319c-43a4-9f45-2a30cbdfc231"/>
+				<textElement verticalAlignment="Middle"/>
+				<textFieldExpression><![CDATA[$F{BANK}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="508" y="0" width="22" height="20" uuid="9d081375-7ae2-40da-a9ab-61e4b998f759"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="false"/>
+				</textElement>
+				<text><![CDATA[ DR]]></text>
+			</staticText>
+		</band>
+	</detail>
+</jasperReport>

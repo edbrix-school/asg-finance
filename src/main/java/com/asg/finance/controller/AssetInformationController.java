@@ -1,5 +1,8 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
+
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.AssetInformationMasterRequest;
@@ -109,6 +112,7 @@ public class AssetInformationController {
                     }
             )
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     public ResponseEntity<?> listAssetInformation(
             @ParameterObject Pageable pageable,
@@ -172,6 +176,7 @@ public class AssetInformationController {
                     }
             )
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     public ResponseEntity<?> createAssetInformation(
             @Valid @RequestBody AssetInformationMasterRequest request
@@ -208,6 +213,7 @@ public class AssetInformationController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{iaPoid}")
     public ResponseEntity<?> updateAssetInformation(
             @Parameter(description = "Unique identifier of the information asset master", required = true, example = "1")
@@ -226,6 +232,7 @@ public class AssetInformationController {
             @ApiResponse(responseCode = "200", description = "Record found"),
             @ApiResponse(responseCode = "404", description = "Record not found")
     })
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{iaPoid}")
     public ResponseEntity<?> getAssetInformationById(@PathVariable Long iaPoid) {
 
@@ -243,6 +250,7 @@ public class AssetInformationController {
             @ApiResponse(responseCode = "401", description = "Unauthorized – JWT token missing or invalid"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{iaPoid}")
     public ResponseEntity<?> softDeleteAssetInformation(@PathVariable Long iaPoid) {
 

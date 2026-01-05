@@ -1,5 +1,8 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
+
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.BankDepositVoucherDtlDto;
@@ -89,6 +92,7 @@ public class BankDepositVoucherController {
                     }
             )
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     public ResponseEntity<?> create(
             @Valid @RequestBody BankDepositVoucherRequestDto request
@@ -152,6 +156,7 @@ public class BankDepositVoucherController {
                     }
             )
     )
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{transactionPoid}")
     public ResponseEntity<?> update(
             @Parameter(description = "Transaction POID", required = true)
@@ -176,6 +181,7 @@ public class BankDepositVoucherController {
                     @ApiResponse(responseCode = "404", description = "Not found")
             }
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{transactionPoid}")
     public ResponseEntity<?> getById(
             @Parameter(description = "Transaction POID", required = true)
@@ -193,6 +199,7 @@ public class BankDepositVoucherController {
                     @ApiResponse(responseCode = "404", description = "Not found")
             }
     )
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> softDelete(
             @Parameter(description = "Transaction POID", required = true)
@@ -206,6 +213,7 @@ public class BankDepositVoucherController {
             summary = "List Bank Deposit Vouchers with Search and Sort",
             description = "Retrieve a paginated list of Bank Deposit Vouchers with optional filtering and sorting"
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     public ResponseEntity<?> list(
             @ParameterObject Pageable pageable,
@@ -235,6 +243,7 @@ public class BankDepositVoucherController {
                     @ApiResponse(responseCode = "401", description = "Unauthorized")
             }
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/load/pending-payments")
     public ResponseEntity<?> loadPendingPayments(
             @Parameter(description = "Bank POID", required = true, example = "15631")

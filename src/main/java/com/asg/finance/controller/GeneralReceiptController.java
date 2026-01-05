@@ -1,5 +1,7 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.finance.dto.GeneralReceiptRequest;
 import com.asg.finance.dto.GeneralReceiptResponse;
@@ -67,6 +69,7 @@ public class GeneralReceiptController {
             @ApiResponse(responseCode = "400", description = "Bad Request - Validation error"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     public ResponseEntity<?> createGeneralReceipt(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
@@ -188,6 +191,7 @@ public class GeneralReceiptController {
             @ApiResponse(responseCode = "404", description = "Receipt not found"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{transactionPoid}")
     public ResponseEntity<?> getGeneralReceiptByTransactionPoid(
             @Parameter(description = "Transaction POID (Primary Key)", required = true, example = "234830")
@@ -236,6 +240,7 @@ public class GeneralReceiptController {
             @ApiResponse(responseCode = "404", description = "Receipt not found"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/by-ref/{docRef}")
     public ResponseEntity<?> getGeneralReceiptByDocRef(
             @Parameter(description = "Document Reference (Receipt Number)", required = true, example = "ASGGEN72675")
@@ -274,6 +279,7 @@ public class GeneralReceiptController {
             @ApiResponse(responseCode = "404", description = "Receipt not found"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{transactionPoid}")
     public ResponseEntity<?> updateGeneralReceipt(
             @Parameter(description = "Transaction POID", required = true, example = "12345")
@@ -319,6 +325,7 @@ public class GeneralReceiptController {
             @ApiResponse(responseCode = "404", description = "Receipt not found"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> deleteGeneralReceipt(
             @Parameter(description = "Transaction POID", required = true, example = "12345")
@@ -335,6 +342,7 @@ public class GeneralReceiptController {
         }
     }
 
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     public ResponseEntity<?> listOfRecordsWithGenericSearch(
             @ParameterObject
@@ -388,6 +396,7 @@ public class GeneralReceiptController {
             summary = "Get Pending Bills",
             description = "Fetch pending bills for a GL account to select for settlement"
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/pending-bills/{glPoid}")
     public ResponseEntity<?> getPendingBills(
             @Parameter(description = "GL POID", required = true, example = "5001")
@@ -406,6 +415,7 @@ public class GeneralReceiptController {
             summary = "Get GL Account for Charge Type",
             description = "Fetch the GL account POID configured for a specific charge type (e.g., BANK_CHARGES, ROUND_OFF, EXCHANGE_GAIN_LOSS)"
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/charge-gl")
     public ResponseEntity<?> getChargeGLAccount(
             @Parameter(description = "Charge Type", required = true, example = "BANK_CHARGES")

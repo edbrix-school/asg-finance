@@ -86,6 +86,8 @@ public class DebitNoteHeaderDto {
     private String active;
 
     private String deleted;
+
+    private String voyageRef;
     
     // Conditional detail lists based on refType
     @Valid

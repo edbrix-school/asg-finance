@@ -1,6 +1,8 @@
 package com.asg.finance.controller;
 
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.TaxMasterRequestDTO;
 import com.asg.finance.dto.TaxMasterResponseDTO;
@@ -63,6 +65,7 @@ public class TaxMasterController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     public ResponseEntity<?> createTaxMaster(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
@@ -122,6 +125,7 @@ public class TaxMasterController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{taxPoid}")
     public ResponseEntity<?> updateTaxMaster(
             @Parameter(description = "Tax Master taxPoid to be updated", required = true)
@@ -177,6 +181,7 @@ public class TaxMasterController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{taxPoid}")
     public ResponseEntity<?> getTaxMasterByTaxMasterPoid(
             @Parameter(description = "taxPoid reference identifier", required = true)
@@ -231,6 +236,7 @@ public class TaxMasterController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{taxPoid}")
     public ResponseEntity<?> softDeleteTaxMaster(
             @Parameter(description = "taxPoid reference identifier", required = true)
@@ -311,6 +317,7 @@ public class TaxMasterController {
                     }
             )
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     public ResponseEntity<?> listTaxMaster(@ParameterObject Pageable pageable,
                                            @RequestBody(required = false) FilterRequestDto filters) {

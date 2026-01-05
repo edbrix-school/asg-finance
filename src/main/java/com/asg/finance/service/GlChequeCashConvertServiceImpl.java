@@ -117,10 +117,10 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
             inDtlDto.setCardPoid(inDtl.getCardPoid());
             inDtlDto.setCardType(inDtl.getCardType());
             inDtlDto.setCreditCardRef(inDtl.getCreditCardRef());
-            inDtlDto.setBankDet(lovService.getDetailsByPoidAndLovName(inDtl.getBankPoid(), "BANK"));
+            inDtlDto.setBankDet(lovService.getDetailsByPoidAndLovName(inDtl.getBankPoid(), "CUSTOMER_BANK_MASTER"));
             inDtlDto.setChequeCompanyDet(lovService.getDetailsByPoidAndLovName(inDtl.getChequeCompanyPoid(), "COMPANY"));
             inDtlDto.setPaymentMainDet(lovService.getDetailsByPoidAndLovName(inDtl.getPaymentMainPoid(), "PAYMENT_MAIN"));
-            inDtlDto.setTtBankDet(lovService.getDetailsByPoidAndLovName(inDtl.getTtBankPoid(), "BANK"));
+            inDtlDto.setTtBankDet(lovService.getDetailsByPoidAndLovName(inDtl.getTtBankPoid(), "CUSTOMER_BANK_MASTER"));
             inDtlDto.setCardDet(lovService.getDetailsByPoidAndLovName(inDtl.getCardPoid(), "CARD"));
 
             return inDtlDto;
@@ -148,7 +148,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
             outDtlDto.setSelected(outDtl.getSelected());
             outDtlDto.setVoucherType(outDtl.getVoucherType());
             outDtlDto.setLineType(outDtl.getLineType());
-            outDtlDto.setBankDet(lovService.getDetailsByPoidAndLovName(outDtl.getBankPoid(), "BANK"));
+            outDtlDto.setBankDet(lovService.getDetailsByPoidAndLovName(outDtl.getBankPoid(), "CUSTOMER_BANK_MASTER"));
             outDtlDto.setPaymentMainDet(lovService.getDetailsByPoidAndLovName(outDtl.getPaymentMainPoid(), "PAYMENT_MAIN"));
             return outDtlDto;
         }).collect(Collectors.toList());
@@ -397,7 +397,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
 
         List<GlChequeConversionLoadResponseDto> glChequeConversionLoadResponseDtos = glChequeCashConvertRepository.loadGlChequeConversion(chequeNumber, chequeAccNumber, type);
         glChequeConversionLoadResponseDtos.forEach(c->{
-            c.setBankDet(lovService.getDetailsByPoidAndLovName(c.getBankPoid(), "BANK"));
+            c.setBankDet(lovService.getDetailsByPoidAndLovName(c.getBankPoid(), "CUSTOMER_BANK_MASTER"));
         });
         return glChequeConversionLoadResponseDtos;
     }

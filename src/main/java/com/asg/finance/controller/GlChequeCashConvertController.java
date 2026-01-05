@@ -1,5 +1,8 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
+
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.GlChequeCashConvertHdrDto;
 import com.asg.finance.dto.GlChequeConversionLoadResponseDto;
@@ -44,6 +47,7 @@ public class GlChequeCashConvertController {
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
 
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{transactionPoid}")
     public ResponseEntity<?> getGlChequeCashConvert(
             @Parameter(
@@ -87,6 +91,7 @@ public class GlChequeCashConvertController {
                     content = @Content(mediaType = "application/json")
             )
     })
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> deleteGlChequeCashConvert(
             @Parameter(description = "ID of the  to be deleted", required = true, example = "301")
@@ -117,6 +122,7 @@ public class GlChequeCashConvertController {
                     content = @Content(mediaType = "application/json")
             )
     })
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     public ResponseEntity<?> listOfRecordsWithGenericSearch(
             @ParameterObject
@@ -164,6 +170,7 @@ public class GlChequeCashConvertController {
     }
 
 
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     @Operation(
             summary = "Create GL Cheque Cash Conversion",
@@ -264,6 +271,7 @@ public class GlChequeCashConvertController {
         return success("GL Cheque Cash Convert created successfully", result);
     }
 
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{transactionPoid}")
     @Operation(
             summary = "Update GL Cheque Cash Conversion",
@@ -383,6 +391,7 @@ public class GlChequeCashConvertController {
     }
 
 
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/load")
     @Operation(
             summary = "Load Source Records for GL Cheque and Cash Conversion"

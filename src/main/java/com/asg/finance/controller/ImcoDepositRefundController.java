@@ -1,5 +1,8 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
+
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.response.GlPostingViewResponseDto;
 import com.asg.common.lib.security.util.UserContext;
@@ -60,6 +63,7 @@ public class ImcoDepositRefundController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     public ResponseEntity<?> createImcoDepositRefund(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
@@ -113,6 +117,7 @@ public class ImcoDepositRefundController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{transactionPoid}")
     public ResponseEntity<?> getImcoDepositRefundById(
             @Parameter(description = "transactionPoid reference identifier", required = true)
@@ -148,6 +153,7 @@ public class ImcoDepositRefundController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> softDeleteImcoDepositRefund(
             @Parameter(description = "transactionPoid reference identifier", required = true)
@@ -230,6 +236,7 @@ public class ImcoDepositRefundController {
     )
 
 
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     public ResponseEntity<?> listImcoDepositRefund(@ParameterObject Pageable pageable,
                                                    @RequestBody(required = false) FilterRequestDto filters,
@@ -276,6 +283,7 @@ public class ImcoDepositRefundController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/cheque-details")
     public ResponseEntity<?> getChequeDetails(
             @Parameter(description = "Receipt POID used to filter cheque details", required = true, example = "2001")
@@ -318,6 +326,7 @@ public class ImcoDepositRefundController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/gl-posting")
     public ResponseEntity<?> getGlPostingDetails(
             @Parameter(description = "Transaction POID linked to the document", required = true, example = "1001")

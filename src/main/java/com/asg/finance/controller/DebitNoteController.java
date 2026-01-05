@@ -1,5 +1,7 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.finance.dto.DebitNoteHeaderDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.finance.service.DebitNoteService;
@@ -53,6 +55,7 @@ public class DebitNoteController {
             description = "Debit note created successfully",
             content = @Content(schema = @Schema(implementation = DebitNoteHeaderDto.class))
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     public ResponseEntity<?> createDebitNote(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
@@ -127,6 +130,7 @@ public class DebitNoteController {
             summary = "Update Debit Note",
             description = "Updates debit note only when it is still in draft (not approved)."
     )
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{transactionPoid}")
     public ResponseEntity<?> updateDebitNote(
             @PathVariable Long transactionPoid,
@@ -203,6 +207,7 @@ public class DebitNoteController {
             summary = "Delete Debit Note",
             description = "Soft deletes the debit note using internal DB procedure."
     )
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> deleteDebitNote(@PathVariable Long transactionPoid,
                                              @Parameter(description = "Document identifier", required = true, example = "300-110")
@@ -220,6 +225,7 @@ public class DebitNoteController {
             summary = "Get Debit Note Details",
             description = "Fetch debit note header + GL / Charge tabs based on Ref Type."
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{transactionPoid}")
     public ResponseEntity<?> getDebitNote(@PathVariable Long transactionPoid) {
         return success("Debit Note details fetched successfully",
@@ -260,6 +266,7 @@ public class DebitNoteController {
                     )
             )
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     public ResponseEntity<?> listDebitNotes(
             @ParameterObject Pageable pageable,
@@ -279,12 +286,14 @@ public class DebitNoteController {
     }
 
     @Operation(summary = "Load FDA Charges", description = "Fetch FDA charge details for a given FDA POID.")
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/fda/{fdaPoid}/charges")
     public ResponseEntity<?> loadFdaCharges(@PathVariable Long fdaPoid) {
         return success("FDA charges loaded successfully", debitNoteService.loadFdaCharges(fdaPoid));
     }
 
     @Operation(summary = "Get Tax Percentage for Charge", description = "Returns tax percentage for the given charge ID.")
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/tax/{chargeId}")
     public ResponseEntity<?> getChargeTax(@PathVariable Long chargeId,
                                           @Parameter(description = "Party Type", required = true, example = "100")
@@ -295,6 +304,7 @@ public class DebitNoteController {
     }
 
     @Operation(summary = "Update Cost Amount", description = "Recalculates cost amounts for FDA/Other Charges.")
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PostMapping("/{transactionPoid}/update-cost-amount")
     public ResponseEntity<?> updateCostAmount(
             @PathVariable Long transactionPoid
@@ -304,6 +314,7 @@ public class DebitNoteController {
     }
 
     @Operation(summary = "Validate Sail Date", description = "Validates sail date for the given FDA reference.")
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/fda/{fdaPoid}/sail-date-check")
     public ResponseEntity<?> checkSailDate(@PathVariable Long fdaPoid) {
         return success("Sail date validation completed",
@@ -311,6 +322,7 @@ public class DebitNoteController {
     }
 
     @Operation(summary = "Get Party Defaults", description = "Returns default bank + credit period for Supplier/Customer.")
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/party-defaults/{partyPoid}")
     public ResponseEntity<?> getPartyDefaults(
             @PathVariable Long partyPoid,

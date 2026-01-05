@@ -1,5 +1,8 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
+
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.GlFavAcMasterRequest;
@@ -91,6 +94,7 @@ public class GlFavAcMasterController {
                     }
             )
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     public ResponseEntity<?> createFavoriteAccount(
             @Valid @RequestBody GlFavAcMasterRequest request
@@ -132,6 +136,7 @@ public class GlFavAcMasterController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{favAcPoid}")
     public ResponseEntity<?> updateFavoriteAccount(
             @Parameter(description = "Unique identifier of the favorite account group", required = true, example = "1")
@@ -215,6 +220,7 @@ public class GlFavAcMasterController {
             required = true,
             example = "1"
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{favAcPoid}")
     public ResponseEntity<?> getGlFavAc(@PathVariable Long favAcPoid) {
         GlFavAcMasterResponse result = service.getFavoriteAccountById(favAcPoid);
@@ -265,6 +271,7 @@ public class GlFavAcMasterController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{favAcPoid}")
     public ResponseEntity<?> deleteFavoriteAccount(
             @Parameter(
@@ -344,6 +351,7 @@ public class GlFavAcMasterController {
                     }
             )
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     public ResponseEntity<?> listOfRecordsWithGenericSearch(
             @ParameterObject Pageable pageable,

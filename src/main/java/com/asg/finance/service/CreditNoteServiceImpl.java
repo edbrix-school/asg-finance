@@ -1293,6 +1293,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                 .remarksPrintable(dto.getPrintableRemarks() != null && dto.getPrintableRemarks() ? "Y" : "N")
                 .multiCompany(dto.getMultiCompany() ? "Y" : "N")
                 .fdaDirect(dto.getFdaDirect() != null && dto.getFdaDirect() ? "Y" : "N")
+                .otherCurrAmount(dto.getAmount())
                 .deleted("N")
                 .build();
     }
@@ -1321,6 +1322,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         entity.setRemarksPrintable(null != dto.getPrintableRemarks() && dto.getPrintableRemarks() ? "Y" : "N");
         entity.setMultiCompany(null != dto.getMultiCompany() && dto.getMultiCompany() ? "Y" : "N");
         entity.setFdaDirect(null != dto.getFdaDirect() && dto.getFdaDirect() ? "Y" : "N");
+        entity.setOtherCurrAmount(dto.getAmount());
 
     }
 
@@ -1362,6 +1364,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         dto.setCreatedDate(entity.getCreatedDate());
         dto.setLastModifiedBy(entity.getLastModifiedBy());
         dto.setLastModifiedDate(entity.getLastModifiedDate());
+        dto.setAmount(entity.getOtherCurrAmount());
         return dto;
     }
 

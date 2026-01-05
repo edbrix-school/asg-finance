@@ -336,6 +336,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         entity.setCreatedDate(LocalDateTime.now());
         entity.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
         entity.setLastModifiedDate(LocalDateTime.now());
+        entity.setVoyageRef(dto.getVoyageRef());
 
         return entity;
     }
@@ -370,6 +371,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         dto.setShowBankDetailsInPrint("Y".equals(entity.getShowBankDetailsInPrint()));
         dto.setDeleted(entity.getDeleted());
         dto.setDocRef(entity.getDocRef());
+        dto.setVoyageRef(entity.getVoyageRef());
         return dto;
     }
 

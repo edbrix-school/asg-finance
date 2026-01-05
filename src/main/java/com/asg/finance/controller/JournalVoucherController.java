@@ -1,6 +1,8 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.FilterRequestDto;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.*;
@@ -153,6 +155,7 @@ public class JournalVoucherController {
                     }
             )
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     public ResponseEntity<?> createJournalVoucher(
             @Valid @RequestBody JournalVoucherRequest request
@@ -197,6 +200,7 @@ public class JournalVoucherController {
                     )
             )
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     public ResponseEntity<?> listJournalVouchers(
             @ParameterObject Pageable pageable,
@@ -261,6 +265,7 @@ public class JournalVoucherController {
                     )
             )
     )
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{transactionPoid}")
     public ResponseEntity<?> updateJournalVoucher(
             @Parameter(description = "Transaction POID", required = true)
@@ -289,6 +294,7 @@ public class JournalVoucherController {
             @ApiResponse(responseCode = "401", description = "Unauthorized"),
             @ApiResponse(responseCode = "500", description = "Database error")
     })
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping("/create-fixed-asset")
     public ResponseEntity<?> createFixedAsset(
             @Valid @RequestBody CreateFixedAssetRequest request
@@ -312,6 +318,7 @@ public class JournalVoucherController {
             @ApiResponse(responseCode = "401", description = "Unauthorized"),
             @ApiResponse(responseCode = "500", description = "Database error")
     })
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{transactionPoid}")
     public ResponseEntity<?> getJournalVoucherById(
             @Parameter(description = "Transaction POID", required = true)
@@ -336,6 +343,7 @@ public class JournalVoucherController {
             @ApiResponse(responseCode = "401", description = "Unauthorized"),
             @ApiResponse(responseCode = "500", description = "Database error")
     })
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> deleteJournalVoucher(
             @Parameter(description = "Transaction POID", required = true)
@@ -365,6 +373,7 @@ public class JournalVoucherController {
             @ApiResponse(responseCode = "409", description = "Already posted"),
             @ApiResponse(responseCode = "500", description = "Posting failed")
     })
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PostMapping("/{transactionPoid}/post")
     public ResponseEntity<?> postJournalVoucher(
             @Parameter(description = "Transaction POID", required = true)
@@ -394,6 +403,7 @@ public class JournalVoucherController {
             @ApiResponse(responseCode = "404", description = "Transaction not found"),
             @ApiResponse(responseCode = "500", description = "Database error")
     })
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{transactionPoid}/totals")
     public ResponseEntity<?> getGlDetailTotals(
             @Parameter(description = "Transaction POID", required = true)
@@ -421,6 +431,7 @@ public class JournalVoucherController {
             @ApiResponse(responseCode = "404", description = "Asset not found"),
             @ApiResponse(responseCode = "500", description = "Database error")
     })
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/asset-depreciation-details")
     public ResponseEntity<?> getAssetDepreciationDetails(
             @Valid @RequestBody AssetDepreciationRequest request
@@ -445,6 +456,7 @@ public class JournalVoucherController {
             @ApiResponse(responseCode = "404", description = "Asset not found"),
             @ApiResponse(responseCode = "500", description = "Database error")
     })
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/asset-capitalization-details")
     public ResponseEntity<?> getAssetCapitalizationDetails(
             @Valid @RequestBody AssetDepreciationRequest request
@@ -471,6 +483,7 @@ public class JournalVoucherController {
             @ApiResponse(responseCode = "404", description = "Asset detail not found"),
             @ApiResponse(responseCode = "500", description = "Database error")
     })
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{transactionPoid}/asset-details/{sn}")
     public ResponseEntity<?> updateAssetDetail(
             @Parameter(description = "Transaction POID", required = true)
@@ -502,6 +515,7 @@ public class JournalVoucherController {
             @ApiResponse(responseCode = "404", description = "Currency rate not found"),
             @ApiResponse(responseCode = "500", description = "Database error")
     })
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/calculate-currency")
     public ResponseEntity<?> calculateCurrencyConversion(
             @Valid @RequestBody CurrencyConversionRequest request

@@ -1,5 +1,7 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.dto.AddressDetailsDTO;
 import com.asg.common.lib.dto.AddressTypeMapDTO;
 import com.asg.common.lib.dto.FilterRequestDto;
@@ -112,6 +114,7 @@ public class SupplierMasterController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{supplierPoid}")
     public ResponseEntity<?> getSupplierMaster(@PathVariable Long supplierPoid) {
         SupplierMasterDto result = supplierMasterService.getSupplierMaster(supplierPoid);
@@ -143,6 +146,7 @@ public class SupplierMasterController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{supplierPoid}")
     public ResponseEntity<?> deleteSupplierMaster(
             @Parameter(description = "ID of the supplier to be deleted", required = true, example = "149")
@@ -205,6 +209,7 @@ public class SupplierMasterController {
                     )
             )
     })
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{supplierPoid}")
     public ResponseEntity<?> updateSupplierMaster(
             @PathVariable Long supplierPoid,
@@ -651,6 +656,7 @@ public class SupplierMasterController {
                     )
             )
     })
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     public ResponseEntity<?> createSupplier(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
@@ -1068,6 +1074,7 @@ public class SupplierMasterController {
                                     schema = @Schema(example = "{\"status\": \"ERROR\", \"message\": \"PROC_GL_MASTER_CREATE failed: Check Global fix variables}")))
             }
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping("/{supplierPoid}/create-ledger")
     public ResponseEntity<?> createLedger(
             @Parameter(description = "Supplier ID", required = true, example = "149")
@@ -1096,6 +1103,7 @@ public class SupplierMasterController {
                     content = @Content(mediaType = "application/json")
             )
     })
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     public ResponseEntity<?> listOfRecordsWithGenericSearch(
             @ParameterObject
@@ -1148,6 +1156,7 @@ public class SupplierMasterController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping("/import")
     public ResponseEntity<?> importSuppliers(@RequestParam("file") MultipartFile file,
                                              @Parameter(description = "Supplier POID of the existing supplier to update", required = true)
@@ -1160,6 +1169,7 @@ public class SupplierMasterController {
             summary = "Process imported supplier data",
             description = "Triggers stored procedure to validate and update/create suppliers from imported data"
     )
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PostMapping("/import/process")
     public ResponseEntity<?> processImportedSuppliers(@Valid @RequestBody SupplierImportRequestDto request) {
         SupplierImportResponseDto result = supplierMasterService.processImportedSuppliers(request);

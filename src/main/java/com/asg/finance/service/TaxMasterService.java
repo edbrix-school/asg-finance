@@ -12,7 +12,6 @@ public interface TaxMasterService {
     TaxMasterResponseDTO createTaxMaster(TaxMasterRequestDTO request);
     TaxMasterResponseDTO updateTaxMaster(Long taxPoid, TaxMasterRequestDTO request);
     TaxMasterResponseDTO getTaxMasterById(Long taxPoid);
-    List<TaxMasterResponseDTO> getTaxMastersByIds(List<Long> taxPoids);
     void softDeleteTaxMaster(Long taxPoid);
     Map<String, Object> listTaxMaster(String documentId, FilterRequestDto filters, Pageable pageable);
 }

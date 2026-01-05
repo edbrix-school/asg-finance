@@ -4,6 +4,7 @@ package com.asg.finance.service;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
+import com.asg.common.lib.dto.TaxMasterDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.finance.entity.GLMaster;
 import com.asg.finance.entity.TaxMaster;
@@ -143,22 +144,15 @@ public class TaxMasterServiceImpl implements TaxMasterService {
         return getTaxMasterResponseDTO(taxMaster);
     }
 
-    @Override
-    public List<TaxMasterResponseDTO> getTaxMastersByIds(List<Long> taxPoids) {
-        List<TaxMaster> taxMasters = repository.findByTaxPoidIn(taxPoids.stream()
-                .collect(java.util.stream.Collectors.toSet()));
-        return taxMasters.stream()
-                .map(this::getTaxMasterResponseDTO)
-                .collect(java.util.stream.Collectors.toList());
-    }
 
-    public com.asg.common.lib.dto.TaxMasterDto getTaxMasterDtoById(Long taxPoid) {
+
+    public TaxMasterDto getTaxMasterDtoById(Long taxPoid) {
         TaxMaster taxMaster = repository.findByTaxPoid(taxPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("TaxMaster", "taxPoid", taxPoid));
         return mapToDto(taxMaster);
     }
 
-    public List<com.asg.common.lib.dto.TaxMasterDto> getTaxMasterDtosByIds(List<Long> taxPoids) {
+    public List<TaxMasterDto> getTaxMasterDtosByIds(List<Long> taxPoids) {
         List<TaxMaster> taxMasters = repository.findByTaxPoidIn(taxPoids.stream()
                 .collect(java.util.stream.Collectors.toSet()));
         return taxMasters.stream()

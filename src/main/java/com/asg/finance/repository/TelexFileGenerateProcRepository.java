@@ -8,8 +8,6 @@ import java.util.Map;
 public interface TelexFileGenerateProcRepository {
     List<TelexFileDtlDto> loadTelexTransferData(String bankList);
     String regenerateTelexFile(Long groupPoid, Long companyPoid, Long userPoid, Long docKeyPoid);
-    String validateBeneficiaryDetails(Long debitTransactionPoid);
-
     String createBankFileBatchNbb(Long transactionPoid, Long userPoid, Long companyPoid);
     String checkOverdraft(Long transactionPoid);
     String linkBankApproval(Long param1, Long companyPoid, Long userPoid, String docId, String param5, String docKey);

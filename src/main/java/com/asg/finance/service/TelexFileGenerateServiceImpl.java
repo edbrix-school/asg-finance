@@ -194,31 +194,12 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
     @Override
     @Transactional
     public String regenerateTelexFile(Long debitVoucherPoid) {
-        GlBankDebitHdr debitHdr = glBankDebitHdrRepository.findByTransactionPoid(debitVoucherPoid)
+        glBankDebitHdrRepository.findByTransactionPoid(debitVoucherPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Telex File", "transactionPoid", debitVoucherPoid));
 
         Long userId = UserContext.getUserPoid() != null ? UserContext.getUserPoid() : 1L;
         return procRepository.regenerateTelexFile(UserContext.getGroupPoid(), UserContext.getCompanyPoid(),
                 userId, debitVoucherPoid);
-    }
-
-    @Override
-    @Transactional
-    public String validateAndMarkDeleted(Long transactionPoid, List<Long> detRowIds) {
-        List<GlBankFileDtl> details = dtlRepository.findByTransactionPoid(transactionPoid);
-
-        for (GlBankFileDtl detail : details) {
-            if (detRowIds.contains(detail.getDetRowId())) {
-                String validationResult = procRepository.validateBeneficiaryDetails(detail.getDebitTransactionPoid());
-                if (validationResult != null && !validationResult.isEmpty()) {
-                    return validationResult;
-                }
-                detail.setDeleted("Y");
-            }
-        }
-
-        dtlRepository.saveAll(details);
-        return null;
     }
 
     private GlBankFileDtl convertToDetailEntity(TelexFileDtlDto dto, Long transactionPoid) {

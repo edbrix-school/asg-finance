@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.math.BigDecimal;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -303,12 +304,12 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
     @Override
     @Transactional
-    public ApPurchaseInvoiceHdrDto createApPurchaseInvoice(ApPurchaseInvoiceHdrDto apPurchaseInvoiceHdrDto,String documentId) {
+    public ApPurchaseInvoiceHdrDto createApPurchaseInvoice(ApPurchaseInvoiceHdrDto apPurchaseInvoiceHdrDto, String documentId) {
 
         ApPurchaseInvoiceHdrEntity apPurchaseInvoiceHdrEntity = new ApPurchaseInvoiceHdrEntity();
         apPurchaseInvoiceHdrEntity.setTransactionDate(apPurchaseInvoiceHdrDto.getTransactionDate() != null ? apPurchaseInvoiceHdrDto.getTransactionDate() : LocalDate.now());
         apPurchaseInvoiceHdrEntity.setGroupPoid(apPurchaseInvoiceHdrDto.getGroupPoid());
-       // apPurchaseInvoiceHdrEntity.setDocRef(apPurchaseInvoiceHdrDto.getDocRef());
+        // apPurchaseInvoiceHdrEntity.setDocRef(apPurchaseInvoiceHdrDto.getDocRef());
         apPurchaseInvoiceHdrEntity.setPoRef(apPurchaseInvoiceHdrDto.getPoRef());
         apPurchaseInvoiceHdrEntity.setFdaRef(apPurchaseInvoiceHdrDto.getFdaRef());
         apPurchaseInvoiceHdrEntity.setFfRef(apPurchaseInvoiceHdrDto.getFfRef());
@@ -385,7 +386,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                 String.valueOf(refPoid)
         );
 
-       String jobValidation = validateBeforeSave(
+        String jobValidation = validateBeforeSave(
                 documentId,
                 refType,
                 String.valueOf(transactionPoid)
@@ -443,7 +444,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                 actionTypeStr = "isCreated";
             }
             String actionType = actionTypeStr.toUpperCase();
-            
+
             if (!"ISCREATED".equals(actionType)) {
                 continue;
             }
@@ -509,7 +510,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                 actionTypeStr = "isCreated";
             }
             String actionType = actionTypeStr.toUpperCase();
-            
+
             if (!"ISCREATED".equals(actionType)) {
                 continue;
             }
@@ -555,7 +556,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                         billActionTypeStr = "isCreated";
                     }
                     String billActionType = billActionTypeStr.toUpperCase();
-                    
+
                     if (!"ISCREATED".equals(billActionType)) {
                         continue;
                     }
@@ -586,7 +587,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                         costActionTypeStr = "isCreated";
                     }
                     String costActionType = costActionTypeStr.toUpperCase();
-                    
+
                     if (!"ISCREATED".equals(costActionType)) {
                         continue;
                     }
@@ -637,7 +638,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                 actionTypeStr = "isCreated";
             }
             String actionType = actionTypeStr.toUpperCase();
-            
+
             if (!"ISCREATED".equals(actionType)) {
                 continue;
             }
@@ -700,7 +701,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                 actionTypeStr = "isCreated";
             }
             String actionType = actionTypeStr.toUpperCase();
-            
+
             if (!"ISCREATED".equals(actionType)) {
                 continue;
             }
@@ -751,7 +752,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                 actionTypeStr = "isCreated";
             }
             String actionType = actionTypeStr.toUpperCase();
-            
+
             if (!"ISCREATED".equals(actionType)) {
                 continue;
             }
@@ -791,12 +792,13 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
     @Override
     @Transactional
-    public ApPurchaseInvoiceHdrDto updateApPurchaseInvoice(Long transactionPoid, ApPurchaseInvoiceHdrDto apPurchaseInvoiceHdrDto ) {
+    public ApPurchaseInvoiceHdrDto updateApPurchaseInvoice(Long transactionPoid, ApPurchaseInvoiceHdrDto apPurchaseInvoiceHdrDto) {
         ApPurchaseInvoiceHdrEntity apPurchaseInvoiceHdrEntity = repository.findById(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("ApPurchaseJournal", "transactionPoid", transactionPoid));
 
 
-        if (apPurchaseInvoiceHdrDto.getTransactionDate() != null) apPurchaseInvoiceHdrEntity.setTransactionDate(apPurchaseInvoiceHdrDto.getTransactionDate());
+        if (apPurchaseInvoiceHdrDto.getTransactionDate() != null)
+            apPurchaseInvoiceHdrEntity.setTransactionDate(apPurchaseInvoiceHdrDto.getTransactionDate());
         apPurchaseInvoiceHdrEntity.setGroupPoid(apPurchaseInvoiceHdrDto.getGroupPoid());
         apPurchaseInvoiceHdrEntity.setDocRef(apPurchaseInvoiceHdrDto.getDocRef());
         apPurchaseInvoiceHdrEntity.setPoRef(apPurchaseInvoiceHdrDto.getPoRef());
@@ -909,7 +911,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                                     billActionTypeStr = "isCreated";
                                 }
                                 String billActionType = billActionTypeStr.toUpperCase();
-                                
+
                                 if ("NOCHANGES".equals(billActionType)) {
                                     continue;
                                 }
@@ -940,7 +942,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                                     costActionTypeStr = "isCreated";
                                 }
                                 String costActionType = costActionTypeStr.toUpperCase();
-                                
+
                                 if ("NOCHANGES".equals(costActionType)) {
                                     continue;
                                 }
@@ -1186,7 +1188,6 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                 .orElseThrow(() -> new ResourceNotFoundException("ApPurchaseJournal", "transactionPoid", transactionPoid));
 
 
-
         existing.setDeleted("Y");
         existing.setLastModifiedBy(modifiedBy);
         existing.setLastModifiedDate(LocalDateTime.now());
@@ -1259,7 +1260,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
     }
 
 
-   public List<ApPurchaseJournalResponseDto> createFromFda(String fdaPoid, StringBuilder result) {
+    public List<ApPurchaseJournalResponseDto> createFromFda(String fdaPoid, StringBuilder result) {
         return apPurchaseJournalRepositoryImpl.createFromFda(
                 UserContext.getGroupPoid(),
                 UserContext.getCompanyPoid(),
@@ -1272,17 +1273,6 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
     // BILLWISE BREAKUP METHODS
     // -----------------------------------------
 
-    private void saveBillwiseForGl(Long transactionPoid, List<ApPurchaseInvoiceGlDtlDto> glDetails, String docId) {
-        if (glDetails == null || glDetails.isEmpty()) {
-            return;
-        }
-
-        List<BillwiseBreakupRequestDto> billwiseList = buildBillwiseBreakupList(transactionPoid, glDetails, docId);
-
-        if (!billwiseList.isEmpty()) {
-            billwiseBreakupService.insertBillwiseBreakup(billwiseList);
-        }
-    }
 
     private void updateBillwiseForGl(Long transactionPoid, List<ApPurchaseInvoiceGlDtlDto> glDetails, String docId) {
         if (glDetails == null || glDetails.isEmpty()) {
@@ -1346,7 +1336,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                             dto.setCrAmt(amount);
                         }
                     }
-                    
+
                     dto.setBillRemarks(popup.getBillRemarks());
 
                     billwiseList.add(dto);
@@ -1355,22 +1345,6 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         }
 
         return billwiseList;
-    }
-
-    // -----------------------------------------
-    // COST CENTER BREAKUP METHODS
-    // -----------------------------------------
-
-    private void saveCostCenterForGl(Long transactionPoid, List<ApPurchaseInvoiceGlDtlDto> glDetails, String docId) {
-        if (glDetails == null || glDetails.isEmpty()) {
-            return;
-        }
-
-        List<CostCenterBreakupRequestDto> costCenterList = buildCostCenterBreakupList(transactionPoid, glDetails, docId);
-
-        if (!costCenterList.isEmpty()) {
-            costCenterBreakupService.saveCostCenterBreakups(costCenterList);
-        }
     }
 
     private void updateCostCenterForGl(Long transactionPoid, List<ApPurchaseInvoiceGlDtlDto> glDetails, String docId) {
@@ -1458,7 +1432,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                             popupDto.setBillRefType(item.getBillRefType());
                             popupDto.setBillRef(item.getBillRef());
                             popupDto.setBillDueDate(item.getBillDueDate());
-                            
+
                             // Determine type and amount from drAmt/crAmt
                             if (item.getDrAmt() != null && item.getDrAmt().compareTo(BigDecimal.ZERO) > 0) {
                                 popupDto.setType("DR");
@@ -1467,7 +1441,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                                 popupDto.setType("CR");
                                 popupDto.setAmount(item.getCrAmt());
                             }
-                            
+
                             popupDto.setBillRemarks(item.getBillRemarks());
                             return popupDto;
                         })
@@ -1743,35 +1717,6 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         return response;
     }
 
-    private String getReferenceValue(ApPurchaseInvoiceHdrDto dto) {
-
-        if (dto.getRefType() == null) return null;
-
-        String refType = dto.getRefType().trim().toUpperCase();
-
-        switch (refType) {
-
-            case "FDA JOBS":
-                return dto.getFdaRef();   // ADF ⇒ FdaRefAttr.getInputValue()
-
-            case "FF JOBS":
-                return dto.getFfRef();    // ADF ⇒ FfRefAttr.getInputValue()
-
-            case "MTA PO":
-                return dto.getSalesQtnPoid();  // ADF ⇒ MtaRefAttr.getInputValue()
-
-            case "GENERAL PO":
-                return dto.getPoRef();    // ADF ⇒ PoRefAttr.getInputValue()
-
-            case "GENERAL":
-            case "CUSTOM":
-                return buildGlRefListForValidation(dto.getGlDtls());
-
-            default:
-                return null;
-        }
-    }
-
     private String buildGlRefListForValidation(List<ApPurchaseInvoiceGlDtlDto> glList) {
 
         if (glList == null || glList.isEmpty()) return null;
@@ -1781,120 +1726,6 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         for (ApPurchaseInvoiceGlDtlDto gl : glList) {
             if (gl.getGlPoid() != null) {
                 sb.append(gl.getGlPoid()).append(";");
-            }
-        }
-
-        return sb.toString();
-    }
-
-    private Double extractTaxAmount(ApPurchaseInvoiceHdrDto dto) {
-
-        if (dto.getRefType() == null) return 0D;
-        String refType = dto.getRefType().trim().toUpperCase();
-
-        double total = 0D;
-
-        switch (refType) {
-
-            // ------------------ MTA PO → Item Details से Tax Amount ------------------
-            case "MTA PO":
-                if (dto.getItemDtls() != null) {
-                    for (ApPurchaseInvoiceItemDtlDto item : dto.getItemDtls()) {
-                        if (item.getTaxAmount() != null) {
-                            total += item.getTaxAmount();
-                        }
-                    }
-                }
-                break;
-
-            // ------------------ FDA JOBS → Charge Details ------------------
-            case "FDA JOBS":
-                if (dto.getChargeDtls() != null) {
-                    for (PurchaseInvoiceChargeDtlRequestDto ch : dto.getChargeDtls()) {
-                        if (ch.getTaxAmount() != null) {
-                            total += ch.getTaxAmount();
-                        }
-                    }
-                }
-                break;
-
-            // ------------------ FF JOBS → Charge Details ------------------
-            case "FF JOBS":
-                if (dto.getChargeDtls() != null) {
-                    for (PurchaseInvoiceChargeDtlRequestDto ch : dto.getChargeDtls()) {
-                        if (ch.getTaxAmount() != null) {
-                            total += ch.getTaxAmount();
-                        }
-                    }
-                }
-                break;
-
-            // ------------------ GENERAL / CUSTOM / GENERAL PO ------------------
-            case "GENERAL":
-            case "CUSTOM":
-            case "GENERAL PO":
-                if (dto.getGlDtls() != null) {
-                    for (ApPurchaseInvoiceGlDtlDto gl : dto.getGlDtls()) {
-                        if (gl.getTaxAmount() != null) {
-                            total += gl.getTaxAmount();
-                        }
-                    }
-                }
-                break;
-
-            default:
-                return 0D;
-        }
-
-        return total;
-    }
-
-    private String buildGlListWithoutTax(List<ApPurchaseInvoiceGlDtlDto> glList) {
-        if (glList == null || glList.isEmpty()) return "";
-
-        StringBuilder sb = new StringBuilder();
-
-        for (ApPurchaseInvoiceGlDtlDto gl : glList) {
-
-            boolean isDebitOrCredit =
-                    gl.getType() != null &&
-                            (gl.getType().equalsIgnoreCase("DR") || gl.getType().equalsIgnoreCase("CR"));
-
-            if (isDebitOrCredit && gl.getTaxPoid() == null) {
-                sb.append(";").append(gl.getGlPoid());
-            }
-        }
-
-        return sb.toString();
-    }
-
-    private String buildGlListAll(List<ApPurchaseInvoiceGlDtlDto> glList) {
-        if (glList == null || glList.isEmpty()) return "";
-
-        StringBuilder sb = new StringBuilder();
-
-        for (ApPurchaseInvoiceGlDtlDto gl : glList) {
-
-            boolean isDebitOrCredit =
-                    gl.getType() != null &&
-                            (gl.getType().equalsIgnoreCase("DR") || gl.getType().equalsIgnoreCase("CR"));
-
-            if (isDebitOrCredit) {
-                sb.append(";").append(gl.getGlPoid());
-            }
-        }
-
-        return sb.toString();
-    }
-
-    private String buildTaxList(List<ApPurchaseInvoiceGlDtlDto> glList) {
-        if (glList == null || glList.isEmpty()) return "";
-
-        StringBuilder sb = new StringBuilder();
-
-        for (ApPurchaseInvoiceGlDtlDto gl : glList) {
-            if (gl.getTaxPoid() != null) {
-                sb.append(";").append(gl.getTaxPoid());
             }
         }
 

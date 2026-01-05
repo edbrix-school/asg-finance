@@ -2,10 +2,13 @@ package com.asg.finance.service;
 
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
+import com.asg.common.lib.dto.LovGetListDto;
 import com.asg.common.lib.dto.RawSearchResult;
-import com.asg.common.lib.dto.response.GlPostingViewResponseDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.common.lib.service.LovDataService;
+import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.dto.BankDepositVoucherDtlDto;
 import com.asg.finance.dto.BankDepositVoucherRequestDto;
 import com.asg.finance.dto.BankDepositVoucherResponseDto;
@@ -13,8 +16,6 @@ import com.asg.finance.entity.GlBankDepositVoucherDtl;
 import com.asg.finance.entity.GlBankDepositVoucherHdr;
 import com.asg.finance.repository.GlBankDepositVoucherDtlRepository;
 import com.asg.finance.repository.GlBankDepositVoucherHdrRepository;
-import com.asg.common.lib.security.util.UserContext;
-import com.asg.common.lib.utility.PaginationUtil;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
@@ -39,7 +40,8 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
     private final GlBankDepositVoucherHdrRepository hdrRepository;
     private final GlBankDepositVoucherDtlRepository dtlRepository;
     private final DocumentSearchService documentService;
-    
+    private final LovDataService lovService;
+
     @PersistenceContext
     private EntityManager entityManager;
 
@@ -53,7 +55,7 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
     @Transactional(Transactional.TxType.REQUIRES_NEW)
     public Long createHeaderAndDetails(BankDepositVoucherRequestDto request) {
         hdrRepository.callBeforeSaveValidation(request.getCompanyPoid(), request.getBankPoid());
-        
+
         GlBankDepositVoucherHdr hdr = GlBankDepositVoucherHdr.builder()
                 .transactionDate(LocalDate.now())
                 .groupPoid(request.getGroupPoid())
@@ -194,11 +196,6 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
     }
 
     @Override
-    public GlPostingViewResponseDto getGlPostingDetails(Long groupPoid, Long companyPoid, String docId, Long transactionPoid) {
-        return null;
-    }
-
-    @Override
     public List<BankDepositVoucherDtlDto> loadPendingPayments(Long bankPoid, String type, String bankFilter) {
         return hdrRepository.loadPendingPayments(bankPoid, type, bankFilter);
     }
@@ -234,6 +231,7 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
     private BankDepositVoucherDtlDto convertToDetailDto(GlBankDepositVoucherDtl entity) {
         return BankDepositVoucherDtlDto.builder()
                 .detRowId(entity.getDetRowId())
+                .bankDet(setBankDet(entity))
                 .bankPoid(entity.getBankPoid())
                 .pymtType(entity.getPymtType())
                 .refDocPoid(entity.getRefDocPoid())
@@ -250,6 +248,13 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
                 .chqSeqNum(entity.getChqSeqNum())
                 .paymentMainPoid(entity.getPaymentMainPoid())
                 .build();
+    }
+
+    private LovGetListDto setBankDet(GlBankDepositVoucherDtl entity) {
+        if (entity.getBankPoid() != null) {
+            return lovService.getDetailsByPoidAndLovName(entity.getBankPoid(),"BANK_MASTER_FOR_BDV");
+        }
+        return  null;
     }
 
     private String getCurrentUser() {

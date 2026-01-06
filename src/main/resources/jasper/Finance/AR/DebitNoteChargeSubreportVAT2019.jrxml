@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="DebitNoteChargeSubreportVAT2019" language="groovy" pageWidth="521" pageHeight="802" columnWidth="521" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="a07fe0ef-932d-4384-ad4f-c652111ff74e">
     <property name="ireport.zoom" value="3.0"/>
     <property name="ireport.x" value="290"/>
@@ -120,21 +120,21 @@ ORDER BY PRINT_SEQ_NO]]>
             <staticText>
                 <reportElement x="0" y="0" width="34" height="15" uuid="b294cfba-dfe0-49a0-9727-b478a3a21f5d"/>
                 <textElement verticalAlignment="Middle">
-                    <font size="9" isBold="true"/>
+                    <font size="9" isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Sl No]]></text>
             </staticText>
             <staticText>
                 <reportElement x="34" y="0" width="204" height="15" uuid="157c5818-1a80-4340-8a60-083291a97a1a"/>
                 <textElement verticalAlignment="Middle">
-                    <font size="9" isBold="true"/>
+                    <font size="9" isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Description]]></text>
             </staticText>
             <textField isBlankWhenNull="true">
                 <reportElement x="417" y="0" width="106" height="15" uuid="0847cc1c-65c9-4543-b048-86498b6b5aca"/>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
-                    <font size="9" isBold="true"/>
+                    <font size="9" isBold="true" pdfFontName="Helvetica-Bold"/>
                     <paragraph rightIndent="3"/>
                 </textElement>
                 <textFieldExpression><![CDATA["Total Amt ("+$F{CURRENCY_CODE}+")"]]></textFieldExpression>
@@ -144,7 +144,7 @@ ORDER BY PRINT_SEQ_NO]]>
                     <printWhenExpression><![CDATA[$F{TAX_APPLICABLE}== 'Y']]></printWhenExpression>
                 </reportElement>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
-                    <font size="9" isBold="true"/>
+                    <font size="9" isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[VAT %]]></text>
             </staticText>
@@ -153,7 +153,7 @@ ORDER BY PRINT_SEQ_NO]]>
                     <printWhenExpression><![CDATA[$F{TAX_APPLICABLE}== 'Y']]></printWhenExpression>
                 </reportElement>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
-                    <font size="9" isBold="true"/>
+                    <font size="9" isBold="true" pdfFontName="Helvetica-Bold"/>
                     <paragraph rightIndent="1"/>
                 </textElement>
                 <textFieldExpression><![CDATA["VAT Amt (" + $F{CURRENCY_CODE}+")"]]></textFieldExpression>
@@ -163,7 +163,7 @@ ORDER BY PRINT_SEQ_NO]]>
                     <printWhenExpression><![CDATA[$F{TAX_APPLICABLE}== 'Y']]></printWhenExpression>
                 </reportElement>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
-                    <font size="9" isBold="true"/>
+                    <font size="9" isBold="true" pdfFontName="Helvetica-Bold"/>
                     <paragraph rightIndent="1"/>
                 </textElement>
                 <textFieldExpression><![CDATA["Amount ("+$F{CURRENCY_CODE}+")"]]></textFieldExpression>

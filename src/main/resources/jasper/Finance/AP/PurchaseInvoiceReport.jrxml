@@ -1,11 +1,11 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="PurchaseInvoiceReport" language="groovy" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="51f26c1c-332c-43f0-beb9-5722768520c7">
 	<property name="ireport.zoom" value="2.143588810000005"/>
 	<property name="ireport.x" value="0"/>
 	<property name="ireport.y" value="252"/>
 	<style name="Title" fontName="Times New Roman" fontSize="50" isBold="true" pdfFontName="Times-Bold"/>
 	<style name="SubTitle" forecolor="#736343" fontName="Arial" fontSize="18"/>
-	<style name="Column header" forecolor="#666666" fontName="Arial" fontSize="12" isBold="true"/>
+	<style name="Column header" forecolor="#666666" fontName="Arial" fontSize="12" isBold="true" pdfFontName="Helvetica-Bold"/>
 	<style name="Detail" fontName="Arial" fontSize="12"/>
 	<style name="Row" mode="Transparent">
 		<conditionalStyle>
@@ -76,7 +76,7 @@ where TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 			<staticText>
 				<reportElement x="10" y="140" width="76" height="18" uuid="be743463-bf4c-4c3f-9239-e6f07dcc0a27"/>
 				<textElement>
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Supplier]]></text>
 			</staticText>
@@ -91,14 +91,14 @@ where TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 			<staticText>
 				<reportElement x="10" y="194" width="76" height="18" uuid="49cc48a0-b564-4569-92fc-4f3eeb6a3842"/>
 				<textElement>
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Narration]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="375" y="140" width="72" height="18" uuid="5efa5988-76af-4432-843f-d6fd38d5c61f"/>
 				<textElement verticalAlignment="Top">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Voucher No]]></text>
 			</staticText>
@@ -121,14 +121,14 @@ where TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 			<staticText>
 				<reportElement x="375" y="160" width="72" height="18" uuid="c458a47c-c53e-414a-a11b-97c6d96903e2"/>
 				<textElement>
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Date]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="0" y="103" width="555" height="25" uuid="fd59bc30-5f25-497b-a50c-c72050298721"/>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
-					<font size="16" isBold="true"/>
+					<font size="16" isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[PURCHASE JOURNAL]]></text>
 			</staticText>
@@ -151,42 +151,42 @@ where TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 			<staticText>
 				<reportElement x="375" y="180" width="72" height="18" uuid="62530077-bcec-4118-af9e-a01cd1281ab6"/>
 				<textElement>
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Amount  BHD]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="447" y="140" width="7" height="18" uuid="c9d351d8-3dba-4315-8b1b-7d35194d2813"/>
 				<textElement textAlignment="Center" verticalAlignment="Top">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[:]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="447" y="160" width="7" height="18" uuid="9243f624-e3f6-4363-b108-60ac32d03750"/>
 				<textElement textAlignment="Center" verticalAlignment="Top">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[:]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="447" y="180" width="7" height="18" uuid="d9e6f3fd-9acb-4a36-b607-be2d4b92170f"/>
 				<textElement textAlignment="Center" verticalAlignment="Top">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[:]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="86" y="140" width="7" height="18" uuid="e75d2d03-26e7-47c7-80e5-bec0e4f7bbaa"/>
 				<textElement textAlignment="Center" verticalAlignment="Top">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[:]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="86" y="194" width="7" height="18" uuid="2577b6bc-b364-4e6c-9470-5d687bccab2c"/>
 				<textElement textAlignment="Center" verticalAlignment="Top">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[:]]></text>
 			</staticText>
@@ -205,14 +205,14 @@ where TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 			<staticText>
 				<reportElement x="10" y="158" width="76" height="18" uuid="1550299f-ab2e-4531-877d-dba0a5745972"/>
 				<textElement>
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Invoice Date]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="86" y="158" width="7" height="18" uuid="9631450e-39a4-463d-be46-11652a99cbe1"/>
 				<textElement textAlignment="Center" verticalAlignment="Top">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[:]]></text>
 			</staticText>
@@ -227,14 +227,14 @@ where TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 			<staticText>
 				<reportElement x="86" y="176" width="7" height="18" uuid="e092a5f8-00ce-4f5d-841c-c147f042d95d"/>
 				<textElement textAlignment="Center" verticalAlignment="Top">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[:]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="10" y="176" width="76" height="18" uuid="411b6020-9214-4303-9984-e9b411caa452"/>
 				<textElement>
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Invoice No]]></text>
 			</staticText>
@@ -256,7 +256,7 @@ where TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 					<printWhenExpression><![CDATA[$V{PAGE_NUMBER}.compareTo( 1 )==1]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Right">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA["Continuation of Previous Page (Voucher No : "+$F{DOC_REF}+")"]]></textFieldExpression>
 			</textField>
@@ -336,21 +336,21 @@ where TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 			<staticText>
 				<reportElement x="10" y="64" width="67" height="18" uuid="ed12b98b-e751-48ac-8b82-f3abb055f6e1"/>
 				<textElement>
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Prepared By]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="147" y="64" width="62" height="18" uuid="cb39c25d-7b8b-4949-b1fb-3f229f91b6e7"/>
 				<textElement>
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Checked By]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="440" y="64" width="66" height="18" uuid="87f42c79-c18d-468d-a9e1-ea0c3d265e9a"/>
 				<textElement>
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Approved By]]></text>
 			</staticText>
@@ -375,21 +375,21 @@ where TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 			<textField pattern="#,##,##0.000" isBlankWhenNull="true">
 				<reportElement x="467" y="3" width="85" height="20" uuid="ce9e7561-7d74-4af2-9b11-25f9735572d0"/>
 				<textElement textAlignment="Right">
-					<font size="11" isBold="true" isStrikeThrough="false"/>
+					<font size="11" isBold="true" isStrikeThrough="false" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{AMOUNT}]]></textFieldExpression>
 			</textField>
 			<staticText>
 				<reportElement x="423" y="3" width="44" height="20" uuid="8f9d8bf8-f3ab-497e-875c-7a7864b35844"/>
 				<textElement>
-					<font size="11" isBold="true" isStrikeThrough="false"/>
+					<font size="11" isBold="true" isStrikeThrough="false" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Total :]]></text>
 			</staticText>
 			<textField isBlankWhenNull="true">
 				<reportElement x="10" y="3" width="365" height="18" uuid="8c8f7fe2-d7e0-4c59-babd-9b647c289366"/>
 				<textElement>
-					<font size="10" isBold="true"/>
+					<font size="10" isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{AMOUNT_IN_WORD}]]></textFieldExpression>
 			</textField>
@@ -433,28 +433,28 @@ where TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 			<staticText>
 				<reportElement x="10" y="88" width="67" height="18" uuid="55736a28-bbfb-417b-a4b3-67de99d0a6c5"/>
 				<textElement>
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Received By]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="77" y="88" width="7" height="18" uuid="c87137b6-5b98-40f2-a82a-fc199b6d020b"/>
 				<textElement textAlignment="Center" verticalAlignment="Top">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[:]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="10" y="106" width="67" height="18" uuid="6b338068-c067-4039-b7c1-f7288e355c05"/>
 				<textElement>
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Signature]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="77" y="106" width="7" height="18" uuid="900e95d9-397c-4e7a-adcc-6a69af49a77c"/>
 				<textElement textAlignment="Center" verticalAlignment="Top">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[:]]></text>
 			</staticText>
@@ -467,7 +467,7 @@ where TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 			<staticText>
 				<reportElement x="276" y="64" width="66" height="18" uuid="4c381b77-35d0-4af8-91e4-3cff4cd1117e"/>
 				<textElement>
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Reviewed By]]></text>
 			</staticText>

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="GEN_RECEIPT_PAYMENT_DETAIL_subreport1" language="groovy" pageWidth="555" pageHeight="802" columnWidth="555" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="27e681ce-65a9-4ea2-987a-c93555e28946">
     <property name="ireport.zoom" value="1.771561000000002"/>
     <property name="ireport.x" value="0"/>
@@ -43,7 +43,7 @@ WHERE TRANSACTION_POID=$P{DOC_KEY_POID}]]>
             <staticText>
                 <reportElement x="0" y="0" width="220" height="18" uuid="4b69517c-6c60-4448-bf78-3476e238a654"/>
                 <textElement>
-                    <font size="12" isBold="true"/>
+                    <font size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Payment Details]]></text>
             </staticText>
@@ -54,7 +54,7 @@ WHERE TRANSACTION_POID=$P{DOC_KEY_POID}]]>
             <staticText>
                 <reportElement style="style1" x="20" y="0" width="50" height="18" uuid="60d8eb06-b59e-44a7-95c6-cf6b3136f75a"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                     <paragraph leftIndent="3"/>
                 </textElement>
                 <text><![CDATA[Type]]></text>
@@ -64,7 +64,7 @@ WHERE TRANSACTION_POID=$P{DOC_KEY_POID}]]>
                     <printWhenExpression><![CDATA[$F{PYMT_TYPE}.equalsIgnoreCase( "CHEQUE" )]]></printWhenExpression>
                 </reportElement>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                     <paragraph leftIndent="3"/>
                 </textElement>
                 <text><![CDATA[Amount]]></text>
@@ -72,7 +72,7 @@ WHERE TRANSACTION_POID=$P{DOC_KEY_POID}]]>
             <staticText>
                 <reportElement style="style1" x="0" y="0" width="20" height="18" uuid="b3a7164a-0b33-45d5-bfce-6b8698e2356e"/>
                 <textElement textAlignment="Center" verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[SN]]></text>
             </staticText>
@@ -81,7 +81,7 @@ WHERE TRANSACTION_POID=$P{DOC_KEY_POID}]]>
                     <printWhenExpression><![CDATA[$F{PYMT_TYPE}.equalsIgnoreCase( "CHEQUE" )]]></printWhenExpression>
                 </reportElement>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                     <paragraph leftIndent="3"/>
                 </textElement>
                 <text><![CDATA[Cheque Date]]></text>
@@ -91,7 +91,7 @@ WHERE TRANSACTION_POID=$P{DOC_KEY_POID}]]>
                     <printWhenExpression><![CDATA[$F{PYMT_TYPE}.equalsIgnoreCase( "CHEQUE" )]]></printWhenExpression>
                 </reportElement>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                     <paragraph leftIndent="3"/>
                 </textElement>
                 <text><![CDATA[Cheque No]]></text>
@@ -101,7 +101,7 @@ WHERE TRANSACTION_POID=$P{DOC_KEY_POID}]]>
                     <printWhenExpression><![CDATA[$F{PYMT_TYPE}.equalsIgnoreCase( "CHEQUE" )]]></printWhenExpression>
                 </reportElement>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                     <paragraph leftIndent="3"/>
                 </textElement>
                 <text><![CDATA[Account Name]]></text>
@@ -111,7 +111,7 @@ WHERE TRANSACTION_POID=$P{DOC_KEY_POID}]]>
                     <printWhenExpression><![CDATA[$F{PYMT_TYPE}.equalsIgnoreCase( "CHEQUE" )]]></printWhenExpression>
                 </reportElement>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                     <paragraph leftIndent="3"/>
                 </textElement>
                 <text><![CDATA[Account No]]></text>
@@ -121,7 +121,7 @@ WHERE TRANSACTION_POID=$P{DOC_KEY_POID}]]>
                     <printWhenExpression><![CDATA[$F{PYMT_TYPE}.equalsIgnoreCase( "CHEQUE" )]]></printWhenExpression>
                 </reportElement>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                     <paragraph leftIndent="3"/>
                 </textElement>
                 <text><![CDATA[Bank]]></text>
@@ -131,7 +131,7 @@ WHERE TRANSACTION_POID=$P{DOC_KEY_POID}]]>
                     <printWhenExpression><![CDATA[!$F{PYMT_TYPE}.equalsIgnoreCase( "CHEQUE" )]]></printWhenExpression>
                 </reportElement>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                     <paragraph leftIndent="3"/>
                 </textElement>
                 <text><![CDATA[Amount]]></text>

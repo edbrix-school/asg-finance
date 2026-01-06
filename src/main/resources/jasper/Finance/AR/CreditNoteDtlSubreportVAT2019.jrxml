@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="CreditNoteDtlSubreportVAT2019" language="groovy" pageWidth="530" pageHeight="802" columnWidth="530" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="c58cc137-8e6b-4988-bb20-80b67cd7b4f9">
     <property name="ireport.zoom" value="2.143588810000003"/>
     <property name="ireport.x" value="0"/>
@@ -88,14 +88,14 @@ CURRENCY_CODE,TAX_PERCENTAGE , TAX_APPLICABLE]]>
             <staticText>
                 <reportElement x="28" y="0" width="219" height="20" uuid="6178a20a-d827-467a-9654-d6023a967981"/>
                 <textElement verticalAlignment="Middle">
-                    <font size="9" isBold="true"/>
+                    <font size="9" isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Description]]></text>
             </staticText>
             <staticText>
                 <reportElement x="0" y="0" width="26" height="20" uuid="bdac455e-d99d-4a32-80d0-b62b094f0095"/>
                 <textElement verticalAlignment="Middle">
-                    <font size="9" isBold="true"/>
+                    <font size="9" isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Sl No]]></text>
             </staticText>
@@ -110,7 +110,7 @@ CURRENCY_CODE,TAX_PERCENTAGE , TAX_APPLICABLE]]>
                     <printWhenExpression><![CDATA[$F{TAX_APPLICABLE}== 'Y']]></printWhenExpression>
                 </reportElement>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
-                    <font size="9" isBold="true"/>
+                    <font size="9" isBold="true" pdfFontName="Helvetica-Bold"/>
                     <paragraph rightIndent="1"/>
                 </textElement>
                 <textFieldExpression><![CDATA["Amount ("+$F{CURRENCY_CODE}+")"]]></textFieldExpression>
@@ -118,7 +118,7 @@ CURRENCY_CODE,TAX_PERCENTAGE , TAX_APPLICABLE]]>
             <textField isBlankWhenNull="true">
                 <reportElement x="439" y="0" width="85" height="20" uuid="7faacb42-381b-49d1-a5f4-631fb43cae7f"/>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
-                    <font size="9" isBold="true"/>
+                    <font size="9" isBold="true" pdfFontName="Helvetica-Bold"/>
                     <paragraph rightIndent="3"/>
                 </textElement>
                 <textFieldExpression><![CDATA["Total Amt ("+$F{CURRENCY_CODE}+")"]]></textFieldExpression>
@@ -128,7 +128,7 @@ CURRENCY_CODE,TAX_PERCENTAGE , TAX_APPLICABLE]]>
                     <printWhenExpression><![CDATA[$F{TAX_APPLICABLE}== 'Y']]></printWhenExpression>
                 </reportElement>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
-                    <font size="9" isBold="true"/>
+                    <font size="9" isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[VAT %]]></text>
             </staticText>
@@ -137,7 +137,7 @@ CURRENCY_CODE,TAX_PERCENTAGE , TAX_APPLICABLE]]>
                     <printWhenExpression><![CDATA[$F{TAX_APPLICABLE}== 'Y']]></printWhenExpression>
                 </reportElement>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
-                    <font size="9" isBold="true"/>
+                    <font size="9" isBold="true" pdfFontName="Helvetica-Bold"/>
                     <paragraph rightIndent="1"/>
                 </textElement>
                 <textFieldExpression><![CDATA["VAT Amt (" + $F{CURRENCY_CODE}+")"]]></textFieldExpression>
@@ -200,3 +200,4 @@ CURRENCY_CODE,TAX_PERCENTAGE , TAX_APPLICABLE]]>
         </band>
     </detail>
 </jasperReport>
+

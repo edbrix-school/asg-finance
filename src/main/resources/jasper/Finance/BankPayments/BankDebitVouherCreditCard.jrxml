@@ -1,11 +1,11 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="BankDebitVouherCreditCard" language="groovy" pageWidth="595" pageHeight="842" columnWidth="531" leftMargin="43" rightMargin="21" topMargin="20" bottomMargin="20" uuid="51f26c1c-332c-43f0-beb9-5722768520c7">
 	<property name="ireport.zoom" value="1.3310000000000004"/>
 	<property name="ireport.x" value="0"/>
 	<property name="ireport.y" value="0"/>
 	<style name="Title" fontName="Times New Roman" fontSize="50" isBold="true" pdfFontName="Times-Bold"/>
 	<style name="SubTitle" forecolor="#736343" fontName="Arial" fontSize="18"/>
-	<style name="Column header" forecolor="#666666" fontName="Arial" fontSize="12" isBold="true"/>
+	<style name="Column header" forecolor="#666666" fontName="Arial" fontSize="12" isBold="true" pdfFontName="Helvetica-Bold"/>
 	<style name="Detail" fontName="Arial" fontSize="12"/>
 	<style name="Row" mode="Transparent">
 		<conditionalStyle>
@@ -111,21 +111,21 @@ where paying_type ='3'  and  transaction_poid = $P{DOC_KEY_POID} and REF_TYPE !=
 			<staticText>
 				<reportElement x="172" y="22" width="196" height="25" uuid="f8323ffe-0df5-43a0-943b-7ae1a30d58fa"/>
 				<textElement textAlignment="Center">
-					<font size="15" isBold="true" isUnderline="true"/>
+					<font size="15" isBold="true" isUnderline="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[CREDIT CARD VOUCHER]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="0" y="68" width="49" height="18" uuid="c632a2c8-d600-4677-8e69-5f2d6bac84d8"/>
 				<textElement>
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Paid To:]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="0" y="102" width="49" height="15" uuid="80037eeb-2d8f-440c-8679-1b35c253ef78"/>
 				<textElement>
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Remarks]]></text>
 			</staticText>
@@ -148,7 +148,7 @@ where paying_type ='3'  and  transaction_poid = $P{DOC_KEY_POID} and REF_TYPE !=
 			<textField isBlankWhenNull="true">
 				<reportElement x="49" y="68" width="206" height="18" uuid="cec183a4-83f0-447b-b25f-f120569f3599"/>
 				<textElement>
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{PAY_TO}]]></textFieldExpression>
 			</textField>
@@ -298,7 +298,7 @@ where paying_type ='3'  and  transaction_poid = $P{DOC_KEY_POID} and REF_TYPE !=
 			<staticText>
 				<reportElement style="Column header" x="417" y="137" width="39" height="18" forecolor="#000000" uuid="c920d5d0-ff4c-4ea0-aac2-4a31f2aab0a6"/>
 				<textElement verticalAlignment="Middle">
-					<font fontName="SansSerif" size="10" isBold="true"/>
+					<font fontName="SansSerif" size="10" isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Page]]></text>
 			</staticText>
@@ -312,7 +312,7 @@ where paying_type ='3'  and  transaction_poid = $P{DOC_KEY_POID} and REF_TYPE !=
 			<textField isBlankWhenNull="true">
 				<reportElement stretchType="RelativeToBandHeight" x="3" y="10" width="375" height="18" isPrintWhenDetailOverflows="true" uuid="a367ffa6-5a10-44a1-8d82-72d23efecf4e"/>
 				<textElement>
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{AMOUNT_IN_WORD}]]></textFieldExpression>
 			</textField>
@@ -357,7 +357,7 @@ where paying_type ='3'  and  transaction_poid = $P{DOC_KEY_POID} and REF_TYPE !=
 			<staticText>
 				<reportElement x="409" y="10" width="33" height="20" uuid="2ec07f50-3663-40b1-8736-dd53011d7e00"/>
 				<textElement>
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Total:]]></text>
 			</staticText>

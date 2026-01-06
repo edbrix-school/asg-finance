@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="RecurringJVScheduleWiseSubreport2" language="groovy" pageWidth="555" pageHeight="802" columnWidth="555" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="62dc75cd-32aa-49b4-a516-92ea0cb87728">
     <property name="ireport.zoom" value="1.2100000000000029"/>
     <property name="ireport.x" value="0"/>
@@ -32,7 +32,7 @@ WHERE RJMD.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
             <staticText>
                 <reportElement x="0" y="2" width="555" height="18" uuid="d025e350-9af8-4359-8947-d4ca0da5777f"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[JV Schedule Wise Details]]></text>
             </staticText>
@@ -46,42 +46,42 @@ WHERE RJMD.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
             <staticText>
                 <reportElement x="0" y="0" width="37" height="20" uuid="ade8b427-d72a-4d54-b01c-8f25af5713e2"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Sl No]]></text>
             </staticText>
             <staticText>
                 <reportElement x="37" y="0" width="93" height="20" uuid="8ac3fbb9-df0a-46b1-83cb-75474cade50b"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Month Wise Date]]></text>
             </staticText>
             <staticText>
                 <reportElement x="482" y="0" width="73" height="20" uuid="11a0bb80-9d2f-4658-8907-04e28f771b2a"/>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Amount]]></text>
             </staticText>
             <staticText>
                 <reportElement x="313" y="0" width="169" height="20" uuid="c0d7a54d-08e5-40e3-ad0e-35aaecff0048"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Remarks]]></text>
             </staticText>
             <staticText>
                 <reportElement x="130" y="0" width="72" height="20" uuid="0e05b9e6-2fac-4e78-aa21-6e2155891403"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[JV Doc Ref]]></text>
             </staticText>
             <staticText>
                 <reportElement x="202" y="0" width="111" height="20" uuid="a29c75e8-7657-4df2-9647-01f3ad4dd233"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Status]]></text>
             </staticText>
@@ -131,3 +131,4 @@ WHERE RJMD.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
         </band>
     </detail>
 </jasperReport>
+

@@ -1,11 +1,11 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="BankReconciliationReport" language="groovy" pageWidth="595" pageHeight="842" columnWidth="535" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="51f26c1c-332c-43f0-beb9-5722768520c7">
 	<property name="ireport.zoom" value="1.3310000000000004"/>
 	<property name="ireport.x" value="0"/>
 	<property name="ireport.y" value="0"/>
 	<style name="Title" fontName="Times New Roman" fontSize="50" isBold="true" pdfFontName="Times-Bold"/>
 	<style name="SubTitle" forecolor="#736343" fontName="Arial" fontSize="18"/>
-	<style name="Column header" forecolor="#666666" fontName="Arial" fontSize="12" isBold="true"/>
+	<style name="Column header" forecolor="#666666" fontName="Arial" fontSize="12" isBold="true" pdfFontName="Helvetica-Bold"/>
 	<style name="Detail" fontName="Arial" fontSize="12"/>
 	<style name="Row" mode="Transparent">
 		<conditionalStyle>
@@ -176,14 +176,14 @@ INNER JOIN GL_BANK_MASTER BM ON BM.BANK_POID=$P{BANK_POID}]]>
 			<staticText>
 				<reportElement x="0" y="0" width="555" height="28" uuid="9e91d806-201e-4a96-b4fe-1577a6ebeeb4"/>
 				<textElement textAlignment="Center">
-					<font size="16" isBold="true"/>
+					<font size="16" isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Bank Reconciliation]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="25" y="54" width="79" height="20" uuid="42757488-7adb-48e2-a07a-e6bbddc66e7b"/>
 				<textElement verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[As On Date]]></text>
 			</staticText>
@@ -195,7 +195,7 @@ INNER JOIN GL_BANK_MASTER BM ON BM.BANK_POID=$P{BANK_POID}]]>
 			<staticText>
 				<reportElement x="25" y="34" width="79" height="20" uuid="efb6907c-ab26-4096-89bb-d51ece70e030"/>
 				<textElement verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Bank]]></text>
 			</staticText>
@@ -292,14 +292,14 @@ INNER JOIN GL_BANK_MASTER BM ON BM.BANK_POID=$P{BANK_POID}]]>
 			<staticText>
 				<reportElement x="25" y="2" width="55" height="20" uuid="537c2db5-94b2-4170-ade6-e7def6b2cd13"/>
 				<textElement verticalAlignment="Middle">
-					<font size="10" isBold="true" isItalic="false"/>
+					<font size="10" isBold="true" isItalic="false" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Total Net]]></text>
 			</staticText>
 			<textField isBlankWhenNull="true">
 				<reportElement x="80" y="2" width="369" height="20" uuid="5ec8f4a1-633e-473f-9796-33c55e69c3de"/>
 				<textElement verticalAlignment="Middle">
-					<font size="10" isBold="true" isItalic="false"/>
+					<font size="10" isBold="true" isItalic="false" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{BANK}]]></textFieldExpression>
 			</textField>
@@ -309,14 +309,14 @@ INNER JOIN GL_BANK_MASTER BM ON BM.BANK_POID=$P{BANK_POID}]]>
 			<textField pattern="#,##0.000" isBlankWhenNull="true">
 				<reportElement x="465" y="2" width="90" height="20" uuid="5757ff33-1568-44b6-a4e9-2bda882f36b6"/>
 				<textElement textAlignment="Right" verticalAlignment="Middle">
-					<font size="10" isBold="true"/>
+					<font size="10" isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA[($V{RETURN_DR_AMOUNT}.add($V{RETURN_CR_TOTAL})).subtract($V{RETURN_DR_TOTAL})]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="true">
 				<reportElement x="25" y="27" width="424" height="20" uuid="90a0b01c-c71a-45be-9dd4-d162e354532a"/>
 				<textElement verticalAlignment="Middle">
-					<font isBold="true" isItalic="false"/>
+					<font isBold="true" isItalic="false" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{BANK_STATEMENT}]]></textFieldExpression>
 			</textField>
@@ -326,7 +326,7 @@ INNER JOIN GL_BANK_MASTER BM ON BM.BANK_POID=$P{BANK_POID}]]>
 			<staticText>
 				<reportElement x="25" y="53" width="424" height="20" uuid="b57be7b4-c979-4e55-a111-ca9fafb42c17"/>
 				<textElement verticalAlignment="Middle">
-					<font isBold="true" isItalic="false"/>
+					<font isBold="true" isItalic="false" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Difference]]></text>
 			</staticText>
@@ -336,14 +336,14 @@ INNER JOIN GL_BANK_MASTER BM ON BM.BANK_POID=$P{BANK_POID}]]>
 			<textField pattern="#,##0.000" isBlankWhenNull="true">
 				<reportElement x="464" y="53" width="91" height="20" uuid="0d1b6478-89ce-4193-934a-78323b3759ba"/>
 				<textElement textAlignment="Right" verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA[(($V{RETURN_DR_AMOUNT}.add($V{RETURN_CR_TOTAL})).subtract($V{RETURN_DR_TOTAL})).subtract($V{TOTAL_NET})]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="true">
 				<reportElement x="464" y="28" width="91" height="19" uuid="de694054-7d33-438e-93da-27ce260b97f0"/>
 				<textElement textAlignment="Right" verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$V{TOTAL_NET}]]></textFieldExpression>
 			</textField>
@@ -372,21 +372,21 @@ INNER JOIN GL_BANK_MASTER BM ON BM.BANK_POID=$P{BANK_POID}]]>
 			<staticText>
 				<reportElement x="25" y="18" width="100" height="20" uuid="0b06775b-d120-4222-b81f-932414dff4a5"/>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Prepared By]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="215" y="18" width="100" height="20" uuid="06da47ed-82bb-450c-b603-432a6a7a249e"/>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Checked By]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="425" y="18" width="100" height="20" uuid="eb736e4f-bd6f-46a6-b793-3afddff4e197"/>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Approved By]]></text>
 			</staticText>
@@ -403,3 +403,6 @@ INNER JOIN GL_BANK_MASTER BM ON BM.BANK_POID=$P{BANK_POID}]]>
 		<band splitType="Stretch"/>
 	</summary>
 </jasperReport>
+
+
+

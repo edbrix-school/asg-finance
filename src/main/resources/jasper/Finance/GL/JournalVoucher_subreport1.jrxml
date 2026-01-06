@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="JournalVoucher_subreport1" language="groovy" pageWidth="530" pageHeight="802" columnWidth="530" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="b496f62a-c22a-4b51-8ef2-952f5939488d">
     <property name="ireport.zoom" value="1.3310000000000064"/>
     <property name="ireport.x" value="0"/>
@@ -39,21 +39,21 @@ WHERE TRANSACTION_POID=$P{DOC_KEY_POID}]]>
             <staticText>
                 <reportElement x="389" y="0" width="70" height="20" uuid="a4bdfcf4-a768-405b-98b0-41971ca0c79a"/>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Debit [BHD]]]></text>
             </staticText>
             <staticText>
                 <reportElement x="459" y="0" width="70" height="20" uuid="25dd6f33-995c-4d6a-ba23-6d2033d7dda5"/>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Credit [BHD]]]></text>
             </staticText>
             <staticText>
                 <reportElement x="258" y="0" width="131" height="20" uuid="37871eac-07a4-4c41-952a-eef0cd0103a1"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Remarks]]></text>
             </staticText>
@@ -63,21 +63,21 @@ WHERE TRANSACTION_POID=$P{DOC_KEY_POID}]]>
             <staticText>
                 <reportElement x="89" y="0" width="169" height="20" uuid="8361410d-bea5-4cee-b431-6c1de83068e1"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Description]]></text>
             </staticText>
             <staticText>
                 <reportElement x="0" y="0" width="30" height="20" uuid="494eb5e9-4739-4e6c-9993-fe3aa2722a94"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Sl No]]></text>
             </staticText>
             <staticText>
                 <reportElement x="30" y="0" width="59" height="20" uuid="d103d495-95b5-4d70-90d8-37e0e76bf420"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[GL Code]]></text>
             </staticText>
@@ -135,21 +135,21 @@ WHERE TRANSACTION_POID=$P{DOC_KEY_POID}]]>
             <textField pattern="#,##0.000" isBlankWhenNull="true">
                 <reportElement x="379" y="2" width="80" height="20" uuid="9df15953-da54-49a8-8b4b-ba50bc2ef264"/>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
-                    <font size="9" isBold="true"/>
+                    <font size="9" isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$V{TOTAL_DR}]]></textFieldExpression>
             </textField>
             <textField pattern="#,##0.000" isBlankWhenNull="true">
                 <reportElement x="459" y="2" width="71" height="20" uuid="d47d61ef-3b8c-4b42-803f-1a5c28ab4ba3"/>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
-                    <font size="9" isBold="true"/>
+                    <font size="9" isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$V{TOTAL_CR}]]></textFieldExpression>
             </textField>
             <staticText>
                 <reportElement x="353" y="2" width="36" height="20" uuid="5e384d66-3c6e-4083-85da-8d18ab042e17"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Total :-]]></text>
             </staticText>
@@ -159,3 +159,4 @@ WHERE TRANSACTION_POID=$P{DOC_KEY_POID}]]>
         </band>
     </lastPageFooter>
 </jasperReport>
+

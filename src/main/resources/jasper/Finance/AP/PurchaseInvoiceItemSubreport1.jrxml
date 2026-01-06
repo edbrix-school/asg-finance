@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="PurchaseInvoiceItemSubreport1" language="groovy" pageWidth="555" pageHeight="802" columnWidth="555" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="93eb8368-599b-4df3-96b7-bda652398817">
 	<property name="ireport.zoom" value="1.210000000000001"/>
 	<property name="ireport.x" value="0"/>
@@ -49,7 +49,7 @@ WHERE PII.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 			<staticText>
 				<reportElement x="0" y="2" width="552" height="18" uuid="0a2c1414-22e3-4789-a899-7ddfecd1b420"/>
 				<textElement verticalAlignment="Middle">
-					<font size="12" isBold="true"/>
+					<font size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Item Detail]]></text>
 			</staticText>
@@ -63,42 +63,42 @@ WHERE PII.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 			<staticText>
 				<reportElement x="30" y="0" width="197" height="20" uuid="1892bfc9-eed6-4fe7-8974-4bb4c2ba2c99"/>
 				<textElement verticalAlignment="Middle">
-					<font size="11" isBold="true"/>
+					<font size="11" isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Description]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="227" y="0" width="62" height="20" uuid="f78cb1d7-5d06-4244-b239-f2d09e16d5fd"/>
 				<textElement verticalAlignment="Middle">
-					<font size="11" isBold="true"/>
+					<font size="11" isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Unit]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="289" y="0" width="64" height="20" uuid="bcf3d0d5-7ec5-4dd6-aaba-78775f1bec85"/>
 				<textElement textAlignment="Right" verticalAlignment="Middle">
-					<font size="11" isBold="true"/>
+					<font size="11" isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[PO Qty]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="353" y="0" width="62" height="20" uuid="f3675d8d-98b8-4514-9c29-300cc03f7fd7"/>
 				<textElement textAlignment="Right" verticalAlignment="Middle">
-					<font size="11" isBold="true"/>
+					<font size="11" isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Price]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="469" y="0" width="83" height="20" uuid="c2f75162-3767-40a3-bb87-73a865e7a774"/>
 				<textElement textAlignment="Right" verticalAlignment="Middle">
-					<font size="11" isBold="true"/>
+					<font size="11" isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Total ]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="0" y="0" width="30" height="20" uuid="a26ce9bb-3d93-4aa2-8f50-a2f1f785d520"/>
 				<textElement verticalAlignment="Middle">
-					<font size="11" isBold="true"/>
+					<font size="11" isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Sl No]]></text>
 			</staticText>
@@ -167,7 +167,7 @@ WHERE PII.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 			<textField pattern="###0.000" isBlankWhenNull="true">
 				<reportElement x="455" y="0" width="100" height="20" uuid="503e0fa3-6a8f-4784-a5a3-37e9c14501a6"/>
 				<textElement textAlignment="Right" verticalAlignment="Middle">
-					<font size="11" isBold="true"/>
+					<font size="11" isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$V{ITEM_TOTAL}]]></textFieldExpression>
 			</textField>

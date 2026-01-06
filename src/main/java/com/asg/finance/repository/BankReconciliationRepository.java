@@ -34,6 +34,4 @@ public interface BankReconciliationRepository {
 
 	BankReconcileReportResponse getBankReconcileReport(BankReconcileReportRequest req);
 
-	Optional<BankReconciliation> findByTransactionPoid(Long transactionPoid);
-
 }

@@ -1,11 +1,11 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="BankDebitVoucher" language="groovy" pageWidth="595" pageHeight="842" columnWidth="520" leftMargin="50" rightMargin="25" topMargin="20" bottomMargin="20" uuid="51f26c1c-332c-43f0-beb9-5722768520c7">
 	<property name="ireport.zoom" value="1.4641000000000013"/>
 	<property name="ireport.x" value="0"/>
 	<property name="ireport.y" value="384"/>
 	<style name="Title" fontName="Times New Roman" fontSize="50" isBold="true" pdfFontName="Times-Bold"/>
 	<style name="SubTitle" forecolor="#736343" fontName="Arial" fontSize="18"/>
-	<style name="Column header" forecolor="#666666" fontName="Arial" fontSize="12" isBold="true"/>
+	<style name="Column header" forecolor="#666666" fontName="Arial" fontSize="12" isBold="true" pdfFontName="Helvetica-Bold"/>
 	<style name="Detail" fontName="Arial" fontSize="12"/>
 	<style name="Row" mode="Transparent">
 		<conditionalStyle>
@@ -139,7 +139,7 @@ WHERE HDR.TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 			<staticText>
 				<reportElement x="0" y="188" width="180" height="16" uuid="55524d9f-2382-496e-ab4a-45a6ef4309ca"/>
 				<textElement>
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Ref :- Bank Account Number #]]></text>
 			</staticText>
@@ -150,7 +150,7 @@ WHERE HDR.TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 			<textField isBlankWhenNull="true">
 				<reportElement x="170" y="188" width="348" height="16" uuid="aebd51c2-1a2f-4aca-84f7-487f59e1444c"/>
 				<textElement>
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{HDR_BANK_ACCOUNT}]]></textFieldExpression>
 			</textField>
@@ -164,7 +164,7 @@ WHERE HDR.TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 			<textField isBlankWhenNull="true">
 				<reportElement x="170" y="333" width="327" height="16" uuid="a5f4bba1-585f-460d-a778-906317a96f34"/>
 				<textElement>
-					<font size="9" isBold="true"/>
+					<font size="9" isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{DTL_ACCOUNT_NUMBER}]]></textFieldExpression>
 			</textField>
@@ -182,14 +182,14 @@ WHERE HDR.TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 			<staticText>
 				<reportElement x="0" y="264" width="127" height="16" uuid="50a46e51-90b3-4eb0-b45c-3cc16de6116d"/>
 				<textElement>
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Beneficiary Details :-]]></text>
 			</staticText>
 			<textField isBlankWhenNull="true">
 				<reportElement stretchType="RelativeToTallestObject" x="170" y="280" width="350" height="23" isPrintWhenDetailOverflows="true" uuid="f8550f21-85be-4b00-844d-22db89f51e69"/>
 				<textElement>
-					<font size="9" isBold="true"/>
+					<font size="9" isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{DTL_BENEFICIARY_NAME}]]></textFieldExpression>
 			</textField>
@@ -211,14 +211,14 @@ WHERE HDR.TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 			<textField isBlankWhenNull="true">
 				<reportElement x="170" y="403" width="327" height="16" uuid="1ca8e02b-c6ce-4f59-9914-d0b3bbdabef0"/>
 				<textElement>
-					<font size="9" isBold="true"/>
+					<font size="9" isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{DTL_IBAN}]]></textFieldExpression>
 			</textField>
 			<staticText>
 				<reportElement x="0" y="478" width="100" height="16" uuid="8d1c9e9b-08bb-4df9-b45d-2d5b56167fec"/>
 				<textElement>
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Value Date]]></text>
 			</staticText>
@@ -233,21 +233,21 @@ WHERE HDR.TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 			<staticText>
 				<reportElement x="0" y="440" width="100" height="16" uuid="10d94416-e699-4055-a242-1c0924ed2afb"/>
 				<textElement>
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Amount]]></text>
 			</staticText>
 			<textField isBlankWhenNull="true">
 				<reportElement x="170" y="422" width="327" height="16" uuid="1d3c460a-6125-45d3-90f9-99141df45280"/>
 				<textElement>
-					<font size="9" isBold="true"/>
+					<font size="9" isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{DTL_BANK_SWIFT_CODE}]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="true">
 				<reportElement x="170" y="478" width="115" height="16" uuid="71ea1b74-4ea0-41d0-be05-ede42922a49b"/>
 				<textElement>
-					<font size="9" isBold="true"/>
+					<font size="9" isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{TT_DATE}]]></textFieldExpression>
 			</textField>
@@ -256,7 +256,7 @@ WHERE HDR.TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 					<printWhenExpression><![CDATA[$F{DTL_INTERMEDIARY_BANK} != null && $F{INTERMEDIARY_SWIFT_CODE} != null]]></printWhenExpression>
 				</reportElement>
 				<textElement>
-					<font isBold="true" isUnderline="false"/>
+					<font isBold="true" isUnderline="false" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Correspondent Bank Details :-]]></text>
 			</staticText>
@@ -349,7 +349,7 @@ WHERE HDR.TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 			<textField isBlankWhenNull="true">
 				<reportElement x="237" y="148" width="189" height="20" uuid="5377af15-2562-47c5-9c3c-aa756b1d4c13"/>
 				<textElement verticalAlignment="Middle">
-					<font size="14" isBold="true" isUnderline="true"/>
+					<font size="14" isBold="true" isUnderline="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{SUB}]]></textFieldExpression>
 			</textField>
@@ -363,7 +363,7 @@ WHERE HDR.TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 			<staticText>
 				<reportElement x="188" y="148" width="49" height="20" uuid="29fd92f1-01a3-488e-978c-c60a8d1e351c"/>
 				<textElement verticalAlignment="Middle">
-					<font size="14" isBold="true"/>
+					<font size="14" isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Sub :- ]]></text>
 			</staticText>
@@ -381,7 +381,7 @@ WHERE HDR.TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 			<textField isBlankWhenNull="true">
 				<reportElement x="199" y="440" width="140" height="18" uuid="c421593c-6dd5-4ae7-9a8c-3cbc55480cc1"/>
 				<textElement textAlignment="Left">
-					<font size="9" isBold="true"/>
+					<font size="9" isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{CURRENCY_AMT}]]></textFieldExpression>
 			</textField>
@@ -395,7 +395,7 @@ WHERE HDR.TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 			<textField>
 				<reportElement x="170" y="440" width="29" height="18" uuid="ea43a5fb-04da-4613-9f66-1f1ac86f2ec5"/>
 				<textElement>
-					<font size="9" isBold="true"/>
+					<font size="9" isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{CURRENCY_CODE}]]></textFieldExpression>
 			</textField>
@@ -464,7 +464,7 @@ WHERE HDR.TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 			<staticText>
 				<reportElement x="0" y="0" width="127" height="18" uuid="2ece0c15-9995-4e94-ae49-712c7ff75e27"/>
 				<textElement>
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Special Instruction :]]></text>
 			</staticText>
@@ -473,7 +473,7 @@ WHERE HDR.TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 					<printWhenExpression><![CDATA[$F{PAYING_TYPE} != "1"]]></printWhenExpression>
 				</reportElement>
 				<textElement>
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{SPECIAL_INSTRUCTION}]]></textFieldExpression>
 			</textField>
@@ -542,7 +542,7 @@ WHERE HDR.TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 			<staticText>
 				<reportElement style="Column header" x="430" y="90" width="35" height="18" forecolor="#000000" uuid="a546dc34-d8aa-47ee-9822-da377d2a45e1"/>
 				<textElement verticalAlignment="Middle">
-					<font fontName="SansSerif" size="10" isBold="true"/>
+					<font fontName="SansSerif" size="10" isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Page]]></text>
 			</staticText>

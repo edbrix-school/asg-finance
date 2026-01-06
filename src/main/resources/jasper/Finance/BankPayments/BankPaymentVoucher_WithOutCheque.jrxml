@@ -1,11 +1,11 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="BankPaymentVoucher_WithOutCheque" language="groovy" columnCount="2" pageWidth="595" pageHeight="841" columnWidth="297" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="51f26c1c-332c-43f0-beb9-5722768520c7">
     <property name="ireport.zoom" value="1.1"/>
     <property name="ireport.x" value="0"/>
     <property name="ireport.y" value="34"/>
     <style name="Title" fontName="Times New Roman" fontSize="50" isBold="true" pdfFontName="Times-Bold"/>
     <style name="SubTitle" forecolor="#736343" fontName="Arial" fontSize="18"/>
-    <style name="Column header" forecolor="#666666" fontName="Arial" fontSize="12" isBold="true"/>
+    <style name="Column header" forecolor="#666666" fontName="Arial" fontSize="12" isBold="true" pdfFontName="Helvetica-Bold"/>
     <style name="Detail" fontName="Arial" fontSize="12"/>
     <style name="Row" mode="Transparent">
         <conditionalStyle>
@@ -139,7 +139,7 @@ WHERE TRANSACTION_POID = $P{DOC_KEY_POID}]]>
             <textField>
                 <reportElement x="486" y="90" width="108" height="16" uuid="4dbb8893-332f-4c2c-9262-8a2b1c365710"/>
                 <textElement>
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{DOC_REF}]]></textFieldExpression>
             </textField>
@@ -158,7 +158,7 @@ WHERE TRANSACTION_POID = $P{DOC_KEY_POID}]]>
             <textField>
                 <reportElement x="62" y="150" width="160" height="20" uuid="0f966f9a-25dd-4dbc-a5e6-2ebc78d6251a"/>
                 <textElement>
-                    <font size="12" isBold="true"/>
+                    <font size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{CURRENT_CHQ_NO}]]></textFieldExpression>
             </textField>

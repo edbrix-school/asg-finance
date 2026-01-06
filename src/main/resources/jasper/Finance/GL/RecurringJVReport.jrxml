@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="RecurringJVReport" language="groovy" pageWidth="595" pageHeight="842" columnWidth="535" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="51f26c1c-332c-43f0-beb9-5722768520c7">
 	<property name="ireport.zoom" value="1.3310000000000004"/>
 	<property name="ireport.x" value="0"/>
@@ -69,14 +69,14 @@ WHERE RJH.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 			<staticText>
 				<reportElement x="211" y="0" width="100" height="20" uuid="38291799-4f41-40ea-b117-679585513c18"/>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
-					<font size="14" isBold="true"/>
+					<font size="14" isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Recurring JV]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="407" y="25" width="48" height="20" uuid="7f7d9441-0c6d-4f5f-acfe-9d1db860618f"/>
 				<textElement verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Doc Ref]]></text>
 			</staticText>
@@ -91,7 +91,7 @@ WHERE RJH.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 			<staticText>
 				<reportElement x="407" y="49" width="48" height="20" uuid="853ad183-7c9f-469f-a3e8-dd9d84ddf06d"/>
 				<textElement verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Date]]></text>
 			</staticText>
@@ -106,7 +106,7 @@ WHERE RJH.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 			<staticText>
 				<reportElement x="407" y="74" width="48" height="20" uuid="d3f9f985-fa4e-4267-a505-1eb22a2d0f1a"/>
 				<textElement verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Currency]]></text>
 			</staticText>
@@ -124,7 +124,7 @@ WHERE RJH.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 			<staticText>
 				<reportElement x="5" y="34" width="109" height="20" uuid="81d92478-3367-463d-8006-842d4580b096"/>
 				<textElement verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Narration :-]]></text>
 			</staticText>
@@ -136,7 +136,7 @@ WHERE RJH.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 			<staticText>
 				<reportElement x="6" y="56" width="108" height="20" uuid="e11d0125-bb93-4fcb-ae61-3e75c5f15ac9"/>
 				<textElement verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Total Amount :-]]></text>
 			</staticText>
@@ -148,7 +148,7 @@ WHERE RJH.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 			<staticText>
 				<reportElement x="6" y="80" width="108" height="20" uuid="4b48dbd3-f9b4-445f-bb6b-a39a2bb9397b"/>
 				<textElement verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Start Date :-]]></text>
 			</staticText>
@@ -160,7 +160,7 @@ WHERE RJH.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 			<staticText>
 				<reportElement x="6" y="102" width="108" height="20" uuid="232f2e59-de03-4385-948d-e02ead6cd194"/>
 				<textElement verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[No Of Months :-]]></text>
 			</staticText>
@@ -172,7 +172,7 @@ WHERE RJH.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 			<staticText>
 				<reportElement x="6" y="124" width="108" height="20" uuid="f151d404-bf64-4a34-b986-35f2cf5a2b75"/>
 				<textElement verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Month Wise Amount :-]]></text>
 			</staticText>
@@ -243,3 +243,4 @@ WHERE RJH.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 		<band splitType="Stretch"/>
 	</summary>
 </jasperReport>
+

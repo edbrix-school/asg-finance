@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="GEN_RECEIPT_BILL_subreport1" language="groovy" columnCount="2" printOrder="Horizontal" pageWidth="530" pageHeight="340" columnWidth="265" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="eb2c90cd-ce6b-40d0-a941-35e7f4f0b12a">
     <property name="ireport.zoom" value="2.143588810000003"/>
     <property name="ireport.x" value="0"/>
@@ -66,7 +66,7 @@ WHERE DTL.CHECKALL='Y' AND DTL.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
             <staticText>
                 <reportElement x="1" y="0" width="257" height="18" uuid="a1b3b665-328c-414b-8000-8c249267bcc5"/>
                 <textElement>
-                    <font size="12" isBold="true" isUnderline="false"/>
+                    <font size="12" isBold="true" isUnderline="false" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Bill Details]]></text>
             </staticText>
@@ -77,7 +77,7 @@ WHERE DTL.CHECKALL='Y' AND DTL.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
             <staticText>
                 <reportElement style="style1" mode="Transparent" x="0" y="0" width="52" height="15" uuid="3d7b8052-5b94-471c-94b0-8234ea9351ae"/>
                 <textElement>
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                     <paragraph leftIndent="1"/>
                 </textElement>
                 <text><![CDATA[Ref. Type]]></text>
@@ -85,7 +85,7 @@ WHERE DTL.CHECKALL='Y' AND DTL.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
             <staticText>
                 <reportElement style="style1" x="52" y="0" width="116" height="15" uuid="43653ca7-ec3b-43fd-85ca-a18a8b63ef27"/>
                 <textElement>
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                     <paragraph leftIndent="3"/>
                 </textElement>
                 <text><![CDATA[Ref No]]></text>
@@ -93,7 +93,7 @@ WHERE DTL.CHECKALL='Y' AND DTL.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
             <staticText>
                 <reportElement style="style1" x="168" y="0" width="93" height="15" uuid="1b4e689d-083f-4cb0-830f-da777dce3c01"/>
                 <textElement>
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                     <paragraph leftIndent="3"/>
                 </textElement>
                 <text><![CDATA[Amount BHD]]></text>
@@ -143,7 +143,7 @@ WHERE DTL.CHECKALL='Y' AND DTL.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
             <staticText>
                 <reportElement x="0" y="0" width="157" height="18" uuid="4fc2ee67-6d48-4140-aacd-2a9e4aaf8aed"/>
                 <textElement textAlignment="Left" verticalAlignment="Middle">
-                    <font size="12" isBold="true"/>
+                    <font size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
                     <paragraph rightIndent="3"/>
                 </textElement>
                 <text><![CDATA[Total Bill Amount]]></text>
@@ -151,7 +151,7 @@ WHERE DTL.CHECKALL='Y' AND DTL.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
             <textField pattern="#,##0.000" isBlankWhenNull="true">
                 <reportElement x="169" y="0" width="92" height="18" uuid="d53ff22c-c64b-4e03-a3c0-5420c9788729"/>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
-                    <font size="12" isBold="true"/>
+                    <font size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
                     <paragraph rightIndent="3"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$V{TOTAL_AMOUNT}]]></textFieldExpression>
@@ -159,7 +159,7 @@ WHERE DTL.CHECKALL='Y' AND DTL.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
             <staticText>
                 <reportElement x="158" y="0" width="10" height="18" uuid="85a1ff35-8bb1-4be9-ad3b-4b95cdb70088"/>
                 <textElement textAlignment="Center" verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[:]]></text>
             </staticText>
@@ -169,3 +169,4 @@ WHERE DTL.CHECKALL='Y' AND DTL.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
         <band height="2" splitType="Stretch"/>
     </summary>
 </jasperReport>
+

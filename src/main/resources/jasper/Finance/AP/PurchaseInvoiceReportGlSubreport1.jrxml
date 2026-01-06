@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="PurchaseInvoiceReportGlSubreport1" language="groovy" pageWidth="542" pageHeight="802" columnWidth="542" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="b5a097cf-ebe4-4e33-8890-70fa8537ea6b">
 	<property name="ireport.zoom" value="1.2100000000000002"/>
 	<property name="ireport.x" value="0"/>
@@ -46,7 +46,7 @@ ORDER BY TYPE DESC]]>
 			<staticText>
 				<reportElement x="78" y="0" width="85" height="20" uuid="0c92185f-c04b-4681-ab81-4afb851b6063"/>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 					<paragraph leftIndent="1"/>
 				</textElement>
 				<text><![CDATA[GL Code]]></text>
@@ -54,7 +54,7 @@ ORDER BY TYPE DESC]]>
 			<staticText>
 				<reportElement x="163" y="0" width="229" height="20" uuid="9af145f9-8052-424d-a210-cc73b9a3a583"/>
 				<textElement verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 					<paragraph leftIndent="1"/>
 				</textElement>
 				<text><![CDATA[GL Description]]></text>
@@ -62,7 +62,7 @@ ORDER BY TYPE DESC]]>
 			<staticText>
 				<reportElement x="392" y="0" width="75" height="20" uuid="96ddbdcb-d696-4654-a2f5-5aace43a0fca"/>
 				<textElement verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 					<paragraph leftIndent="1"/>
 				</textElement>
 				<text><![CDATA[Debit Amount]]></text>
@@ -70,7 +70,7 @@ ORDER BY TYPE DESC]]>
 			<staticText>
 				<reportElement x="467" y="0" width="75" height="20" uuid="271cd196-1568-4d08-b9a7-9f2404ddacd6"/>
 				<textElement verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 					<paragraph leftIndent="1"/>
 				</textElement>
 				<text><![CDATA[Credit Amount]]></text>
@@ -78,7 +78,7 @@ ORDER BY TYPE DESC]]>
 			<staticText>
 				<reportElement x="0" y="0" width="26" height="20" uuid="36f1ba96-7192-46a1-83b9-33f051a6192c"/>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 					<paragraph leftIndent="1"/>
 				</textElement>
 				<text><![CDATA[SN]]></text>
@@ -92,7 +92,7 @@ ORDER BY TYPE DESC]]>
 			<staticText>
 				<reportElement x="26" y="0" width="52" height="20" uuid="5cace929-9639-4fd0-a086-1a76986c15e2"/>
 				<textElement verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 					<paragraph leftIndent="2" rightIndent="2"/>
 				</textElement>
 				<text><![CDATA[Company]]></text>
@@ -158,3 +158,4 @@ ORDER BY TYPE DESC]]>
 		</band>
 	</detail>
 </jasperReport>
+

@@ -1,11 +1,11 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="PettyCashPayment" language="groovy" pageWidth="595" pageHeight="842" columnWidth="535" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="51f26c1c-332c-43f0-beb9-5722768520c7">
 	<property name="ireport.zoom" value="1.210000000000002"/>
 	<property name="ireport.x" value="0"/>
 	<property name="ireport.y" value="0"/>
 	<style name="Title" fontName="Times New Roman" fontSize="50" isBold="true" pdfFontName="Times-Bold"/>
 	<style name="SubTitle" forecolor="#736343" fontName="Arial" fontSize="18"/>
-	<style name="Column header" forecolor="#666666" fontName="Arial" fontSize="12" isBold="true"/>
+	<style name="Column header" forecolor="#666666" fontName="Arial" fontSize="12" isBold="true" pdfFontName="Helvetica-Bold"/>
 	<style name="Detail" fontName="Arial" fontSize="12"/>
 	<style name="Row" mode="Transparent">
 		<conditionalStyle>
@@ -102,7 +102,7 @@ WHERE PCP.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 			<staticText>
 				<reportElement x="389" y="30" width="62" height="20" uuid="7cb7ae3a-7df1-4250-b5ed-62c1800c7e76"/>
 				<textElement verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Doc Ref]]></text>
 			</staticText>
@@ -112,14 +112,14 @@ WHERE PCP.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 			<textField isBlankWhenNull="true">
 				<reportElement x="457" y="31" width="93" height="18" uuid="29e54298-e721-4e7a-9f7c-933884dedf44"/>
 				<textElement verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{DOC_REF}]]></textFieldExpression>
 			</textField>
 			<staticText>
 				<reportElement x="389" y="54" width="62" height="20" uuid="e646c78e-1aa4-476b-b250-2b5832797a50"/>
 				<textElement verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Date]]></text>
 			</staticText>
@@ -129,14 +129,14 @@ WHERE PCP.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 			<textField pattern="dd-MMM-yyyy" isBlankWhenNull="true">
 				<reportElement x="457" y="55" width="94" height="18" uuid="545194d0-622b-4089-b87f-587d56706b9b"/>
 				<textElement verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{TRANSACTION_DATE}]]></textFieldExpression>
 			</textField>
 			<staticText>
 				<reportElement x="389" y="78" width="62" height="20" uuid="58a8c90f-8b4a-41a4-be32-7e82596b4b63"/>
 				<textElement verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Ref Type]]></text>
 			</staticText>
@@ -146,42 +146,42 @@ WHERE PCP.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 			<textField isBlankWhenNull="true">
 				<reportElement x="457" y="79" width="94" height="18" uuid="8686d4ee-689b-46ed-90c1-8f8be425ad17"/>
 				<textElement verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{REF_TYPE}]]></textFieldExpression>
 			</textField>
 			<staticText>
 				<reportElement x="25" y="28" width="53" height="20" uuid="7680aab6-f58c-4337-ae6a-c090af3db0de"/>
 				<textElement verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Paid To :]]></text>
 			</staticText>
 			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
 				<reportElement x="78" y="28" width="221" height="20" uuid="456129ed-38f8-4f3d-b048-08a8fe9567f6"/>
 				<textElement verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{PAYING_TO}]]></textFieldExpression>
 			</textField>
 			<staticText>
 				<reportElement x="25" y="50" width="53" height="20" uuid="0c951a95-c08c-413d-969a-08bc7081d889"/>
 				<textElement verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Narration :]]></text>
 			</staticText>
 			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
 				<reportElement x="78" y="50" width="221" height="20" uuid="7a135243-1b80-4707-aa71-da038a60c52b"/>
 				<textElement verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{NARRATION}]]></textFieldExpression>
 			</textField>
 			<staticText>
 				<reportElement x="0" y="1" width="555" height="21" uuid="09ab43af-8c6b-4a43-a160-5dc690c0c010"/>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
-					<font size="14" isBold="true"/>
+					<font size="14" isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Petty Cash Payment Voucher]]></text>
 			</staticText>
@@ -190,7 +190,7 @@ WHERE PCP.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 					<printWhenExpression><![CDATA[$F{REF_TYPE}!="GENERAL"]]></printWhenExpression>
 				</reportElement>
 				<textElement verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Ref Doc Ref]]></text>
 			</staticText>
@@ -204,7 +204,7 @@ WHERE PCP.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 					<printWhenExpression><![CDATA[$F{REF_TYPE}!="GENERAL"]]></printWhenExpression>
 				</reportElement>
 				<textElement verticalAlignment="Middle">
-					<font size="9" isBold="true" isStrikeThrough="false"/>
+					<font size="9" isBold="true" isStrikeThrough="false" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{DOC_REF_TYPE}]]></textFieldExpression>
 			</textField>
@@ -213,7 +213,7 @@ WHERE PCP.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 					<printWhenExpression><![CDATA[$F{STATUS}.equalsIgnoreCase("ADVANCE")]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
-					<font size="12" isBold="true"/>
+					<font size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[(Advance)]]></text>
 			</staticText>
@@ -222,7 +222,7 @@ WHERE PCP.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 					<printWhenExpression><![CDATA[$F{STATUS}.equalsIgnoreCase("ADVANCE")]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{AMOUNT}]]></textFieldExpression>
 			</textField>
@@ -231,7 +231,7 @@ WHERE PCP.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 					<printWhenExpression><![CDATA[$F{STATUS}.equalsIgnoreCase("ADVANCE")]]></printWhenExpression>
 				</reportElement>
 				<textElement verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Advance Amount :]]></text>
 			</staticText>
@@ -320,7 +320,7 @@ WHERE PCP.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 			<staticText>
 				<reportElement x="383" y="76" width="112" height="20" uuid="bff20e8d-f143-4754-a327-7719328711e9"/>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Received By]]></text>
 			</staticText>
@@ -333,7 +333,7 @@ WHERE PCP.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 			<staticText>
 				<reportElement x="208" y="76" width="113" height="18" uuid="76688d31-49ca-4b8d-8418-841a50e44509"/>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Approved By]]></text>
 			</staticText>
@@ -346,49 +346,49 @@ WHERE PCP.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 			<staticText>
 				<reportElement x="27" y="76" width="113" height="18" uuid="915dcde7-f131-413f-816f-6ee55671f814"/>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Prepared By]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="25" y="18" width="125" height="20" uuid="5e3174d2-52ea-4321-82e3-e85ddc80eadf"/>
 				<textElement verticalAlignment="Middle">
-					<font size="9" isBold="true" isUnderline="false" isStrikeThrough="false"/>
+					<font size="9" isBold="true" isUnderline="false" isStrikeThrough="false" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Amount in Words(BHD):]]></text>
 			</staticText>
 			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
 				<reportElement x="145" y="18" width="244" height="20" uuid="9984b26b-40b6-4061-b23a-424fcb4573bb"/>
 				<textElement verticalAlignment="Middle">
-					<font size="9" isBold="true" isItalic="false"/>
+					<font size="9" isBold="true" isItalic="false" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{CRSUM}]]></textFieldExpression>
 			</textField>
 			<textField pattern="#,##0.000" isBlankWhenNull="true">
 				<reportElement x="469" y="18" width="84" height="20" uuid="dbc74da6-65dc-4894-98f9-7b6a54f7b109"/>
 				<textElement textAlignment="Right" verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{AMOUNT}]]></textFieldExpression>
 			</textField>
 			<textField pattern="#,##0.000" isBlankWhenNull="true">
 				<reportElement x="495" y="1" width="58" height="17" uuid="fc0cc245-9126-47dc-a5cf-dfbade9bbf3f"/>
 				<textElement textAlignment="Right" verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{ROUNDING_AMOUNT}]]></textFieldExpression>
 			</textField>
 			<staticText>
 				<reportElement x="389" y="1" width="106" height="17" uuid="5519e7d8-66af-4045-ab69-a72cec7cf012"/>
 				<textElement verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Rounding Amount]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="389" y="19" width="64" height="19" uuid="8cb9c994-3435-4464-b104-c51eaa4d7900"/>
 				<textElement verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Total]]></text>
 			</staticText>
@@ -398,3 +398,6 @@ WHERE PCP.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 		<band splitType="Stretch"/>
 	</summary>
 </jasperReport>
+
+
+

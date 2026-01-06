@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="GEN_RECEIPT_CHARGES_subreport1" language="groovy" pageWidth="555" pageHeight="802" columnWidth="555" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="6a6e9eb5-c6ad-4e16-bce6-7f5e1ef8dfad">
     <property name="ireport.zoom" value="1.9487171000000019"/>
     <property name="ireport.x" value="0"/>
@@ -39,7 +39,7 @@ WHERE TRANSACTION_POID=$P{DOC_KEY_POID}]]>
             <staticText>
                 <reportElement x="0" y="0" width="418" height="18" uuid="05631f31-fdbe-4ec5-b789-da7831d8cb89"/>
                 <textElement verticalAlignment="Middle">
-                    <font size="12" isBold="true"/>
+                    <font size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
                     <paragraph leftIndent="1"/>
                 </textElement>
                 <text><![CDATA[Extra Charges Details]]></text>
@@ -51,7 +51,7 @@ WHERE TRANSACTION_POID=$P{DOC_KEY_POID}]]>
             <staticText>
                 <reportElement style="style1" x="0" y="0" width="20" height="18" uuid="4c31cc13-bb59-4063-8106-010e033ff1db"/>
                 <textElement textAlignment="Center" verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                     <paragraph leftIndent="1"/>
                 </textElement>
                 <text><![CDATA[SN]]></text>
@@ -59,7 +59,7 @@ WHERE TRANSACTION_POID=$P{DOC_KEY_POID}]]>
             <staticText>
                 <reportElement style="style1" x="20" y="0" width="118" height="18" uuid="c0c9520e-155e-44cd-b868-9ea840305af1"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                     <paragraph leftIndent="3"/>
                 </textElement>
                 <text><![CDATA[Charge Type]]></text>
@@ -67,7 +67,7 @@ WHERE TRANSACTION_POID=$P{DOC_KEY_POID}]]>
             <staticText>
                 <reportElement style="style1" x="138" y="0" width="92" height="18" uuid="2acb1776-160d-4bf0-a393-4aba13b42d6a"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                     <paragraph leftIndent="3"/>
                 </textElement>
                 <text><![CDATA[Amount]]></text>
@@ -75,7 +75,7 @@ WHERE TRANSACTION_POID=$P{DOC_KEY_POID}]]>
             <staticText>
                 <reportElement style="style1" x="230" y="0" width="88" height="18" uuid="484ffeab-5cf9-48ce-88ac-58a6eadf8284"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                     <paragraph leftIndent="3"/>
                 </textElement>
                 <text><![CDATA[VAT Amount]]></text>
@@ -83,7 +83,7 @@ WHERE TRANSACTION_POID=$P{DOC_KEY_POID}]]>
             <staticText>
                 <reportElement style="style1" x="318" y="0" width="100" height="18" uuid="9676c5ae-9b07-489d-9745-22326e92e3ff"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                     <paragraph leftIndent="3"/>
                 </textElement>
                 <text><![CDATA[Total Amount]]></text>
@@ -135,3 +135,4 @@ WHERE TRANSACTION_POID=$P{DOC_KEY_POID}]]>
         </band>
     </detail>
 </jasperReport>
+

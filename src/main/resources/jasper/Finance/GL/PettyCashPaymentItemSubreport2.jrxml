@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="PettyCashPaymentItemSubreport2" language="groovy" pageWidth="530" pageHeight="802" columnWidth="530" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="b6815a42-1680-4b48-8ae9-7b342271d025">
     <property name="ireport.zoom" value="1.1000000000000008"/>
     <property name="ireport.x" value="0"/>
@@ -33,7 +33,7 @@ WHERE GPCC.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
             <staticText>
                 <reportElement x="0" y="2" width="530" height="20" uuid="fdb19650-b1a3-4e98-a4b3-8575522fadf4"/>
                 <textElement>
-                    <font size="12" isBold="true"/>
+                    <font size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Charge Detail]]></text>
             </staticText>
@@ -50,28 +50,28 @@ WHERE GPCC.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
             <staticText>
                 <reportElement x="0" y="0" width="40" height="20" uuid="1e6f026c-4709-4352-9103-c6b1a796b05f"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Sl No]]></text>
             </staticText>
             <staticText>
                 <reportElement x="40" y="0" width="189" height="20" uuid="b405cab9-51d1-44ca-a01e-85ebcda9d57a"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Charge]]></text>
             </staticText>
             <staticText>
                 <reportElement x="229" y="0" width="201" height="20" uuid="7a6d2dd8-e6ed-4b3b-a030-a0f2bd881348"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Remarks]]></text>
             </staticText>
             <staticText>
                 <reportElement x="430" y="0" width="100" height="20" uuid="dc5315d3-d889-41fc-9d78-0b5a49457fc8"/>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Amount [BHD]]]></text>
             </staticText>
@@ -117,3 +117,4 @@ WHERE GPCC.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
         <band height="22"/>
     </lastPageFooter>
 </jasperReport>
+

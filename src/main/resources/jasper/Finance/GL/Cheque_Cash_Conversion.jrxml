@@ -1,11 +1,11 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Cheque_Cash_Conversion" language="groovy" pageWidth="595" pageHeight="842" columnWidth="532" leftMargin="43" rightMargin="20" topMargin="20" bottomMargin="20" uuid="51f26c1c-332c-43f0-beb9-5722768520c7">
 	<property name="ireport.zoom" value="1.9487171000000014"/>
 	<property name="ireport.x" value="0"/>
 	<property name="ireport.y" value="0"/>
 	<style name="Title" fontName="Times New Roman" fontSize="50" isBold="true" pdfFontName="Times-Bold"/>
 	<style name="SubTitle" forecolor="#736343" fontName="Arial" fontSize="18"/>
-	<style name="Column header" forecolor="#666666" fontName="Arial" fontSize="12" isBold="true"/>
+	<style name="Column header" forecolor="#666666" fontName="Arial" fontSize="12" isBold="true" pdfFontName="Helvetica-Bold"/>
 	<style name="Detail" fontName="Arial" fontSize="12"/>
 	<style name="Row" mode="Transparent">
 		<conditionalStyle>
@@ -174,7 +174,7 @@ WHERE TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 			<textField isBlankWhenNull="true">
 				<reportElement x="53" y="97" width="136" height="20" uuid="73c7c52a-d487-41e0-a7ae-e5d666db201c"/>
 				<textElement>
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 					<paragraph leftIndent="3"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{DOC_REF}]]></textFieldExpression>
@@ -182,7 +182,7 @@ WHERE TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 			<textField pattern="dd-MMM-yyyy" isBlankWhenNull="true">
 				<reportElement x="449" y="97" width="82" height="20" uuid="894c6b5a-ca94-4f91-b59e-19869724258e"/>
 				<textElement>
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 					<paragraph leftIndent="3"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{TRANSACTION_DATE}]]></textFieldExpression>
@@ -190,42 +190,42 @@ WHERE TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 			<staticText>
 				<reportElement x="0" y="97" width="48" height="20" uuid="b797279a-6358-43d7-946d-c25172ca66ba"/>
 				<textElement>
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Doc Ref ]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="410" y="97" width="33" height="20" uuid="7576c6d7-15f4-446b-b536-cafd621181c6"/>
 				<textElement>
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Date ]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="1" y="122" width="148" height="20" uuid="591bf924-e56f-423c-86fd-584477dda0df"/>
 				<textElement verticalAlignment="Bottom">
-					<font isBold="true" isUnderline="true"/>
+					<font isBold="true" isUnderline="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[From Conversion Details]]></text>
 			</staticText>
 			<textField isBlankWhenNull="true">
 				<reportElement x="1" y="77" width="530" height="20" uuid="aef5ecfa-b7ad-44a7-bb98-08247c73bc77"/>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
-					<font size="14" isBold="true" isUnderline="false"/>
+					<font size="14" isBold="true" isUnderline="false" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{TYPE}]]></textFieldExpression>
 			</textField>
 			<staticText>
 				<reportElement x="47" y="97" width="6" height="20" uuid="ca7a50fd-9156-4ddd-bc20-37d27f8b770f"/>
 				<textElement textAlignment="Center">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[:]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="443" y="97" width="6" height="20" uuid="838de8f9-7c4e-4e32-84a0-2f66bbf80339"/>
 				<textElement textAlignment="Center">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[:]]></text>
 			</staticText>
@@ -249,7 +249,7 @@ WHERE TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 							<staticText>
 								<reportElement style="OutTable" x="0" y="0" width="73" height="30" uuid="e4bb2f7b-9b90-4958-b6f2-97eec6921e38"/>
 								<textElement>
-									<font isBold="true"/>
+									<font isBold="true" pdfFontName="Helvetica-Bold"/>
 								</textElement>
 								<text><![CDATA[Voucher Type]]></text>
 							</staticText>
@@ -266,7 +266,7 @@ WHERE TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 							<staticText>
 								<reportElement style="OutTable" x="0" y="0" width="59" height="30" uuid="77743813-7e38-4df2-8fcc-80b1f2a33a82"/>
 								<textElement>
-									<font isBold="true"/>
+									<font isBold="true" pdfFontName="Helvetica-Bold"/>
 								</textElement>
 								<text><![CDATA[Cheque No]]></text>
 							</staticText>
@@ -283,7 +283,7 @@ WHERE TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 							<staticText>
 								<reportElement style="OutTable" x="0" y="0" width="69" height="30" uuid="d68732f2-5efb-4800-be80-0d3fd9d8156a"/>
 								<textElement>
-									<font isBold="true"/>
+									<font isBold="true" pdfFontName="Helvetica-Bold"/>
 								</textElement>
 								<text><![CDATA[Cheque Date]]></text>
 							</staticText>
@@ -300,7 +300,7 @@ WHERE TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 							<staticText>
 								<reportElement style="OutTable" x="0" y="0" width="180" height="30" uuid="44aa96ef-717d-45a9-915c-a497ac34e533"/>
 								<textElement>
-									<font isBold="true"/>
+									<font isBold="true" pdfFontName="Helvetica-Bold"/>
 								</textElement>
 								<text><![CDATA[Bank]]></text>
 							</staticText>
@@ -317,7 +317,7 @@ WHERE TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 							<staticText>
 								<reportElement style="OutTable" x="0" y="0" width="90" height="30" uuid="3af7aac0-bed1-4130-88a2-461fa5c0a6e4"/>
 								<textElement>
-									<font isBold="true"/>
+									<font isBold="true" pdfFontName="Helvetica-Bold"/>
 								</textElement>
 								<text><![CDATA[Cheque Acc No]]></text>
 							</staticText>
@@ -334,7 +334,7 @@ WHERE TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 							<staticText>
 								<reportElement style="OutTable" x="0" y="0" width="71" height="30" uuid="33801998-12fe-4137-936d-fa5b2ab7a3d9"/>
 								<textElement>
-									<font isBold="true"/>
+									<font isBold="true" pdfFontName="Helvetica-Bold"/>
 								</textElement>
 								<text><![CDATA[Amount]]></text>
 							</staticText>
@@ -366,7 +366,7 @@ WHERE TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 								<staticText>
 									<reportElement style="OutDtl" x="0" y="0" width="90" height="30" uuid="4dd3359c-9c36-449a-afee-da78118bfb6f"/>
 									<textElement>
-										<font isBold="true"/>
+										<font isBold="true" pdfFontName="Helvetica-Bold"/>
 									</textElement>
 									<text><![CDATA[Voucher Type]]></text>
 								</staticText>
@@ -386,7 +386,7 @@ WHERE TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 								<staticText>
 									<reportElement style="OutDtl" x="0" y="0" width="90" height="30" uuid="36b18b22-42e9-424c-bcfd-6170ab139af9"/>
 									<textElement>
-										<font isBold="true"/>
+										<font isBold="true" pdfFontName="Helvetica-Bold"/>
 									</textElement>
 									<text><![CDATA[Amount]]></text>
 								</staticText>
@@ -407,7 +407,7 @@ WHERE TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 			<staticText>
 				<reportElement x="1" y="0" width="148" height="20" uuid="48f5ad45-b22f-4673-a966-5fb0bb91e435"/>
 				<textElement verticalAlignment="Bottom">
-					<font isBold="true" isItalic="false" isUnderline="true"/>
+					<font isBold="true" isItalic="false" isUnderline="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[To Conversion Details]]></text>
 			</staticText>
@@ -427,7 +427,7 @@ WHERE TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 							<staticText>
 								<reportElement style="OutTable" x="0" y="0" width="74" height="19" uuid="834686c2-f715-4b47-bb86-685253b77caa"/>
 								<textElement>
-									<font isBold="true"/>
+									<font isBold="true" pdfFontName="Helvetica-Bold"/>
 								</textElement>
 								<text><![CDATA[Voucher Type]]></text>
 							</staticText>
@@ -444,7 +444,7 @@ WHERE TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 							<staticText>
 								<reportElement style="OutTable" x="0" y="0" width="58" height="19" uuid="9a9052a8-150f-4bcf-8c46-91ecf45caa5f"/>
 								<textElement>
-									<font isBold="true"/>
+									<font isBold="true" pdfFontName="Helvetica-Bold"/>
 								</textElement>
 								<text><![CDATA[Cheque No]]></text>
 							</staticText>
@@ -461,7 +461,7 @@ WHERE TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 							<staticText>
 								<reportElement style="OutTable" x="0" y="0" width="69" height="19" uuid="48e26095-1efc-4f8e-adbb-96acb53510a9"/>
 								<textElement>
-									<font isBold="true"/>
+									<font isBold="true" pdfFontName="Helvetica-Bold"/>
 								</textElement>
 								<text><![CDATA[Cheque Date]]></text>
 							</staticText>
@@ -478,7 +478,7 @@ WHERE TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 							<staticText>
 								<reportElement style="OutTable" x="0" y="0" width="180" height="19" uuid="8a20c87d-289b-4146-be0b-5655e6ea15ca"/>
 								<textElement>
-									<font isBold="true"/>
+									<font isBold="true" pdfFontName="Helvetica-Bold"/>
 								</textElement>
 								<text><![CDATA[Bank]]></text>
 							</staticText>
@@ -495,7 +495,7 @@ WHERE TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 							<staticText>
 								<reportElement style="OutTable" x="0" y="0" width="90" height="19" uuid="497f6524-e9ae-4e2e-b8f0-47ab9ccaa57a"/>
 								<textElement>
-									<font isBold="true"/>
+									<font isBold="true" pdfFontName="Helvetica-Bold"/>
 								</textElement>
 								<text><![CDATA[Cheque Acc No]]></text>
 							</staticText>
@@ -512,7 +512,7 @@ WHERE TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 							<staticText>
 								<reportElement style="OutTable" x="0" y="0" width="70" height="19" uuid="fe4cffcf-55e6-4eb9-92c7-f44ad6fa69ba"/>
 								<textElement>
-									<font isBold="true"/>
+									<font isBold="true" pdfFontName="Helvetica-Bold"/>
 								</textElement>
 								<text><![CDATA[Amount]]></text>
 							</staticText>
@@ -534,7 +534,7 @@ WHERE TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 					<printWhenExpression><![CDATA[$F{CASH_DTL}.equalsIgnoreCase( "CASH_AMT" )]]></printWhenExpression>
 				</reportElement>
 				<textElement>
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Cash Received :]]></text>
 			</staticText>
@@ -543,7 +543,7 @@ WHERE TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 					<printWhenExpression><![CDATA[$F{CASH_DTL}.equalsIgnoreCase( "CASH_AMT" )]]></printWhenExpression>
 				</reportElement>
 				<textElement>
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{CASH}]]></textFieldExpression>
 			</textField>
@@ -552,7 +552,7 @@ WHERE TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 					<printWhenExpression><![CDATA[$F{ROUNDING_DTL}.equalsIgnoreCase( "ROUNDING_AMT" )]]></printWhenExpression>
 				</reportElement>
 				<textElement>
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Rounding Amount :]]></text>
 			</staticText>
@@ -561,7 +561,7 @@ WHERE TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 					<printWhenExpression><![CDATA[$F{ROUNDING_DTL}.equalsIgnoreCase( "ROUNDING_AMT" )]]></printWhenExpression>
 				</reportElement>
 				<textElement>
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{ROUNDING_AMT}]]></textFieldExpression>
 			</textField>
@@ -586,3 +586,6 @@ WHERE TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 		<band splitType="Stretch"/>
 	</summary>
 </jasperReport>
+
+
+

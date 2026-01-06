@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="ContraVoucherReport1" language="groovy" pageWidth="595" pageHeight="842" columnWidth="535" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="51f26c1c-332c-43f0-beb9-5722768520c7">
 	<property name="ireport.zoom" value="1.3310000000000004"/>
 	<property name="ireport.x" value="0"/>
@@ -70,7 +70,7 @@ WHERE CVH.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 			<staticText>
 				<reportElement x="212" y="0" width="123" height="25" uuid="d22dc480-bccc-4147-bfb6-803b11737e4f"/>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
-					<font size="16" isBold="true"/>
+					<font size="16" isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Contra Voucher]]></text>
 			</staticText>
@@ -83,7 +83,7 @@ WHERE CVH.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 			<staticText>
 				<reportElement x="29" y="43" width="56" height="20" uuid="2b575c67-bae1-4069-a55e-2c6519df06a3"/>
 				<textElement verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Narration]]></text>
 			</staticText>
@@ -95,7 +95,7 @@ WHERE CVH.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 			<staticText>
 				<reportElement x="377" y="43" width="61" height="20" uuid="1401125a-1ed0-4bb2-94b9-0bf01635a6a1"/>
 				<textElement verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Doc Ref]]></text>
 			</staticText>
@@ -107,7 +107,7 @@ WHERE CVH.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 			<staticText>
 				<reportElement x="377" y="67" width="61" height="20" uuid="c5af2dfc-63b4-4a3c-9e92-1d55e395bca9"/>
 				<textElement verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Doc Date]]></text>
 			</staticText>
@@ -153,21 +153,21 @@ WHERE CVH.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 			<staticText>
 				<reportElement x="50" y="4" width="100" height="20" uuid="8a01d5df-7163-4859-92cb-490f863e27a3"/>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[ACCOUNTANT]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="250" y="4" width="100" height="20" uuid="79eab40b-f979-4d9c-a242-09cf87097c42"/>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[FINANCE MANAGER]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="450" y="6" width="100" height="20" uuid="60e9ce90-ab5e-4c26-8ebf-87c96f1f8dec"/>
 				<textElement textAlignment="Center">
-					<font isBold="true"/>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[AUTHORISED BY]]></text>
 			</staticText>
@@ -192,3 +192,4 @@ WHERE CVH.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 		<band splitType="Stretch"/>
 	</summary>
 </jasperReport>
+

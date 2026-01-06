@@ -1,11 +1,11 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="JournalVoucher" language="groovy" pageWidth="595" pageHeight="842" columnWidth="535" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="51f26c1c-332c-43f0-beb9-5722768520c7">
     <property name="ireport.zoom" value="1.9487171000000014"/>
     <property name="ireport.x" value="0"/>
     <property name="ireport.y" value="0"/>
     <style name="Title" fontName="Times New Roman" fontSize="50" isBold="true" pdfFontName="Times-Bold"/>
     <style name="SubTitle" forecolor="#736343" fontName="Arial" fontSize="18"/>
-    <style name="Column header" forecolor="#666666" fontName="Arial" fontSize="12" isBold="true"/>
+    <style name="Column header" forecolor="#666666" fontName="Arial" fontSize="12" isBold="true" pdfFontName="Helvetica-Bold"/>
     <style name="Detail" fontName="Arial" fontSize="12"/>
     <style name="Row" mode="Transparent">
         <conditionalStyle>
@@ -74,7 +74,7 @@ WHERE TRANSACTION_POID=$P{DOC_KEY_POID}]]>
             <staticText>
                 <reportElement x="0" y="0" width="555" height="23" uuid="827aaaff-60fe-49bd-aa24-43424300d670"/>
                 <textElement textAlignment="Center" verticalAlignment="Bottom">
-                    <font fontName="SansSerif" size="18" isBold="true" isItalic="false" isUnderline="false"/>
+                    <font fontName="SansSerif" size="18" isBold="true" isItalic="false" isUnderline="false" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Journal Voucher]]></text>
             </staticText>
@@ -84,7 +84,7 @@ WHERE TRANSACTION_POID=$P{DOC_KEY_POID}]]>
             <textField pattern="dd-MMM-yyyy" isBlankWhenNull="true">
                 <reportElement x="460" y="60" width="95" height="18" uuid="cda65641-9c5a-45ad-9ee9-1587d2bd0625"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{TRANSACTION_DATE}]]></textFieldExpression>
             </textField>
@@ -94,21 +94,21 @@ WHERE TRANSACTION_POID=$P{DOC_KEY_POID}]]>
             <textField isBlankWhenNull="true">
                 <reportElement x="460" y="36" width="95" height="18" uuid="06c929a8-a17b-46a9-b1a1-11530bb5355f"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{DOC_REF}]]></textFieldExpression>
             </textField>
             <staticText>
                 <reportElement x="406" y="35" width="49" height="20" uuid="e2e4c3f2-53f0-4f60-a5b9-ecb430136087"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Doc Ref]]></text>
             </staticText>
             <staticText>
                 <reportElement x="406" y="59" width="49" height="20" uuid="8ca60592-031d-40e1-b0e1-918ae90b30eb"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Date]]></text>
             </staticText>
@@ -120,7 +120,7 @@ WHERE TRANSACTION_POID=$P{DOC_KEY_POID}]]>
             <staticText>
                 <reportElement x="25" y="36" width="57" height="20" uuid="52752d69-fb85-4424-91a7-a62ae8d9bde2"/>
                 <textElement verticalAlignment="Top">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Narration  :]]></text>
             </staticText>
@@ -190,21 +190,21 @@ WHERE TRANSACTION_POID=$P{DOC_KEY_POID}]]>
             <staticText>
                 <reportElement x="42" y="11" width="100" height="20" uuid="089d6670-e984-489c-9d23-3e673ad2d4b6"/>
                 <textElement textAlignment="Center" verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[ACCOUNTANT]]></text>
             </staticText>
             <staticText>
                 <reportElement x="240" y="11" width="100" height="20" uuid="e7c95413-350a-4dbd-8f50-34af754b7dbc"/>
                 <textElement textAlignment="Center" verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[FINANCE MANAGER]]></text>
             </staticText>
             <staticText>
                 <reportElement x="442" y="11" width="100" height="20" uuid="49ba8c50-0620-4412-a3ff-a0502f045034"/>
                 <textElement textAlignment="Center" verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[AUTHORISED BY]]></text>
             </staticText>
@@ -217,7 +217,7 @@ WHERE TRANSACTION_POID=$P{DOC_KEY_POID}]]>
             <staticText>
                 <reportElement x="25" y="43" width="100" height="20" uuid="594871b6-3277-41a1-8277-f5edf31fdef4"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[PREPARED BY :]]></text>
             </staticText>
@@ -241,3 +241,6 @@ WHERE TRANSACTION_POID=$P{DOC_KEY_POID}]]>
         <band splitType="Stretch"/>
     </summary>
 </jasperReport>
+
+
+

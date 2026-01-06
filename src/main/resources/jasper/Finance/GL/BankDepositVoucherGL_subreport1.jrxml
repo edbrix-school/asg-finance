@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="BankDepositVoucherGL_subreport1" language="groovy" pageWidth="530" pageHeight="802" columnWidth="530" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="cbf93c39-a9d0-4d6e-b2d5-91e68c6c66ff">
     <property name="ireport.zoom" value="1.2100000000000009"/>
     <property name="ireport.x" value="0"/>
@@ -45,7 +45,7 @@ order by nvl(CHQ_SEQ_NUM,0)]]>
             <staticText>
                 <reportElement x="1" y="1" width="529" height="18" uuid="1b786dca-0237-4d85-a063-4c8f4a522342"/>
                 <textElement verticalAlignment="Middle">
-                    <font size="12" isBold="true"/>
+                    <font size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Cash Details]]></text>
             </staticText>
@@ -65,21 +65,21 @@ order by nvl(CHQ_SEQ_NUM,0)]]>
             <staticText>
                 <reportElement x="0" y="0" width="39" height="20" uuid="c94f8c73-1c98-44d6-a485-7bd0e8690e9c"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Sl No ]]></text>
             </staticText>
             <staticText>
                 <reportElement x="39" y="0" width="327" height="20" uuid="88963563-e20e-4121-bac3-558597f3fa8a"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Description]]></text>
             </staticText>
             <staticText>
                 <reportElement x="430" y="0" width="100" height="20" uuid="851aed29-87a9-4731-96eb-dc92918550c1"/>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Amount]]></text>
             </staticText>
@@ -101,7 +101,7 @@ order by nvl(CHQ_SEQ_NUM,0)]]>
             <textField pattern="###0.000" isBlankWhenNull="true">
                 <reportElement x="430" y="0" width="100" height="20" uuid="df59374a-8fef-46d8-ad75-e9ac6ced5fc1"/>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{AMOUNT}]]></textFieldExpression>
             </textField>
@@ -127,7 +127,7 @@ order by nvl(CHQ_SEQ_NUM,0)]]>
                             <textField isStretchWithOverflow="true" isBlankWhenNull="true">
                                 <reportElement stretchType="RelativeToBandHeight" x="0" y="0" width="300" height="20" uuid="71dad002-dacd-4035-aace-3ace864d32c5"/>
                                 <textElement verticalAlignment="Middle">
-                                    <font isBold="true"/>
+                                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                                 </textElement>
                                 <textFieldExpression><![CDATA[$F{AMOUNT_IN_WORDS}]]></textFieldExpression>
                             </textField>
@@ -138,10 +138,11 @@ order by nvl(CHQ_SEQ_NUM,0)]]>
             <staticText>
                 <reportElement x="1" y="0" width="115" height="20" uuid="1fca8061-b8ed-4a12-bc66-5516ce06cc46"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Amount in Words BHD :]]></text>
             </staticText>
         </band>
     </lastPageFooter>
 </jasperReport>
+

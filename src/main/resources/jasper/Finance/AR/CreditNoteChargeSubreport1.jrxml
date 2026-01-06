@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="CreditNoteChargeSubreport1" language="groovy" pageWidth="530" pageHeight="802" columnWidth="530" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="64b5803d-5c48-48b4-b8bc-806ca0f68203">
     <property name="ireport.zoom" value="1.3310000000000008"/>
     <property name="ireport.x" value="0"/>
@@ -60,21 +60,21 @@ WHERE CNCD.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
             <staticText>
                 <reportElement x="457" y="0" width="68" height="20" uuid="5d47ba3d-6a7a-4e3f-99b0-2218fb8b33c5"/>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Amount(BHD)]]></text>
             </staticText>
             <staticText>
                 <reportElement x="0" y="0" width="29" height="20" uuid="c8c51af8-2238-4e28-9b84-c8d127ffc2b3"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Sl No]]></text>
             </staticText>
             <staticText>
                 <reportElement x="34" y="0" width="204" height="20" uuid="660c5921-4b39-44e3-81b0-1dd18e359c38"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Description]]></text>
             </staticText>
@@ -83,7 +83,7 @@ WHERE CNCD.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
                     <printWhenExpression><![CDATA[$F{CURRENCY_CODE}.equals("USD")]]></printWhenExpression>
                 </reportElement>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Amount(USD)]]></text>
             </staticText>
@@ -104,7 +104,7 @@ WHERE CNCD.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
                     <printWhenExpression><![CDATA[$F{TAX_APPLICABLE} =='Y']]></printWhenExpression>
                 </reportElement>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Amount]]></text>
             </staticText>
@@ -113,7 +113,7 @@ WHERE CNCD.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
                     <printWhenExpression><![CDATA[$F{TAX_APPLICABLE} =='Y']]></printWhenExpression>
                 </reportElement>
                 <textElement textAlignment="Center" verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[VAT %]]></text>
             </staticText>
@@ -122,7 +122,7 @@ WHERE CNCD.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
                     <printWhenExpression><![CDATA[$F{TAX_APPLICABLE} =='Y']]></printWhenExpression>
                 </reportElement>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[VAT Amount]]></text>
             </staticText>
@@ -202,3 +202,4 @@ WHERE CNCD.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
         </band>
     </detail>
 </jasperReport>
+

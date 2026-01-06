@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="DebitNoteChargeSubreport1" language="groovy" pageWidth="521" pageHeight="802" columnWidth="521" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="a07fe0ef-932d-4384-ad4f-c652111ff74e">
     <property name="ireport.zoom" value="1.3310000000000015"/>
     <property name="ireport.x" value="0"/>
@@ -83,14 +83,14 @@ CURRENCY_CODE,CHECK_ALL, USD_ONLY, TAX_PERCENTAGE, COMPANY_POID, TRANSACTION_DAT
             <staticText>
                 <reportElement x="0" y="2" width="34" height="15" uuid="b294cfba-dfe0-49a0-9727-b478a3a21f5d"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Sl No]]></text>
             </staticText>
             <staticText>
                 <reportElement x="34" y="2" width="184" height="15" uuid="157c5818-1a80-4340-8a60-083291a97a1a"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Description]]></text>
             </staticText>
@@ -99,21 +99,21 @@ CURRENCY_CODE,CHECK_ALL, USD_ONLY, TAX_PERCENTAGE, COMPANY_POID, TRANSACTION_DAT
                     <printWhenExpression><![CDATA[$F{CURRENCY_CODE}.equals("USD") && $F{USD_ONLY}=="N"]]></printWhenExpression>
                 </reportElement>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Amount USD]]></text>
             </staticText>
             <staticText>
                 <reportElement x="449" y="2" width="46" height="15" uuid="2344d0f3-544d-4d2e-b897-b9552ab38c0d"/>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Amount]]></text>
             </staticText>
             <textField isBlankWhenNull="true">
                 <reportElement x="495" y="2" width="26" height="15" uuid="0847cc1c-65c9-4543-b048-86498b6b5aca"/>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                     <paragraph leftIndent="1" rightIndent="3"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{USD_ONLY}=="N" ? "BHD" : $F{CURRENCY_CODE}]]></textFieldExpression>
@@ -123,7 +123,7 @@ CURRENCY_CODE,CHECK_ALL, USD_ONLY, TAX_PERCENTAGE, COMPANY_POID, TRANSACTION_DAT
                     <printWhenExpression><![CDATA[$F{TAX_APPLICABLE}== 'Y']]></printWhenExpression>
                 </reportElement>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Amount]]></text>
             </staticText>
@@ -132,7 +132,7 @@ CURRENCY_CODE,CHECK_ALL, USD_ONLY, TAX_PERCENTAGE, COMPANY_POID, TRANSACTION_DAT
                     <printWhenExpression><![CDATA[$F{TAX_APPLICABLE}== 'Y']]></printWhenExpression>
                 </reportElement>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[VAT %]]></text>
             </staticText>
@@ -141,7 +141,7 @@ CURRENCY_CODE,CHECK_ALL, USD_ONLY, TAX_PERCENTAGE, COMPANY_POID, TRANSACTION_DAT
                     <printWhenExpression><![CDATA[$F{TAX_APPLICABLE}== 'Y']]></printWhenExpression>
                 </reportElement>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[VAT Amount]]></text>
             </staticText>

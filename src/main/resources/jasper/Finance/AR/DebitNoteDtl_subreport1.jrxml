@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="DebitNoteDtl_subreport1" language="groovy" pageWidth="521" pageHeight="400" columnWidth="521" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="84afab5e-d72b-4676-90f7-f0292dcf78cb">
     <property name="ireport.zoom" value="2.593742460100003"/>
     <property name="ireport.x" value="0"/>
@@ -49,14 +49,14 @@ WHERE DND.TRANSACTION_POID=$P{DOC_KEY_POID} AND UPPER(DND.TYPE)='CR']]>
                     <printWhenExpression><![CDATA[$F{CURRENCY_CODE}!="BHD" && $F{USD_ONLY}=="N"]]></printWhenExpression>
                 </reportElement>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Amount]]></text>
             </staticText>
             <staticText>
                 <reportElement x="0" y="2" width="28" height="20" uuid="3a618818-8172-4a9b-9517-701e5c602394"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Sl No]]></text>
             </staticText>
@@ -65,7 +65,7 @@ WHERE DND.TRANSACTION_POID=$P{DOC_KEY_POID} AND UPPER(DND.TYPE)='CR']]>
                     <printWhenExpression><![CDATA[$F{USD_ONLY}=="N"]]></printWhenExpression>
                 </reportElement>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Amount [BHD]]]></text>
             </staticText>
@@ -74,14 +74,14 @@ WHERE DND.TRANSACTION_POID=$P{DOC_KEY_POID} AND UPPER(DND.TYPE)='CR']]>
                     <printWhenExpression><![CDATA[$F{CURRENCY_CODE}!="BHD" && $F{USD_ONLY}=="N"]]></printWhenExpression>
                 </reportElement>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <textFieldExpression><![CDATA['['+$F{CURRENCY_CODE}+']']]></textFieldExpression>
             </textField>
             <staticText>
                 <reportElement x="28" y="2" width="232" height="20" uuid="f9f09ab2-f823-4236-b0f4-1a2527ffdebf"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Description]]></text>
             </staticText>
@@ -90,7 +90,7 @@ WHERE DND.TRANSACTION_POID=$P{DOC_KEY_POID} AND UPPER(DND.TYPE)='CR']]>
                     <printWhenExpression><![CDATA[$F{USD_ONLY}=="Y"]]></printWhenExpression>
                 </reportElement>
                 <textElement textAlignment="Right" verticalAlignment="Middle" rotation="None">
-                    <font isBold="true" isItalic="false"/>
+                    <font isBold="true" isItalic="false" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Amount ]]></text>
             </staticText>
@@ -99,7 +99,7 @@ WHERE DND.TRANSACTION_POID=$P{DOC_KEY_POID} AND UPPER(DND.TYPE)='CR']]>
                     <printWhenExpression><![CDATA[$F{USD_ONLY}=="Y"]]></printWhenExpression>
                 </reportElement>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <textFieldExpression><![CDATA['['+$F{CURRENCY_CODE}+']']]></textFieldExpression>
             </textField>
@@ -108,7 +108,7 @@ WHERE DND.TRANSACTION_POID=$P{DOC_KEY_POID} AND UPPER(DND.TYPE)='CR']]>
                     <printWhenExpression><![CDATA[$F{TAX_APPLICABLE}== 'Y']]></printWhenExpression>
                 </reportElement>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                     <paragraph leftIndent="1"/>
                 </textElement>
                 <text><![CDATA[VAT %]]></text>
@@ -118,7 +118,7 @@ WHERE DND.TRANSACTION_POID=$P{DOC_KEY_POID} AND UPPER(DND.TYPE)='CR']]>
                     <printWhenExpression><![CDATA[$F{TAX_APPLICABLE}== 'Y']]></printWhenExpression>
                 </reportElement>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                     <paragraph leftIndent="1"/>
                 </textElement>
                 <text><![CDATA[VAT Amount]]></text>

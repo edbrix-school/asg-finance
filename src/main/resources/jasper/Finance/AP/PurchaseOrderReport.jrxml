@@ -1,11 +1,11 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="PurchaseOrderReport" language="groovy" pageWidth="595" pageHeight="842" columnWidth="535" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="51f26c1c-332c-43f0-beb9-5722768520c7">
     <property name="ireport.zoom" value="1.9487171000000056"/>
     <property name="ireport.x" value="0"/>
     <property name="ireport.y" value="197"/>
     <style name="Title" fontName="Times New Roman" fontSize="50" isBold="true" pdfFontName="Times-Bold"/>
     <style name="SubTitle" forecolor="#736343" fontName="Arial" fontSize="18"/>
-    <style name="Column header" forecolor="#666666" fontName="Arial" fontSize="12" isBold="true"/>
+    <style name="Column header" forecolor="#666666" fontName="Arial" fontSize="12" isBold="true" pdfFontName="Helvetica-Bold"/>
     <style name="Detail" fontName="Arial" fontSize="12"/>
     <style name="Row" mode="Transparent">
         <conditionalStyle>
@@ -151,7 +151,7 @@ WHERE APO.TRANSACTION_POID=$P{DOC_KEY_POID} AND ROWNUM=1]]>
             <staticText>
                 <reportElement x="0" y="0" width="555" height="23" uuid="e83eca18-009a-4515-96c3-d3a42775f903"/>
                 <textElement textAlignment="Center" verticalAlignment="Middle">
-                    <font size="16" isBold="true"/>
+                    <font size="16" isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Purchase Order]]></text>
             </staticText>
@@ -164,7 +164,7 @@ WHERE APO.TRANSACTION_POID=$P{DOC_KEY_POID} AND ROWNUM=1]]>
             <staticText>
                 <reportElement x="295" y="36" width="54" height="15" uuid="103729c6-8ba8-47cf-b726-0ea5402c5b56"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Doc Ref]]></text>
             </staticText>
@@ -178,7 +178,7 @@ WHERE APO.TRANSACTION_POID=$P{DOC_KEY_POID} AND ROWNUM=1]]>
             <staticText>
                 <reportElement x="295" y="56" width="54" height="15" uuid="a14a6979-4ddc-4e18-8877-f7a5d3514c2e"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Date]]></text>
             </staticText>
@@ -192,14 +192,14 @@ WHERE APO.TRANSACTION_POID=$P{DOC_KEY_POID} AND ROWNUM=1]]>
             <staticText>
                 <reportElement x="295" y="75" width="54" height="15" uuid="378e6e53-d3a7-4c9f-a6ac-56a423bd961b"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Currency]]></text>
             </staticText>
             <staticText>
                 <reportElement x="295" y="95" width="54" height="15" uuid="9c199e43-bf25-40b8-ac23-adb87ab23663"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Terms]]></text>
             </staticText>
@@ -225,7 +225,7 @@ WHERE APO.TRANSACTION_POID=$P{DOC_KEY_POID} AND ROWNUM=1]]>
             <staticText>
                 <reportElement x="28" y="150" width="42" height="15" uuid="09113930-639f-4a3e-a80d-050e87a65d28"/>
                 <textElement>
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Terms ]]></text>
             </staticText>
@@ -241,7 +241,7 @@ WHERE APO.TRANSACTION_POID=$P{DOC_KEY_POID} AND ROWNUM=1]]>
                     <printWhenExpression><![CDATA[$F{TAX_APPLICABLE}.equalsIgnoreCase( "Y" )]]></printWhenExpression>
                 </reportElement>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[VAT NUMBER :]]></text>
             </staticText>
@@ -253,7 +253,7 @@ WHERE APO.TRANSACTION_POID=$P{DOC_KEY_POID} AND ROWNUM=1]]>
             <staticText>
                 <reportElement x="295" y="115" width="90" height="15" uuid="201f10f4-2ada-4ec7-b389-8f57adf678fb"/>
                 <textElement textAlignment="Left" verticalAlignment="Middle">
-                    <font size="9" isBold="true"/>
+                    <font size="9" isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Our VAT Number]]></text>
             </staticText>
@@ -267,35 +267,35 @@ WHERE APO.TRANSACTION_POID=$P{DOC_KEY_POID} AND ROWNUM=1]]>
             <staticText>
                 <reportElement x="385" y="36" width="6" height="15" uuid="0b908bb2-e083-41b1-8048-13fe61be00d2"/>
                 <textElement textAlignment="Center" verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[:]]></text>
             </staticText>
             <staticText>
                 <reportElement x="385" y="56" width="6" height="15" uuid="36cdde6e-2d87-4d23-9c1e-bf22fd5acf21"/>
                 <textElement textAlignment="Center" verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[:]]></text>
             </staticText>
             <staticText>
                 <reportElement x="385" y="75" width="6" height="15" uuid="7e9d7803-9bb5-4375-b3bf-a2a689fcd972"/>
                 <textElement textAlignment="Center" verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[:]]></text>
             </staticText>
             <staticText>
                 <reportElement x="385" y="95" width="6" height="15" uuid="e04ce2ea-4b41-4648-8688-edef2c95a1fb"/>
                 <textElement textAlignment="Center" verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[:]]></text>
             </staticText>
             <staticText>
                 <reportElement x="385" y="115" width="6" height="15" uuid="ad519ac9-5f9f-4e1d-86f7-ade123aee011"/>
                 <textElement textAlignment="Center" verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[:]]></text>
             </staticText>
@@ -369,7 +369,7 @@ WHERE APO.TRANSACTION_POID=$P{DOC_KEY_POID} AND ROWNUM=1]]>
                     <printWhenExpression><![CDATA[$F{CURRENCY}=="BHD"]]></printWhenExpression>
                 </reportElement>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
-                    <font size="10" isBold="true"/>
+                    <font size="10" isBold="true" pdfFontName="Helvetica-Bold"/>
                     <paragraph rightIndent="1"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$V{RET_TOTAL}]]></textFieldExpression>
@@ -384,28 +384,28 @@ WHERE APO.TRANSACTION_POID=$P{DOC_KEY_POID} AND ROWNUM=1]]>
             <staticText>
                 <reportElement x="349" y="37" width="85" height="18" uuid="4c6b2f08-8efe-4998-8ac3-6f18c436195a"/>
                 <textElement verticalAlignment="Middle">
-                    <font size="10" isBold="true"/>
+                    <font size="10" isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Grand Total]]></text>
             </staticText>
             <staticText>
                 <reportElement positionType="Float" x="25" y="75" width="59" height="20" uuid="3a0ebb74-397b-45ee-ad02-faff7fa88771"/>
                 <textElement verticalAlignment="Middle">
-                    <font size="10" isBold="true"/>
+                    <font size="10" isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Remarks :]]></text>
             </staticText>
             <staticText>
                 <reportElement x="25" y="56" width="100" height="20" uuid="93d3f557-4a74-4ba1-adbd-757253f57888"/>
                 <textElement verticalAlignment="Middle">
-                    <font size="10" isBold="true"/>
+                    <font size="10" isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Amount In Words]]></text>
             </staticText>
             <textField isStretchWithOverflow="true" isBlankWhenNull="true">
                 <reportElement x="158" y="56" width="396" height="20" uuid="8052ade7-f08b-42d2-8be8-bd7645616f9c"/>
                 <textElement verticalAlignment="Middle">
-                    <font size="9" isBold="true"/>
+                    <font size="9" isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{TOTAL_IN_WORDS}]]></textFieldExpression>
             </textField>
@@ -418,14 +418,14 @@ WHERE APO.TRANSACTION_POID=$P{DOC_KEY_POID} AND ROWNUM=1]]>
             <textField isBlankWhenNull="true">
                 <reportElement x="25" y="134" width="84" height="15" forecolor="#999999" uuid="cf32ba22-e274-44c8-85af-65a030b49ee2"/>
                 <textElement verticalAlignment="Middle">
-                    <font size="8" isBold="true"/>
+                    <font size="8" isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <textFieldExpression><![CDATA["ISO : " +$P{DOC_ID}]]></textFieldExpression>
             </textField>
             <staticText>
                 <reportElement x="109" y="134" width="360" height="15" forecolor="#999999" uuid="51b281e5-98f7-4d1d-a1f3-5da50834ff22"/>
                 <textElement verticalAlignment="Middle">
-                    <font size="8" isBold="true"/>
+                    <font size="8" isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[This is a computer-generated document and it does not require a signature.]]></text>
             </staticText>
@@ -434,7 +434,7 @@ WHERE APO.TRANSACTION_POID=$P{DOC_KEY_POID} AND ROWNUM=1]]>
                     <printWhenExpression><![CDATA[$F{CURRENCY}!="BHD"]]></printWhenExpression>
                 </reportElement>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                     <paragraph rightIndent="1"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$V{RET_TOTAL}]]></textFieldExpression>
@@ -442,14 +442,14 @@ WHERE APO.TRANSACTION_POID=$P{DOC_KEY_POID} AND ROWNUM=1]]>
             <textField isBlankWhenNull="true">
                 <reportElement x="127" y="56" width="25" height="20" uuid="acdbc582-9547-4fb6-80be-212215cafcc5"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{CURRENCY}]]></textFieldExpression>
             </textField>
             <staticText>
                 <reportElement x="153" y="56" width="4" height="20" uuid="8e1821df-1e1a-4eb2-8cd9-5c96eee101bc"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[:]]></text>
             </staticText>
@@ -472,7 +472,7 @@ WHERE APO.TRANSACTION_POID=$P{DOC_KEY_POID} AND ROWNUM=1]]>
                     <printWhenExpression><![CDATA[$F{TAX_APPLICABLE}.equalsIgnoreCase( "Y" ) && $F{CURRENCY}=="BHD"]]></printWhenExpression>
                 </reportElement>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                     <paragraph rightIndent="1"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$V{RET_TOTAL_TAX_AMT}]]></textFieldExpression>
@@ -482,7 +482,7 @@ WHERE APO.TRANSACTION_POID=$P{DOC_KEY_POID} AND ROWNUM=1]]>
                     <printWhenExpression><![CDATA[$F{TAX_APPLICABLE}.equalsIgnoreCase( "Y" )]]></printWhenExpression>
                 </reportElement>
                 <textElement verticalAlignment="Middle">
-                    <font size="9" isBold="true"/>
+                    <font size="9" isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Total VAT Amt]]></text>
             </staticText>
@@ -491,7 +491,7 @@ WHERE APO.TRANSACTION_POID=$P{DOC_KEY_POID} AND ROWNUM=1]]>
                     <printWhenExpression><![CDATA[$F{TAX_APPLICABLE}.equalsIgnoreCase( "Y" )]]></printWhenExpression>
                 </reportElement>
                 <textElement verticalAlignment="Middle">
-                    <font size="9" isBold="true"/>
+                    <font size="9" isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Total excl. VAT]]></text>
             </staticText>
@@ -500,7 +500,7 @@ WHERE APO.TRANSACTION_POID=$P{DOC_KEY_POID} AND ROWNUM=1]]>
                     <printWhenExpression><![CDATA[$F{TAX_APPLICABLE}.equalsIgnoreCase( "Y" ) && $F{CURRENCY}!="BHD"]]></printWhenExpression>
                 </reportElement>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                     <paragraph rightIndent="1"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$V{RET_TOTAL_TAX_AMT}]]></textFieldExpression>
@@ -510,7 +510,7 @@ WHERE APO.TRANSACTION_POID=$P{DOC_KEY_POID} AND ROWNUM=1]]>
                     <printWhenExpression><![CDATA[$F{TAX_APPLICABLE}.equalsIgnoreCase( "Y" ) && $F{CURRENCY}!="BHD"]]></printWhenExpression>
                 </reportElement>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                     <paragraph rightIndent="1"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$V{RET_TOTAL_PRICE}]]></textFieldExpression>
@@ -520,7 +520,7 @@ WHERE APO.TRANSACTION_POID=$P{DOC_KEY_POID} AND ROWNUM=1]]>
                     <printWhenExpression><![CDATA[$F{TAX_APPLICABLE}.equalsIgnoreCase( "Y" ) && $F{CURRENCY}=="BHD"]]></printWhenExpression>
                 </reportElement>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                     <paragraph rightIndent="1"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$V{RET_TOTAL_PRICE}]]></textFieldExpression>
@@ -528,7 +528,7 @@ WHERE APO.TRANSACTION_POID=$P{DOC_KEY_POID} AND ROWNUM=1]]>
             <textField isBlankWhenNull="true">
                 <reportElement x="434" y="37" width="41" height="18" uuid="b4037542-46e4-4f64-a6fe-e22e5c852570"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <textFieldExpression><![CDATA[" - "+ $F{CURRENCY}]]></textFieldExpression>
             </textField>
@@ -537,7 +537,7 @@ WHERE APO.TRANSACTION_POID=$P{DOC_KEY_POID} AND ROWNUM=1]]>
                     <printWhenExpression><![CDATA[$F{TAX_APPLICABLE}.equalsIgnoreCase( "Y" )]]></printWhenExpression>
                 </reportElement>
                 <textElement verticalAlignment="Middle">
-                    <font size="9" isBold="true"/>
+                    <font size="9" isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <textFieldExpression><![CDATA[" - "+ $F{CURRENCY}]]></textFieldExpression>
             </textField>
@@ -546,7 +546,7 @@ WHERE APO.TRANSACTION_POID=$P{DOC_KEY_POID} AND ROWNUM=1]]>
                     <printWhenExpression><![CDATA[$F{TAX_APPLICABLE}.equalsIgnoreCase( "Y" )]]></printWhenExpression>
                 </reportElement>
                 <textElement verticalAlignment="Middle">
-                    <font size="9" isBold="true"/>
+                    <font size="9" isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <textFieldExpression><![CDATA[" - "+ $F{CURRENCY}]]></textFieldExpression>
             </textField>
@@ -555,7 +555,7 @@ WHERE APO.TRANSACTION_POID=$P{DOC_KEY_POID} AND ROWNUM=1]]>
                     <printWhenExpression><![CDATA[$F{TAX_APPLICABLE}.equalsIgnoreCase( "Y" )]]></printWhenExpression>
                 </reportElement>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[:]]></text>
             </staticText>
@@ -564,14 +564,14 @@ WHERE APO.TRANSACTION_POID=$P{DOC_KEY_POID} AND ROWNUM=1]]>
                     <printWhenExpression><![CDATA[$F{TAX_APPLICABLE}.equalsIgnoreCase( "Y" )]]></printWhenExpression>
                 </reportElement>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[:]]></text>
             </staticText>
             <staticText>
                 <reportElement x="475" y="37" width="4" height="18" uuid="d0e9f0ee-9ebd-461c-ac9a-1723da293837"/>
                 <textElement verticalAlignment="Middle">
-                    <font isBold="true"/>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[:]]></text>
             </staticText>
@@ -589,7 +589,7 @@ WHERE APO.TRANSACTION_POID=$P{DOC_KEY_POID} AND ROWNUM=1]]>
                     <printWhenExpression><![CDATA[$F{DELIVERY_ADDRESS} != null]]></printWhenExpression>
                 </reportElement>
                 <textElement verticalAlignment="Top">
-                    <font size="9" isBold="true"/>
+                    <font size="9" isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Delivery Address : ]]></text>
             </staticText>

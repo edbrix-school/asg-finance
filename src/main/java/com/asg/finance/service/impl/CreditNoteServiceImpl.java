@@ -1139,6 +1139,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             String issueType
     ) {
         log.info("Saving {} GL rows for txn: {} issueType: {}", glDetails.size(), transactionPoid, issueType);
+        creditNoteDtlRepository.deleteByTransactionPoid(transactionPoid);
         long detRowId = 1L;
         for (CreditNoteGLDetailDto glDto : glDetails) {
             if (glDto == null) continue;

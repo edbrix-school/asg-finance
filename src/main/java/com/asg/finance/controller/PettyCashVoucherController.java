@@ -1,6 +1,8 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.FilterRequestDto;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.finance.dto.*;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.util.UserContext;
@@ -61,6 +63,7 @@ public class PettyCashVoucherController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     public ResponseEntity<?> createPettyCashVoucher(
 
@@ -124,6 +127,7 @@ public class PettyCashVoucherController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{transactionPoid}")
     public ResponseEntity<?> updatePettyCash(
             @Parameter(
@@ -189,6 +193,7 @@ public class PettyCashVoucherController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{transactionPoid}")
     public ResponseEntity<?> getPettyCashDetailsById(
             @Parameter(description = "Transaction Poid reference identifier", required = true)
@@ -201,7 +206,6 @@ public class PettyCashVoucherController {
 
 
     }
-
     @Operation(
             summary = "Soft delete a TaxMaster",
             description = "Marks a TaxMaster as deleted without permanently removing its data",
@@ -227,6 +231,7 @@ public class PettyCashVoucherController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> softDeleteTaxMaster(
             @Parameter(description = "Transaction Poid reference identifier", required = true)
@@ -308,6 +313,7 @@ public class PettyCashVoucherController {
                     }
             )
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     public ResponseEntity<?> listTaxMaster(@ParameterObject Pageable pageable,
                                            @RequestBody(required = false) FilterRequestDto filters,
@@ -338,6 +344,7 @@ public class PettyCashVoucherController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/po-change")
     public ResponseEntity<?> loadFromPo(
             @Parameter(description = "Group POID", example = "1001")
@@ -374,6 +381,7 @@ public class PettyCashVoucherController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/ff-changes")
     public ResponseEntity<?> loadFromFf(
             @Parameter(description = "Group POID", example = "1001")
@@ -410,6 +418,7 @@ public class PettyCashVoucherController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/fda-change")
     public ResponseEntity<?> loadFromFda(
             @Parameter(description = "Group POID", example = "1001")
@@ -445,6 +454,7 @@ public class PettyCashVoucherController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/gl-balance")
     public ResponseEntity<?> loadPettyGlBalance(
             @Parameter(description = "Document Key POID", example = "5001")

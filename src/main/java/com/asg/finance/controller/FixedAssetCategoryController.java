@@ -1,5 +1,8 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
+
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.FixedAssetCategoryRequestDto;
 import com.asg.finance.dto.FixedAssetCategoryResponseDto;
@@ -59,6 +62,7 @@ public class FixedAssetCategoryController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     public ResponseEntity<?> createFixedAssetCategory(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
@@ -118,6 +122,7 @@ public class FixedAssetCategoryController {
             security = @SecurityRequirement(name = "bearerAuth")
     )
 
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{faCategoryPoid}")
     public ResponseEntity<?> updateFixedAssetCategory(
             @Parameter(description = "Fixed Asset Category faCategoryPoid to be updated", required = true)
@@ -174,6 +179,7 @@ public class FixedAssetCategoryController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{faCategoryPoid}")
     public ResponseEntity<?> getFixedAssetCategory(
             @Parameter(description = "faCategoryPoid reference identifier", required = true)
@@ -209,6 +215,7 @@ public class FixedAssetCategoryController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{faCategoryPoid}")
     public ResponseEntity<?> softDeleteFixedAssetCategory(
             @Parameter(description = "faCategoryPoid reference identifier", required = true)
@@ -292,6 +299,7 @@ public class FixedAssetCategoryController {
             )
     )
 
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     public ResponseEntity<?> getFixedAssetCategories(@ParameterObject Pageable pageable,
                                                      @RequestBody(required = false) FilterRequestDto filters) {

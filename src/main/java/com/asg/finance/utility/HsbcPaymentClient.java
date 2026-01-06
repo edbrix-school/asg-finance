@@ -185,7 +185,7 @@ public class HsbcPaymentClient {
         String asgPrivateKeyPath = parameterServiceClient.findParameterValueByName("HSBC_ASG_PRIV_KEY_FOR_API").orElseThrow();
         String secretKey = parameterServiceClient.findParameterValueByName("HSBC_SECRET_KEY_API").orElseThrow();
         
-        String statusXml = getPaymentStatusXml(paymentId, transactionRef);
+        String statusXml = getPaymentStatusXml();
         
         PGPSecretKey secretKeyObj = pgpHelper.readSecretKeyFromFile(asgPrivateKeyPath);
         PGPPublicKey bankPublicKey = pgpHelper.readPublicKeyFromFile(bankPublicKeyPath);
@@ -201,7 +201,7 @@ public class HsbcPaymentClient {
         processPaymentResponse(response, paymentId, bankPublicKey, secretKeyObj, secretKey, "PAYMENT_ENQUIRY");
     }
 
-    private String getPaymentStatusXml(String paymentId, String transactionRef) throws SQLException {
+    private String getPaymentStatusXml() throws SQLException {
         try (Connection conn = dataSource.getConnection();
              CallableStatement stmt = conn.prepareCall("{call PROC_HSBC_API_PYMT_STAT_XML(?)}")) {
             

@@ -1,5 +1,8 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
+
 import com.asg.finance.dto.PurchaseOrderRequest;
 
 import com.asg.finance.dto.PurchaseOrderResponse;
@@ -62,6 +65,7 @@ public class PurchaseOrderController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     public ResponseEntity<?> createPurchaseOrder(
 
@@ -103,6 +107,7 @@ public class PurchaseOrderController {
             @ApiResponse(responseCode = "404", description = "Purchase Order not found"),
             @ApiResponse(responseCode = "400", description = "Invalid input")
     })
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{transactionPoid}")
     public ResponseEntity<?> updatePurchaseOrder(
             @Parameter(description = "transactionPoid reference identifier", required = true)
@@ -139,6 +144,7 @@ public class PurchaseOrderController {
             @ApiResponse(responseCode = "404", description = "Purchase Order not found"),
             @ApiResponse(responseCode = "401", description = "Unauthorized")
     })
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{transactionPoid}")
     public ResponseEntity<?> findById(
 
@@ -181,6 +187,8 @@ public class PurchaseOrderController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.DELETE)
+
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> deletePurchaseOrder(
 
@@ -266,6 +274,9 @@ public class PurchaseOrderController {
             )
     )
 
+    @AllowedAction(UserRolesRightsEnum.CREATE)
+
+
     @PostMapping("/list")
     public ResponseEntity<?> getListPurchaseOrder(@ParameterObject Pageable pageable,
                                                   @RequestBody(required = false) FilterRequestDto filters,
@@ -323,6 +334,8 @@ public class PurchaseOrderController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
+
     @PostMapping("/create-from-rfq")
     public ResponseEntity<?> createPOFromRFQ(
 

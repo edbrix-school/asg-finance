@@ -1,5 +1,8 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
+
 import com.asg.finance.dto.*;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.dto.FilterRequestDto;
@@ -52,6 +55,8 @@ public class TaxSubmissionController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
+
     @PostMapping
     public ResponseEntity<?> createTaxSubmission(
             @Parameter(description = "Tax submission creation request", required = true)
@@ -87,6 +92,7 @@ public class TaxSubmissionController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{transactionPoid}")
     public ResponseEntity<?> getTaxSubmissionById(
             @Parameter(description = "Transaction POID", required = true)
@@ -120,6 +126,7 @@ public class TaxSubmissionController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{transactionPoid}")
     public ResponseEntity<?> updateTaxSubmission(
             @Parameter(description = "Transaction POID", required = true)
@@ -151,6 +158,7 @@ public class TaxSubmissionController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> deleteTaxSubmission(
             @Parameter(description = "Transaction POID", required = true)
@@ -234,6 +242,7 @@ public class TaxSubmissionController {
                     )
             )
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     public ResponseEntity<?> listTaxSubmission(
             @ParameterObject Pageable pageable,
@@ -269,6 +278,7 @@ public class TaxSubmissionController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/{transactionPoid}/load-vat-details")
     public ResponseEntity<?> loadVatDetails(
             @Parameter(description = "Transaction POID", required = true)
@@ -302,6 +312,7 @@ public class TaxSubmissionController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping("/{transactionPoid}/submit")
     public ResponseEntity<?> submitTaxSubmission(
             @Parameter(description = "Transaction POID", required = true)
@@ -338,6 +349,7 @@ public class TaxSubmissionController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping("/{transactionPoid}/after-save")
     public ResponseEntity<?> runAfterSave(
             @Parameter(description = "Transaction POID", required = true)
@@ -364,6 +376,7 @@ public class TaxSubmissionController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping("/validate-period")
     public ResponseEntity<?> validatePeriod(
             @Parameter(description = "Validate period request", required = true)

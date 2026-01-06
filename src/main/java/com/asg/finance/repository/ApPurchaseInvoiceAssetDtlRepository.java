@@ -17,8 +17,5 @@ public interface ApPurchaseInvoiceAssetDtlRepository extends JpaRepository<ApPur
     @Query("SELECT COALESCE(MAX(e.id.detRowId) + 1, 1) FROM ApPurchaseInvoiceAssetDtlEntity e WHERE e.id.transactionPoid = :transactionPoid")
     Long findMaxDetRowIdByTransactionPoid(@Param("transactionPoid") Long transactionPoid);
 
-
     void deleteByIdTransactionPoid(Long transactionPoid);
-
-    void deleteByIdTransactionPoidAndIdDetRowId(Long transactionPoid, Long detRowId);
 }

@@ -16,9 +16,6 @@ public class GlAgeingMasterDto {
 
     private Long ageingPoid;
 
-    @NotNull(message = "Group Poid is required")
-    private Long groupPoid;
-
     @NotBlank(message = "Description is required")
     @Size(max = 100, message = "Description must be at most 100 characters")
     private String description;

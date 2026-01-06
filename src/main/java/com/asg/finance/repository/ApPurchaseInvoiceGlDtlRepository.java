@@ -18,6 +18,4 @@ public interface ApPurchaseInvoiceGlDtlRepository extends JpaRepository<ApPurcha
      Long findMaxDetRowIdByTransactionPoid(@Param("transactionPoid") Long transactionPoid);
 
      void deleteByIdTransactionPoid(Long transactionPoid);
-
-     void deleteByIdTransactionPoidAndIdDetRowId(Long transactionPoid, Long detRowId);
 }

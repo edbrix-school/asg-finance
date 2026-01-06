@@ -1,5 +1,7 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.CostCenterListResponseDto;
 import com.asg.finance.dto.CostCenterRequestDTO;
@@ -64,6 +66,7 @@ public class CostCenterController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     public ResponseEntity<?> createCostCenter(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
@@ -115,6 +118,7 @@ public class CostCenterController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{costCenterPoid}")
     public ResponseEntity<?> softDeleteCountry(
             @Parameter(description = "CostCenterPoid reference identifier", required = true)
@@ -166,6 +170,7 @@ public class CostCenterController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/update/{id}")
     public ResponseEntity<?> updateCostCenter(
             @Parameter(description = "CostCenter ID (Poid) to update", required = true, example = "51001")
@@ -214,6 +219,7 @@ public class CostCenterController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{costCenterPoid}")
     public ResponseEntity<?> getCostCenterByCostCenterPoid(
             @Parameter(description = "costCenterPoid reference identifier", required = true)
@@ -264,6 +270,7 @@ public class CostCenterController {
     @ApiResponse(responseCode = "200", description = "Cost Center tree structure retrieved successfully")
     @ApiResponse(responseCode = "400", description = "Bad Request - Invalid parameters")
     @ApiResponse(responseCode = "500", description = "Internal server error")
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/tree")
     public ResponseEntity<?> getCostCenterTree(
             @Parameter(description = "Include soft-deleted records", example = "false")
@@ -337,6 +344,7 @@ public class CostCenterController {
     @ApiResponse(responseCode = "200", description = "Cost Center list retrieved successfully")
     @ApiResponse(responseCode = "400", description = "Bad Request - Invalid parameters")
     @ApiResponse(responseCode = "500", description = "Internal server error")
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/list")
     public ResponseEntity<?> getCostCenterList(
             @Parameter(description = "Parent POID (null for main groups)", example = "1000")
@@ -360,7 +368,5 @@ public class CostCenterController {
             return internalServerError("An error occurred while retrieving Cost Center list: " + e.getMessage());
         }
     }
-
-
 }
 

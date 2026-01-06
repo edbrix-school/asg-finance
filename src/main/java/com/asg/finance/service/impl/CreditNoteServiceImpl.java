@@ -1145,11 +1145,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             if ("N".equalsIgnoreCase(issueType)) {
                 // Normal + Reversal (SRS requirement)
                 saveNormalGLEntry(transactionPoid, glDto, detRowId++, UserContext.getCompanyPoid());
-                saveReversalGLEntry(transactionPoid, glDto, detRowId++, UserContext.getCompanyPoid());
+                //saveReversalGLEntry(transactionPoid, glDto, detRowId++, UserContext.getCompanyPoid());
             } else {
                 // Issue Type = YES → Normal + Additional
                 saveNormalGLEntry(transactionPoid, glDto, detRowId++, UserContext.getCompanyPoid());
-                saveAdditionalGLEntry(transactionPoid, glDto, detRowId++, UserContext.getCompanyPoid());
+                //saveAdditionalGLEntry(transactionPoid, glDto, detRowId++, UserContext.getCompanyPoid());
             }
         }
     }

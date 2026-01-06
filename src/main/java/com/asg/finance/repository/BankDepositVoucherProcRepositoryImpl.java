@@ -123,6 +123,7 @@ public class BankDepositVoucherProcRepositoryImpl implements BankDepositVoucherP
         }
 
         try {
+            long detRowIdCounter = 1L;
             while (rs.next()) {
                 BankDepositVoucherDtlDto dto = BankDepositVoucherDtlDto.builder()
                         .paymentMainPoid(rs.getLong("PAYMENT_MAIN_POID"))
@@ -137,6 +138,7 @@ public class BankDepositVoucherProcRepositoryImpl implements BankDepositVoucherP
                         .chqDate(rs.getDate("CHQ_DATE") != null ? rs.getDate("CHQ_DATE").toLocalDate() : null)
                         .amount(rs.getBigDecimal("AMOUNT"))
                         .pymtType(rs.getString("PYMT_TYPE"))
+                        .detRowId(detRowIdCounter++)
                         .build();
 
                 setBankDetailsForDto(dto);

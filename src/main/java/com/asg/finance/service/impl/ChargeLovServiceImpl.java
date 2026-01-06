@@ -18,16 +18,6 @@ public class ChargeLovServiceImpl implements ChargeLovService {
     @Autowired
     private LovDataService lovService;
 
-    @Override
-    public Long getChargePoid(String chargeCode) {
-        String lovName = detectLovNameForCharge(chargeCode);
-        LovGetListDto lovGetListDto = lovService.getDetailsByCodeAndLovName(chargeCode, lovName);
-        if (lovGetListDto != null) {
-            return lovGetListDto.getPoid();
-        }
-        return null;
-    }
-
     public LovGetListDto getChargeDet(Long chargePoid, String refType) {
         String lovName = detectLovNameForCharge(refType);
         return lovService.getDetailsByPoidAndLovName(chargePoid, lovName);

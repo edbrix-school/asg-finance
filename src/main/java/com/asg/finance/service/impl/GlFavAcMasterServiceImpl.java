@@ -51,12 +51,12 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
     @Override
     public GlFavAcMasterResponse createFavoriteAccount(GlFavAcMasterRequest request) {
         // Validate uniqueness of Fav Ac Code
-        if (masterRepository.findByFavAcCodeAndGroupPoid(request.getFavAcCode(), request.getGroupPoid()).isPresent()) {
+        if (masterRepository.findByFavAcCodeAndGroupPoid(request.getFavAcCode(), UserContext.getGroupPoid()).isPresent()) {
             throw new ValidationException("Fav Ac Code already exists: " + request.getFavAcCode());
         }
 
         // Validate uniqueness of Description
-        if (masterRepository.findByDescriptionAndGroupPoid(request.getDescription(), request.getGroupPoid()).isPresent()) {
+        if (masterRepository.findByDescriptionAndGroupPoid(request.getDescription(), UserContext.getGroupPoid()).isPresent()) {
             throw new ValidationException("Description already exists: " + request.getDescription());
         }
 
@@ -88,7 +88,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
 
         // Create master record
         GlFavAcMaster master = GlFavAcMaster.builder()
-                .groupPoid(request.getGroupPoid())
+                .groupPoid(UserContext.getGroupPoid())
                 .favAcCode(request.getFavAcCode())
                 .description(request.getDescription())
                 .description2(request.getDescription2())
@@ -146,7 +146,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                 .orElseThrow(() -> new ResourceNotFoundException("Favorite Account Master", "favAcPoid", favAcPoid));
 
         // Validate uniqueness of Fav Ac Code (excluding current record)
-        masterRepository.findByFavAcCodeAndGroupPoid(request.getFavAcCode(), request.getGroupPoid())
+        masterRepository.findByFavAcCodeAndGroupPoid(request.getFavAcCode(), UserContext.getGroupPoid())
                 .ifPresent(master -> {
                     if (!master.getFavAcPoid().equals(favAcPoid)) {
                         throw new ValidationException("Fav Ac Code already exists: " + request.getFavAcCode());
@@ -154,7 +154,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                 });
 
         // Validate uniqueness of Description (excluding current record)
-        masterRepository.findByDescriptionAndGroupPoid(request.getDescription(), request.getGroupPoid())
+        masterRepository.findByDescriptionAndGroupPoid(request.getDescription(), UserContext.getGroupPoid())
                 .ifPresent(master -> {
                     if (!master.getFavAcPoid().equals(favAcPoid)) {
                         throw new ValidationException("Description already exists: " + request.getDescription());

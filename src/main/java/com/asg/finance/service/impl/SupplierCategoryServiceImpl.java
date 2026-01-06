@@ -4,6 +4,7 @@ import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.exception.ResourceAlreadyExistsException;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.finance.dto.SupplierCategoryDto;
 import com.asg.common.lib.dto.FilterRequestDto;
@@ -59,7 +60,7 @@ public class SupplierCategoryServiceImpl implements SupplierCategoryService {
         log.info("entity: {}", entity);
         SupplierCategoryDto dto = new SupplierCategoryDto();
         dto.setSupplierCategoryPoid(entity.getSupplierCategoryPoid());
-        dto.setGroupPoid(entity.getGroupPoid() != null ? entity.getGroupPoid() : null);
+        dto.setGroupPoid(entity.getGroupPoid());
         dto.setSupplierCategoryCode(entity.getSupplierCategoryCode());
         dto.setSupplierCategoryName(entity.getSupplierCategoryName());
         dto.setSupplierCategoryName2(entity.getSupplierCategoryName2());
@@ -132,7 +133,7 @@ log.info("SupplierCategoryDto: {}", supplierCategoryDto);
 
         SupplierCategoryEntity entity = new SupplierCategoryEntity();
 //        entity.setSupplierCategoryCode(supplierCategoryDto.getSupplierCategoryCode());
-        entity.setGroupPoid(supplierCategoryDto.getGroupPoid());
+        entity.setGroupPoid(UserContext.getGroupPoid());
         entity.setSupplierCategoryName(supplierCategoryDto.getSupplierCategoryName());
         entity.setSupplierCategoryName2(supplierCategoryDto.getSupplierCategoryName2());
         entity.setSequenceNumber(StringUtils.isNotBlank(supplierCategoryDto.getSeqNo())

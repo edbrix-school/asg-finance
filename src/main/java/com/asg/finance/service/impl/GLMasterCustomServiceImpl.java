@@ -25,51 +25,6 @@ public class GLMasterCustomServiceImpl implements GLMasterCustomService {
     @Autowired
     private DataSource dataSource;
 
-
-    @Override
-    public GlLedgerDTO callProcGlMasterCreate(
-            Long loginGroupPoid,
-            Long loginCompanyPoid,
-            String loginUser,
-            String code,
-            String description,
-            String glType) {
-
-        StoredProcedureQuery query = entityManager.createStoredProcedureQuery("PROC_GL_MASTER_CREATE");
-
-        // Input parameters
-        query.registerStoredProcedureParameter("P_LOGIN_GROUP_POID", Long.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_LOGIN_COMPANY_POID", Long.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_LOGIN_USER", String.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_CODE", String.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_DESC", String.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_GL_TYPE", String.class, ParameterMode.IN);
-
-        // Output parameters
-        query.registerStoredProcedureParameter("P_STATUS", String.class, ParameterMode.OUT);
-        query.registerStoredProcedureParameter("P_NEW_GL_POID", Long.class, ParameterMode.OUT);
-
-        // Set input parameter values
-        query.setParameter("P_LOGIN_GROUP_POID", loginGroupPoid);
-        query.setParameter("P_LOGIN_COMPANY_POID", loginCompanyPoid);
-        query.setParameter("P_LOGIN_USER", loginUser);
-        query.setParameter("P_CODE", code);
-        query.setParameter("P_DESC", description);
-        query.setParameter("P_GL_TYPE", glType);
-
-        // Execute the procedure
-        query.execute();
-
-        // Get output parameters
-        String status = (String) query.getOutputParameterValue("P_STATUS");
-        Long newGlPoid = (Long) query.getOutputParameterValue("P_NEW_GL_POID");
-
-        // Create response based on status
-        GlLedgerDTO response = new GlLedgerDTO();
-
-        return response;
-    }
-
     @Override
     public String acquireLock(DocReleaseLockRequestDto request)  {
         String status = null;

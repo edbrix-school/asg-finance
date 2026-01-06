@@ -289,7 +289,7 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
 
     public GlPostingViewResponseDto getGlPostingDetails(String docId, Long transactionPoid) {
 
-        GlImcoChequeRefundHdr header = hdrRepository.findByTransactionPoid(transactionPoid)
+       hdrRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Refund header not found for ID: ", "transactionPoid",  transactionPoid));
 
         GlPostingViewResponseDto result = depositRefundRepository.fetchGlPostingDetails(

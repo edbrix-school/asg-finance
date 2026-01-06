@@ -194,11 +194,6 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
     }
 
     @Override
-    public GlPostingViewResponseDto getGlPostingDetails(Long groupPoid, Long companyPoid, String docId, Long transactionPoid) {
-        return null;
-    }
-
-    @Override
     public List<BankDepositVoucherDtlDto> loadPendingPayments(Long bankPoid, String type, String bankFilter) {
         return hdrRepository.loadPendingPayments(bankPoid, type, bankFilter);
     }

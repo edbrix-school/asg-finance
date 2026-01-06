@@ -162,10 +162,10 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
             throw new ResourceNotFoundException("Supplier Master", "supplierPoid", supplierPoid);
         }
 
-        boolean existsByGroupPoid = groupRepository.existsByGroupPoid(supplierMasterDto.getGroupPoid());
+        boolean existsByGroupPoid = groupRepository.existsByGroupPoid(UserContext.getGroupPoid());
 
         if (!existsByGroupPoid) {
-            throw new ResourceNotFoundException("Group", "groupPoid", supplierMasterDto.getGroupPoid());
+            throw new ResourceNotFoundException("Group", "groupPoid", UserContext.getGroupPoid());
         }
 
         boolean existsBySupplierCategoryPoid = supplierCategoryRepository.existsBySupplierCategoryPoid(supplierMasterDto.getSupplierCategoryPoid());
@@ -205,23 +205,23 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
             throw new ResourceAlreadyExistsException("Supplier Name", supplierMasterDto.getSupplierName());
         }
 
-        boolean existsBySupplierCodeAndGroupPoidAndSupplierPoidNot = supplierMasterRepository.existsBySupplierCodeAndGroupPoidAndSupplierPoidNot(supplierMasterDto.getSupplierCode(), supplierMasterDto.getGroupPoid(), supplierPoid);
+        boolean existsBySupplierCodeAndGroupPoidAndSupplierPoidNot = supplierMasterRepository.existsBySupplierCodeAndGroupPoidAndSupplierPoidNot(supplierMasterDto.getSupplierCode(), UserContext.getGroupPoid(), supplierPoid);
 
         if (existsBySupplierCodeAndGroupPoidAndSupplierPoidNot) {
             throw new ResourceAlreadyExistsException("Supplier Code", supplierMasterDto.getSupplierCode());
         }
 
-        boolean existsBySupplierNameIgnoreCaseAndGroupPoidAndSupplierPoidNot = supplierMasterRepository.existsBySupplierNameIgnoreCaseAndGroupPoidAndSupplierPoidNot(normalizedName, supplierMasterDto.getGroupPoid(), supplierPoid);
+        boolean existsBySupplierNameIgnoreCaseAndGroupPoidAndSupplierPoidNot = supplierMasterRepository.existsBySupplierNameIgnoreCaseAndGroupPoidAndSupplierPoidNot(normalizedName, UserContext.getGroupPoid(), supplierPoid);
 
         if (existsBySupplierNameIgnoreCaseAndGroupPoidAndSupplierPoidNot) {
             throw new ResourceAlreadyExistsException("Supplier Name", supplierMasterDto.getSupplierName());
         }
 
-        boolean exists = supplierMasterRepository.existsBySupplierCodeAndGroupPoidAndCountryPoidAndSupplierNameIgnoreCaseAndSupplierPoidNot(supplierMasterDto.getSupplierCode(), supplierMasterDto.getGroupPoid(), supplierMasterDto.getCountryPoid(), supplierMasterDto.getSupplierName(), supplierMasterDto.getSupplierPoid());
+        boolean exists = supplierMasterRepository.existsBySupplierCodeAndGroupPoidAndCountryPoidAndSupplierNameIgnoreCaseAndSupplierPoidNot(supplierMasterDto.getSupplierCode(), UserContext.getGroupPoid(), supplierMasterDto.getCountryPoid(), supplierMasterDto.getSupplierName(), supplierMasterDto.getSupplierPoid());
 
         if (exists) {
             String key = "Supplier code + Group + Country + Name";
-            String value = String.format("%s / %s / %s / %s", supplierMasterDto.getSupplierCode(), supplierMasterDto.getGroupPoid(), supplierMasterDto.getCountryPoid(), supplierMasterDto.getSupplierName());
+            String value = String.format("%s / %s / %s / %s", supplierMasterDto.getSupplierCode(), UserContext.getGroupPoid(), supplierMasterDto.getCountryPoid(), supplierMasterDto.getSupplierName());
             throw new ResourceAlreadyExistsException(key, value);
         }
 
@@ -229,7 +229,7 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
             AddressMasterUpsertDto addressRequest = new AddressMasterUpsertDto();
             addressRequest.setAddressName(supplierMasterDto.getAddressName());
             addressRequest.setAddressName2(supplierMasterDto.getAddressName());
-            addressRequest.setGroupPoid(supplierMasterDto.getGroupPoid());
+            addressRequest.setGroupPoid(UserContext.getGroupPoid());
             addressRequest.setCountryId(supplierMasterDto.getCountryPoid());
             addressRequest.setActive("Y");
             addressRequest.setSeqno(supplierMasterDto.getSeqNo());
@@ -240,7 +240,7 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
             AddressMasterUpsertDto addressRequest = new AddressMasterUpsertDto();
             addressRequest.setAddressMasterPoid(supplierMasterDto.getAddressPoid());
             addressRequest.setAddressName(supplierMasterDto.getAddressName());
-            addressRequest.setGroupPoid(supplierMasterDto.getGroupPoid());
+            addressRequest.setGroupPoid(UserContext.getGroupPoid());
             addressRequest.setCountryId(supplierMasterDto.getCountryPoid());
             addressRequest.setActive("Y");
             addressRequest.setSeqno(supplierMasterDto.getSeqNo());
@@ -269,7 +269,7 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
             processQuestionaries(supplierPoid, supplierMasterDto.getQuestionaries());
         }
 
-        callSupplierValidationProcedure(supplierMasterDto.getGroupPoid(),
+        callSupplierValidationProcedure(UserContext.getGroupPoid(),
                 supplierMasterDto.getCustomerPoid(),
                 UserContext.getUserPoid(),
                 "Y",
@@ -416,10 +416,10 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
     @Transactional
     public SupplierMasterDto createSupplierMaster(SupplierMasterDto supplierMasterDto) {
 
-        boolean existsByGroupPoid = groupRepository.existsByGroupPoid(supplierMasterDto.getGroupPoid());
+        boolean existsByGroupPoid = groupRepository.existsByGroupPoid(UserContext.getGroupPoid());
 
         if (!existsByGroupPoid) {
-            throw new ResourceNotFoundException("Group", "groupPoid", supplierMasterDto.getGroupPoid());
+            throw new ResourceNotFoundException("Group", "groupPoid", UserContext.getGroupPoid());
         }
 
         boolean existsBySupplierCategoryPoid = supplierCategoryRepository.existsBySupplierCategoryPoid(supplierMasterDto.getSupplierCategoryPoid());
@@ -451,16 +451,16 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
             }
         }
 
-        boolean existsBySupplierCodeAndGroupPoid = supplierMasterRepository.existsBySupplierCodeAndGroupPoid(supplierMasterDto.getSupplierCode(), supplierMasterDto.getGroupPoid());
+        boolean existsBySupplierCodeAndGroupPoid = supplierMasterRepository.existsBySupplierCodeAndGroupPoid(supplierMasterDto.getSupplierCode(), UserContext.getGroupPoid());
 
         if (existsBySupplierCodeAndGroupPoid) {
             throw new ResourceAlreadyExistsException("Supplier code", supplierMasterDto.getSupplierCode());
         }
 
-        boolean existsBySupplierCodeAndGroupPoidAndCountryPoid = supplierMasterRepository.existsBySupplierCodeAndGroupPoidAndCountryPoid(supplierMasterDto.getSupplierCode(), supplierMasterDto.getGroupPoid(), supplierMasterDto.getCountryPoid());
+        boolean existsBySupplierCodeAndGroupPoidAndCountryPoid = supplierMasterRepository.existsBySupplierCodeAndGroupPoidAndCountryPoid(supplierMasterDto.getSupplierCode(), UserContext.getGroupPoid(), supplierMasterDto.getCountryPoid());
 
         String errorKeyForCodeGroupCountry = "Supplier code + Group + Country";
-        String errorValueForCodeGroupCountry = String.format("%s / %s / %s", supplierMasterDto.getSupplierCode(), supplierMasterDto.getGroupPoid(), supplierMasterDto.getCountryPoid());
+        String errorValueForCodeGroupCountry = String.format("%s / %s / %s", supplierMasterDto.getSupplierCode(), UserContext.getGroupPoid(), supplierMasterDto.getCountryPoid());
 
         if (existsBySupplierCodeAndGroupPoidAndCountryPoid) {
             throw new ResourceAlreadyExistsException(errorKeyForCodeGroupCountry, errorValueForCodeGroupCountry);
@@ -468,7 +468,7 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
 
         String normalizedName = supplierMasterDto.getSupplierName().trim().toLowerCase();
 
-        boolean existsByNormalizedSupplierName = supplierMasterRepository.existsBySupplierNameIgnoreCaseAndGroupPoid(normalizedName, supplierMasterDto.getGroupPoid());
+        boolean existsByNormalizedSupplierName = supplierMasterRepository.existsBySupplierNameIgnoreCaseAndGroupPoid(normalizedName, UserContext.getGroupPoid());
 
         if (existsByNormalizedSupplierName) {
             throw new ResourceAlreadyExistsException("Supplier Name", supplierMasterDto.getSupplierName());
@@ -478,7 +478,7 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
             AddressMasterUpsertDto addressRequest = new AddressMasterUpsertDto();
             addressRequest.setAddressName(supplierMasterDto.getAddressName());
             addressRequest.setAddressName2(supplierMasterDto.getAddressName());
-            addressRequest.setGroupPoid(supplierMasterDto.getGroupPoid());
+            addressRequest.setGroupPoid(UserContext.getGroupPoid());
             addressRequest.setCountryId(supplierMasterDto.getCountryPoid());
             addressRequest.setActive("Y");
             addressRequest.setSeqno(supplierMasterDto.getSeqNo());
@@ -489,7 +489,7 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
             AddressMasterUpsertDto addressRequest = new AddressMasterUpsertDto();
             addressRequest.setAddressMasterPoid(supplierMasterDto.getAddressPoid());
             addressRequest.setAddressName(supplierMasterDto.getAddressName());
-            addressRequest.setGroupPoid(supplierMasterDto.getGroupPoid());
+            addressRequest.setGroupPoid(UserContext.getGroupPoid());
             addressRequest.setCountryId(supplierMasterDto.getCountryPoid());
             addressRequest.setActive("Y");
             addressRequest.setSeqno(supplierMasterDto.getSeqNo());
@@ -552,7 +552,7 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
             }
         }
 
-        callSupplierValidationProcedure(supplierMasterDto.getGroupPoid(), supplierMasterDto.getCustomerPoid(), UserContext.getUserPoid(), "Y", supplierMasterDto.getSupplierPoid());
+        callSupplierValidationProcedure(UserContext.getGroupPoid(), supplierMasterDto.getCustomerPoid(), UserContext.getUserPoid(), "Y", supplierMasterDto.getSupplierPoid());
 
         return getSupplierMaster(savedEntity.getSupplierPoid());
     }
@@ -1147,7 +1147,7 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
         SupplierMasterEntity entity = new SupplierMasterEntity();
 
         entity.setSupplierPoid(dto.getSupplierPoid());
-        entity.setGroupPoid(dto.getGroupPoid());
+        entity.setGroupPoid(UserContext.getGroupPoid());
         entity.setSupplierName(dto.getSupplierName());
         entity.setSupplierName2(dto.getSupplierName2());
         entity.setSupplierType(dto.getSupplierType());

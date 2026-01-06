@@ -55,7 +55,7 @@ public class AssetLocationMasterServiceImpl implements AssetLocationMasterServic
         entity.setLocationCode(dto.getLocationCode());
         entity.setDescription(dto.getDescription());
         entity.setSeqNo(dto.getSeqNo());
-        entity.setGroupPoid(dto.getGroupPoid());
+        entity.setGroupPoid(UserContext.getGroupPoid());
         entity.setDeleted("N");
         entity.setActive(String.valueOf(dto.getActive()));
         entity.setCreatedBy(currentUser);
@@ -91,7 +91,6 @@ public class AssetLocationMasterServiceImpl implements AssetLocationMasterServic
         entity.setLocationCode(dto.getLocationCode());
         entity.setDescription(dto.getDescription());
         entity.setSeqNo(dto.getSeqNo());
-        entity.setGroupPoid(dto.getGroupPoid());
         entity.setDeleted("N");
         entity.setActive(String.valueOf(dto.getActive()));
         entity.setLastModifiedBy(getCurrentUser());

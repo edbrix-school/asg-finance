@@ -153,8 +153,8 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
 
     private TaxPeriodHdr convertFromTaxPeriodHdrDtoToTaxPeriodHdrEntity(TaxPeriodHdrRequestDto request) {
         TaxPeriodHdr taxPeriodHdr = new TaxPeriodHdr();
-        taxPeriodHdr.setGroupPoid(request.getGroupPoid());
-        taxPeriodHdr.setCompanyPoid(request.getCompanyPoid());
+        taxPeriodHdr.setGroupPoid(UserContext.getGroupPoid());
+        taxPeriodHdr.setCompanyPoid(UserContext.getCompanyPoid());
         taxPeriodHdr.setTransactionDate(LocalDate.now());
         taxPeriodHdr.setDescription(request.getDescription());
         taxPeriodHdr.setPeriodFrom(request.getPeriodFrom());

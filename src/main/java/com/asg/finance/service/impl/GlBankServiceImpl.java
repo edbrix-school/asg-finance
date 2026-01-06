@@ -416,7 +416,7 @@ public class GlBankServiceImpl implements GlBankService {
 
         GlBankDto dto = new GlBankDto();
         dto.setBankPoid(entity.getBankPoid());
-        dto.setGroupPoid(UserContext.getGroupPoid());
+        dto.setGroupPoid(entity.getGroupPoid());
         dto.setBankCode(entity.getBankCode());
         dto.setBankDescription(entity.getBankDescription());
         dto.setBankDescription2(entity.getBankDescription2());

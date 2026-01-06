@@ -56,69 +56,6 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
     private final LovDataService lovService;
 
     @Override
-    @Transactional(readOnly = true)
-    public Page<ContraVoucherResponse> getContraVouchers(
-            Long groupPoid,
-            FilterRequestDto filters,
-            Pageable pageable) {
-
-        log.info("getContraVouchers started for groupPoid={}", groupPoid);
-
-        // Get all headers for the group
-        List<GlContraVoucherHdr> allHeaders = hdrRepository.findByGroupPoid(groupPoid);
-        
-        // Apply isDeleted filter
-        String isDeleted = filters != null ? filters.isDeleted() : null;
-        if (isDeleted != null) {
-            if ("Y".equalsIgnoreCase(isDeleted)) {
-                allHeaders = allHeaders.stream()
-                        .filter(h -> "Y".equalsIgnoreCase(h.getDeleted()))
-                        .collect(Collectors.toList());
-            } else if ("N".equalsIgnoreCase(isDeleted)) {
-                allHeaders = allHeaders.stream()
-                        .filter(h -> h.getDeleted() == null || "N".equalsIgnoreCase(h.getDeleted()))
-                        .collect(Collectors.toList());
-            }
-        } else {
-            // Default: show only non-deleted
-            allHeaders = allHeaders.stream()
-                    .filter(h -> h.getDeleted() == null || "N".equalsIgnoreCase(h.getDeleted()))
-                .collect(Collectors.toList());
-        }
-
-        // Apply filters from FilterRequestDto
-        if (filters != null && filters.filters() != null && !filters.filters().isEmpty()) {
-            String operator = filters.operator() != null ? filters.operator().toUpperCase() : "AND";
-            List<GlContraVoucherHdr> filteredHeaders = new ArrayList<>();
-            
-            for (GlContraVoucherHdr header : allHeaders) {
-                boolean matches = applyFilters(header, filters.filters(), operator);
-                if (matches) {
-                    filteredHeaders.add(header);
-                }
-            }
-            allHeaders = filteredHeaders;
-        }
-
-        // Convert to response DTOs
-        List<ContraVoucherResponse> responses = allHeaders.stream()
-                .map(this::convertToResponse)
-                .collect(Collectors.toList());
-
-        // Apply pagination manually
-        int start = (int) pageable.getOffset();
-        int end = Math.min((start + pageable.getPageSize()), responses.size());
-        List<ContraVoucherResponse> pagedResponses = start < responses.size() 
-                ? responses.subList(start, end) 
-                : List.of();
-
-        Page<ContraVoucherResponse> page = new PageImpl<>(pagedResponses, pageable, responses.size());
-
-        log.info("getContraVouchers completed for groupPoid={} count={}", groupPoid, page.getTotalElements());
-        return page;
-    }
-
-    @Override
     public Map<String, Object> listContraVouchers(String docId, FilterRequestDto request, Pageable pageable, LocalDate periodFrom, LocalDate periodTo) {
         String operator = documentService.resolveOperator(request);
         String isDeleted = documentService.resolveIsDeleted(request);

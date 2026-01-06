@@ -928,16 +928,6 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         );
     }
 
-    @Override
-    public List<ItemDetailDto> loadMTAItems(Long mtaRefPoid) {
-        return bankDebitVoucherCustomRepository.procLoadMTAItems(
-                UserContext.getGroupPoid(),
-                UserContext.getUserPoid(),
-                UserContext.getCompanyPoid(),
-                mtaRefPoid
-        );
-    }
-
     // ---------- utilities ----------
     @Override
     public BigDecimal getBankBalance(Long bankPoid,String documentId, Date docDate) {

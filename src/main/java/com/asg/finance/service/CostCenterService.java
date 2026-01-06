@@ -19,8 +19,6 @@ public interface CostCenterService {
 
     CostCenterRequestDTO getCostCenterById(Long costCenterPoid);
 
-    Map<String, Object> listCostCenter(String documentId, FilterRequestDto filters, Pageable pageable);
-
     // Tree functionality
     List<CostCenterTreeResponseDto> getCostCenterTree(String documentId, String actionRequested, CostCenterTreeRequest request);
 

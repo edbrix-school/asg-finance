@@ -18,6 +18,4 @@ public interface GlAgeingMasterService {
     void softDeleteAgeingMaster(Long ageingPoid);
 
     Map<String, Object> listAgeingMasters(String documentId, FilterRequestDto filters, Pageable pageable);
-
-
 }

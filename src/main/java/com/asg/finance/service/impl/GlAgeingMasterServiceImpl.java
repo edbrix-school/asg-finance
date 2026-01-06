@@ -4,6 +4,7 @@ import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.finance.dto.GlAgeingMasterDtlDto;
 import com.asg.finance.dto.GlAgeingMasterDto;
@@ -128,7 +129,7 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
 
     private GlAgeingMasterEntity saveAgeingMaster(GlAgeingMasterDto dto) {
         GlAgeingMasterEntity entity = GlAgeingMasterEntity.builder()
-                .groupPoid(dto.getGroupPoid())
+                .groupPoid(UserContext.getGroupPoid())
                 .description(dto.getDescription())
                 .description2(dto.getDescription2())
                 .ageingBreakupType(dto.getAgeingBreakupType())
@@ -167,7 +168,7 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
     }
 
     private void updateAgeingMasterFields(GlAgeingMasterEntity entity, GlAgeingMasterDto dto) {
-        entity.setGroupPoid(dto.getGroupPoid());
+        entity.setGroupPoid(UserContext.getGroupPoid());
         entity.setDescription(dto.getDescription());
         entity.setDescription2(dto.getDescription2());
         entity.setAgeingBreakupType(dto.getAgeingBreakupType());

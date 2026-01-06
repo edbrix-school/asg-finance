@@ -107,7 +107,7 @@ public class FixedAssetCategoryServiceImpl implements FixedAssetCategoryService 
         fixedAssetCategory.setUserRolePoid(ASGHelperUtils.convertListToString(request.getUserRolePoid()));
         fixedAssetCategory.setActive(StringUtils.isBlank(request.getActive()) ? "Y" : request.getActive());
         fixedAssetCategory.setDeleted("N");
-        fixedAssetCategory.setGroupPoid(request.getGroupPoid());
+        fixedAssetCategory.setGroupPoid(UserContext.getGroupPoid());
         fixedAssetCategory.setSeqNo(request.getSeqNo());
         fixedAssetCategory.setCreatedBy(getCurrentUser());
         fixedAssetCategory.setCreatedDate(LocalDateTime.now());

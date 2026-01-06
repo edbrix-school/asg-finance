@@ -55,7 +55,7 @@ public class CostCenterServiceImpl implements CostCenterService{
                        .costCenterCode(dto.getCostCenterCode())
                        .costCenterDescription(dto.getCostCenterDescription())
                        .costCenterDescription2(dto.getCostCenterDescription2())
-                       .groupPoid(dto.getGroupPoid())
+                       .groupPoid(UserContext.getGroupPoid())
                        .remarks(dto.getRemarks())
                        .active(dto.getActive())
                        .seqNo(dto.getSeqNo())
@@ -117,7 +117,7 @@ public class CostCenterServiceImpl implements CostCenterService{
         existing.setCostCenterCode(dto.getCostCenterCode());
         existing.setCostCenterDescription(dto.getCostCenterDescription());
         existing.setCostCenterDescription2(dto.getCostCenterDescription2());
-        existing.setGroupPoid(dto.getGroupPoid());
+        existing.setGroupPoid(UserContext.getGroupPoid());
         existing.setRemarks(dto.getRemarks());
         existing.setActive(dto.getActive());
         existing.setSeqNo(dto.getSeqNo());
@@ -164,20 +164,6 @@ public class CostCenterServiceImpl implements CostCenterService{
         .ifPresent(parent -> costCenterDto.setParentCostCenterPoidDtl(mapParent(parent)));
         
         return costCenterDto;
-    }
-
-    @Override
-    public Map<String, Object> listCostCenter(String documentId, FilterRequestDto request, Pageable pageable) {
-        String operator = documentService.resolveOperator(request);
-        String isDeleted = documentService.resolveIsDeleted(request);
-        List<FilterDto> filters = documentService.resolveFilters(request);
-
-        RawSearchResult raw = documentService.search(documentId, filters, operator, pageable, isDeleted,
-                "COST_CENTER_CODE",   // label
-                "COST_CENTER_POID");
-        Page<Map<String, Object>> page = new PageImpl<>(raw.records(), pageable, raw.totalRecords());
-
-        return PaginationUtil.wrapPage(page, raw.displayFields());
     }
 
     private void validateCostCenterType(CostCenterRequestDTO request) {

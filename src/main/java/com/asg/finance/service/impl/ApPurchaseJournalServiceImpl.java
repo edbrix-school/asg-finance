@@ -1495,23 +1495,6 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
     }
 
     @Override
-    public String getSupplierPoidFromPo(String poPoid) {
-
-        log.info("Fetching Supplier POID for PO_POID = {}", poPoid);
-
-        String supplierPoid = apPurchaseJournalRepositoryImpl.getSupplierPoidFromPo(
-                UserContext.getGroupPoid(),
-                UserContext.getUserPoid(),
-                UserContext.getCompanyPoid(),
-                poPoid
-        );
-
-        log.info("Supplier POID fetched: {}", supplierPoid);
-
-        return supplierPoid;
-    }
-
-    @Override
     public String validateBeforeSave(
             String docId,
             String refType,
@@ -1553,25 +1536,6 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
 
         log.info("Update result → {}", result);
-
-        return result;
-    }
-
-    @Override
-    @Transactional
-    public String updateGeneralPoStatus(String poPoid, Long bookPoid) {
-
-        log.info("Updating General PO status → PO_POID={}, BOOK_POID={}", poPoid, bookPoid);
-
-        String result = apPurchaseJournalRepositoryImpl.updateGeneralPoStatus(
-                UserContext.getGroupPoid(),
-                UserContext.getUserPoid(),
-                UserContext.getCompanyPoid(),
-                poPoid,
-                bookPoid
-        );
-
-        log.info("General PO update result → {}", result);
 
         return result;
     }
@@ -1624,112 +1588,6 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                         faPoid);
 
         return list;
-    }
-
-    @Override
-    public String checkDuplicatePi(
-            String partyType,
-            Long partyPoid,
-            String supplierInvNo,
-            Long piPoid,
-            String billType
-    ) {
-
-        log.info("Checking duplicate PI → partyType={}, partyPoid={}, invoiceNo={}, piPoid={}, billType={}",
-                partyType, partyPoid, supplierInvNo, piPoid, billType);
-
-        String result =
-                apPurchaseJournalRepositoryImpl.checkDuplicatePi(
-                        UserContext.getGroupPoid(),
-                        UserContext.getCompanyPoid(),
-                        UserContext.getUserPoid(),
-                        partyType,
-                        partyPoid,
-                        supplierInvNo,
-                        piPoid,
-                        billType
-                );
-
-        log.info("Duplicate PI check result → {}", result);
-
-        return result;
-    }
-
-    @Override
-    public String validateInputVat(
-            String docId,
-            Long docKeyPoid,
-            String partyType,
-            Long partyPoid,
-            Double taxAmount
-    ) {
-
-        log.info("Validating Input VAT → docId={}, docKeyPoid={}, partyType={}, partyPoid={}, taxAmount={}",
-                docId, docKeyPoid, partyType, partyPoid, taxAmount);
-
-        String result =
-                apPurchaseJournalRepositoryImpl.validateInputVat(
-                        UserContext.getGroupPoid(),
-                        UserContext.getCompanyPoid(),
-                        UserContext.getUserPoid(),
-                        docId,
-                        docKeyPoid,
-                        partyType,
-                        partyPoid,
-                        taxAmount
-                );
-
-        log.info("Input VAT validation result → {}", result);
-
-        return result;
-    }
-
-    @Override
-    public Map<String, String> validateGlDetailBeforeSave(
-            String docId,
-            String refType,
-            String glRefPoid,
-            String glRefPoid2,
-            String glRefPoid3,
-            String partyType,
-            Long partyPoid
-    ) {
-
-        log.info("Validating GL Detail Before Save → docId={}, refType={}, glRefPoid={}, glRefPoid2={}, glRefPoid3={}, partyType={}, partyPoid={}",
-                docId, refType, glRefPoid, glRefPoid2, glRefPoid3, partyType, partyPoid);
-
-        Map<String, String> response =
-                apPurchaseJournalRepositoryImpl.validateGlDetailBeforeSave(
-                        UserContext.getGroupPoid(),
-                        UserContext.getUserPoid(),
-                        UserContext.getCompanyPoid(),
-                        docId,
-                        refType,
-                        glRefPoid,
-                        glRefPoid2,
-                        glRefPoid3,
-                        partyType,
-                        partyPoid
-                );
-
-        log.info("GL Detail Validation Result → {}", response);
-
-        return response;
-    }
-
-    private String buildGlRefListForValidation(List<ApPurchaseInvoiceGlDtlDto> glList) {
-
-        if (glList == null || glList.isEmpty()) return null;
-
-        StringBuilder sb = new StringBuilder();
-
-        for (ApPurchaseInvoiceGlDtlDto gl : glList) {
-            if (gl.getGlPoid() != null) {
-                sb.append(gl.getGlPoid()).append(";");
-            }
-        }
-
-        return sb.toString();
     }
 
 }

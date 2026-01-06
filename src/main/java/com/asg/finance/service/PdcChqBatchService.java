@@ -30,5 +30,4 @@ public interface PdcChqBatchService {
 
     String uploadExcel(MultipartFile file) throws Exception;
 
-
 }

@@ -38,9 +38,6 @@ public class GlFavAcMasterRequest {
     @Builder.Default
     private String active = "Y";
 
-    @NotNull(message = "Group Poid is mandatory")
-    private Long groupPoid;
-
     /**
      * List of user role POIDs to associate with this favorite account group
      */

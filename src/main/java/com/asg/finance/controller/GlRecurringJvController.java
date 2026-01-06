@@ -132,6 +132,7 @@ public class GlRecurringJvController {
                     }
             )
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     public ResponseEntity<?> createRecurringJv(
             @Valid @RequestBody RecurringJvRequest request,
@@ -166,6 +167,7 @@ public class GlRecurringJvController {
                     )
             )
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     public ResponseEntity<?> listRecurringJvs(
             @ParameterObject Pageable pageable,
@@ -203,6 +205,7 @@ public class GlRecurringJvController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{transactionPoid}")
     public ResponseEntity<?> getRecurringJvById(
             @Parameter(description = "Transaction POID of the recurring JV", required = true)
@@ -259,6 +262,7 @@ public class GlRecurringJvController {
                     )
             )
     )
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{transactionPoid}")
     public ResponseEntity<?> updateRecurringJv(
             @PathVariable Long transactionPoid,
@@ -271,6 +275,7 @@ public class GlRecurringJvController {
     }
 
     @Operation(summary = "Delete Recurring JV")
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> deleteRecurringJv(
             @PathVariable Long transactionPoid,
@@ -311,6 +316,7 @@ public class GlRecurringJvController {
                     )
             )
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping("/{transactionPoid}/create-schedule")
     public ResponseEntity<?> createSchedule(
             @PathVariable Long transactionPoid,
@@ -323,6 +329,7 @@ public class GlRecurringJvController {
     }
 
     @Operation(summary = "Delete Schedule")
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{transactionPoid}/schedule")
     public ResponseEntity<?> deleteSchedule(
             @PathVariable Long transactionPoid,

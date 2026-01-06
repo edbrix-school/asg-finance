@@ -1,5 +1,8 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
+
 import static com.asg.common.lib.dto.response.ApiResponse.error;
 import static com.asg.common.lib.dto.response.ApiResponse.success;
 
@@ -43,6 +46,7 @@ public class BankReconciliationController {
 
 	private final BankReconciliationService service;
 
+	@AllowedAction(UserRolesRightsEnum.VIEW)
 	@GetMapping("/view")
 	public ResponseEntity<?> getReconciliationView(
 			@Parameter(description = "Group POID", required = true, example = "1") @RequestParam Long groupPoid,
@@ -67,6 +71,7 @@ public class BankReconciliationController {
 
 	}
 
+	@AllowedAction(UserRolesRightsEnum.VIEW)
 	@GetMapping("/bank-info/{glPoid}")
 	public ResponseEntity<?> getBankInfo(
 			@Parameter(description = "GL transaction POID", required = true, example = "5001") @PathVariable Long glPoid){
@@ -78,6 +83,7 @@ public class BankReconciliationController {
 		return success("Bank information fetched successfully", responses);
 	}
 
+	@AllowedAction(UserRolesRightsEnum.CREATE)
 	@PostMapping("/save")
 	public ResponseEntity<?> saveReconciliation(
 			@Parameter(description = "Bank Reconciliation request payload", required = true) @RequestBody List<BankReconciliationRequest> dto) {
@@ -89,6 +95,7 @@ public class BankReconciliationController {
 
 	}
 
+	@AllowedAction(UserRolesRightsEnum.EDIT)
 	@PostMapping("/hold")
 	public ResponseEntity<?> holdCheque(
 			@Parameter(description = "Bank Reconciliation request payload", required = true) @RequestBody List<BankReconcHoldAndUholdRequest> req) {
@@ -100,6 +107,7 @@ public class BankReconciliationController {
 
 	}
 
+	@AllowedAction(UserRolesRightsEnum.EDIT)
 	@PostMapping("/unhold")
 	public ResponseEntity<?> unholdCheque(
 			@Parameter(description = "Bank Reconciliation request payload", required = true) @RequestBody List<BankReconcHoldAndUholdRequest> req) {
@@ -111,6 +119,7 @@ public class BankReconciliationController {
 
 	}
 
+	@AllowedAction(UserRolesRightsEnum.EDIT)
 	@PostMapping("/update-statement-date")
 	public ResponseEntity<?> updateStatementDate(
 			@Parameter(description = "Company POID", required = true, example = "1") @RequestParam Long companyPoid,
@@ -128,6 +137,7 @@ public class BankReconciliationController {
 
 	}
 
+	@AllowedAction(UserRolesRightsEnum.CREATE)
 	@PostMapping("/poll-refresh")
 	public ResponseEntity<?> pollAutoRefresh(
 			@Parameter(description = "User ID for polling", required = true) @RequestParam String userId,
@@ -142,6 +152,7 @@ public class BankReconciliationController {
 		return success(response);
 	}
 
+	@AllowedAction(UserRolesRightsEnum.EDIT)
 	@PostMapping("/revert")
 	public ResponseEntity<?> revertReconciliation(
 			@Parameter(description = "Document ID of the transaction", required = true, example = "101") @RequestParam String docId,
@@ -163,6 +174,7 @@ public class BankReconciliationController {
 		return success(response);
 	}
 
+	@AllowedAction(UserRolesRightsEnum.VIEW)
 	@PostMapping("/report")
 	public ResponseEntity<?> getReport(
 			@Parameter(description = "Bank Reconciliation request payload", required = true) @RequestBody BankReconcileReportRequest request) {

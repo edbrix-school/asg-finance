@@ -18,8 +18,6 @@ import java.util.List;
 @ValidateVatCrNo
 public class SupplierMasterDto {
     private Long supplierPoid;
-    @NotNull(message = "Group poid is required")
-    private Long groupPoid;
     private String supplierCode;
     @NotBlank(message = "Supplier name is required")
     @Size(max = 100, message = "Supplier name must be at most 100 characters")

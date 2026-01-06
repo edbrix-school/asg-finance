@@ -1,5 +1,8 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
+
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.BankPayeeRequest;
 import com.asg.finance.dto.BankPayeeResponse;
@@ -77,6 +80,7 @@ public class BankPayeeController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     public ResponseEntity<?> createPayee(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
@@ -108,6 +112,7 @@ public class BankPayeeController {
             @ApiResponse(responseCode = "200", description = "Payee found"),
             @ApiResponse(responseCode = "404", description = "Payee not found")
     })
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{payeePoid}")
     public ResponseEntity<?> getPayee(@PathVariable Long payeePoid) {
 
@@ -125,6 +130,7 @@ public class BankPayeeController {
             @ApiResponse(responseCode = "401", description = "Unauthorized – JWT token missing or invalid"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{payingPoid}")
     public ResponseEntity<?> softDeleteById(@PathVariable Long payingPoid) {
 
@@ -177,6 +183,7 @@ public class BankPayeeController {
                     )
             )
     )
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{payingPoid}")
     public ResponseEntity<?> updatePayee(
             @PathVariable
@@ -238,6 +245,7 @@ public class BankPayeeController {
                     }
             )
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     public ResponseEntity<?> getBankPayees(@ParameterObject Pageable pageable,
                                            @RequestBody(required = false) FilterRequestDto filters) {

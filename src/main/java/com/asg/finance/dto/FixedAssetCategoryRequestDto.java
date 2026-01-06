@@ -39,8 +39,6 @@ public class FixedAssetCategoryRequestDto {
 
     private List<String> userRolePoid;
 
-    private Long groupPoid;
-
     private Integer seqNo;
 
     @Size(max = 1, message = "active must be at most 1 character")

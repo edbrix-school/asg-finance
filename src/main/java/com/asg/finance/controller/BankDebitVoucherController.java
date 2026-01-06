@@ -143,6 +143,7 @@ public class BankDebitVoucherController {
                     )
             )
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     public ResponseEntity<?> createBankDebitVoucher(
             @Valid @RequestBody BankDebitVoucherRequest request) {
@@ -151,6 +152,7 @@ public class BankDebitVoucherController {
     }
 
     @Operation(summary = "Get Bank Debit Voucher")
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{transactionPoid}")
     public ResponseEntity<?> getBankDebitVoucher(
             @PathVariable @NotNull @Min(1) Long transactionPoid) {
@@ -159,6 +161,7 @@ public class BankDebitVoucherController {
     }
 
     @Operation(summary = "List Bank Debit Vouchers")
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
             content = @Content(
@@ -295,6 +298,7 @@ public class BankDebitVoucherController {
                     )
             )
     )
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{transactionPoid}")
     public ResponseEntity<?> updateBankDebitVoucher(
             @PathVariable @NotNull @Min(1) Long transactionPoid,
@@ -304,6 +308,7 @@ public class BankDebitVoucherController {
     }
 
     @Operation(summary = "Delete Bank Debit Voucher")
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> deleteBankDebitVoucher(
             @PathVariable @NotNull @Min(1) Long transactionPoid) {
@@ -312,6 +317,7 @@ public class BankDebitVoucherController {
     }
 
     @Operation(summary = "Get FF Charges")
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/ff-charges")
     public ResponseEntity<?> getFFCharges(
             @Parameter(description = "FF reference POID", required = true)
@@ -321,6 +327,7 @@ public class BankDebitVoucherController {
     }
 
     @Operation(summary = "Get FDA Charges")
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/fda-charges")
     public ResponseEntity<?> getFDACharges(
             @Parameter(description = "FDA reference POID", required = true)
@@ -330,6 +337,7 @@ public class BankDebitVoucherController {
     }
 
     @Operation(summary = "Get Bank Balance")
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/bank-balance")
     public ResponseEntity<?> getBankBalance(
             @Parameter(description = "Bank POID", required = true)
@@ -341,6 +349,7 @@ public class BankDebitVoucherController {
     }
 
     @Operation(summary = "Get Beneficiary Name by Beneficiary Id")
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/beneficiary-name")
     public ResponseEntity<?> getBeneficiaryName(
             @Parameter(description = "Beneficiary Id", required = true)
@@ -367,6 +376,7 @@ public class BankDebitVoucherController {
                     )
             )
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping("/validate-paygl")
     public ResponseEntity<?> validatePayGL(
             @Valid @RequestBody PayGLValidationRequest request) {
@@ -375,6 +385,7 @@ public class BankDebitVoucherController {
     }
 
     @Operation(summary = "Revert Reconciliation", description = "Reverts bank reconciliation")
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping("/{transactionPoid}/revert-reconciliation")
     public ResponseEntity<?> revertReconciliation(
             @PathVariable Long transactionPoid,

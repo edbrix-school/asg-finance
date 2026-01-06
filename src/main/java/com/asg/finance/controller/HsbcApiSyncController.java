@@ -1,5 +1,8 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
+
 import static com.asg.common.lib.dto.response.ApiResponse.success;
 
 import java.time.LocalDate;
@@ -25,6 +28,7 @@ public class HsbcApiSyncController {
 
     private final HsbcApiSyncService service;
 
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/refresh")
     public ResponseEntity<?> refreshHsbcData(
             @Parameter(description = "Bank account number", required = true, example = "1234567890")
@@ -37,6 +41,7 @@ public class HsbcApiSyncController {
         return success("HSBC API data fetched successfully", response);
     }
 
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/sync")
     public ResponseEntity<?> syncHsbcData(
             @Parameter(description = "Bank account number", required = true, example = "1234567890")

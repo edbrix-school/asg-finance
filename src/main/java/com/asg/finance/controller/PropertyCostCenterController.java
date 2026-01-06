@@ -1,5 +1,8 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
+
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.PropertyCostCenterRequest;
 import com.asg.finance.dto.PropertyCostCenterResponse;
@@ -46,6 +49,8 @@ public class PropertyCostCenterController {
             @ApiResponse(responseCode = "401", description = "Unauthorized"),
             @ApiResponse(responseCode = "409", description = "Conflict – Cost Center already exists")
     })
+    @AllowedAction(UserRolesRightsEnum.CREATE)
+
     @PostMapping
     public ResponseEntity<?> createPropertyCostCenter(
             @Valid @RequestBody PropertyCostCenterRequest request) {
@@ -64,6 +69,8 @@ public class PropertyCostCenterController {
             @ApiResponse(responseCode = "200", description = "Property Cost Center found"),
             @ApiResponse(responseCode = "404", description = "Property Cost Center not found")
     })
+    @AllowedAction(UserRolesRightsEnum.VIEW)
+
     @GetMapping("/{costCenterPoid}")
     public ResponseEntity<?> getPropertyCostCenter(
             @PathVariable Long costCenterPoid) {
@@ -81,6 +88,8 @@ public class PropertyCostCenterController {
             @ApiResponse(responseCode = "404", description = "Property Cost Center not found"),
             @ApiResponse(responseCode = "409", description = "Conflict – Cost Center already exists")
     })
+    @AllowedAction(UserRolesRightsEnum.EDIT)
+
     @PutMapping("/{costCenterPoid}")
     public ResponseEntity<?> updatePropertyCostCenter(
             @PathVariable Long costCenterPoid,
@@ -102,6 +111,8 @@ public class PropertyCostCenterController {
             @ApiResponse(responseCode = "401", description = "Unauthorized"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
+    @AllowedAction(UserRolesRightsEnum.DELETE)
+
     @DeleteMapping("/{costCenterPoid}")
     public ResponseEntity<?> softDeletePropertyCostCenter(
             @PathVariable Long costCenterPoid) {
@@ -167,6 +178,8 @@ public class PropertyCostCenterController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
+
     @GetMapping("/tree")
     public ResponseEntity<?> getPropertyCostCenterTree(
             @Parameter(description = "Filter value to search by name or code", example = "Office")
@@ -261,6 +274,8 @@ public class PropertyCostCenterController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
+
     @GetMapping("/list")
     public ResponseEntity<?> getPropertyCostCenterList(
             @Parameter(description = "Parent Property Cost Center POID (null for main groups)", example = "1000")

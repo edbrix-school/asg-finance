@@ -176,6 +176,7 @@ public class CreditNoteController {
                     }
             )
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     public ResponseEntity<?> createCreditNote(
             @Valid @RequestBody CreditNoteHeaderDto creditNoteDto) {
@@ -188,6 +189,7 @@ public class CreditNoteController {
             description = "Retrieves complete credit note details including header, GL entries, and charge details by transaction POID.",
             tags = {"Credit Note Management"}
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{transactionPoid}")
     public ResponseEntity<?> getCreditNoteById(
             @PathVariable Long transactionPoid) {
@@ -264,6 +266,7 @@ public class CreditNoteController {
                     }
             )
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     public ResponseEntity<?> getCreditNoteList(
             @ParameterObject Pageable pageable,
@@ -409,6 +412,7 @@ public class CreditNoteController {
                     }
             )
     )
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{transactionPoid}")
     public ResponseEntity<?> updateCreditNote(
             @PathVariable Long transactionPoid,
@@ -422,6 +426,7 @@ public class CreditNoteController {
             description = "Performs soft delete by setting DELETED='Y'. Validates deletion permissions and maintains referential integrity.",
             tags = {"Credit Note Management"}
     )
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> deleteCreditNote(
             @PathVariable Long transactionPoid,
@@ -448,6 +453,7 @@ public class CreditNoteController {
                 - Total Amount etc.
                 """
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/ref/ff/{refNo}")
     public ResponseEntity<?> getFFInvoiceCharges(
             @PathVariable Long refNo,
@@ -472,6 +478,7 @@ public class CreditNoteController {
                 - Manifest references
                 """
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/ref/sh/{refNo}")
     public ResponseEntity<?> getSHInvoiceCharges(
             @PathVariable Long refNo,
@@ -487,6 +494,7 @@ public class CreditNoteController {
                 PROC_AR_CN_CREATE_FROM_DN
                 """
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/ref/dn/{refNo}")
     public ResponseEntity<?> getDNInvoiceCharges(
             @PathVariable Long refNo,
@@ -505,6 +513,7 @@ public class CreditNoteController {
                 - FDA status
                 """
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/ref/fda/{fdaRef}")
     public ResponseEntity<?> getFDADetails(
             @PathVariable Long fdaRef,
@@ -530,6 +539,7 @@ public class CreditNoteController {
                 - Due Date (calculated)
                 """
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/default-credit/{partyPoid}")
     public ResponseEntity<?> getDefaultCreditValues(
             @PathVariable Long partyPoid,
@@ -558,6 +568,7 @@ public class CreditNoteController {
                 - Party GL POID
                 """
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/party-gl/{partyPoid}")
     public ResponseEntity<?> getPartyGLPoid(
             @PathVariable Long partyPoid,

@@ -1,5 +1,8 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
+
 import static com.asg.common.lib.dto.response.ApiResponse.success;
 
 import java.util.List;
@@ -26,12 +29,14 @@ public class ChequePrintingController {
 
 	private final ChequePrintingService service;
 
+	@AllowedAction(UserRolesRightsEnum.VIEW)
 	@GetMapping("/pending")
 	public ResponseEntity<?> pendingCheques() {
 		List<PendingChequeResponse> responses = service.getPendingCheques();
 		return success("Pending Cheques fetched successfully", responses);
 	}
 
+	@AllowedAction(UserRolesRightsEnum.VIEW)
 	@GetMapping("/stock")
 	public ResponseEntity<?> chequeStock(
 			@Parameter(name = "bankCode", description = "Optional bank code", required = false, example = "NBP") @RequestParam(required = false) String bankCode,

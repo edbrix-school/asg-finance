@@ -53,6 +53,7 @@ public class BankPaymentVoucherController {
                     @ApiResponse(responseCode = "401", description = "Unauthorized")
             }
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{transactionPoid}")
     public ResponseEntity<?> getVoucherById(
             @Parameter(description = "Unique ID of the voucher to fetch", required = true)
@@ -91,6 +92,7 @@ public class BankPaymentVoucherController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     public ResponseEntity<?> createVoucher(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
@@ -138,6 +140,7 @@ public class BankPaymentVoucherController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{transactionPoid}")
     public ResponseEntity<?> updateVoucher(
             @Parameter(description = "Unique ID of the Bank Payment Voucher to update", required = true)
@@ -220,6 +223,7 @@ public class BankPaymentVoucherController {
                     }
             )
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     public ResponseEntity<?> listBankPaymentVouchers(
             @ParameterObject Pageable pageable,
@@ -261,6 +265,7 @@ public class BankPaymentVoucherController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{transactionPoid}/delete")
     public ResponseEntity<?> softDeleteVoucher(
             @Parameter(description = "Unique ID of the Bank Payment Voucher to soft delete", required = true)
@@ -277,6 +282,7 @@ public class BankPaymentVoucherController {
     }
 
     @Operation(summary = "Get Bank Balance", description = "Retrieves bank balance for a given bank")
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/bank-balance/{bankPoid}")
     public ResponseEntity<?> getBankBalance(
             @PathVariable Long bankPoid,
@@ -290,6 +296,7 @@ public class BankPaymentVoucherController {
     }
 
     @Operation(summary = "Validate Cheque Print", description = "Validates voucher before cheque printing")
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/{transactionPoid}/validate-cheque-print")
     public ResponseEntity<?> validateChequePrint(
             @PathVariable Long transactionPoid) {
@@ -302,6 +309,7 @@ public class BankPaymentVoucherController {
     }
 
     @Operation(summary = "Mark Cheque as Printed", description = "Marks cheque as printed after successful print")
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PostMapping("/{transactionPoid}/mark-cheque-printed")
     public ResponseEntity<?> markChequePrinted(
             @PathVariable Long transactionPoid) {
@@ -314,6 +322,7 @@ public class BankPaymentVoucherController {
     }
 
     @Operation(summary = "Release Cheque", description = "Releases cheque to a person")
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PostMapping("/{transactionPoid}/release-cheque")
     public ResponseEntity<?> releaseCheque(
             @PathVariable Long transactionPoid,
@@ -328,6 +337,7 @@ public class BankPaymentVoucherController {
     }
 
     @Operation(summary = "Un-Release Cheque", description = "Reverts cheque release")
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PostMapping("/{transactionPoid}/unrelease-cheque")
     public ResponseEntity<?> unReleaseCheque(
             @PathVariable Long transactionPoid) {
@@ -340,6 +350,7 @@ public class BankPaymentVoucherController {
     }
 
     @Operation(summary = "Reset Cheque Status", description = "Resets cheque status")
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PostMapping("/{transactionPoid}/reset-cheque-status")
     public ResponseEntity<?> resetChequeStatus(
             @PathVariable Long transactionPoid) {
@@ -352,6 +363,7 @@ public class BankPaymentVoucherController {
     }
 
     @Operation(summary = "Revert Reconciliation", description = "Reverts bank reconciliation")
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PostMapping("/{transactionPoid}/revert-reconciliation")
     public ResponseEntity<?> revertReconciliation(
             @PathVariable Long transactionPoid) {
@@ -383,6 +395,7 @@ public class BankPaymentVoucherController {
                     - Manifest Charge Details
                     """
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/load-from-ff")
     public ResponseEntity<?> createBankPayFromFf(
             @RequestParam String ffPoid) {
@@ -408,6 +421,7 @@ public class BankPaymentVoucherController {
                     - Charge Details
                     """
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/load-from-fda")
     public ResponseEntity<?> loadFdaCharges(
             @RequestParam String fdaPoid) {
@@ -435,6 +449,7 @@ public class BankPaymentVoucherController {
                     - Item Details
                     """
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/load-from-mta")
     public ResponseEntity<?> createFromMta(
             @RequestParam String rfqPoid) {

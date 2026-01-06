@@ -7,6 +7,7 @@ import jakarta.persistence.StoredProcedureQuery;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @Repository
@@ -175,22 +176,21 @@ public class DebitNoteCustomRepositoryImpl implements DebitNoteCustomRepository 
         sp.execute();
 
         Object cursor = sp.getOutputParameterValue("OUTDATA");
+        Map<String, Object> result = new HashMap<>();
         if (cursor instanceof java.sql.ResultSet rs) {
             try {
                 if (rs.next()) {
-                    return Map.of(
-                        "creditPeriod", rs.getObject("CREDIT_PERIOD"),
-                        "bankPoid", rs.getObject("BANK_POID"),
-                        "tinNumber", rs.getObject("TIN_NUMBER"),
-                        "currencyCode", rs.getObject("CURRENCY_CODE"),
-                        "currencyRate", rs.getObject("CURRENCY_RATE")
-                    );
+                    result.put("creditPeriod", rs.getObject("CREDIT_PERIOD"));
+                    result.put("bankPoid", rs.getObject("BANK_POID"));
+                    result.put("tinNumber", rs.getObject("TIN_NUMBER"));
+                    result.put("currencyCode", rs.getObject("CURRENCY_CODE"));
+                    result.put("currencyRate", rs.getObject("CURRENCY_RATE"));
                 }
             } catch (Exception e) {
                 throw new RuntimeException("Error reading party defaults", e);
             }
         }
-        return Map.of();
+        return result;
     }
 
     @Override

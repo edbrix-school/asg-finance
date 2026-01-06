@@ -33,6 +33,8 @@ public class CreditNoteHeaderDto {
     private String currencyCode;
     private BigDecimal currencyRate;
     private BigDecimal bhdAmount;
+    private BigDecimal amount;
+
     /**
      * Reference-specific field(s)
      * When Ref Type is General or Custom

@@ -1,7 +1,9 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.request.DocReleaseLockRequestDto;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.GLMasterRequestDto;
 import com.asg.finance.dto.GLMasterResponseDto;
@@ -47,6 +49,7 @@ public class GLMasterController {
                     @ApiResponse(responseCode = "409", description = "Conflict – GL Code already exists", content = @Content)
             }
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     public ResponseEntity<?> create(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
@@ -69,6 +72,7 @@ public class GLMasterController {
                     @ApiResponse(responseCode = "404", description = "GL Master not found", content = @Content)
             }
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{glPoid}")
     public ResponseEntity<?> get(
             @Parameter(description = "GL Master POID", required = true) @PathVariable Long glPoid) {
@@ -82,6 +86,7 @@ public class GLMasterController {
             summary = "Get GL Master by ID (Simple)",
             description = "Fetches GL Master details without auth parameters - for internal service calls"
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/simple/{glPoid}")
     public ResponseEntity<?> getSimple(@PathVariable Long glPoid) {
         com.asg.common.lib.dto.GLMasterDto glMasterDto = glMasterService.getGLMasterDto(glPoid);
@@ -92,6 +97,7 @@ public class GLMasterController {
             summary = "Get multiple GL Masters by glPoids (Batch)",
             description = "Retrieves multiple GL Master details - for internal service calls"
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/batch")
     public ResponseEntity<?> getGLMastersBatch(@RequestBody List<Long> glPoids) {
         List<com.asg.common.lib.dto.GLMasterDto> glMasters = glMasterService.getGLMasterDtos(glPoids);
@@ -108,6 +114,7 @@ public class GLMasterController {
                     @ApiResponse(responseCode = "404", description = "GL Master not found", content = @Content)
             }
     )
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{glPoid}")
     public ResponseEntity<?> update(
             @Parameter(description = "GL Master POID", required = true) @PathVariable Long glPoid,
@@ -130,6 +137,7 @@ public class GLMasterController {
                     @ApiResponse(responseCode = "404", description = "GL Master not found", content = @Content)
             }
     )
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{glPoid}")
     public ResponseEntity<?> delete(
             @Parameter(description = "GL Master POID", required = true) @PathVariable Long glPoid) {
@@ -167,6 +175,7 @@ public class GLMasterController {
     @ApiResponse(responseCode = "200", description = "GL Master tree structure retrieved successfully")
     @ApiResponse(responseCode = "400", description = "Bad Request - Invalid parameters")
     @ApiResponse(responseCode = "500", description = "Internal server error")
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/tree")
     public ResponseEntity<?> getGlMasterTree(
             @Parameter(description = "Include deleted records in the response", example = "false")
@@ -204,6 +213,7 @@ public class GLMasterController {
             @ApiResponse(responseCode = "400", description = "Validation error or stored proc returned warning/error"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PostMapping("/release-lock")
     public ResponseEntity<?> releaseLock(
             @Parameter(description = "GL Master request payload", required = true)
@@ -233,6 +243,7 @@ public class GLMasterController {
             }
     )
 
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PostMapping("/acquire-lock")
     public ResponseEntity<?> acquireLock(
             @Parameter(description = "GL Master request payload", required = true)
@@ -257,6 +268,7 @@ public class GLMasterController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     public ResponseEntity<?> listOfRecordsWithGenericSearch(
             @Parameter(
@@ -316,6 +328,7 @@ public class GLMasterController {
     @ApiResponse(responseCode = "200", description = "GL Master list retrieved successfully")
     @ApiResponse(responseCode = "400", description = "Bad Request - Invalid parameters")
     @ApiResponse(responseCode = "500", description = "Internal server error")
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/list")
     public ResponseEntity<?> getGlMasterList(
             @Parameter(description = "Parent POID (null for main groups)", example = "1000")

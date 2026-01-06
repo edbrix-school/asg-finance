@@ -76,6 +76,7 @@ public class ContraVoucherController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     public ResponseEntity<?> listContraVouchers(
             @ParameterObject Pageable pageable,
@@ -123,6 +124,7 @@ public class ContraVoucherController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     public ResponseEntity<?> createContraVoucher(
             @RequestBody ContraVoucherRequest request) {
@@ -170,6 +172,7 @@ public class ContraVoucherController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{transactionPoid}")
     public ResponseEntity<?> updateContraVoucher(
             @Parameter(description = "Transaction POID", required = true, example = "261")
@@ -213,6 +216,7 @@ public class ContraVoucherController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{transactionPoid}")
     public ResponseEntity<?> getContraVoucherById(
             @Parameter(description = "Transaction POID", required = true, example = "261")
@@ -249,6 +253,7 @@ public class ContraVoucherController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> deleteContraVoucher(
             @Parameter(description = "Transaction POID", required = true, example = "261")
@@ -279,6 +284,7 @@ public class ContraVoucherController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/check-gl-nature/{creditGlId}")
     public ResponseEntity<?> checkGlNature(
             @Parameter(description = "Credit GL ID reference identifier", required = true, example = "201")

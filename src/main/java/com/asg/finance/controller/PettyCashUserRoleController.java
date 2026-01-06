@@ -1,5 +1,8 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
+
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.PettyCashUserRoleRequestDto;
 import com.asg.finance.dto.PettyCashUserroleResponseDto;
@@ -58,6 +61,7 @@ public class PettyCashUserRoleController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     public ResponseEntity<?> createPettyCashUserRole(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
@@ -83,6 +87,7 @@ public class PettyCashUserRoleController {
         }
     }
 
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{refTypePoid}")
     public ResponseEntity<?> updatePettyCashUserRole(
             @Parameter(description = "Petty Cash User Role refTypePoid to be updated", required = true)
@@ -141,6 +146,7 @@ public class PettyCashUserRoleController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{refTypePoid}")
     public ResponseEntity<?> getPettyCashUserRole(
             @Parameter(description = "refTypePoid reference identifier", required = true)
@@ -175,6 +181,7 @@ public class PettyCashUserRoleController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{refTypePoid}")
     public ResponseEntity<?> softDeletePettyCashUserRole(
             @Parameter(description = "refTypePoid reference identifier", required = true)
@@ -255,6 +262,7 @@ public class PettyCashUserRoleController {
                     }
             )
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     public ResponseEntity<?> listPettyCashUserRole(@ParameterObject Pageable pageable,
                                                    @RequestBody(required = false) FilterRequestDto filters) {

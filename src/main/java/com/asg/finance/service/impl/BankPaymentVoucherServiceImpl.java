@@ -8,6 +8,7 @@ import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.LoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
+import com.asg.common.lib.service.PrintService;
 import com.asg.finance.dto.*;
 import com.asg.finance.entity.GLPaymentVoucherDtlGLEntity;
 import com.asg.finance.entity.GLPaymentVoucherHDREntity;
@@ -17,6 +18,7 @@ import com.asg.finance.repository.*;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
+import net.sf.jasperreports.engine.JasperReport;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -28,6 +30,8 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.nimbusds.oauth2.sdk.util.CollectionUtils;
+
+import javax.sql.DataSource;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -75,6 +79,9 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
     @Autowired
     private CostCenterBreakupService costCenterBreakupService;
+
+    @Autowired private PrintService printService;
+    @Autowired private DataSource dataSource;
 
     @Override
     @Transactional
@@ -1018,6 +1025,28 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                         .amount(BigDecimal.valueOf(cc.getAmount())) // converting Long → BigDecimal
                         .build())
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public byte[] print(Long transactionPoid) throws Exception {
+        GLPaymentVoucherHDREntity header = paymentVoucherRepository.findById(transactionPoid)
+                .orElseThrow(() -> new ValidationException("Voucher not found with ID: " + transactionPoid));
+
+        Map<String, Object> params = printService.buildBaseParams(transactionPoid, UserContext.getDocumentId());
+        if (header.getRefType() != null && header.getRefType().contains("CUSTOM")) {
+            params.put("P_PRINT_WITHOUT_BILL", "Y");
+        } else {
+            params.put("P_PRINT_WITHOUT_BILL", "N");
+        }
+
+        JasperReport mainReport = null;
+        if (null != header.getPrePrinted() && header.getPrePrinted().contains("Y")) {
+            params.put("SUB_DETAIL", printService.load("Finance/BankPayments/BankPaymentVoucher_ManualCheque1_subreport1.jrxml"));
+            mainReport = printService.load("Finance/BankPayments/BankPaymentVoucher_ManualCheque.jrxml");
+        } else {
+            mainReport = printService.load("Finance/BankPayments/BankPaymentVoucher_WithOutCheque.jrxml");
+        }
+        return printService.fillReportToPdf(mainReport, params, dataSource);
     }
 
 }

@@ -40,4 +40,6 @@ public interface ApPurchaseServiceJournal {
 
     List<ApPiFaDefaultDetailsDto> getFaDefaultDetails(String faPoid);
 
+    byte[] print(Long transactionPoid) throws Exception;
+
 }

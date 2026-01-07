@@ -8,6 +8,7 @@ import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.LoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.ShowPendingBillwiseBreakupResponseDto;
+import com.asg.common.lib.service.PrintService;
 import com.asg.finance.entity.GLMaster;
 import com.asg.finance.entity.StockMasterEntity;
 import com.asg.finance.repository.GLMasterRepository;
@@ -28,6 +29,7 @@ import com.nimbusds.oauth2.sdk.util.CollectionUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.sf.jasperreports.engine.JasperReport;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -35,6 +37,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.sql.DataSource;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -65,6 +68,9 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
     private final PettyCashLoadByRefTypeRepository pettyCashLoadByRefTypeRepository;
     private final PettyCashPaymentVoucherCustomRepository pettyCashPaymentVoucherCustomRepository;
+
+    private final PrintService printService;
+    private final DataSource dataSource;
 
     @Override
     @Transactional
@@ -1621,6 +1627,17 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                         .actionType("noChanges") // Default actionType for loaded data
                         .build())
                 .collect(Collectors.toList());
+    }
+
+
+    @Override
+    public byte[] print(Long transactionPoid) throws Exception {
+        Map<String, Object> params = printService.buildBaseParams(transactionPoid, "400-101");
+        params.put("SUB_PAYMENT_DTL", printService.load("Finance/GL/PettyCashPaymentDtl_subreport1.jrxml"));
+        params.put("SUB_ITEM_DTL_2", printService.load("Finance/GL/PettyCashPaymentItemSubreport2.jrxml"));
+        params.put("SUB_ITEM_DTL_1", printService.load("Finance/GL/PettyCashPaymentItemSubreport1.jrxml"));
+        JasperReport mainReport = printService.load("Finance/GL/PettyCashPayment.jrxml");
+        return printService.fillReportToPdf(mainReport, params, dataSource);
     }
 
 }

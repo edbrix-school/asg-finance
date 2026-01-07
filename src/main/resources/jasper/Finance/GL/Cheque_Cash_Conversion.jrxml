@@ -1,0 +1,591 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Cheque_Cash_Conversion" language="groovy" pageWidth="595" pageHeight="842" columnWidth="532" leftMargin="43" rightMargin="20" topMargin="20" bottomMargin="20" uuid="51f26c1c-332c-43f0-beb9-5722768520c7">
+	<property name="ireport.zoom" value="1.9487171000000014"/>
+	<property name="ireport.x" value="0"/>
+	<property name="ireport.y" value="0"/>
+	<style name="Title" fontName="Times New Roman" fontSize="50" isBold="true" pdfFontName="Times-Bold"/>
+	<style name="SubTitle" forecolor="#736343" fontName="Arial" fontSize="18"/>
+	<style name="Column header" forecolor="#666666" fontName="Arial" fontSize="12" isBold="true" pdfFontName="Helvetica-Bold"/>
+	<style name="Detail" fontName="Arial" fontSize="12"/>
+	<style name="Row" mode="Transparent">
+		<conditionalStyle>
+			<conditionExpression><![CDATA[$V{REPORT_COUNT}%2 == 0]]></conditionExpression>
+			<style backcolor="#E6DAC3"/>
+		</conditionalStyle>
+	</style>
+	<style name="OutTable" mode="Opaque" isBlankWhenNull="true" fontSize="10" isBold="true">
+		<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
+			<pen lineWidth="1.0"/>
+			<topPen lineWidth="1.0"/>
+			<leftPen lineWidth="1.0"/>
+			<bottomPen lineWidth="1.0"/>
+			<rightPen lineWidth="1.0"/>
+		</box>
+	</style>
+	<style name="OutDtl" mode="Opaque" isBlankWhenNull="true" fontSize="10" isBold="false">
+		<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
+			<pen lineWidth="0.75"/>
+			<topPen lineWidth="0.75"/>
+			<leftPen lineWidth="0.75"/>
+			<bottomPen lineWidth="0.75"/>
+			<rightPen lineWidth="0.75"/>
+		</box>
+	</style>
+	<style name="table">
+		<box>
+			<pen lineWidth="1.0" lineColor="#000000"/>
+		</box>
+	</style>
+	<style name="table_TH" mode="Opaque" backcolor="#F0F8FF">
+		<box>
+			<pen lineWidth="0.5" lineColor="#000000"/>
+		</box>
+	</style>
+	<style name="table_CH" mode="Opaque" backcolor="#BFE1FF">
+		<box>
+			<pen lineWidth="0.5" lineColor="#000000"/>
+		</box>
+	</style>
+	<style name="table_TD" mode="Opaque" backcolor="#FFFFFF">
+		<box>
+			<pen lineWidth="0.5" lineColor="#000000"/>
+		</box>
+	</style>
+	<subDataset name="OutChequeDetails" uuid="9e0056ea-f360-42a4-93e3-fdc9e564b745">
+		<parameter name="DOC_KEY_POID" class="java.lang.String"/>
+		<queryString>
+			<![CDATA[SELECT VOUCHER_TYPE,CHQ_CARDNO,TO_CHAR(CHQ_DATE,'DD-MON-YYYY') AS  CHQ_DATE,CHQ_AC_NO,CHQ_AC_NAME,
+BANK.BANK_DESCRIPTION,AMOUNT
+FROM GL_CHEQUE_CASH_CONVERT_OUT_DTL DTL
+LEFT JOIN GLOBAL_CUSTOMER_BANK_MASTER BANK ON DTL.BANK_POID = BANK.BANK_POID
+WHERE TRANSACTION_POID = $P{DOC_KEY_POID}]]>
+		</queryString>
+		<field name="VOUCHER_TYPE" class="java.lang.String"/>
+		<field name="CHQ_CARDNO" class="java.lang.String"/>
+		<field name="CHQ_DATE" class="java.lang.String"/>
+		<field name="CHQ_AC_NO" class="java.lang.String"/>
+		<field name="CHQ_AC_NAME" class="java.lang.String"/>
+		<field name="BANK_DESCRIPTION" class="java.lang.String"/>
+		<field name="AMOUNT" class="java.math.BigDecimal"/>
+	</subDataset>
+	<subDataset name="InChequeDetails" uuid="db000767-1b59-4c5f-9210-4544414c4e1a">
+		<parameter name="DOC_KEY_POID" class="java.lang.String"/>
+		<queryString>
+			<![CDATA[SELECT VOUCHER_TYPE,CHQ_CARDNO,TO_CHAR(CHQ_DATE,'DD-MON-YYYY') AS CHQ_DATE,CHQ_AC_NAME,CHQ_AC_NO,BANK.BANK_DESCRIPTION,AMOUNT
+FROM GL_CHEQUE_CASH_CONVERT_IN_DTL DTL
+LEFT JOIN GLOBAL_CUSTOMER_BANK_MASTER BANK ON DTL.BANK_POID = BANK.BANK_POID
+WHERE TRANSACTION_POID = $P{DOC_KEY_POID}]]>
+		</queryString>
+		<field name="VOUCHER_TYPE" class="java.lang.String"/>
+		<field name="CHQ_CARDNO" class="java.lang.String"/>
+		<field name="CHQ_DATE" class="java.lang.String"/>
+		<field name="CHQ_AC_NO" class="java.lang.String"/>
+		<field name="CHQ_AC_NAME" class="java.lang.String"/>
+		<field name="BANK_DESCRIPTION" class="java.lang.String"/>
+		<field name="AMOUNT" class="java.math.BigDecimal"/>
+	</subDataset>
+	<subDataset name="OutCashDetails" uuid="67bb5cb6-013b-4cac-9a0d-72f5e55ae150">
+		<parameter name="DOC_KEY_POID" class="java.lang.String"/>
+		<queryString language="SQL">
+			<![CDATA[SELECT VOUCHER_TYPE,AMOUNT
+FROM GL_CHEQUE_CASH_CONVERT_OUT_DTL DTL
+WHERE TRANSACTION_POID = $P{DOC_KEY_POID}]]>
+		</queryString>
+		<field name="VOUCHER_TYPE" class="java.lang.String"/>
+		<field name="AMOUNT" class="java.math.BigDecimal"/>
+	</subDataset>
+	<parameter name="LOGIN_GROUP_POID" class="java.lang.String">
+		<defaultValueExpression><![CDATA[1]]></defaultValueExpression>
+	</parameter>
+	<parameter name="LOGIN_COMP_POID" class="java.lang.String">
+		<defaultValueExpression><![CDATA[1]]></defaultValueExpression>
+	</parameter>
+	<parameter name="LOGIN_USER_POID" class="java.lang.String"/>
+	<parameter name="LOGIN_DIV_POID" class="java.lang.String">
+		<defaultValueExpression><![CDATA["1"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="DOC_ID" class="java.lang.String">
+		<defaultValueExpression><![CDATA["000-000"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="DOC_KEY_POID" class="java.lang.String"/>
+	<parameter name="SUBREPORT_DIR" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA["\\\\shippingbahrain.com\\data\\ERP_REPORTS\\Reports\\"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="SUB_HEADER" class="net.sf.jasperreports.engine.JasperReport"/>
+	<parameter name="SUB_FOOTER" class="net.sf.jasperreports.engine.JasperReport"/>
+	<queryString>
+		<![CDATA[SELECT COMPANY_POID,DOC_REF,CASH,
+CASE WHEN TYPE='CHEQUE_TO_CASH' THEN 'CHEQUE'
+     WHEN TYPE='CHEQUE_TO_CHEQUE' THEN 'CHEQUE'
+     WHEN TYPE='CHEQUE_TO_IMCOCHEQUE' THEN 'CHEQUE'
+     WHEN TYPE='CASH_TO_CHEQUE' THEN 'CASH'
+     END AS OUT_DTL_TYPE,
+CASE WHEN TYPE='CHEQUE_TO_CASH' THEN 'CASH'
+     WHEN TYPE='CHEQUE_TO_CHEQUE' THEN 'CHEQUE'
+     WHEN TYPE='CHEQUE_TO_IMCOCHEQUE' THEN 'CHEQUE'
+     WHEN TYPE='CASH_TO_CHEQUE' THEN 'CHEQUE'
+     END AS IN_DTL_TYPE,
+CASE WHEN TYPE='CHEQUE_TO_CASH' AND NVL(ROUNDING_AMT,0)!=0 THEN 'ROUNDING_AMT'
+     WHEN TYPE='CASH_TO_CHEQUE' AND NVL(ROUNDING_AMT,0)!=0 THEN 'ROUNDING_AMT'
+     END AS ROUNDING_DTL,
+CASE WHEN TYPE='CHEQUE_TO_CASH' AND NVL(CASH,0)!=0 THEN 'CASH_AMT'
+     WHEN TYPE='CASH_TO_CHEQUE' AND NVL(CASH,0)!=0 THEN 'CASH_AMT'
+     END AS CASH_DTL,
+CASE WHEN TYPE='CHEQUE_TO_CASH' THEN 'Cheque To Cash Conversion'
+     WHEN TYPE='CHEQUE_TO_CHEQUE' THEN 'Cheque To Cheque Conversion'
+     WHEN TYPE='CHEQUE_TO_IMCOCHEQUE' THEN 'Cheque To IMCO Cheque Conversion'
+     WHEN TYPE='CASH_TO_CHEQUE' THEN 'Cash To Cheque Conversion'
+     END AS TYPE,TRANSACTION_DATE,ROUNDING_AMT
+FROM GL_CHEQUE_CASH_CONVERT_HDR
+WHERE TRANSACTION_POID = $P{DOC_KEY_POID}]]>
+	</queryString>
+	<field name="COMPANY_POID" class="java.math.BigDecimal"/>
+	<field name="DOC_REF" class="java.lang.String"/>
+	<field name="CASH" class="java.math.BigDecimal"/>
+	<field name="OUT_DTL_TYPE" class="java.lang.String"/>
+	<field name="IN_DTL_TYPE" class="java.lang.String"/>
+	<field name="ROUNDING_DTL" class="java.lang.String"/>
+	<field name="CASH_DTL" class="java.lang.String"/>
+	<field name="TYPE" class="java.lang.String"/>
+	<field name="TRANSACTION_DATE" class="java.sql.Timestamp"/>
+	<field name="ROUNDING_AMT" class="java.math.BigDecimal"/>
+	<variable name="Title" class="java.lang.String">
+		<initialValueExpression><![CDATA[$F{TYPE}.contains("CHEQUE_TO_CHEQUE") ? "Cheque To Cheque Conversion": "Cheque To Cash Conversion"]]></initialValueExpression>
+	</variable>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band splitType="Stretch"/>
+	</title>
+	<pageHeader>
+		<band height="145" splitType="Stretch">
+			<subreport>
+				<reportElement x="0" y="0" width="531" height="66" uuid="11dd97b8-4c92-45fe-85bb-3b9358474446"/>
+				<subreportParameter name="LOGIN_DIV_POID">
+					<subreportParameterExpression><![CDATA[$P{LOGIN_DIV_POID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="LOGIN_COMP_POID">
+					<subreportParameterExpression><![CDATA[$P{LOGIN_COMP_POID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUB_HEADER}]]></subreportExpression>
+			</subreport>
+			<textField isBlankWhenNull="true">
+				<reportElement x="53" y="97" width="136" height="20" uuid="73c7c52a-d487-41e0-a7ae-e5d666db201c"/>
+				<textElement>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
+					<paragraph leftIndent="3"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{DOC_REF}]]></textFieldExpression>
+			</textField>
+			<textField pattern="dd-MMM-yyyy" isBlankWhenNull="true">
+				<reportElement x="449" y="97" width="82" height="20" uuid="894c6b5a-ca94-4f91-b59e-19869724258e"/>
+				<textElement>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
+					<paragraph leftIndent="3"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{TRANSACTION_DATE}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="0" y="97" width="48" height="20" uuid="b797279a-6358-43d7-946d-c25172ca66ba"/>
+				<textElement>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Doc Ref ]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="410" y="97" width="33" height="20" uuid="7576c6d7-15f4-446b-b536-cafd621181c6"/>
+				<textElement>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Date ]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="1" y="122" width="148" height="20" uuid="591bf924-e56f-423c-86fd-584477dda0df"/>
+				<textElement verticalAlignment="Bottom">
+					<font isBold="true" isUnderline="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[From Conversion Details]]></text>
+			</staticText>
+			<textField isBlankWhenNull="true">
+				<reportElement x="1" y="77" width="530" height="20" uuid="aef5ecfa-b7ad-44a7-bb98-08247c73bc77"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="14" isBold="true" isUnderline="false" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{TYPE}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="47" y="97" width="6" height="20" uuid="ca7a50fd-9156-4ddd-bc20-37d27f8b770f"/>
+				<textElement textAlignment="Center">
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="443" y="97" width="6" height="20" uuid="838de8f9-7c4e-4e32-84a0-2f66bbf80339"/>
+				<textElement textAlignment="Center">
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[:]]></text>
+			</staticText>
+		</band>
+	</pageHeader>
+	<detail>
+		<band height="34" splitType="Stretch">
+			<componentElement>
+				<reportElement key="table" x="0" y="10" width="531" height="20" uuid="63ff5fe1-7316-45e7-b636-765d97b24722">
+					<printWhenExpression><![CDATA[$F{OUT_DTL_TYPE}.equalsIgnoreCase( "CHEQUE" )]]></printWhenExpression>
+				</reportElement>
+				<jr:table xmlns:jr="http://jasperreports.sourceforge.net/jasperreports/components" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports/components http://jasperreports.sourceforge.net/xsd/components.xsd">
+					<datasetRun subDataset="OutChequeDetails" uuid="ed707384-c9e9-444a-ad29-ee1e828624db">
+						<datasetParameter name="DOC_KEY_POID">
+							<datasetParameterExpression><![CDATA[$P{DOC_KEY_POID}]]></datasetParameterExpression>
+						</datasetParameter>
+						<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+					</datasetRun>
+					<jr:column width="73" uuid="91098138-dd4e-4439-97df-00445738c60c">
+						<jr:columnHeader height="30" rowSpan="1">
+							<staticText>
+								<reportElement style="OutTable" x="0" y="0" width="73" height="30" uuid="e4bb2f7b-9b90-4958-b6f2-97eec6921e38"/>
+								<textElement>
+									<font isBold="true" pdfFontName="Helvetica-Bold"/>
+								</textElement>
+								<text><![CDATA[Voucher Type]]></text>
+							</staticText>
+						</jr:columnHeader>
+						<jr:detailCell height="20" rowSpan="1">
+							<textField isBlankWhenNull="true">
+								<reportElement style="OutDtl" x="0" y="0" width="73" height="20" uuid="fb4c5d50-70c5-4157-96d8-8c7f1b37caab"/>
+								<textFieldExpression><![CDATA[$F{VOUCHER_TYPE}]]></textFieldExpression>
+							</textField>
+						</jr:detailCell>
+					</jr:column>
+					<jr:column width="59" uuid="d387f67d-eeb8-42f8-a082-dafcac9844c1">
+						<jr:columnHeader height="30" rowSpan="1">
+							<staticText>
+								<reportElement style="OutTable" x="0" y="0" width="59" height="30" uuid="77743813-7e38-4df2-8fcc-80b1f2a33a82"/>
+								<textElement>
+									<font isBold="true" pdfFontName="Helvetica-Bold"/>
+								</textElement>
+								<text><![CDATA[Cheque No]]></text>
+							</staticText>
+						</jr:columnHeader>
+						<jr:detailCell height="20" rowSpan="1">
+							<textField isBlankWhenNull="true">
+								<reportElement style="OutDtl" x="0" y="0" width="59" height="20" uuid="a6f9cc28-00da-4b86-99ad-bdc52ec9c003"/>
+								<textFieldExpression><![CDATA[$F{CHQ_CARDNO}]]></textFieldExpression>
+							</textField>
+						</jr:detailCell>
+					</jr:column>
+					<jr:column width="69" uuid="8c6c6072-467f-4eb2-a59e-08c4acf0b121">
+						<jr:columnHeader height="30" rowSpan="1">
+							<staticText>
+								<reportElement style="OutTable" x="0" y="0" width="69" height="30" uuid="d68732f2-5efb-4800-be80-0d3fd9d8156a"/>
+								<textElement>
+									<font isBold="true" pdfFontName="Helvetica-Bold"/>
+								</textElement>
+								<text><![CDATA[Cheque Date]]></text>
+							</staticText>
+						</jr:columnHeader>
+						<jr:detailCell height="20" rowSpan="1">
+							<textField pattern="dd-MMM-yyyy" isBlankWhenNull="true">
+								<reportElement style="OutDtl" x="0" y="0" width="69" height="20" uuid="e4ea7b5e-aa4b-4bc8-ae06-83851082760c"/>
+								<textFieldExpression><![CDATA[$F{CHQ_DATE}]]></textFieldExpression>
+							</textField>
+						</jr:detailCell>
+					</jr:column>
+					<jr:column width="180" uuid="a5780657-45a8-482e-92ed-06a4ef2d643b">
+						<jr:columnHeader height="30" rowSpan="1">
+							<staticText>
+								<reportElement style="OutTable" x="0" y="0" width="180" height="30" uuid="44aa96ef-717d-45a9-915c-a497ac34e533"/>
+								<textElement>
+									<font isBold="true" pdfFontName="Helvetica-Bold"/>
+								</textElement>
+								<text><![CDATA[Bank]]></text>
+							</staticText>
+						</jr:columnHeader>
+						<jr:detailCell height="20" rowSpan="1">
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement style="OutDtl" stretchType="RelativeToTallestObject" x="0" y="0" width="180" height="20" uuid="96289180-c6df-463b-a2e4-8fa88b4200a5"/>
+								<textFieldExpression><![CDATA[$F{BANK_DESCRIPTION}]]></textFieldExpression>
+							</textField>
+						</jr:detailCell>
+					</jr:column>
+					<jr:column width="90" uuid="fd78a304-980e-474c-98da-2fd23f036353">
+						<jr:columnHeader height="30" rowSpan="1">
+							<staticText>
+								<reportElement style="OutTable" x="0" y="0" width="90" height="30" uuid="3af7aac0-bed1-4130-88a2-461fa5c0a6e4"/>
+								<textElement>
+									<font isBold="true" pdfFontName="Helvetica-Bold"/>
+								</textElement>
+								<text><![CDATA[Cheque Acc No]]></text>
+							</staticText>
+						</jr:columnHeader>
+						<jr:detailCell height="20" rowSpan="1">
+							<textField isBlankWhenNull="true">
+								<reportElement style="OutDtl" x="0" y="0" width="90" height="20" uuid="0c37b551-69d9-4cee-acc7-6906aa2773c9"/>
+								<textFieldExpression><![CDATA[$F{CHQ_AC_NO}]]></textFieldExpression>
+							</textField>
+						</jr:detailCell>
+					</jr:column>
+					<jr:column width="90" uuid="62c3792b-9d4c-4378-8fc4-21791351010a">
+						<jr:columnHeader height="30" rowSpan="1">
+							<staticText>
+								<reportElement style="OutTable" x="0" y="0" width="71" height="30" uuid="33801998-12fe-4137-936d-fa5b2ab7a3d9"/>
+								<textElement>
+									<font isBold="true" pdfFontName="Helvetica-Bold"/>
+								</textElement>
+								<text><![CDATA[Amount]]></text>
+							</staticText>
+						</jr:columnHeader>
+						<jr:detailCell height="20" rowSpan="1">
+							<textField pattern="#,##0.000" isBlankWhenNull="true">
+								<reportElement style="OutDtl" x="0" y="0" width="71" height="20" uuid="bdb29e4d-3201-4922-b40e-cab7a75752cc"/>
+								<textElement textAlignment="Right"/>
+								<textFieldExpression><![CDATA[$F{AMOUNT}]]></textFieldExpression>
+							</textField>
+						</jr:detailCell>
+					</jr:column>
+				</jr:table>
+			</componentElement>
+			<componentElement>
+				<reportElement key="table" style="table" x="1" y="10" width="531" height="21" uuid="84d492ae-c23b-4fdb-b7d5-08f371350d7d">
+					<printWhenExpression><![CDATA[$F{OUT_DTL_TYPE}.equalsIgnoreCase( "CASH" )]]></printWhenExpression>
+				</reportElement>
+				<jr:table xmlns:jr="http://jasperreports.sourceforge.net/jasperreports/components" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports/components http://jasperreports.sourceforge.net/xsd/components.xsd">
+					<datasetRun subDataset="OutCashDetails" uuid="673b2582-ea1e-44a8-a983-09296ce70aa9">
+						<datasetParameter name="DOC_KEY_POID">
+							<datasetParameterExpression><![CDATA[$P{DOC_KEY_POID}]]></datasetParameterExpression>
+						</datasetParameter>
+						<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+					</datasetRun>
+					<jr:columnGroup width="180" uuid="ab7e2fe3-2440-44a6-92fd-f41f7fe15c46">
+						<jr:column width="90" uuid="83c8016d-dbea-46e8-a26f-8d0b086830da">
+							<jr:columnHeader height="30" rowSpan="1">
+								<staticText>
+									<reportElement style="OutDtl" x="0" y="0" width="90" height="30" uuid="4dd3359c-9c36-449a-afee-da78118bfb6f"/>
+									<textElement>
+										<font isBold="true" pdfFontName="Helvetica-Bold"/>
+									</textElement>
+									<text><![CDATA[Voucher Type]]></text>
+								</staticText>
+							</jr:columnHeader>
+							<jr:detailCell style="table_TD" height="20" rowSpan="1">
+								<textField isBlankWhenNull="true">
+									<reportElement style="OutDtl" x="0" y="0" width="90" height="20" uuid="8e63e1f5-30d2-4413-a838-b64decb20aad"/>
+									<textElement>
+										<font isBold="false"/>
+									</textElement>
+									<textFieldExpression><![CDATA[$F{VOUCHER_TYPE}]]></textFieldExpression>
+								</textField>
+							</jr:detailCell>
+						</jr:column>
+						<jr:column width="90" uuid="3d6dd891-3d2d-4cd1-891a-908ba4b5b591">
+							<jr:columnHeader height="30" rowSpan="1">
+								<staticText>
+									<reportElement style="OutDtl" x="0" y="0" width="90" height="30" uuid="36b18b22-42e9-424c-bcfd-6170ab139af9"/>
+									<textElement>
+										<font isBold="true" pdfFontName="Helvetica-Bold"/>
+									</textElement>
+									<text><![CDATA[Amount]]></text>
+								</staticText>
+							</jr:columnHeader>
+							<jr:detailCell style="table_TD" height="20" rowSpan="1">
+								<textField pattern="#,##0.000" isBlankWhenNull="true">
+									<reportElement style="OutDtl" x="0" y="0" width="90" height="20" uuid="4868e916-e1dc-4824-8a80-c37330f6f451"/>
+									<textElement textAlignment="Right"/>
+									<textFieldExpression><![CDATA[$F{AMOUNT}]]></textFieldExpression>
+								</textField>
+							</jr:detailCell>
+						</jr:column>
+					</jr:columnGroup>
+				</jr:table>
+			</componentElement>
+		</band>
+		<band height="60">
+			<staticText>
+				<reportElement x="1" y="0" width="148" height="20" uuid="48f5ad45-b22f-4673-a966-5fb0bb91e435"/>
+				<textElement verticalAlignment="Bottom">
+					<font isBold="true" isItalic="false" isUnderline="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[To Conversion Details]]></text>
+			</staticText>
+			<componentElement>
+				<reportElement key="table" x="0" y="30" width="531" height="25" uuid="ff224502-005d-42bc-b690-273f3d30f417">
+					<printWhenExpression><![CDATA[$F{IN_DTL_TYPE}.equalsIgnoreCase( "CHEQUE" )]]></printWhenExpression>
+				</reportElement>
+				<jr:table xmlns:jr="http://jasperreports.sourceforge.net/jasperreports/components" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports/components http://jasperreports.sourceforge.net/xsd/components.xsd">
+					<datasetRun subDataset="InChequeDetails" uuid="367f8bd4-2810-49c9-beaf-df428fda8103">
+						<datasetParameter name="DOC_KEY_POID">
+							<datasetParameterExpression><![CDATA[$P{DOC_KEY_POID}]]></datasetParameterExpression>
+						</datasetParameter>
+						<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+					</datasetRun>
+					<jr:column width="74" uuid="f3e1ebd4-9b6c-4666-a68f-2ce4de1cb94f">
+						<jr:tableHeader height="19" rowSpan="1">
+							<staticText>
+								<reportElement style="OutTable" x="0" y="0" width="74" height="19" uuid="834686c2-f715-4b47-bb86-685253b77caa"/>
+								<textElement>
+									<font isBold="true" pdfFontName="Helvetica-Bold"/>
+								</textElement>
+								<text><![CDATA[Voucher Type]]></text>
+							</staticText>
+						</jr:tableHeader>
+						<jr:detailCell height="20" rowSpan="1">
+							<textField isBlankWhenNull="true">
+								<reportElement style="OutDtl" x="0" y="0" width="73" height="20" uuid="8c4e28f3-7e0a-4a27-b564-ae56b4d0c3e5"/>
+								<textFieldExpression><![CDATA[$F{VOUCHER_TYPE}]]></textFieldExpression>
+							</textField>
+						</jr:detailCell>
+					</jr:column>
+					<jr:column width="58" uuid="98d6ebfa-0b8f-4503-9dec-240877bca155">
+						<jr:tableHeader height="19" rowSpan="1">
+							<staticText>
+								<reportElement style="OutTable" x="0" y="0" width="58" height="19" uuid="9a9052a8-150f-4bcf-8c46-91ecf45caa5f"/>
+								<textElement>
+									<font isBold="true" pdfFontName="Helvetica-Bold"/>
+								</textElement>
+								<text><![CDATA[Cheque No]]></text>
+							</staticText>
+						</jr:tableHeader>
+						<jr:detailCell height="20" rowSpan="1">
+							<textField isBlankWhenNull="true">
+								<reportElement style="OutDtl" x="0" y="0" width="58" height="20" uuid="c28f3eca-b22e-4e4b-9ec2-bfaf41ad7b9b"/>
+								<textFieldExpression><![CDATA[$F{CHQ_CARDNO}]]></textFieldExpression>
+							</textField>
+						</jr:detailCell>
+					</jr:column>
+					<jr:column width="69" uuid="dab3f747-2531-43c3-9d3a-c4780f2421a3">
+						<jr:tableHeader height="19" rowSpan="1">
+							<staticText>
+								<reportElement style="OutTable" x="0" y="0" width="69" height="19" uuid="48e26095-1efc-4f8e-adbb-96acb53510a9"/>
+								<textElement>
+									<font isBold="true" pdfFontName="Helvetica-Bold"/>
+								</textElement>
+								<text><![CDATA[Cheque Date]]></text>
+							</staticText>
+						</jr:tableHeader>
+						<jr:detailCell height="20" rowSpan="1">
+							<textField pattern="dd-MMM-yyyy" isBlankWhenNull="true">
+								<reportElement style="OutDtl" x="0" y="0" width="69" height="20" uuid="77529674-0029-43c6-9497-8dd61343c278"/>
+								<textFieldExpression><![CDATA[$F{CHQ_DATE}]]></textFieldExpression>
+							</textField>
+						</jr:detailCell>
+					</jr:column>
+					<jr:column width="180" uuid="44d6d4cf-0e70-49f6-b070-132f6b434862">
+						<jr:tableHeader height="19" rowSpan="1">
+							<staticText>
+								<reportElement style="OutTable" x="0" y="0" width="180" height="19" uuid="8a20c87d-289b-4146-be0b-5655e6ea15ca"/>
+								<textElement>
+									<font isBold="true" pdfFontName="Helvetica-Bold"/>
+								</textElement>
+								<text><![CDATA[Bank]]></text>
+							</staticText>
+						</jr:tableHeader>
+						<jr:detailCell height="20" rowSpan="1">
+							<textField isBlankWhenNull="true">
+								<reportElement style="OutDtl" stretchType="RelativeToTallestObject" x="0" y="0" width="180" height="20" uuid="3596c0a4-f611-4702-ab14-38d2532f2174"/>
+								<textFieldExpression><![CDATA[$F{BANK_DESCRIPTION}]]></textFieldExpression>
+							</textField>
+						</jr:detailCell>
+					</jr:column>
+					<jr:column width="90" uuid="3ecc11b8-da7f-404c-9956-d0a1f5ae3923">
+						<jr:tableHeader height="19" rowSpan="1">
+							<staticText>
+								<reportElement style="OutTable" x="0" y="0" width="90" height="19" uuid="497f6524-e9ae-4e2e-b8f0-47ab9ccaa57a"/>
+								<textElement>
+									<font isBold="true" pdfFontName="Helvetica-Bold"/>
+								</textElement>
+								<text><![CDATA[Cheque Acc No]]></text>
+							</staticText>
+						</jr:tableHeader>
+						<jr:detailCell height="20" rowSpan="1">
+							<textField isBlankWhenNull="true">
+								<reportElement style="OutDtl" x="0" y="0" width="90" height="20" uuid="094ce46c-5195-4d7c-8de7-9ce1d4a98e79"/>
+								<textFieldExpression><![CDATA[$F{CHQ_AC_NO}]]></textFieldExpression>
+							</textField>
+						</jr:detailCell>
+					</jr:column>
+					<jr:column width="70" uuid="a6e20e33-e230-4cbd-a608-6432e79e12a4">
+						<jr:tableHeader height="19" rowSpan="1">
+							<staticText>
+								<reportElement style="OutTable" x="0" y="0" width="70" height="19" uuid="fe4cffcf-55e6-4eb9-92c7-f44ad6fa69ba"/>
+								<textElement>
+									<font isBold="true" pdfFontName="Helvetica-Bold"/>
+								</textElement>
+								<text><![CDATA[Amount]]></text>
+							</staticText>
+						</jr:tableHeader>
+						<jr:detailCell height="20" rowSpan="1">
+							<textField pattern="#,##0.000" isBlankWhenNull="true">
+								<reportElement style="OutDtl" x="0" y="0" width="70" height="20" uuid="56ab52a2-547e-4fd3-bbd9-ee1135265395"/>
+								<textElement textAlignment="Right"/>
+								<textFieldExpression><![CDATA[$F{AMOUNT}]]></textFieldExpression>
+							</textField>
+						</jr:detailCell>
+					</jr:column>
+				</jr:table>
+			</componentElement>
+		</band>
+		<band height="50">
+			<staticText>
+				<reportElement x="0" y="0" width="100" height="20" uuid="5bebb853-8f19-4c65-9c30-f38ab2457886">
+					<printWhenExpression><![CDATA[$F{CASH_DTL}.equalsIgnoreCase( "CASH_AMT" )]]></printWhenExpression>
+				</reportElement>
+				<textElement>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Cash Received :]]></text>
+			</staticText>
+			<textField pattern="#,##0.000" isBlankWhenNull="true">
+				<reportElement x="100" y="0" width="100" height="20" uuid="b1932216-ede4-42f1-8048-c8c913e880b6">
+					<printWhenExpression><![CDATA[$F{CASH_DTL}.equalsIgnoreCase( "CASH_AMT" )]]></printWhenExpression>
+				</reportElement>
+				<textElement>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{CASH}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="1" y="20" width="100" height="20" uuid="a1df316f-b725-4fee-91c0-e7db7c923b14">
+					<printWhenExpression><![CDATA[$F{ROUNDING_DTL}.equalsIgnoreCase( "ROUNDING_AMT" )]]></printWhenExpression>
+				</reportElement>
+				<textElement>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Rounding Amount :]]></text>
+			</staticText>
+			<textField pattern="#,##0.000" isBlankWhenNull="true">
+				<reportElement x="101" y="20" width="100" height="20" uuid="85188846-34b2-4d03-bb2e-4294edbb2d44">
+					<printWhenExpression><![CDATA[$F{ROUNDING_DTL}.equalsIgnoreCase( "ROUNDING_AMT" )]]></printWhenExpression>
+				</reportElement>
+				<textElement>
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{ROUNDING_AMT}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<pageFooter>
+		<band height="24" splitType="Stretch">
+			<subreport>
+				<reportElement x="0" y="0" width="555" height="24" uuid="326ecd66-b7ad-4850-8e0f-10877494dc9d"/>
+				<subreportParameter name="DOC_ID">
+					<subreportParameterExpression><![CDATA["400-110"]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="LOGIN_COMP_POID">
+					<subreportParameterExpression><![CDATA[$P{LOGIN_COMP_POID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUB_FOOTER}]]></subreportExpression>
+			</subreport>
+		</band>
+	</pageFooter>
+	<summary>
+		<band splitType="Stretch"/>
+	</summary>
+</jasperReport>
+
+
+

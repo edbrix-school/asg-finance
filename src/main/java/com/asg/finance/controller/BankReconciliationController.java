@@ -9,7 +9,14 @@ import static com.asg.common.lib.dto.response.ApiResponse.success;
 import java.util.Date;
 import java.util.List;
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -176,4 +183,42 @@ public class BankReconciliationController {
 
 		return success("Report fetched successfully", response);
 	}
+
+
+    @AllowedAction(UserRolesRightsEnum.PRINT)
+    @Operation(
+            summary = "Generate PDF for Bank Reconciliation",
+            description = "Generate PDF report for a specific Bank Reconciliation transaction",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "PDF generated successfully",
+                            content = @Content(mediaType = "application/pdf")),
+                    @ApiResponse(responseCode = "404", description = "Bank Reconciliation not found"),
+                    @ApiResponse(responseCode = "500", description = "Failed to generate PDF")
+            }
+    )
+    @GetMapping("/print")
+    public ResponseEntity<?> print(
+            @Parameter(description = "Bank POID", required = true, example = "101") 
+            @RequestParam Long bankPoid,
+            
+            @Parameter(description = "Start date for reconciliation", required = true, example = "2025-12-01") 
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") Date dateFrom,
+            
+            @Parameter(description = "End date for reconciliation", required = true, example = "2025-12-05") 
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") Date dateTill,
+            
+            @Parameter(description = "Balance as per bank", required = false, example = "1000.00") 
+            @RequestParam(required = false, defaultValue = "0") String balanceAsPerBank) {
+        try {
+            byte[] pdf = service.print(1L, bankPoid, dateFrom, dateTill, balanceAsPerBank);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=bank-reconciliation-" + 1 + ".pdf")
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .body(pdf);
+        } catch (Exception e) {
+            log.error("Failed to generate PDF for Bank Reconciliation: {}", 1, e);
+            return error("Failed to generate PDF: " + e.getMessage(), 500);
+        }
+    }
 }

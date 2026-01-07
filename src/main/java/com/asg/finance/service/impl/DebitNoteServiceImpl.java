@@ -8,6 +8,7 @@ import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
+import com.asg.common.lib.service.PrintService;
 import com.asg.common.lib.utility.ASGHelperUtils;
 import com.asg.finance.dto.*;
 import com.asg.finance.entity.ArDebitNoteChargeDtl;
@@ -20,6 +21,7 @@ import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.sf.jasperreports.engine.JasperReport;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -28,6 +30,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.sql.DataSource;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -62,6 +65,8 @@ public class DebitNoteServiceImpl implements DebitNoteService {
     private final BillwiseBreakupService billwiseBreakupService;
     private final CostCenterBreakupService costCenterBreakupService;
     private final LovDataService lovService;
+    private final PrintService printService;
+    private final DataSource dataSource;
 
     @Value("${app.doc-id.debit-note:300-110}")
     private String debitNoteDocId;
@@ -722,6 +727,18 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         if (!exists) {
             throw new ResourceNotFoundException(partyType, "partyPoid", partyPoid);
         }
+    }
+
+    @Override
+    public byte[] print(Long transactionPoid) throws Exception {
+        Map<String, Object> params = printService.buildBaseParams(transactionPoid, "300-110");
+        params.put("INVOICE_PRINT", 'Y');
+        params.put("SUB_DEBIT_DTL_1", printService.load("Finance/AR/DebitNoteDtl_subreport1.jrxml"));
+        params.put("SUB_DEBIT_DTL_VAT", printService.load("Finance/AR/DebitNoteDtlSubreportVAT2019.jrxml"));
+        params.put("SUB_CHARGE_1", printService.load("Finance/AR/DebitNoteChargeSubreport1.jrxml"));
+        params.put("SUB_CHARGE_VAT", printService.load("Finance/AR/DebitNoteChargeSubreportVAT2019.jrxml"));
+        JasperReport mainReport = printService.load("Finance/AR/DebitNote.jrxml");
+        return printService.fillReportToPdf(mainReport, params, dataSource);
     }
 
 }

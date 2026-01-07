@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="BankDebitVoucher_subreport1" language="groovy" pageWidth="555" pageHeight="802" columnWidth="555" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="6440f9d0-fcfb-45dd-9cde-eeeab56856de">
+	<property name="ireport.zoom" value="1.0"/>
+	<property name="ireport.x" value="0"/>
+	<property name="ireport.y" value="0"/>
+	<parameter name="TT_REMARK_POID" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="DOC_KEY_POID" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="DOC_ID" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="LOGIN_COMPANY_POID" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<queryString language="plsql">
+		<![CDATA[{call PROC_GLOB_TERMS_RPT_LIST($P{LOGIN_COMPANY_POID}, $P{DOC_ID}, $P{DOC_KEY_POID}, $P{TT_REMARK_POID}, $P{ORACLE_REF_CURSOR} )}]]>
+	</queryString>
+	<field name="CLAUSE_DETAILS" class="java.lang.String"/>
+	<detail>
+		<band height="40" splitType="Stretch">
+			<textField isStretchWithOverflow="true">
+				<reportElement x="0" y="0" width="555" height="40" uuid="527ac1ba-2cb6-487c-a883-e17f65b53b49"/>
+				<textFieldExpression><![CDATA[$F{CLAUSE_DETAILS}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+</jasperReport>

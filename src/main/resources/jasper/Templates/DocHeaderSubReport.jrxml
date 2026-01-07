@@ -1,0 +1,59 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="DocHeaderSubReport" language="groovy" pageWidth="555" pageHeight="802" whenNoDataType="BlankPage" columnWidth="535" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="2251512a-18e7-4baf-9c34-046ea92395be">
+    <property name="ireport.zoom" value="1.1000000000000008"/>
+    <property name="ireport.x" value="0"/>
+    <property name="ireport.y" value="0"/>
+    <style name="Title" fontName="Times New Roman" fontSize="50" isBold="true" pdfFontName="Times-Bold"/>
+    <style name="SubTitle" forecolor="#736343" fontName="SansSerif" fontSize="18"/>
+    <style name="Column header" forecolor="#666666" fontName="SansSerif" fontSize="12" isBold="true" pdfFontName="Helvetica-Bold"/>
+    <style name="Detail" fontName="SansSerif" fontSize="12"/>
+    <style name="Row" mode="Transparent">
+        <conditionalStyle>
+            <conditionExpression><![CDATA[$V{REPORT_COUNT}%2 == 0]]></conditionExpression>
+            <style backcolor="#E6DAC3"/>
+        </conditionalStyle>
+    </style>
+    <parameter name="LOGIN_COMP_POID" class="java.lang.String">
+        <defaultValueExpression><![CDATA[1]]></defaultValueExpression>
+    </parameter>
+    <parameter name="LOGIN_DIV_POID" class="java.lang.String">
+        <defaultValueExpression><![CDATA["1"]]></defaultValueExpression>
+    </parameter>
+    <queryString>
+        <![CDATA[SELECT CM.COMPANY_POID, CM.COMPANY_NAME, CM.ADDRESS, CM.LOGO_IMAGE, CMD.REMARKS, CMD.COMPANY_DIV_LOGO, CMD.COMPANY_DIV_ADDRESS
+FROM GLOBAL_COMPANY_MASTER CM
+INNER JOIN GLOBAL_COMPANY_MASTER_DIV_DTL CMD ON CM.COMPANY_POID = CMD.COMPANY_POID AND CMD.DIV_POID = $P{LOGIN_DIV_POID}
+WHERE CM.COMPANY_POID =  $P{LOGIN_COMP_POID}]]>
+    </queryString>
+    <field name="COMPANY_POID" class="java.math.BigDecimal"/>
+    <field name="COMPANY_NAME" class="java.lang.String"/>
+    <field name="ADDRESS" class="java.lang.String"/>
+    <field name="LOGO_IMAGE" class="java.io.InputStream"/>
+    <field name="REMARKS" class="java.lang.String"/>
+    <field name="COMPANY_DIV_LOGO" class="java.io.InputStream"/>
+    <field name="COMPANY_DIV_ADDRESS" class="java.lang.String"/>
+    <title>
+        <band height="75" splitType="Stretch">
+            <image hAlign="Center">
+                <reportElement mode="Transparent" x="0" y="0" width="555" height="52" backcolor="#CCCCCC" uuid="e9b4c35b-98cd-4bad-a888-a16dc57721b7">
+                    <printWhenExpression><![CDATA[$F{COMPANY_DIV_LOGO} != null]]></printWhenExpression>
+                </reportElement>
+                <imageExpression><![CDATA[$F{COMPANY_DIV_LOGO}]]></imageExpression>
+            </image>
+            <textField isStretchWithOverflow="true" isBlankWhenNull="true">
+                <reportElement x="0" y="55" width="555" height="20" isPrintWhenDetailOverflows="true" uuid="1eba0cbb-1c34-416a-9e6d-d7be1299df03"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{COMPANY_DIV_ADDRESS}]]></textFieldExpression>
+            </textField>
+            <textField isBlankWhenNull="true">
+                <reportElement x="0" y="0" width="100" height="10" forecolor="#FF0000" uuid="2251512a-18e7-4baf-9c34-046ea92395bf"/>
+                <textElement>
+                    <font size="6"/>
+                </textElement>
+<!--                <textFieldExpression><![CDATA["DIV:"+$P{LOGIN_DIV_POID}+" COMP:"+$P{LOGIN_COMP_POID}]]></textFieldExpression>-->
+            </textField>
+        </band>
+    </title>
+</jasperReport>

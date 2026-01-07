@@ -6,6 +6,7 @@ import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.dto.response.GlPostingViewResponseDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.common.lib.service.PrintService;
 import com.asg.finance.dto.BankDepositVoucherDtlDto;
 import com.asg.finance.dto.BankDepositVoucherRequestDto;
 import com.asg.finance.dto.BankDepositVoucherResponseDto;
@@ -19,11 +20,13 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import net.sf.jasperreports.engine.JasperReport;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import javax.sql.DataSource;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -39,6 +42,9 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
     private final GlBankDepositVoucherHdrRepository hdrRepository;
     private final GlBankDepositVoucherDtlRepository dtlRepository;
     private final DocumentSearchService documentService;
+
+    private final PrintService printService;
+    private final DataSource dataSource;
     
     @PersistenceContext
     private EntityManager entityManager;
@@ -249,5 +255,14 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
 
     private String getCurrentUser() {
         return UserContext.getUserId() != null ? String.valueOf(UserContext.getUserId()) : "SYSTEM";
+    }
+
+    @Override
+    public byte[] print(Long transactionPoid) throws Exception {
+        Map<String, Object> params = printService.buildBaseParams(transactionPoid, "400-109");
+        params.put("SUB_CHEQUE", printService.load("Finance/GL/BankDepositVoucherPymt_subreport1.jrxml"));
+        params.put("SUB_CASH", printService.load("Finance/GL/BankDepositVoucherGL_subreport1.jrxml"));
+        JasperReport mainReport = printService.load("Finance/GL/BankDepositVoucherReport.jrxml");
+        return printService.fillReportToPdf(mainReport, params, dataSource);
     }
 }

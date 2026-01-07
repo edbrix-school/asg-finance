@@ -8,6 +8,7 @@ import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
+import com.asg.common.lib.service.PrintService;
 import com.asg.common.lib.utility.ASGHelperUtils;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.dto.*;
@@ -18,6 +19,7 @@ import com.asg.common.lib.security.util.UserContext;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.sf.jasperreports.engine.JasperReport;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -27,6 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.sql.DataSource;
 import java.math.BigDecimal;
 import java.sql.Date;
 import java.sql.Timestamp;
@@ -57,6 +60,8 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
     private final EntityManager entityManager;
     private final DocumentSearchService documentService;
     private final LovDataService lovService;
+    private final PrintService printService;
+    private final DataSource dataSource;
     
     @Autowired
     private ApplicationContext applicationContext;
@@ -1501,6 +1506,16 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         Date sqlDate = asOnDate != null ? Date.valueOf(asOnDate) : Date.valueOf(LocalDate.now());
         List<Object[]> results = procedureRepository.fetchPendingBills(DEFAULT_GROUP_POID, companyPoid, glPoid, sqlDate);
         return Map.of("pendingBills", results);
+    }
+
+    @Override
+    public byte[] print(Long transactionPoid) throws Exception {
+        Map<String, Object> params = printService.buildBaseParams(transactionPoid, "300-105");
+        params.put("BILL_SUBREPORT",  printService.load("Finance/AR/GEN_RECEIPT_BILL_subreport1.jrxml"));
+        params.put("CHARGES_SUBREPORT",  printService.load("Finance/AR/GEN_RECEIPT_CHARGES_subreport1.jrxml"));
+        params.put("PAYMENT_SUBREPORT",  printService.load("Finance/AR/GEN_RECEIPT_PAYMENT_DETAIL_subreport1.jrxml"));
+        JasperReport mainReport = printService.load("Finance/AR/GEN_RECEIPT.jrxml");
+        return printService.fillReportToPdf(mainReport, params, dataSource);
     }
 }
 

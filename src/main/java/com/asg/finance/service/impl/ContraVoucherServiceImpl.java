@@ -6,6 +6,7 @@ import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.entity.Company;
 import com.asg.common.lib.service.LovDataService;
+import com.asg.common.lib.service.PrintService;
 import com.asg.finance.entity.GLMaster;
 import com.asg.finance.repository.GLMasterRepository;
 import com.asg.common.lib.service.DocumentSearchService;
@@ -25,6 +26,7 @@ import com.asg.common.lib.security.util.UserContext;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.sf.jasperreports.engine.JasperReport;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -54,6 +56,7 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
     private final DataSource dataSource;
     private final DocumentSearchService documentService;
     private final LovDataService lovService;
+    private final PrintService printService;
 
     @Override
     public Map<String, Object> listContraVouchers(String docId, FilterRequestDto request, Pageable pageable, LocalDate periodFrom, LocalDate periodTo) {
@@ -538,6 +541,14 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
             log.warn("Failed to fetch Company details for companyPoid={}: {}", companyPoid, e.getMessage());
         }
         return null;
+    }
+
+    @Override
+    public byte[] print(Long transactionPoid) throws Exception {
+        Map<String, Object> params = printService.buildBaseParams(transactionPoid, "400-103");
+        params.put("SUB_DETAIL", printService.load("Finance/GL/ContraVoucherReportDtlSubreport1.jrxml"));
+        JasperReport mainReport = printService.load("Finance/GL/ContraVoucherReport1.jrxml");
+        return printService.fillReportToPdf(mainReport, params, dataSource);
     }
 
 }

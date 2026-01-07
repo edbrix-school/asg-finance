@@ -7,6 +7,9 @@ import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
+import com.asg.common.lib.service.PrintService;
+import net.sf.jasperreports.engine.JasperReport;
+import javax.sql.DataSource;
 import com.asg.finance.dto.*;
 import com.asg.finance.entity.*;
 import com.asg.finance.entity.key.ApPurchaseInvoiceAssetDtlKey;
@@ -55,6 +58,8 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
     private final DocumentSearchService documentService;
     private final BillwiseBreakupService billwiseBreakupService;
     private final CostCenterBreakupService costCenterBreakupService;
+    private final PrintService printService;
+    private final DataSource dataSource;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -1588,6 +1593,16 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                         faPoid);
 
         return list;
+    }
+
+    
+    @Override
+    public byte[] print(Long transactionPoid) throws Exception {
+        Map<String, Object> params = printService.buildBaseParams(transactionPoid, "200-103");
+        params.put("SUBREPORT_GL", printService.load("Finance/AP/PurchaseInvoiceReportGlSubreport1.jrxml"));
+        params.put("SUBREPORT_CHARGE", printService.load("Finance/AP/PurchaseInvoiceChargeSubReport.jrxml"));
+        JasperReport mainReport = printService.load("Finance/AP/PurchaseInvoiceReport.jrxml");
+        return printService.fillReportToPdf(mainReport, params, dataSource);
     }
 
 }

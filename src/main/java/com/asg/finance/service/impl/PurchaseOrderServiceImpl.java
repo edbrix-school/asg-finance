@@ -6,6 +6,7 @@ import com.asg.common.lib.dto.LovGetListDto;
 import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
+import com.asg.common.lib.service.PrintService;
 import com.asg.finance.client.GlobalTermsServiceClient;
 import com.asg.finance.dto.PurchaseOrderItemRequestDto;
 import com.asg.finance.dto.PurchaseOrderItemResponseDto;
@@ -19,6 +20,7 @@ import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
+import net.sf.jasperreports.engine.JasperReport;
 import org.springframework.transaction.annotation.Propagation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +32,7 @@ import org.springframework.jdbc.core.CallableStatementCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import javax.sql.DataSource;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -47,6 +50,8 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     private final GlobalTermsServiceClient globalTermsServiceClient;
     private final LovDataService lovService;
     private final JdbcTemplate jdbcTemplate;
+    private final PrintService printService;
+    private final DataSource dataSource;
 
     @Override
     @Transactional
@@ -705,6 +710,14 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             log.error("Error calling MTA delete procedure for Transaction POID: {}", transactionPoid, e);
             throw new RuntimeException("Failed to execute MTA delete procedure: " + e.getMessage(), e);
         }
+    }
+
+    @Override
+    public byte[] print(Long transactionPoid) throws Exception {
+        Map<String, Object> params = printService.buildBaseParams(transactionPoid, "200-101");
+        params.put("SUBREPORT_1", printService.load("Finance/AP/PurchaseOrderReport1_subreport1.jrxml"));
+        JasperReport mainReport = printService.load("Finance/AP/PurchaseOrderReport.jrxml");
+        return printService.fillReportToPdf(mainReport, params, dataSource);
     }
 
 }

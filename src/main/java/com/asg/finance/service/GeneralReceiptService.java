@@ -63,5 +63,12 @@ public interface GeneralReceiptService {
      * @return List of pending bills
      */
     Map<String, Object> getPendingBills(Long glPoid, java.time.LocalDate asOnDate);
+
+    /**
+     * @param transactionPoid
+     * @return
+     * @throws Exception
+     */
+    byte[] print(Long transactionPoid) throws Exception;
 }
 

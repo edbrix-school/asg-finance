@@ -1,0 +1,151 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="PettyCashPaymentItemSubreport1" language="groovy" pageWidth="530" pageHeight="802" columnWidth="530" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="04aae395-2f68-456d-8193-ebc82cfdf313">
+    <property name="ireport.zoom" value="1.2100000000000009"/>
+    <property name="ireport.x" value="0"/>
+    <property name="ireport.y" value="0"/>
+    <parameter name="DOC_KEY_POID" class="java.lang.String">
+        <defaultValueExpression><![CDATA[]]></defaultValueExpression>
+    </parameter>
+    <queryString>
+        <![CDATA[SELECT GPCI.TRANSACTION_POID,
+GPCI.DET_ROW_ID,
+decode(RFQH.DESCRIPTION_PRINT_YN,'Y',(SM.STOCK_NAME||' '||GPCI.REMARKS),GPCI.REMARKS) AS STOCK_NAME,
+SU.STOCK_UNIT_NAME,
+GPCI.PO_QTY,
+GPCI.PRICE,GPCI.PRICE*GPCI.PO_QTY AS TOTAL,
+GPCI.DISCOUNT,
+GPCI.REMARKS
+FROM GL_PETTY_CASH_ITEM_DTL GPCI
+  LEFT JOIN STOCK_MASTER SM
+  ON
+    SM.STOCK_POID =GPCI.STOCK_POID
+  LEFT JOIN STOCK_UNIT_MASTER SU
+  ON
+    SU.STOCK_UNIT_POID=GPCI.STOCK_UNIT_POID
+  INNER JOIN AP_REQUEST_FOR_QTN_HDR RFQH
+  ON RFQH.TRANSACTION_POID = GPCI.REF_DOC_POID
+WHERE GPCI.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
+    </queryString>
+    <field name="TRANSACTION_POID" class="java.math.BigDecimal"/>
+    <field name="DET_ROW_ID" class="java.math.BigDecimal"/>
+    <field name="STOCK_NAME" class="java.lang.String"/>
+    <field name="STOCK_UNIT_NAME" class="java.lang.String"/>
+    <field name="PO_QTY" class="java.math.BigDecimal"/>
+    <field name="PRICE" class="java.math.BigDecimal"/>
+    <field name="TOTAL" class="java.math.BigDecimal"/>
+    <field name="DISCOUNT" class="java.math.BigDecimal"/>
+    <field name="REMARKS" class="java.lang.String"/>
+    <variable name="ITEM_TOTAL" class="java.math.BigDecimal" calculation="Sum">
+        <variableExpression><![CDATA[$F{TOTAL}]]></variableExpression>
+    </variable>
+    <pageHeader>
+        <band height="22" splitType="Stretch">
+            <staticText>
+                <reportElement x="0" y="1" width="530" height="20" uuid="ae719265-8945-460e-9f05-223271d2f943"/>
+                <textElement>
+                    <font size="11" isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <text><![CDATA[Item Details]]></text>
+            </staticText>
+            <line>
+                <reportElement x="0" y="1" width="530" height="1" forecolor="#999999" uuid="0a12e6cc-578d-4567-979e-a7f18f44a764"/>
+            </line>
+            <line>
+                <reportElement x="0" y="21" width="530" height="1" forecolor="#999999" uuid="edb8b797-833a-4d66-80ae-f5cff5eeb84e"/>
+            </line>
+        </band>
+    </pageHeader>
+    <columnHeader>
+        <band height="21" splitType="Stretch">
+            <staticText>
+                <reportElement x="0" y="0" width="32" height="20" uuid="3dd53f00-eb32-43fb-b285-daecef82da1c"/>
+                <textElement verticalAlignment="Middle">
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <text><![CDATA[Sl No]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="32" y="0" width="193" height="20" uuid="536f08ad-c708-4188-a781-cf5a153dc213"/>
+                <textElement verticalAlignment="Middle">
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <text><![CDATA[Item Description]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="459" y="0" width="71" height="20" uuid="455f2db9-0c39-445f-add3-3583468771af"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <text><![CDATA[Total]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="383" y="0" width="76" height="20" uuid="8c9eaad3-8379-425d-b8b0-b24a557b22b2"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <text><![CDATA[Price]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="325" y="0" width="58" height="20" uuid="75b51993-5525-4801-9825-e4a3f59a9cca"/>
+                <textElement verticalAlignment="Middle">
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <text><![CDATA[Qty]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="225" y="0" width="100" height="20" uuid="f844886f-e7f8-467b-b696-1e62467acf2c"/>
+                <textElement verticalAlignment="Middle">
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <text><![CDATA[Unit]]></text>
+            </staticText>
+            <line>
+                <reportElement x="0" y="20" width="530" height="1" forecolor="#999999" uuid="919b9f19-181f-4f8a-bf2d-285784b3b7ea"/>
+            </line>
+        </band>
+    </columnHeader>
+    <detail>
+        <band height="22" splitType="Stretch">
+            <textField isBlankWhenNull="true">
+                <reportElement x="0" y="0" width="32" height="20" uuid="367286f6-a8d6-4e3f-b603-9c5ea26e7472"/>
+                <textElement verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$V{REPORT_COUNT}]]></textFieldExpression>
+            </textField>
+            <textField isStretchWithOverflow="true" isBlankWhenNull="true">
+                <reportElement x="32" y="0" width="193" height="20" uuid="a747c618-98b8-4fa9-91d0-ab728b8b8c50"/>
+                <textElement verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$F{STOCK_NAME}]]></textFieldExpression>
+            </textField>
+            <textField isBlankWhenNull="true">
+                <reportElement x="225" y="0" width="100" height="20" uuid="b841a7b5-ee9d-419c-ba0e-5230125f4233"/>
+                <textElement verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$F{STOCK_UNIT_NAME}]]></textFieldExpression>
+            </textField>
+            <textField pattern="#,##0.000" isBlankWhenNull="true">
+                <reportElement x="325" y="0" width="58" height="20" uuid="7702d241-11bd-4857-b57e-dda95040f998"/>
+                <textElement verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$F{PO_QTY}]]></textFieldExpression>
+            </textField>
+            <textField pattern="#,##0.000" isBlankWhenNull="true">
+                <reportElement x="383" y="0" width="76" height="20" uuid="39c6e208-4433-45dc-a4ee-c51d113978b1"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$F{PRICE}]]></textFieldExpression>
+            </textField>
+            <textField pattern="#,##0.000" isBlankWhenNull="true">
+                <reportElement x="459" y="0" width="71" height="20" uuid="151b60f7-f87e-4b3e-b461-56236ff93ef5"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$F{TOTAL}]]></textFieldExpression>
+            </textField>
+            <line>
+                <reportElement positionType="FixRelativeToBottom" x="0" y="19" width="530" height="1" forecolor="#999999" uuid="b1b46ff5-328a-41f7-9fab-0735d239eb72"/>
+                <graphicElement>
+                    <pen lineWidth="0.5" lineStyle="Dashed"/>
+                </graphicElement>
+            </line>
+        </band>
+    </detail>
+    <lastPageFooter>
+        <band height="21"/>
+    </lastPageFooter>
+</jasperReport>
+

@@ -8,6 +8,7 @@ import com.asg.common.lib.dto.response.GlPostingViewResponseDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
+import com.asg.common.lib.service.PrintService;
 import com.asg.finance.dto.ImcoDepositRefundRequestDTO;
 import com.asg.finance.dto.ImcoDepositRefundResponseDTO;
 import com.asg.finance.dto.ImcoRefundLoadResponseDto;
@@ -19,6 +20,7 @@ import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
 import lombok.RequiredArgsConstructor;
+import net.sf.jasperreports.engine.JasperReport;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -27,6 +29,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 
+import javax.sql.DataSource;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.time.LocalDate;
@@ -47,6 +50,8 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
     private final ImcoDepositRefundRepository depositRefundRepository;
     private final ImcoSaveRefundRepository imcoSaveRefundRepository;
     private final LovDataService lovService;
+    private final PrintService printService;
+    private final DataSource dataSource;
 
     
     @Override
@@ -334,6 +339,13 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
         }
 
         return "Database validation failed: " + (message != null ? message : "Unknown error");
+    }
+
+    @Override
+    public byte[] print(Long transactionPoid) throws Exception {
+        Map<String, Object> params = printService.buildBaseParams(transactionPoid, "400-108");
+        JasperReport mainReport = printService.load("Finance/GL/IMCO_Refund_Receipt.jrxml");
+        return printService.fillReportToPdf(mainReport, params, dataSource);
     }
 
 }

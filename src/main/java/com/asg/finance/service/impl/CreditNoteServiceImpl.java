@@ -8,6 +8,7 @@ import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.LoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.service.PrintService;
 import com.asg.finance.repository.GLMasterRepository;
 import com.asg.finance.repository.TaxMasterRepository;
 import com.asg.common.lib.service.DocumentSearchService;
@@ -24,6 +25,7 @@ import com.asg.finance.repository.BankPaymentVoucherSpRepository;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
 import lombok.extern.slf4j.Slf4j;
+import net.sf.jasperreports.engine.JasperReport;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -85,6 +87,8 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
     @Autowired
     private LovDataService lovService;
+
+    @Autowired private PrintService printService;
 
     @Override
     @Transactional(propagation = Propagation.REQUIRED)
@@ -1636,5 +1640,17 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         } catch (Exception e) {
             log.error("Error loading breakup data for transactionPoid: {}", transactionPoid, e);
         }
+    }
+
+    @Override
+    public byte[] print(Long transactionPoid) throws Exception {
+        Map<String, Object> params = printService.buildBaseParams(transactionPoid, "300-111");
+        params.put("SUB_CREDIT_DTL_1", printService.load("Finance/AR/CreditNoteDtl_subreport1.jrxml"));
+        params.put("SUB_CREDIT_DTL_VAT", printService.load("Finance/AR/CreditNoteDtlSubreportVAT2019.jrxml"));
+        params.put("SUB_CHARGE_1", printService.load("Finance/AR/CreditNoteChargeSubreport1.jrxml"));
+        params.put("SUB_CHARGE_VAT", printService.load("Finance/AR/CrdeitNoteChargeSubreportVAT2019.jrxml"));
+        params.put("SUB_ITEM", printService.load("Finance/AR/CrdeitNoteItemSubreport.jrxml"));
+        JasperReport mainReport = printService.load("Finance/AR/CreditNote.jrxml");
+        return printService.fillReportToPdf(mainReport, params, dataSource);
     }
 }

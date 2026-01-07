@@ -1143,17 +1143,18 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             String issueType
     ) {
         log.info("Saving {} GL rows for txn: {} issueType: {}", glDetails.size(), transactionPoid, issueType);
+        creditNoteDtlRepository.deleteByTransactionPoid(transactionPoid);
         long detRowId = 1L;
         for (CreditNoteGLDetailDto glDto : glDetails) {
             if (glDto == null) continue;
             if ("N".equalsIgnoreCase(issueType)) {
                 // Normal + Reversal (SRS requirement)
                 saveNormalGLEntry(transactionPoid, glDto, detRowId++, UserContext.getCompanyPoid());
-                saveReversalGLEntry(transactionPoid, glDto, detRowId++, UserContext.getCompanyPoid());
+                //saveReversalGLEntry(transactionPoid, glDto, detRowId++, UserContext.getCompanyPoid());
             } else {
                 // Issue Type = YES → Normal + Additional
                 saveNormalGLEntry(transactionPoid, glDto, detRowId++, UserContext.getCompanyPoid());
-                saveAdditionalGLEntry(transactionPoid, glDto, detRowId++, UserContext.getCompanyPoid());
+                //saveAdditionalGLEntry(transactionPoid, glDto, detRowId++, UserContext.getCompanyPoid());
             }
         }
     }

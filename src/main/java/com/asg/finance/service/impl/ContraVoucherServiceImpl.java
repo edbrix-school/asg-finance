@@ -1,4 +1,4 @@
-package com.asg.finance.service;
+package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.LovGetListDto;
@@ -24,6 +24,7 @@ import com.asg.finance.repository.GlContraVoucherDtlRepository;
 import com.asg.finance.repository.GlContraVoucherHdrRepository;
 import com.asg.common.lib.security.util.UserContext;
 
+import com.asg.finance.service.ContraVoucherService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;

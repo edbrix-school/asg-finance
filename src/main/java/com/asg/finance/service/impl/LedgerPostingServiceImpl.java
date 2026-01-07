@@ -1,7 +1,8 @@
-package com.asg.finance.service;
+package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.GlPostingRequestDto;
 import com.asg.finance.client.GlPostingServiceClient;
+import com.asg.finance.service.LedgerPostingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

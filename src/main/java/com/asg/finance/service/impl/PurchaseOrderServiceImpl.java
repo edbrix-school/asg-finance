@@ -1,4 +1,4 @@
-package com.asg.finance.service;
+package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
@@ -18,6 +18,7 @@ import com.asg.finance.repository.PurchaseOrderItemRepository;
 import com.asg.finance.repository.PurchaseOrderRepository;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
+import com.asg.finance.service.PurchaseOrderService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import net.sf.jasperreports.engine.JasperReport;
@@ -218,9 +219,9 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
 
         return PurchaseOrder.builder()
                 .transactionDate(request.getTransactionDate() != null ? request.getTransactionDate() : LocalDate.now())
-                .groupPoid(request.getGroupPoid())
+                .groupPoid(UserContext.getGroupPoid())
                 .docRef(request.getDocRef())
-                .companyPoid(request.getCompanyPoid())
+                .companyPoid(UserContext.getCompanyPoid())
                 .currencyCode(request.getCurrencyCode())
                 .currencyRate(request.getCurrencyRate())
                 .expectedDate(request.getExpectedDate())

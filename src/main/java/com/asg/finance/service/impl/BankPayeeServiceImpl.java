@@ -1,4 +1,4 @@
-package com.asg.finance.service;
+package com.asg.finance.service.impl;
 
 import com.asg.common.lib.exception.ResourceAlreadyExistsException;
 import com.asg.common.lib.exception.ResourceNotFoundException;
@@ -12,6 +12,7 @@ import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.finance.entity.BankPayee;
 import com.asg.finance.repository.BankPayeeRepository;
 import com.asg.common.lib.utility.PaginationUtil;
+import com.asg.finance.service.IBankPayeeService;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import org.springframework.data.domain.Page;

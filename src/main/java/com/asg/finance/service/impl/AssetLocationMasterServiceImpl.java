@@ -1,5 +1,4 @@
-package com.asg.finance.service;
-
+package com.asg.finance.service.impl;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
@@ -11,6 +10,7 @@ import com.asg.finance.entity.AssetLocation;
 import com.asg.finance.repository.AssetLocationMasterRepository;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
+import com.asg.finance.service.AssetLocationMasterService;
 import jakarta.persistence.EntityManager;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;

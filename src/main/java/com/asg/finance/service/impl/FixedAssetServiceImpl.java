@@ -1,4 +1,4 @@
-package com.asg.finance.service;
+package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.*;
 
@@ -21,6 +21,7 @@ import com.asg.finance.repository.master.HrEmployeeMasterRepository;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
+import com.asg.finance.service.FixedAssetService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
@@ -38,7 +39,7 @@ import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
-public class FixedAssetServiceImpl implements FixedAssetService{
+public class FixedAssetServiceImpl implements FixedAssetService {
 
     private final FixedAssetRepository repository;
     @Autowired

@@ -18,10 +18,6 @@ import java.util.List;
 @Builder
 public class InsuranceMasterRequestDto {
 
-    private Long groupPoid;
-
-    private Long companyPoid;
-
     @NotBlank(message = "Insurance Type is mandatory")
     private String insuranceType;
 

@@ -1,4 +1,4 @@
-package com.asg.finance.service;
+package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.RawSearchResult;
@@ -11,6 +11,7 @@ import com.asg.finance.entity.AssetInformationMasterEntity;
 import com.asg.finance.repository.reports.AssetInformationRepository;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.finance.service.AssetInformationService;
 import com.asg.finance.utility.DatabaseErrorHandler;
 import com.asg.common.lib.utility.PaginationUtil;
 import lombok.RequiredArgsConstructor;

@@ -7,10 +7,8 @@ import com.asg.finance.dto.CostCenterListResponseDto;
 import com.asg.finance.dto.CostCenterRequestDTO;
 import com.asg.finance.dto.CostCenterResponseDTO;
 import com.asg.finance.dto.CostCenterTreeRequest;
-
-import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.exception.ValidationException;
-import com.asg.finance.service.CostCenterServiceImpl;
+import com.asg.finance.service.CostCenterService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -34,7 +32,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 @RequestMapping("/v1/cost-center")
 @RequiredArgsConstructor
 public class CostCenterController {
-    private final CostCenterServiceImpl costCenterServiceImpl;
+    private final CostCenterService costCenterServiceImpl;
 
     @Operation(
             summary = "Create a new CostCenter",

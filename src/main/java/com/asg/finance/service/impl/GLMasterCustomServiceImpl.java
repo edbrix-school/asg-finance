@@ -1,8 +1,8 @@
-package com.asg.finance.service;
-
+package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.request.DocReleaseLockRequestDto;
 import com.asg.finance.dto.GlLedgerDTO;
+import com.asg.finance.service.GLMasterCustomService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.ParameterMode;
 import jakarta.persistence.PersistenceContext;

@@ -1,4 +1,4 @@
-package com.asg.finance.service;
+package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.RawSearchResult;
@@ -11,6 +11,7 @@ import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.finance.entity.SupplierCategoryEntity;
 import com.asg.finance.repository.SupplierCategoryRepository;
 import com.asg.common.lib.utility.PaginationUtil;
+import com.asg.finance.service.SupplierCategoryService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;

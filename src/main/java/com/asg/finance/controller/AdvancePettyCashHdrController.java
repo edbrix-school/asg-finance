@@ -7,7 +7,7 @@ import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.AdvancePettyCashHdrRequestDTO;
 import com.asg.finance.dto.AdvancePettyCashHdrResponseDTO;
-import com.asg.finance.service.AdvancePettyCashHdrServiceImpl;
+import com.asg.finance.service.AdvancePettyCashHdrService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -31,7 +31,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.success;
 @RequiredArgsConstructor
 public class AdvancePettyCashHdrController {
     
-    private final AdvancePettyCashHdrServiceImpl service;
+    private final AdvancePettyCashHdrService service;
 
     @Operation(
             summary = "Create a new Advance Petty Cash",

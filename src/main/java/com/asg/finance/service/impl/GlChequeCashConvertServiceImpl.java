@@ -1,5 +1,4 @@
-package com.asg.finance.service;
-
+package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
@@ -23,6 +22,7 @@ import com.asg.finance.repository.GlChequeCashConvertInDtlRepository;
 import com.asg.finance.repository.GlChequeCashConvertOutDtlRepository;
 import com.asg.finance.repository.GlChequeCashConvertRepository;
 import com.asg.common.lib.utility.PaginationUtil;
+import com.asg.finance.service.GlChequeCashConvertService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,7 +46,6 @@ import java.util.stream.Collectors;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static com.asg.common.lib.utility.ASGHelperUtils.getCurrentUser;
-
 
 @Service
 @Slf4j
@@ -200,8 +199,8 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         validateTransactionDate(dto.getTransactionDate());
         hdrEntity.setTransactionDate(dto.getTransactionDate());
 
-        hdrEntity.setGroupPoid(dto.getGroupPoid());
-        hdrEntity.setCompanyPoid(dto.getCompanyPoid());
+        hdrEntity.setGroupPoid(UserContext.getGroupPoid());
+        hdrEntity.setCompanyPoid(UserContext.getCompanyPoid());
         hdrEntity.setDocRef(dto.getDocRef());
         hdrEntity.setType(dto.getType());
         hdrEntity.setPostingNarration(dto.getPostingNarration());

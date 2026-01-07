@@ -14,9 +14,7 @@ import java.util.List;
 public class PurchaseOrderRequest {
 
     private LocalDate transactionDate;
-    private Long groupPoid;
     private String docRef;
-    private Long companyPoid;
     private String currencyCode;
     private Double currencyRate;
     private LocalDate expectedDate;

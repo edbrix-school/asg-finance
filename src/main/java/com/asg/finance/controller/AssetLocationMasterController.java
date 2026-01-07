@@ -8,7 +8,6 @@ import com.asg.finance.dto.AssetLocationMasterRequestDto;
 import com.asg.finance.dto.AssetLocationMasterResponseDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.finance.service.AssetLocationMasterService;
-import com.asg.finance.service.AssetLocationMasterServiceImpl;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -38,7 +37,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 public class AssetLocationMasterController {
 
     @Autowired
-    private AssetLocationMasterServiceImpl service;
+    private AssetLocationMasterService service;
 
     @Autowired
     AssetLocationMasterService assetLocationService;

@@ -1,4 +1,4 @@
-package com.asg.finance.service;
+package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.DetailsDto;
 import com.asg.common.lib.dto.FilterDto;
@@ -19,6 +19,7 @@ import com.asg.finance.repository.*;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
+import com.asg.finance.service.ImcoDepositRefundService;
 import lombok.RequiredArgsConstructor;
 import net.sf.jasperreports.engine.JasperReport;
 import org.springframework.data.domain.Page;
@@ -62,8 +63,8 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
         try {
             GlImcoChequeRefundHdr header = GlImcoChequeRefundHdr.builder()
                     .transactionDate(request.getTransactionDate())
-                    .groupPoid(request.getGroupPoid() != null ? request.getGroupPoid() : 1L)
-                    .companyPoid(request.getCompanyPoid() != null ? request.getCompanyPoid() : 1L)
+                    .groupPoid(UserContext.getGroupPoid())
+                    .companyPoid(UserContext.getCompanyPoid())
                     .docRef(request.getDocRef())
                     .remarks(request.getRemarks())
                     .grandTotal(request.getGrandTotal())

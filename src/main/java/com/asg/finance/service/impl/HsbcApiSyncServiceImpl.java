@@ -1,9 +1,10 @@
-package com.asg.finance.service;
+package com.asg.finance.service.impl;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
 import com.asg.common.lib.exception.AsgException;
+import com.asg.finance.service.HsbcApiSyncService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

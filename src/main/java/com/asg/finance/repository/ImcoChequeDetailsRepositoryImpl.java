@@ -69,7 +69,6 @@ public class ImcoChequeDetailsRepositoryImpl implements ImcoChequeDetailsReposit
 
             ResultSet rsBills = (ResultSet) query.getOutputParameterValue("OUTDATA");
             ResultSet rsCheques = (ResultSet) query.getOutputParameterValue("OUTDATA1");
-            String payingTo = (String) query.getOutputParameterValue("P_PAYING_TO");
 
             response.setBills(mapToBillDetails(rsBills));
             response.setCheques(mapToChequeDetails(rsCheques));

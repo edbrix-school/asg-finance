@@ -16,9 +16,6 @@ public interface ChequeReturnService {
     ChequeReturnResponse updateChequeReturnV2(Long transactionPoid, ChequeReturnRequest request);
     ChequeReturnResponse getChequeReturn(Long transactionPoid);
     void softDeleteChequeReturn(Long transactionPoid);
-
-
     Map<String, Object> listOfRecordsAndGenericSearch(String docId, FilterRequestDto request, LocalDate startDate, LocalDate endDate, Pageable pageable);
-
     ChequeReturnLoadResponseDto loadChequeData(String chequeNumber, String receiptNo);
 }

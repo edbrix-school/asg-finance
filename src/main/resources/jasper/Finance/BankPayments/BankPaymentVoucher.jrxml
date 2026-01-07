@@ -1,0 +1,472 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="BankPaymentVoucher" language="groovy" columnCount="2" pageWidth="595" pageHeight="792" columnWidth="297" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="51f26c1c-332c-43f0-beb9-5722768520c7">
+    <property name="ireport.zoom" value="1.771561000000001"/>
+    <property name="ireport.x" value="26"/>
+    <property name="ireport.y" value="161"/>
+    <property name="ireport.background.image" value="C:\Users\priyanka\Desktop\account-payee-only-stamp.jpg"/>
+    <property name="ireport.background.image.properties" value="false,true,0.75,0,0,0,0,0,0"/>
+    <style name="Title" fontName="Times New Roman" fontSize="50" isBold="true" pdfFontName="Times-Bold"/>
+    <style name="SubTitle" forecolor="#736343" fontName="Arial" fontSize="18"/>
+    <style name="Column header" forecolor="#666666" fontName="Arial" fontSize="12" isBold="true" pdfFontName="Helvetica-Bold"/>
+    <style name="Detail" fontName="Arial" fontSize="12"/>
+    <style name="Row" mode="Transparent">
+        <conditionalStyle>
+            <conditionExpression><![CDATA[$V{REPORT_COUNT}%2 == 0]]></conditionExpression>
+            <style backcolor="#E6DAC3"/>
+        </conditionalStyle>
+    </style>
+    <style name="table">
+        <box>
+            <pen lineWidth="1.0" lineColor="#000000"/>
+        </box>
+    </style>
+    <style name="table_TH" mode="Opaque" backcolor="#F0F8FF">
+        <box>
+            <pen lineWidth="0.5" lineColor="#000000"/>
+        </box>
+    </style>
+    <style name="table_CH" mode="Opaque" backcolor="#BFE1FF">
+        <box>
+            <pen lineWidth="0.5" lineColor="#000000"/>
+        </box>
+    </style>
+    <style name="table_TD" mode="Opaque" backcolor="#FFFFFF">
+        <box>
+            <pen lineWidth="0.5" lineColor="#000000"/>
+        </box>
+    </style>
+    <style name="table 1">
+        <box>
+            <pen lineWidth="1.0" lineColor="#000000"/>
+        </box>
+    </style>
+    <style name="table 1_TH" mode="Opaque" backcolor="#F0F8FF">
+        <box>
+            <topPen lineWidth="0.5" lineColor="#000000"/>
+            <bottomPen lineWidth="0.5" lineColor="#000000"/>
+        </box>
+    </style>
+    <style name="table 1_CH" mode="Opaque" backcolor="#BFE1FF">
+        <box>
+            <topPen lineWidth="0.5" lineColor="#000000"/>
+            <bottomPen lineWidth="0.5" lineColor="#000000"/>
+        </box>
+    </style>
+    <style name="table 1_TD" mode="Opaque" backcolor="#FFFFFF">
+        <box>
+            <topPen lineWidth="0.5" lineColor="#000000"/>
+            <bottomPen lineWidth="0.5" lineColor="#000000"/>
+        </box>
+    </style>
+    <style name="Crosstab Data Text" hAlign="Center"/>
+    <style name="table 2">
+        <box>
+            <pen lineWidth="1.0" lineColor="#000000"/>
+        </box>
+    </style>
+    <style name="table 2_TH" mode="Opaque" backcolor="#F0F8FF">
+        <box>
+            <topPen lineWidth="0.5" lineColor="#000000"/>
+            <bottomPen lineWidth="0.5" lineColor="#000000"/>
+        </box>
+    </style>
+    <style name="table 2_CH" mode="Opaque" backcolor="#BFE1FF">
+        <box>
+            <topPen lineWidth="0.5" lineColor="#000000"/>
+            <bottomPen lineWidth="0.5" lineColor="#000000"/>
+        </box>
+    </style>
+    <style name="table 2_TD" mode="Opaque" backcolor="#FFFFFF">
+        <box>
+            <topPen lineWidth="0.5" lineColor="#000000"/>
+            <bottomPen lineWidth="0.5" lineColor="#000000"/>
+        </box>
+    </style>
+    <subDataset name="Detail_Table" uuid="6eda5f6a-2a11-40a7-be1b-ac5987ed64d3">
+        <parameter name="DOC_KEY_POID" class="java.lang.String" isForPrompting="false">
+            <defaultValueExpression><![CDATA[]]></defaultValueExpression>
+        </parameter>
+        <queryString>
+            <![CDATA[SELECT DISTINCT DOCUMENT_NO,DOCUMENT_DATE,AMOUNT,crdr_type FROM(
+      SELECT PHDR.DOC_REF DOCUMENT_NO,TO_CHAR(PHDR.transaction_date,'DD-MON-YYYY') DOCUMENT_DATE,
+      ROUND(SUM(NVL(BKID.PO_QTY,0)*NVL(BKID.PRICE,0)),3) AS AMOUNT,'DR' crdr_type
+      FROM GL_BANK_PAYMENT_ITEM_DTL BKID
+      INNER JOIN GL_BANK_PAYMENT_HDR HDR
+      ON BKID.TRANSACTION_POID = HDR.TRANSACTION_POID
+      INNER JOIN AP_PURCHASE_ORDER_HDR PHDR
+      ON HDR.PO_REF = PHDR.TRANSACTION_POID
+      WHERE BKID.TRANSACTION_POID= $P{DOC_KEY_POID} and HDR.REF_TYPE = 'GENERAL PO'
+      GROUP BY PHDR.DOC_REF,TO_CHAR(PHDR.transaction_date,'DD-MON-YYYY')
+      union all
+      SELECT PHDR.DOC_REF DOCUMENT_NO,TO_CHAR(PHDR.transaction_date,'DD-MON-YYYY') DOCUMENT_DATE,
+      ROUND(SUM(NVL(BKID.PO_QTY,0)*NVL(BKID.PRICE,0)),3) AS AMOUNT,'DR' crdr_type
+      FROM GL_BANK_PAYMENT_ITEM_DTL BKID
+      INNER JOIN GL_BANK_PAYMENT_HDR HDR
+      ON BKID.TRANSACTION_POID = HDR.TRANSACTION_POID
+      INNER JOIN AP_REQUEST_FOR_QTN_HDR PHDR
+      ON HDR.SALES_QTN_REF = PHDR.TRANSACTION_POID
+      WHERE BKID.TRANSACTION_POID= $P{DOC_KEY_POID} and  HDR.REF_TYPE = 'MTA RFQ'
+      GROUP BY PHDR.DOC_REF,TO_CHAR(PHDR.transaction_date,'DD-MON-YYYY')
+      union all
+      select fhdr.DOC_REF DOCUMENT_NO ,TO_CHAR(fhdr.transaction_date,'DD-MON-YYYY') DOCUMENT_DATE ,SUM(CHARGE_AMOUNT) AS AMOUNT,'DR' crdr_type
+      FROM GL_BANK_PAYMENT_CHARGE_DTL BKID
+      inner join GL_BANK_PAYMENT_HDR HDR
+       ON BKID.TRANSACTION_POID = HDR.TRANSACTION_POID
+      inner join FF_MANIEST_HDR fhdr
+      on BKID.REF_DOC_POID = fhdr.TRANSACTION_POID
+      where BKID.TRANSACTION_POID= $P{DOC_KEY_POID} and  HDR.REF_TYPE = 'FF JOBS'
+      group by fhdr.DOC_REF,TO_CHAR(fhdr.transaction_date,'DD-MON-YYYY')
+      union all
+      select fhdr.DOC_REF DOCUMENT_NO ,TO_CHAR(hdr.transaction_date,'DD-MON-YYYY') DOCUMENT_DATE ,sum(BKID.charge_amount) AMOUNT,'DR' crdr_type
+      from GL_BANK_PAYMENT_CHARGE_DTL BKID
+       INNER JOIN GL_BANK_PAYMENT_HDR HDR
+      ON BKID.TRANSACTION_POID = HDR.TRANSACTION_POID
+      inner join PDA_FDA_HDR fhdr
+       on HDR.fda_ref = fhdr.TRANSACTION_POID
+      where BKID.TRANSACTION_POID= $P{DOC_KEY_POID} and  HDR.REF_TYPE = 'FDA JOBS'
+       group by fhdr.DOC_REF,TO_CHAR(hdr.transaction_date,'DD-MON-YYYY')
+      union all
+      select brkup.BILL_REF DOCUMENT_NO ,TO_CHAR(brkup.BILL_DUE_DATE,'DD-MON-YYYY') DOCUMENT_DATE ,nvl(sum(dr_amt),sum(nvl(cr_amt,0))) AMOUNT,decode(sum(dr_amt),null,'CR',0,'CR','DR') crdr_type
+      from gl_bank_payment_hdr bhdr
+      inner join gl_voucher_bill_breakup_dtl brkup
+      on bhdr.TRANSACTION_POID = brkup.TRANSACTION_POID and doc_id = '400-107'
+      WHERE bhdr.TRANSACTION_POID =  $P{DOC_KEY_POID} and  bhdr.REF_TYPE = 'GENERAL'
+      group by brkup.BILL_REF,TO_CHAR(brkup.BILL_DUE_DATE,'DD-MON-YYYY')
+       ) where rownum < 23 order by DOCUMENT_NO]]>
+        </queryString>
+        <field name="DOCUMENT_NO" class="java.lang.String"/>
+        <field name="DOCUMENT_DATE" class="java.lang.String"/>
+        <field name="AMOUNT" class="java.math.BigDecimal"/>
+        <field name="CRDR_TYPE" class="java.lang.String"/>
+    </subDataset>
+    <subDataset name="dataset1" uuid="19381718-ccae-45d4-bcae-4b11fbf879bf"/>
+    <parameter name="LOGIN_GROUP_POID" class="java.lang.String" isForPrompting="false">
+        <defaultValueExpression><![CDATA[1]]></defaultValueExpression>
+    </parameter>
+    <parameter name="LOGIN_COMP_POID" class="java.lang.String" isForPrompting="false">
+        <defaultValueExpression><![CDATA[1]]></defaultValueExpression>
+    </parameter>
+    <parameter name="LOGIN_USER_POID" class="java.lang.String"/>
+    <parameter name="DOC_ID" class="java.lang.String">
+        <defaultValueExpression><![CDATA["000-000"]]></defaultValueExpression>
+    </parameter>
+    <parameter name="DOC_KEY_POID" class="java.lang.String"/>
+    <parameter name="SUBREPORT_DIR" class="java.lang.String" isForPrompting="false">
+        <defaultValueExpression><![CDATA["\\\\shippingbahrain.com\\data\\ERP_REPORTS\\Reports\\"]]></defaultValueExpression>
+    </parameter>
+    <parameter name="CURRENT_CHEQUE_NO" class="java.lang.String"/>
+    <parameter name="BANK_POID" class="java.lang.String"/>
+    <queryString>
+        <![CDATA[select distinct TRANSACTION_POID, paying_to,doc_ref,to_char(transaction_date,'DD-MON-YYYY') transaction_date,TO_CHAR(CHQ_DATE,'DD-MON-YYYY')CHQ_DATE,
+CURRENCY_AMOUNT,regexp_replace(to_char(CHQ_DATE,'DDMMYYYY'), '(.)', '\1    ' )CHQ_DATE_FRT,
+to_char(CHQ_DATE,'DDMMYYYY') DateString,
+FN_AMOUNT_IN_WORDS_COMMON(CURRENCY_AMOUNT,'BHD') AMOUNT_IN_WORD,REF_TYPE,BANK_PREFIX,LONG_NARRATION,HDR.CREATED_BY,(select user_id from GLOBAL_USERS where user_poid = $P{LOGIN_USER_POID}) user_id,
+decode(upper(trim(paying_to)),'CASH','N',ACCOUNT_PAYEE) ACCOUNT_PAYEE,
+(  select COUNT(*)  BILLWISE_COUNT
+      from gl_bank_payment_hdr bhdr
+      inner join gl_voucher_bill_breakup_dtl brkup
+      on bhdr.TRANSACTION_POID = brkup.TRANSACTION_POID and doc_id = '400-107'
+      WHERE bhdr.TRANSACTION_POID =   $P{DOC_KEY_POID} and  bhdr.REF_TYPE = 'GENERAL') billwise_count
+FROM GL_BANK_PAYMENT_HDR HDR
+INNER JOIN GL_BANK_MASTER BKHDR
+ON BKHDR.BANK_POID = $P{BANK_POID}
+WHERE TRANSACTION_POID = $P{DOC_KEY_POID}]]>
+    </queryString>
+    <field name="TRANSACTION_POID" class="java.math.BigDecimal"/>
+    <field name="PAYING_TO" class="java.lang.String"/>
+    <field name="DOC_REF" class="java.lang.String"/>
+    <field name="TRANSACTION_DATE" class="java.lang.String"/>
+    <field name="CHQ_DATE" class="java.lang.String"/>
+    <field name="CURRENCY_AMOUNT" class="java.math.BigDecimal"/>
+    <field name="CHQ_DATE_FRT" class="java.lang.String"/>
+    <field name="DATESTRING" class="java.lang.String"/>
+    <field name="AMOUNT_IN_WORD" class="java.lang.String"/>
+    <field name="REF_TYPE" class="java.lang.String"/>
+    <field name="BANK_PREFIX" class="java.lang.String"/>
+    <field name="LONG_NARRATION" class="java.lang.String"/>
+    <field name="CREATED_BY" class="java.lang.String"/>
+    <field name="USER_ID" class="java.lang.String"/>
+    <field name="ACCOUNT_PAYEE" class="java.lang.String"/>
+    <field name="BILLWISE_COUNT" class="java.lang.Integer"/>
+    <variable name="Remarks" class="java.lang.String">
+        <variableExpression><![CDATA[$F{BANK_PREFIX}+" CHEQUE NO:"+$P{CURRENT_CHEQUE_NO}+" DATED:"+$F{CHQ_DATE}+
+" , "+$F{PAYING_TO}.toUpperCase()+" TOWARDS "+$F{LONG_NARRATION}.toUpperCase()]]></variableExpression>
+        <initialValueExpression><![CDATA[]]></initialValueExpression>
+    </variable>
+    <variable name="DateD1" class="java.lang.String">
+        <variableExpression><![CDATA[$F{DATESTRING}.substring(0, 1)]]></variableExpression>
+    </variable>
+    <variable name="DateD2" class="java.lang.String">
+        <variableExpression><![CDATA[$F{DATESTRING}.substring(1, 2)]]></variableExpression>
+    </variable>
+    <variable name="DateM1" class="java.lang.String">
+        <variableExpression><![CDATA[$F{DATESTRING}.substring(2, 3)]]></variableExpression>
+    </variable>
+    <variable name="DateM2" class="java.lang.String">
+        <variableExpression><![CDATA[$F{DATESTRING}.substring(3, 4)]]></variableExpression>
+    </variable>
+    <variable name="DateY1" class="java.lang.String">
+        <variableExpression><![CDATA[$F{DATESTRING}.substring(4, 5)]]></variableExpression>
+    </variable>
+    <variable name="DateY2" class="java.lang.String">
+        <variableExpression><![CDATA[$F{DATESTRING}.substring(5, 6)]]></variableExpression>
+    </variable>
+    <variable name="DateY3" class="java.lang.String">
+        <variableExpression><![CDATA[$F{DATESTRING}.substring(6, 7)]]></variableExpression>
+    </variable>
+    <variable name="DateY4" class="java.lang.String">
+        <variableExpression><![CDATA[$F{DATESTRING}.substring(7, 8)]]></variableExpression>
+    </variable>
+    <variable name="ac_pay" class="java.math.BigDecimal">
+        <initialValueExpression><![CDATA[1]]></initialValueExpression>
+    </variable>
+    <background>
+        <band splitType="Stretch"/>
+    </background>
+    <title>
+        <band height="211" splitType="Stretch">
+            <textField isBlankWhenNull="true">
+                <reportElement x="486" y="102" width="108" height="16" uuid="4dbb8893-332f-4c2c-9262-8a2b1c365710"/>
+                <textElement>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{DOC_REF}]]></textFieldExpression>
+            </textField>
+            <textField isBlankWhenNull="true">
+                <reportElement x="416" y="161" width="111" height="16" uuid="baab4d0c-65cc-4157-9b5c-2c697063e310"/>
+                <textElement>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{CHQ_DATE}]]></textFieldExpression>
+            </textField>
+            <textField isBlankWhenNull="true">
+                <reportElement x="486" y="128" width="108" height="16" uuid="4072e26a-b4d6-418c-aeb2-dcf1032bba7d"/>
+                <textFieldExpression><![CDATA[$F{TRANSACTION_DATE}]]></textFieldExpression>
+            </textField>
+            <textField isBlankWhenNull="true">
+                <reportElement x="50" y="86" width="399" height="16" uuid="6896cf09-0713-43e2-91d8-6bdec543f50f"/>
+                <textElement>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{PAYING_TO}]]></textFieldExpression>
+            </textField>
+        </band>
+    </title>
+    <detail>
+        <band height="22" splitType="Stretch">
+            <componentElement>
+                <reportElement key="table 3" stretchType="RelativeToBandHeight" isPrintRepeatedValues="false" x="45" y="0" width="247" height="20" isPrintWhenDetailOverflows="true" uuid="815360f0-d349-4dd4-9dee-55694fe727b4">
+                    <printWhenExpression><![CDATA[$F{BILLWISE_COUNT} <= 22]]></printWhenExpression>
+                </reportElement>
+                <jr:table xmlns:jr="http://jasperreports.sourceforge.net/jasperreports/components" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports/components http://jasperreports.sourceforge.net/xsd/components.xsd">
+                    <datasetRun subDataset="Detail_Table" uuid="702ac0cc-fd71-445f-bde6-cd2c78dfc7a0">
+                        <datasetParameter name="DOC_KEY_POID">
+                            <datasetParameterExpression><![CDATA[$P{DOC_KEY_POID}]]></datasetParameterExpression>
+                        </datasetParameter>
+                        <connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+                    </datasetRun>
+                    <jr:column width="82" uuid="86464eab-607f-4eda-9b39-6bea6ddd2c37">
+                        <jr:detailCell height="22" rowSpan="1">
+                            <textField isBlankWhenNull="true">
+                                <reportElement x="1" y="0" width="80" height="20" uuid="fc2ab1ee-2ee7-4430-a0ac-566321ddbe71"/>
+                                <textElement>
+                                    <font size="9"/>
+                                </textElement>
+                                <textFieldExpression><![CDATA[$F{DOCUMENT_NO}]]></textFieldExpression>
+                            </textField>
+                        </jr:detailCell>
+                    </jr:column>
+                    <jr:column width="72" uuid="fb87c808-cfb9-42db-a406-58b61e3ad0c2">
+                        <jr:detailCell height="22" rowSpan="1">
+                            <textField isBlankWhenNull="true">
+                                <reportElement x="3" y="0" width="68" height="20" uuid="75d04cd0-6794-4ce3-a0ec-3ebb86bcfaaf"/>
+                                <textElement>
+                                    <font size="9"/>
+                                </textElement>
+                                <textFieldExpression><![CDATA[$F{DOCUMENT_DATE}]]></textFieldExpression>
+                            </textField>
+                        </jr:detailCell>
+                    </jr:column>
+                    <jr:column width="67" uuid="023389ec-2a1a-4925-88a1-14a7da68b6fb">
+                        <jr:detailCell height="22" rowSpan="1">
+                            <textField pattern="#,##,##0.000" isBlankWhenNull="true">
+                                <reportElement x="0" y="0" width="66" height="20" uuid="5310c0bb-3623-419c-842c-6b63c58e4304"/>
+                                <textElement textAlignment="Right">
+                                    <font size="9"/>
+                                </textElement>
+                                <textFieldExpression><![CDATA[$F{AMOUNT}]]></textFieldExpression>
+                            </textField>
+                        </jr:detailCell>
+                    </jr:column>
+                    <jr:column width="32" uuid="7e7547e9-26b8-4cc4-bece-2e5a479ac61f">
+                        <jr:detailCell height="22" rowSpan="1">
+                            <textField>
+                                <reportElement x="1" y="0" width="31" height="20" uuid="d2aeebd4-3604-41ff-8242-42da68b8f8fd"/>
+                                <textElement>
+                                    <font size="9"/>
+                                </textElement>
+                                <textFieldExpression><![CDATA[$F{CRDR_TYPE}]]></textFieldExpression>
+                            </textField>
+                        </jr:detailCell>
+                    </jr:column>
+                </jr:table>
+            </componentElement>
+            <staticText>
+                <reportElement x="45" y="2" width="252" height="20" uuid="c466d90b-3f75-47ee-b165-4be90aec3e2e">
+                    <printWhenExpression><![CDATA[$F{BILLWISE_COUNT} > 22]]></printWhenExpression>
+                </reportElement>
+                <textElement>
+                    <font size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <text><![CDATA[AS PER ATTACHED SHEET]]></text>
+            </staticText>
+        </band>
+    </detail>
+    <pageFooter>
+        <band height="327" splitType="Stretch">
+            <textField pattern="#,##,##0.000" isBlankWhenNull="true">
+                <reportElement x="474" y="28" width="94" height="16" uuid="2092d9db-533b-4f15-92e4-805b76360ef3">
+                    <printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
+                </reportElement>
+                <textElement textAlignment="Right">
+                    <font size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
+                    <paragraph rightIndent="3"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{CURRENCY_AMOUNT}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="539" y="150" width="10" height="20" uuid="04d1731e-aa88-4648-b17a-bd70c3489b91">
+                    <printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
+                </reportElement>
+                <textElement>
+                    <font size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$V{DateY4}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="468" y="150" width="10" height="20" uuid="d49cba74-d554-49e9-999d-c511611330c0">
+                    <printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
+                </reportElement>
+                <textElement>
+                    <font size="11" isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$V{DateM2}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="449" y="150" width="10" height="20" uuid="e86781e3-ea37-4977-b5a9-0552fc11eb29">
+                    <printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
+                </reportElement>
+                <textElement>
+                    <font size="11" isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$V{DateM1}]]></textFieldExpression>
+            </textField>
+            <textField pattern="***#,##,##0.000" isBlankWhenNull="true">
+                <reportElement x="443" y="236" width="104" height="16" uuid="7ada6c6a-9982-460d-99b2-48d75b1ec2e8">
+                    <printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
+                </reportElement>
+                <textElement textAlignment="Right">
+                    <font size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{CURRENCY_AMOUNT}]]></textFieldExpression>
+            </textField>
+            <textField isBlankWhenNull="true">
+                <reportElement x="65" y="87" width="100" height="18" uuid="1775d947-b777-4bab-8b63-e0689f2c2ae1">
+                    <printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
+                </reportElement>
+                <textFieldExpression><![CDATA[$F{CREATED_BY}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="414" y="150" width="10" height="20" uuid="be5ca91c-0f28-4503-a3cb-cff68c2d3672">
+                    <printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
+                </reportElement>
+                <textElement>
+                    <font size="11" isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$V{DateD1}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="522" y="150" width="10" height="20" uuid="97d110c1-255d-47ab-97f7-5bef24465a79">
+                    <printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
+                </reportElement>
+                <textElement>
+                    <font size="11" isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$V{DateY3}]]></textFieldExpression>
+            </textField>
+            <textField isBlankWhenNull="true">
+                <reportElement x="44" y="8" width="355" height="34" uuid="e0890322-24b8-4b85-bccb-523b59edb623">
+                    <printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
+                </reportElement>
+                <textElement>
+                    <font size="9"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$V{Remarks}]]></textFieldExpression>
+            </textField>
+            <textField isBlankWhenNull="true">
+                <reportElement x="213" y="87" width="100" height="18" uuid="19f79be5-5bfc-4b93-a854-dee425497f09">
+                    <printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
+                </reportElement>
+                <textFieldExpression><![CDATA[$F{USER_ID}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="486" y="150" width="10" height="20" uuid="19eaecaf-4c3f-45fc-b1c3-e9fa9bb32845">
+                    <printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
+                </reportElement>
+                <textElement>
+                    <font size="11" isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$V{DateY1}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="432" y="150" width="10" height="20" uuid="34fed5cf-cfe0-4c48-b0ec-7793cd0355d8">
+                    <printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
+                </reportElement>
+                <textElement>
+                    <font size="11" isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$V{DateD2}]]></textFieldExpression>
+            </textField>
+            <textField isStretchWithOverflow="true" isBlankWhenNull="true">
+                <reportElement stretchType="RelativeToTallestObject" x="175" y="210" width="201" height="46" isPrintWhenDetailOverflows="true" uuid="1a689af6-7678-4201-b8e3-97c175d1bd64">
+                    <printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
+                </reportElement>
+                <textElement>
+                    <font size="10" isBold="true" pdfFontName="Helvetica-Bold"/>
+                    <paragraph lineSpacing="Double"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{AMOUNT_IN_WORD}]]></textFieldExpression>
+            </textField>
+            <textField isBlankWhenNull="true">
+                <reportElement x="189" y="182" width="315" height="16" uuid="2c9dd16b-4d0a-4a0e-afe9-ff2d36d94a79">
+                    <printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
+                </reportElement>
+                <textElement>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{PAYING_TO}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="504" y="150" width="10" height="20" uuid="30492ff6-c471-4c0d-b18e-207a97cb300a">
+                    <printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
+                </reportElement>
+                <textElement>
+                    <font size="11" isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$V{DateY2}]]></textFieldExpression>
+            </textField>
+            <image>
+                <reportElement x="109" y="134" width="432" height="55" uuid="b970be75-445a-499b-bbae-ea4f22264bad">
+                    <printWhenExpression><![CDATA[$F{ACCOUNT_PAYEE}.equals( "Y" ) && $V{PAGE_NUMBER} == 1]]></printWhenExpression>
+                </reportElement>
+                <imageExpression><![CDATA[$P{SUBREPORT_DIR} + "BankPayments//AccountsPayeeOnly (002).png"]]></imageExpression>
+            </image>
+        </band>
+    </pageFooter>
+    <summary>
+        <band splitType="Stretch"/>
+    </summary>
+</jasperReport>
+
+
+

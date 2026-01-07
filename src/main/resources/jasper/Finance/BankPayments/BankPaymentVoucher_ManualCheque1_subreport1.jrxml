@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="BankPaymentVoucher_ManualCheque1_subreport1" language="groovy" columnCount="2" pageWidth="555" pageHeight="802" columnWidth="277" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="5ab53509-619d-464a-9784-6c02c900e276">
+    <property name="ireport.zoom" value="2.1435888100000016"/>
+    <property name="ireport.x" value="0"/>
+    <property name="ireport.y" value="0"/>
+    <parameter name="DOC_KEY_POID" class="java.lang.String">
+        <defaultValueExpression><![CDATA[]]></defaultValueExpression>
+    </parameter>
+    <queryString>
+        <![CDATA[SELECT DISTINCT
+            DOCUMENT_NO,DOCUMENT_DATE,AMOUNT,CRDR_TYPE
+      FROM
+            (SELECT
+                        PHDR.DOC_REF DOCUMENT_NO,TO_CHAR(PHDR.TRANSACTION_DATE,'DD-MON-YYYY') DOCUMENT_DATE, ROUND(SUM(NVL(BKID.PO_QTY,0)*NVL(
+                        BKID.PRICE,0)),3) AS AMOUNT,'Dr' CRDR_TYPE
+                  FROM
+                        GL_BANK_PAYMENT_ITEM_DTL BKID
+                  INNER JOIN GL_BANK_PAYMENT_HDR HDR    ON BKID.TRANSACTION_POID = HDR.TRANSACTION_POID
+                  INNER JOIN AP_PURCHASE_ORDER_HDR PHDR ON HDR.PO_REF            = PHDR.TRANSACTION_POID
+                  WHERE
+                        BKID.TRANSACTION_POID= $P{DOC_KEY_POID} AND HDR.REF_TYPE = 'GENERAL PO'
+                  GROUP BY
+                        PHDR.DOC_REF,TO_CHAR(PHDR.TRANSACTION_DATE,'DD-MON-YYYY')
+            UNION ALL
+            SELECT
+                        PHDR.DOC_REF DOCUMENT_NO,TO_CHAR(PHDR.TRANSACTION_DATE,'DD-MON-YYYY') DOCUMENT_DATE, ROUND(SUM(NVL(BKID.PO_QTY,0)*NVL(
+                        BKID.PRICE,0)),3) AS AMOUNT,'Dr' CRDR_TYPE
+                  FROM
+                        GL_BANK_PAYMENT_ITEM_DTL BKID
+                  INNER JOIN GL_BANK_PAYMENT_HDR HDR     ON BKID.TRANSACTION_POID = HDR.TRANSACTION_POID
+                  INNER JOIN AP_REQUEST_FOR_QTN_HDR PHDR ON HDR.SALES_QTN_REF     = PHDR.TRANSACTION_POID
+                  WHERE
+                        BKID.TRANSACTION_POID= $P{DOC_KEY_POID} AND HDR.REF_TYPE = 'MTA RFQ'
+                  GROUP BY
+                        PHDR.DOC_REF,TO_CHAR(PHDR.TRANSACTION_DATE,'DD-MON-YYYY')
+            UNION ALL
+            SELECT
+                        FHDR.DOC_REF DOCUMENT_NO ,TO_CHAR(FHDR.TRANSACTION_DATE,'DD-MON-YYYY') DOCUMENT_DATE ,SUM(CHARGE_AMOUNT) AS AMOUNT,'Dr'
+                        CRDR_TYPE
+                  FROM
+                        GL_BANK_PAYMENT_CHARGE_DTL BKID
+                  INNER JOIN GL_BANK_PAYMENT_HDR HDR ON BKID.TRANSACTION_POID = HDR.TRANSACTION_POID
+                  INNER JOIN FF_MANIEST_HDR FHDR     ON BKID.REF_DOC_POID     = FHDR.TRANSACTION_POID
+                  WHERE
+                        BKID.TRANSACTION_POID= $P{DOC_KEY_POID} AND HDR.REF_TYPE = 'FF JOBS'
+                  GROUP BY
+                        FHDR.DOC_REF,TO_CHAR(FHDR.TRANSACTION_DATE,'DD-MON-YYYY')
+            UNION ALL
+            SELECT
+                        FHDR.DOC_REF DOCUMENT_NO ,TO_CHAR(HDR.TRANSACTION_DATE,'DD-MON-YYYY') DOCUMENT_DATE ,SUM(BKID.CHARGE_AMOUNT) AMOUNT,'Dr'
+                        CRDR_TYPE
+                  FROM
+                        GL_BANK_PAYMENT_CHARGE_DTL BKID
+                  INNER JOIN GL_BANK_PAYMENT_HDR HDR ON BKID.TRANSACTION_POID = HDR.TRANSACTION_POID
+                  INNER JOIN PDA_FDA_HDR FHDR        ON HDR.FDA_REF           = FHDR.TRANSACTION_POID
+                  WHERE
+                        BKID.TRANSACTION_POID= $P{DOC_KEY_POID} AND HDR.REF_TYPE = 'FDA JOBS'
+                  GROUP BY
+                        FHDR.DOC_REF,TO_CHAR(HDR.TRANSACTION_DATE,'DD-MON-YYYY')
+            UNION ALL
+            SELECT
+                        BRKUP.BILL_REF DOCUMENT_NO ,TO_CHAR(GLB1.BILL_DUE_DATE,'DD-MON-YYYY') DOCUMENT_DATE ,NVL(SUM(DR_AMT),SUM(NVL(CR_AMT,0)))
+                        AMOUNT,DECODE(SUM(DR_AMT),NULL,'Cr',0,'Cr','Dr') CRDR_TYPE
+                  FROM
+                        GL_BANK_PAYMENT_HDR BHDR
+                  INNER JOIN GL_VOUCHER_BILL_BREAKUP_DTL BRKUP ON BHDR.TRANSACTION_POID = BRKUP.TRANSACTION_POID AND DOC_ID = '400-107'
+                  LEFT JOIN
+                        (
+                        SELECT GL_POID, BILL_REF, MIN(BILL_DUE_DATE) as BILL_DUE_DATE
+                        FROM Gl_Ledger_Billwise_Breakup
+                        WHERE BILL_REF_TYPE IN ('NEW', 'ON-ACCOUNT') AND BILL_DUE_DATE IS NOT NULL
+                        GROUP BY GL_POID, BILL_REF) GLB1 ON BRKUP.GL_POID  = GLB1.GL_POID AND BRKUP.BILL_REF = GLB1.BILL_REF
+                  WHERE
+                        BHDR.TRANSACTION_POID = $P{DOC_KEY_POID}   AND BHDR.REF_TYPE in ('GENERAL','CUSTOM')
+                  GROUP BY
+                        BRKUP.BILL_REF,TO_CHAR(GLB1.BILL_DUE_DATE,'DD-MON-YYYY')
+            )
+      ORDER BY
+            DOCUMENT_NO]]>
+    </queryString>
+    <field name="DOCUMENT_NO" class="java.lang.String"/>
+    <field name="DOCUMENT_DATE" class="java.lang.String"/>
+    <field name="AMOUNT" class="java.math.BigDecimal"/>
+    <field name="CRDR_TYPE" class="java.lang.String"/>
+    <background>
+        <band splitType="Stretch"/>
+    </background>
+    <columnHeader>
+        <band height="16">
+            <line>
+                <reportElement x="0" y="15" width="266" height="1" uuid="4c9e0c42-b0e4-4ece-86b8-62bda00b27a0"/>
+            </line>
+            <line>
+                <reportElement x="0" y="0" width="266" height="1" uuid="e4cd59fa-7b64-4497-9dc6-235c76d33ccc"/>
+            </line>
+            <staticText>
+                <reportElement x="0" y="0" width="67" height="15" uuid="12a6ad59-f290-464b-be93-fe418deb5b3a"/>
+                <text><![CDATA[DocDate]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="67" y="0" width="110" height="15" uuid="9449aa1c-a3ba-4530-bed5-c800d2e53d90"/>
+                <text><![CDATA[Bill Ref]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="190" y="0" width="60" height="15" uuid="f347dbdd-a281-4b76-81f5-83070f15637d"/>
+                <textElement textAlignment="Right"/>
+                <text><![CDATA[Amount]]></text>
+            </staticText>
+        </band>
+    </columnHeader>
+    <detail>
+        <band height="13" splitType="Stretch">
+            <textField isBlankWhenNull="true">
+                <reportElement x="252" y="0" width="14" height="12" uuid="1c8a621c-7f03-4974-9c84-966d6edcbc97"/>
+                <textElement>
+                    <font size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{CRDR_TYPE}]]></textFieldExpression>
+            </textField>
+            <textField isBlankWhenNull="true">
+                <reportElement x="67" y="0" width="110" height="12" uuid="cc386980-2225-494c-909b-7903b1c0c9a2"/>
+                <textElement>
+                    <font size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{DOCUMENT_NO}]]></textFieldExpression>
+            </textField>
+            <textField isBlankWhenNull="true">
+                <reportElement x="0" y="0" width="67" height="12" uuid="f068b959-1544-43f0-8563-15f368c1d0a6"/>
+                <textElement>
+                    <font size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{DOCUMENT_DATE}]]></textFieldExpression>
+            </textField>
+            <textField pattern="#,##,##0.000" isBlankWhenNull="true">
+                <reportElement x="190" y="0" width="60" height="12" uuid="96d0cf23-f8d3-401f-a51e-700c7f05830b"/>
+                <textElement textAlignment="Right">
+                    <font size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{AMOUNT}]]></textFieldExpression>
+            </textField>
+        </band>
+    </detail>
+</jasperReport>

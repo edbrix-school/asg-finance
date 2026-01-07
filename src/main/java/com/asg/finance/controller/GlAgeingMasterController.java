@@ -1,5 +1,8 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
+
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.GlAgeingMasterDto;
@@ -104,6 +107,7 @@ public class GlAgeingMasterController {
                     }
             )
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     public ResponseEntity<?> createAgeingMaster(
             @Valid @RequestBody GlAgeingMasterDto ageingMasterDto
@@ -140,6 +144,7 @@ public class GlAgeingMasterController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{ageingPoid}")
     public ResponseEntity<?> getAgeingMasterDetails(
             @Parameter(
@@ -190,6 +195,7 @@ public class GlAgeingMasterController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{ageingPoid}")
     public ResponseEntity<?> updateAgeingMaster(
             @Parameter(
@@ -234,6 +240,7 @@ public class GlAgeingMasterController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{ageingPoid}")
     public ResponseEntity<?> softDeleteAgeingMaster(
             @Parameter(description = "Unique identifier of the ageing record", required = true)
@@ -291,6 +298,7 @@ public class GlAgeingMasterController {
                     }
             )
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     public ResponseEntity<?> listAgeingMasters(@ParameterObject Pageable pageable,
                                                @RequestBody(required = false) FilterRequestDto filters) {

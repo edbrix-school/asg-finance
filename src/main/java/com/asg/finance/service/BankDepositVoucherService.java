@@ -1,6 +1,5 @@
 package com.asg.finance.service;
 
-import com.asg.common.lib.dto.response.GlPostingViewResponseDto;
 import com.asg.finance.dto.BankDepositVoucherDtlDto;
 import com.asg.finance.dto.BankDepositVoucherRequestDto;
 import com.asg.finance.dto.BankDepositVoucherResponseDto;
@@ -17,6 +16,6 @@ public interface BankDepositVoucherService {
     BankDepositVoucherResponseDto getBankDepositVoucherById(Long transactionPoid);
     void softDeleteBankDepositVoucher(Long transactionPoid);
     Map<String, Object> listBankDepositVouchers(String documentId, FilterRequestDto filters, LocalDate startDate, LocalDate endDate, Pageable pageable);
-    GlPostingViewResponseDto getGlPostingDetails(Long groupPoid, Long companyPoid, String docId, Long transactionPoid);
     List<BankDepositVoucherDtlDto> loadPendingPayments(Long bankPoid, String type, String bankFilter);
+    byte[] print(Long transactionPoid) throws Exception;
 }

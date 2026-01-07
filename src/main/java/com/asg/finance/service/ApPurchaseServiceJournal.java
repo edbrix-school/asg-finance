@@ -26,17 +26,13 @@ public interface ApPurchaseServiceJournal {
 
     String updateFfCost(String ffPoid, Long piPoid);
 
-    List<ApPurchaseJournalResponseDto> createFromFda(String fdaPoid,StringBuilder result);
+    List<ApPurchaseJournalResponseDto> createFromFda(String fdaPoid, StringBuilder result);
 
     String validateVoucher(String docId, String refType, String refPoid);
-
-    String getSupplierPoidFromPo(String poPoid);
 
     String validateBeforeSave(String docId, String refType, String refPoid);
 
     String updateMtaPoBookingDetails(String poPoid, Long bookPoid);
-
-    String updateGeneralPoStatus(String poPoid, Long bookPoid);
 
     List<ApPiFromPoResponseDto> createPiFromPo(String poPoid);
 
@@ -44,31 +40,6 @@ public interface ApPurchaseServiceJournal {
 
     List<ApPiFaDefaultDetailsDto> getFaDefaultDetails(String faPoid);
 
-    String checkDuplicatePi(
-            String partyType,
-            Long partyPoid,
-            String supplierInvNo,
-            Long piPoid,
-            String billType
-    );
-
-    String validateInputVat(
-            String docId,
-            Long docKeyPoid,
-            String partyType,
-            Long partyPoid,
-            Double taxAmount
-    );
-
-
-    Map<String, String> validateGlDetailBeforeSave(
-            String docId,
-            String refType,
-            String glRefPoid,
-            String glRefPoid2,
-            String glRefPoid3,
-            String partyType,
-            Long partyPoid
-    );
+    byte[] print(Long transactionPoid) throws Exception;
 
 }

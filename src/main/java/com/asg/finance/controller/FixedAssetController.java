@@ -1,5 +1,8 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
+
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.masters.FixedAssetRequestDto;
@@ -58,6 +61,7 @@ public class FixedAssetController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     public ResponseEntity<?> createFixedAsset(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
@@ -116,6 +120,7 @@ public class FixedAssetController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{faPoid}")
     public ResponseEntity<?> updateFixedAsset(
             @Parameter(description = "Fixed Asset faPoid to be updated", required = true)
@@ -172,6 +177,7 @@ public class FixedAssetController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{faPoid}")
     public ResponseEntity<?> getFixedAssetById(
             @Parameter(description = "refTypePoid reference identifier", required = true)
@@ -206,6 +212,7 @@ public class FixedAssetController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{faPoid}")
     public ResponseEntity<?> softDeleteFixedAsset(
             @Parameter(description = "faPoid reference identifier", required = true)
@@ -245,6 +252,7 @@ public class FixedAssetController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping("/{faPoid}/{noOfCopies}")
     public ResponseEntity<?> createAssetCopies(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
@@ -349,6 +357,7 @@ public class FixedAssetController {
 
 
 
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     public ResponseEntity<?> getFixedAssetCategories(@ParameterObject Pageable pageable,
                                                      @RequestBody(required = false) FilterRequestDto filters) {

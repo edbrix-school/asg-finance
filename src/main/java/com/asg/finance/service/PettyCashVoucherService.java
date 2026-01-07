@@ -59,4 +59,6 @@ public interface PettyCashVoucherService {
             Long lovValue
     );
 
+    byte[] print(Long transactionPoid) throws Exception;
+
 }

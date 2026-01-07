@@ -24,4 +24,5 @@ public interface GlChequeCashConvertService {
 
     List<GlChequeConversionLoadResponseDto> loadGlChequeConversion(String chequeNumber, String chequeAccNumber, String type);
 
+    byte[] print(Long transactionPoid) throws Exception;
 }

@@ -29,4 +29,6 @@ public interface DebitNoteService {
 
     Map<String, Object> getPartyDefaults(Long partyPoid, String partyType);
 
+    byte[] print(Long transactionPoid) throws Exception;
+
 }

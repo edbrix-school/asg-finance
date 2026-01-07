@@ -27,4 +27,6 @@ public interface GlRecurringJvService {
     
     void deleteSchedule(Long transactionPoid);
 
+    byte[] print(Long transactionPoid) throws Exception;
+
 }

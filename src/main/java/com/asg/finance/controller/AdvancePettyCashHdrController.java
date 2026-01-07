@@ -1,5 +1,8 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
+
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.AdvancePettyCashHdrRequestDTO;
@@ -54,6 +57,7 @@ public class AdvancePettyCashHdrController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     public ResponseEntity<?> createAdvancePettyCash(
             @Valid @RequestBody AdvancePettyCashHdrRequestDTO requestDTO
@@ -86,6 +90,7 @@ public class AdvancePettyCashHdrController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{transactionPoid}")
     public ResponseEntity<?> updateAdvancePettyCash(
             @Parameter(description = "Transaction POID to be updated", required = true)
@@ -115,6 +120,7 @@ public class AdvancePettyCashHdrController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{transactionPoid}")
     public ResponseEntity<?> getAdvancePettyCashById(
             @Parameter(description = "Transaction POID", required = true)
@@ -140,6 +146,7 @@ public class AdvancePettyCashHdrController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> softDeleteAdvancePettyCash(
             @Parameter(description = "Transaction POID", required = true)
@@ -153,6 +160,7 @@ public class AdvancePettyCashHdrController {
             summary = "List Advance Petty Cash with Search and Sort",
             description = "Provide search filters. Valid searchField values: GLOBALSEARCH or specific field names. Sorting default on transactionPoid, desc."
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     public ResponseEntity<?> listAdvancePettyCash(
             @ParameterObject Pageable pageable,

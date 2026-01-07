@@ -1,5 +1,8 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
+
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.GlBankDto;
 import com.asg.common.lib.dto.FilterRequestDto;
@@ -142,6 +145,7 @@ public class GlBankController {
                     }
             )
     )
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{bankPoid}")
     public ResponseEntity<?> updateBankMaster(
             @Parameter(
@@ -262,6 +266,7 @@ public class GlBankController {
                     }
             )
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping("/createEntry")
     public ResponseEntity<?> createNewEntry(
             @Valid @RequestBody GlBankDto bankDto) {
@@ -391,6 +396,7 @@ public class GlBankController {
             }
     )
     @SecurityRequirement(name = "bearerAuth")
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{bankPoid}")
     public ResponseEntity<?> getBankDetails(
             @Parameter(
@@ -436,6 +442,7 @@ public class GlBankController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{bankPoid}")
     public ResponseEntity<?> softDeleteBankMaster(
             @Parameter(
@@ -516,6 +523,7 @@ public class GlBankController {
             }
     )
     @SecurityRequirement(name = "bearerAuth")
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     public ResponseEntity<?> listOfRecordsWithGenericSearch(
             @ParameterObject

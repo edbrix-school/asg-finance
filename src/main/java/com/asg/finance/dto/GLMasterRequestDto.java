@@ -25,12 +25,5 @@ public class GLMasterRequestDto {
 
     private List<PaymentDetailsDto> paymentDetails;
     private List<CompanyDetailsDto> companyDetails;
-
-    // getters & setters
 }
-
-// PaymentDetailsDto.java
-
-
-// GLMasterResponseDto.java
 

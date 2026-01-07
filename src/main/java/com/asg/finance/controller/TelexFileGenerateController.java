@@ -1,5 +1,8 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
+
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.TelexFileDtlDto;
 import com.asg.finance.dto.TelexFileGenerateRequestDto;
@@ -47,6 +50,7 @@ public class TelexFileGenerateController {
                     @ApiResponse(responseCode = "401", description = "Unauthorized")
             }
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     public ResponseEntity<?> create(
             @Valid @RequestBody TelexFileGenerateRequestDto request
@@ -67,6 +71,7 @@ public class TelexFileGenerateController {
                     @ApiResponse(responseCode = "404", description = "Not found")
             }
     )
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{transactionPoid}")
     public ResponseEntity<?> update(
             @Parameter(description = "Transaction POID", required = true)
@@ -89,6 +94,7 @@ public class TelexFileGenerateController {
                     @ApiResponse(responseCode = "404", description = "Not found")
             }
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{transactionPoid}")
     public ResponseEntity<?> getById(
             @Parameter(description = "Transaction POID", required = true)
@@ -106,6 +112,7 @@ public class TelexFileGenerateController {
                     @ApiResponse(responseCode = "404", description = "Not found")
             }
     )
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> softDelete(
             @Parameter(description = "Transaction POID", required = true)
@@ -186,6 +193,7 @@ public class TelexFileGenerateController {
                     }
             )
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     public ResponseEntity<?> list(
             @ParameterObject Pageable pageable,
@@ -208,6 +216,7 @@ public class TelexFileGenerateController {
             summary = "Load Telex Transfer Data",
             description = "Loads pending telex transfer data based on bank selection"
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/load-telex-data")
     public ResponseEntity<?> loadTelexData(
             @Parameter(description = "Bank List Filter", required = false, example = "Y")
@@ -225,6 +234,7 @@ public class TelexFileGenerateController {
             summary = "Regenerate Telex File",
             description = "Regenerates the telex file for a given transaction"
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping("/{debitVoucherPoid}/regenerate")
     public ResponseEntity<?> regenerateTelexFile(
             @Parameter(description = "Debit Voucher POID", required = true)

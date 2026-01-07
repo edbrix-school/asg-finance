@@ -2,6 +2,7 @@ package com.asg.finance.repository;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 
 import com.asg.finance.dto.BankReconcHoldAndUholdRequest;
 import com.asg.finance.dto.BankReconcileReportRequest;
@@ -9,6 +10,7 @@ import com.asg.finance.dto.BankReconcileReportResponse;
 import com.asg.finance.dto.BankReconciliationRequest;
 import com.asg.finance.dto.BankReconciliationResponse;
 import com.asg.finance.dto.BankRenconciliationBankInfoDTO;
+import com.asg.finance.entity.BankReconciliation;
 
 public interface BankReconciliationRepository {
 

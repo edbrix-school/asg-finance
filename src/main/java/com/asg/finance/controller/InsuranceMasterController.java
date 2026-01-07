@@ -1,5 +1,8 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
+
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.masters.InsuranceMasterRequestDto;
@@ -59,6 +62,7 @@ public class InsuranceMasterController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     public ResponseEntity<?> createInsuranceMaster(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
@@ -100,6 +104,7 @@ public class InsuranceMasterController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{insuranceId}")
     public ResponseEntity<?> softDeleteInsuranceMaster(
             @Parameter(description = "insuranceId reference identifier", required = true)
@@ -139,6 +144,7 @@ public class InsuranceMasterController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{insuranceId}")
     public ResponseEntity<?> getInsuranceMasterById(
             @Parameter(description = "insuranceId reference identifier", required = true)
@@ -172,6 +178,7 @@ public class InsuranceMasterController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{insuranceId}")
     public ResponseEntity<?> updateInsuranceMaster(
             @Parameter(description = "Insurance Master ID", required = true)
@@ -260,6 +267,7 @@ public class InsuranceMasterController {
                     }
             )
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     public ResponseEntity<?> getInsuranceMasters(@ParameterObject Pageable pageable,
                                                  @RequestBody(required = false) FilterRequestDto filters,
@@ -295,6 +303,8 @@ public class InsuranceMasterController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
+
     @PostMapping("/{insuranceId}/renew")
     public ResponseEntity<?> renewInsurance(
             @Parameter(description = "Insurance Master ID", required = true)

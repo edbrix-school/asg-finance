@@ -18,11 +18,5 @@ public class AssetLocationMasterRequestDto {
 
     private Integer seqNo;
 
-
-    private Long groupPoid;
-
-
     private String active;
-
-
 }

@@ -12,11 +12,6 @@ import java.util.Map;
 
 public interface ContraVoucherService {
 
-    Page<ContraVoucherResponse> getContraVouchers(
-            Long groupPoid,
-            FilterRequestDto filters,
-            Pageable pageable);
-
     Map<String, Object> listContraVouchers(String docId, FilterRequestDto request, Pageable pageable, LocalDate periodFrom, LocalDate periodTo);
 
     ContraVoucherFullResponse createContraVoucher(ContraVoucherRequest request);
@@ -28,4 +23,6 @@ public interface ContraVoucherService {
     void deleteContraVoucher(Long transactionPoid);
 
     String checkGlNature(Long creditGlId);
+
+    byte[] print(Long transactionPoid) throws Exception;
 }

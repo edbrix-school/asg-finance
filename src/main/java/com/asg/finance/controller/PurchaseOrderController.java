@@ -1,5 +1,7 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.finance.dto.PurchaseOrderRequest;
 
 import com.asg.finance.dto.PurchaseOrderResponse;
@@ -18,6 +20,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -62,6 +66,7 @@ public class PurchaseOrderController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     public ResponseEntity<?> createPurchaseOrder(
 
@@ -103,6 +108,7 @@ public class PurchaseOrderController {
             @ApiResponse(responseCode = "404", description = "Purchase Order not found"),
             @ApiResponse(responseCode = "400", description = "Invalid input")
     })
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{transactionPoid}")
     public ResponseEntity<?> updatePurchaseOrder(
             @Parameter(description = "transactionPoid reference identifier", required = true)
@@ -139,6 +145,7 @@ public class PurchaseOrderController {
             @ApiResponse(responseCode = "404", description = "Purchase Order not found"),
             @ApiResponse(responseCode = "401", description = "Unauthorized")
     })
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{transactionPoid}")
     public ResponseEntity<?> findById(
 
@@ -181,6 +188,8 @@ public class PurchaseOrderController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.DELETE)
+
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> deletePurchaseOrder(
 
@@ -266,6 +275,9 @@ public class PurchaseOrderController {
             )
     )
 
+    @AllowedAction(UserRolesRightsEnum.CREATE)
+
+
     @PostMapping("/list")
     public ResponseEntity<?> getListPurchaseOrder(@ParameterObject Pageable pageable,
                                                   @RequestBody(required = false) FilterRequestDto filters,
@@ -323,6 +335,8 @@ public class PurchaseOrderController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
+
     @PostMapping("/create-from-rfq")
     public ResponseEntity<?> createPOFromRFQ(
 
@@ -351,6 +365,34 @@ public class PurchaseOrderController {
         } catch (Exception e) {
             log.error("Error creating PO from RFQ: {}", e.getMessage(), e);
             return internalServerError("Failed to create PO from RFQ: " + e.getMessage());
+        }
+    }
+
+    @AllowedAction(UserRolesRightsEnum.PRINT)
+    @Operation(
+            summary = "Generate PDF for Purchase Order",
+            description = "Generate PDF report for a specific Purchase Order transaction",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "PDF generated successfully",
+                            content = @Content(mediaType = "application/pdf")),
+                    @ApiResponse(responseCode = "404", description = "Purchase Order not found"),
+                    @ApiResponse(responseCode = "500", description = "Failed to generate PDF")
+            }
+    )
+    @GetMapping("/print/{transactionPoid}")
+    public ResponseEntity<?> print(
+            @Parameter(description = "Transaction POID", example = "21")
+            @PathVariable Long transactionPoid) {
+        try {
+            byte[] pdf = service.print(transactionPoid);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=purchase-order-" + transactionPoid + ".pdf")
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .body(pdf);
+        } catch (Exception e) {
+            log.error("Failed to generate PDF for Purchase Order: {}", transactionPoid, e);
+            return error("Failed to generate PDF: " + e.getMessage(), 500);
         }
     }
 

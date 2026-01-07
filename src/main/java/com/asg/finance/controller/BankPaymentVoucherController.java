@@ -1,6 +1,8 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.FilterRequestDto;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.*;
 import com.asg.common.lib.exception.ValidationException;
@@ -14,8 +16,11 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.sql.Date;
@@ -23,9 +28,8 @@ import java.sql.Date;
 import java.time.LocalDate;
 import java.util.Map;
 
-import static com.asg.common.lib.dto.response.ApiResponse.internalServerError;
-import static com.asg.common.lib.dto.response.ApiResponse.success;
-
+import static com.asg.common.lib.dto.response.ApiResponse.*;
+@Slf4j
 @RestController
 @RequestMapping("/v1/bank-payment-vouchers")
 @RequiredArgsConstructor
@@ -49,6 +53,7 @@ public class BankPaymentVoucherController {
                     @ApiResponse(responseCode = "401", description = "Unauthorized")
             }
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{transactionPoid}")
     public ResponseEntity<?> getVoucherById(
             @Parameter(description = "Unique ID of the voucher to fetch", required = true)
@@ -87,6 +92,7 @@ public class BankPaymentVoucherController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     public ResponseEntity<?> createVoucher(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
@@ -134,6 +140,7 @@ public class BankPaymentVoucherController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{transactionPoid}")
     public ResponseEntity<?> updateVoucher(
             @Parameter(description = "Unique ID of the Bank Payment Voucher to update", required = true)
@@ -216,6 +223,7 @@ public class BankPaymentVoucherController {
                     }
             )
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     public ResponseEntity<?> listBankPaymentVouchers(
             @ParameterObject Pageable pageable,
@@ -257,6 +265,7 @@ public class BankPaymentVoucherController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{transactionPoid}/delete")
     public ResponseEntity<?> softDeleteVoucher(
             @Parameter(description = "Unique ID of the Bank Payment Voucher to soft delete", required = true)
@@ -273,6 +282,7 @@ public class BankPaymentVoucherController {
     }
 
     @Operation(summary = "Get Bank Balance", description = "Retrieves bank balance for a given bank")
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/bank-balance/{bankPoid}")
     public ResponseEntity<?> getBankBalance(
             @PathVariable Long bankPoid,
@@ -286,6 +296,7 @@ public class BankPaymentVoucherController {
     }
 
     @Operation(summary = "Validate Cheque Print", description = "Validates voucher before cheque printing")
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/{transactionPoid}/validate-cheque-print")
     public ResponseEntity<?> validateChequePrint(
             @PathVariable Long transactionPoid) {
@@ -298,6 +309,7 @@ public class BankPaymentVoucherController {
     }
 
     @Operation(summary = "Mark Cheque as Printed", description = "Marks cheque as printed after successful print")
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PostMapping("/{transactionPoid}/mark-cheque-printed")
     public ResponseEntity<?> markChequePrinted(
             @PathVariable Long transactionPoid) {
@@ -310,6 +322,7 @@ public class BankPaymentVoucherController {
     }
 
     @Operation(summary = "Release Cheque", description = "Releases cheque to a person")
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PostMapping("/{transactionPoid}/release-cheque")
     public ResponseEntity<?> releaseCheque(
             @PathVariable Long transactionPoid,
@@ -324,6 +337,7 @@ public class BankPaymentVoucherController {
     }
 
     @Operation(summary = "Un-Release Cheque", description = "Reverts cheque release")
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PostMapping("/{transactionPoid}/unrelease-cheque")
     public ResponseEntity<?> unReleaseCheque(
             @PathVariable Long transactionPoid) {
@@ -336,6 +350,7 @@ public class BankPaymentVoucherController {
     }
 
     @Operation(summary = "Reset Cheque Status", description = "Resets cheque status")
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PostMapping("/{transactionPoid}/reset-cheque-status")
     public ResponseEntity<?> resetChequeStatus(
             @PathVariable Long transactionPoid) {
@@ -348,6 +363,7 @@ public class BankPaymentVoucherController {
     }
 
     @Operation(summary = "Revert Reconciliation", description = "Reverts bank reconciliation")
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PostMapping("/{transactionPoid}/revert-reconciliation")
     public ResponseEntity<?> revertReconciliation(
             @PathVariable Long transactionPoid) {
@@ -379,6 +395,7 @@ public class BankPaymentVoucherController {
                     - Manifest Charge Details
                     """
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/load-from-ff")
     public ResponseEntity<?> createBankPayFromFf(
             @RequestParam String ffPoid) {
@@ -404,6 +421,7 @@ public class BankPaymentVoucherController {
                     - Charge Details
                     """
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/load-from-fda")
     public ResponseEntity<?> loadFdaCharges(
             @RequestParam String fdaPoid) {
@@ -431,6 +449,7 @@ public class BankPaymentVoucherController {
                     - Item Details
                     """
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/load-from-mta")
     public ResponseEntity<?> createFromMta(
             @RequestParam String rfqPoid) {
@@ -440,6 +459,34 @@ public class BankPaymentVoucherController {
             return success("MTA charges loaded successfully", response);
         } catch (Exception ex) {
             return internalServerError("Failed to load MTA charges: " + ex.getMessage());
+        }
+    }
+
+    @AllowedAction(UserRolesRightsEnum.PRINT)
+    @Operation(
+            summary = "Generate PDF for Bank Payment Voucher",
+            description = "Generate PDF report for a specific Bank Payment Voucher transaction",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "PDF generated successfully",
+                            content = @Content(mediaType = "application/pdf")),
+                    @ApiResponse(responseCode = "404", description = "Bank Payment Voucher not found"),
+                    @ApiResponse(responseCode = "500", description = "Failed to generate PDF")
+            }
+    )
+    @GetMapping("/print/{transactionPoid}")
+    public ResponseEntity<?> print(
+            @Parameter(description = "Transaction POID", example = "21")
+            @PathVariable Long transactionPoid) {
+        try {
+            byte[] pdf = service.print(transactionPoid);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=bank-payment-voucher-" + transactionPoid + ".pdf")
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .body(pdf);
+        } catch (Exception e) {
+            log.error("Failed to generate PDF for Bank Payment Voucher: {}", transactionPoid, e);
+            return error("Failed to generate PDF: " + e.getMessage(), 500);
         }
     }
 

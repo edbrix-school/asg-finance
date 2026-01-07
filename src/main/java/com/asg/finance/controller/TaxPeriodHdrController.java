@@ -1,5 +1,8 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
+
 
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.security.util.UserContext;
@@ -60,6 +63,7 @@ public class TaxPeriodHdrController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     public ResponseEntity<?> createTaxPeriodHdr(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
@@ -116,6 +120,7 @@ public class TaxPeriodHdrController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{transactionPoid}")
     public ResponseEntity<?> updateTaxPeriodHdr(
             @Parameter(description = "Tax Period transactionPoid to be updated", required = true)
@@ -169,6 +174,7 @@ public class TaxPeriodHdrController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{transactionPoid}")
     public ResponseEntity<?> getTaxPeriodHdrById(
             @Parameter(description = "transactionPoid reference identifier", required = true)
@@ -203,6 +209,7 @@ public class TaxPeriodHdrController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> softDeleteTaxPeriodHdr(
             @Parameter(description = "transactionPoid reference identifier", required = true)
@@ -245,6 +252,7 @@ public class TaxPeriodHdrController {
             security = @SecurityRequirement(name = "bearerAuth")
     )
 
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{transactionPoid}/charges")
     public ResponseEntity<?> getTaxPeriodCharges(
             @Parameter(description = "Transaction Poid", required = true)
@@ -291,6 +299,7 @@ public class TaxPeriodHdrController {
     )
 
 
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{transactionPoid}/stocks")
     public ResponseEntity<?> getTaxPeriodStocks(
             @Parameter(description = "Transaction Poid", required = true)
@@ -327,6 +336,7 @@ public class TaxPeriodHdrController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping("/{transactionPoid}/copy")
     public ResponseEntity<?> copyTaxPeriod(
             @Parameter(description = "Original Tax Period transactionPoid to copy", required = true)
@@ -413,6 +423,7 @@ public class TaxPeriodHdrController {
     )
 
 
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     public ResponseEntity<?> listTaxPeriod(@ParameterObject Pageable pageable,
                                            @RequestBody(required = false) FilterRequestDto filters,

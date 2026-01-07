@@ -17,5 +17,4 @@ public interface TelexFileGenerateService {
     Map<String, Object> listTelexFiles(String documentId, FilterRequestDto filters, java.time.LocalDate startDate, java.time.LocalDate endDate, Pageable pageable);
     List<TelexFileDtlDto> loadTelexTransferData(String bankList);
     String regenerateTelexFile(Long debitVoucherPoid);
-    String validateAndMarkDeleted(Long transactionPoid, List<Long> detRowIds);
 }

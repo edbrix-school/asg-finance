@@ -1,7 +1,11 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
+
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.*;
 import com.asg.common.lib.exception.ValidationException;
@@ -22,6 +26,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 
 
 import java.util.List;
@@ -38,6 +44,7 @@ public class ApPurchaseJournalController {
 
     private final ApPurchaseServiceJournal service;
 
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{transactionPoid}")
     @Operation(
             summary = "Get AP Purchase Journal by Transaction POID",
@@ -66,6 +73,7 @@ public class ApPurchaseJournalController {
         return success("AP Purchase Journal fetched successfully", result);
     }
 
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     @Operation(
             summary = "Create AP Purchase Journal",
@@ -138,6 +146,7 @@ public class ApPurchaseJournalController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{transactionPoid}")
     public ResponseEntity<?> updateApPurchaseJournal(
             @Parameter(
@@ -158,6 +167,7 @@ public class ApPurchaseJournalController {
         return success("AP Purchase Journal updated successfully", result);
     }
 
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{transactionPoid}")
     @Operation(
             summary = "Delete (soft) AP Purchase Journal",
@@ -182,6 +192,7 @@ public class ApPurchaseJournalController {
         return success("AP Purchase Journal deleted successfully");
     }
 
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     @Operation(
             summary = "List AP Purchase Journal with Search and Sort",
@@ -304,6 +315,7 @@ public class ApPurchaseJournalController {
         return success("AP Purchase Journal list fetched successfully", result);
     }
 
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping("/ff-charges-details")
     @Operation(
             summary = "Create AP Purchase details from FF Charge Details",
@@ -320,6 +332,7 @@ public class ApPurchaseJournalController {
         return success("FF charge details created successfully", response);
     }
 
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/ff-charges-details/{ffPoid}")
     @Operation(
             summary = "Update FF manifest cost amounts from booked documents",
@@ -336,6 +349,7 @@ public class ApPurchaseJournalController {
         return success("FF cost updated successfully", result);
     }
 
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping("/fda-charges-details")
     @Operation(
             summary = "Create AP Purchase details from FDA charges",
@@ -353,6 +367,7 @@ public class ApPurchaseJournalController {
     }
 
 
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/fda-charges-details/{fdaPoid}")
     @Operation(
             summary = "Update FDA cost amounts from booked documents",
@@ -369,6 +384,8 @@ public class ApPurchaseJournalController {
         return success("FDA cost updated successfully", result);
     }
 
+    // mapping is incorrect
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @GetMapping("/create-pi-from-po")
     public ResponseEntity<?> createPiFromPo(
 
@@ -381,6 +398,8 @@ public class ApPurchaseJournalController {
         return success("PI created from PO successfully", response);
     }
 
+    // mapping is incorrect
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @GetMapping("/create-pi-from-general-po")
     public ResponseEntity<?> createPiFromGeneralPo(
 
@@ -394,19 +413,19 @@ public class ApPurchaseJournalController {
         return success("PI created from General PO successfully", response);
     }
 
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/load-fixed-asset-details")
     public ResponseEntity<?> getFaDefaultDetails(
 
             @Parameter(description = "FA POID", required = true, example = "FA-1001")
             @RequestParam String faPoid
     ) {
-
-        List<ApPiFaDefaultDetailsDto> response =
-                service.getFaDefaultDetails(faPoid);
-
+        List<ApPiFaDefaultDetailsDto> response = service.getFaDefaultDetails(faPoid);
         return success("FA default details fetched successfully", response);
     }
 
+    // mapping is incorrect
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @GetMapping("/update-mta-po-booking")
     public ResponseEntity<?> updateMtaPoBookingDetails(
 
@@ -416,10 +435,36 @@ public class ApPurchaseJournalController {
             @Parameter(description = "Booking POID", required = true, example = "5001")
             @RequestParam Long bookPoid
     ) {
-
         String response = service.updateMtaPoBookingDetails(poPoid, bookPoid);
-
         return success("MTA PO Booking details updated successfully", response);
+    }
+
+    @AllowedAction(UserRolesRightsEnum.PRINT)
+    @Operation(
+            summary = "Generate PDF for Purchase Journal",
+            description = "Generate PDF report for a specific Purchase Journal transaction",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "PDF generated successfully",
+                            content = @Content(mediaType = "application/pdf")),
+                    @ApiResponse(responseCode = "404", description = "Purchase Journal not found"),
+                    @ApiResponse(responseCode = "500", description = "Failed to generate PDF")
+            }
+    )
+    @GetMapping("/print/{transactionPoid}")
+    public ResponseEntity<?> print(
+            @Parameter(description = "Transaction POID", example = "71031")
+            @PathVariable Long transactionPoid) {
+        try {
+            byte[] pdf = service.print(transactionPoid);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=purchase-journal-" + transactionPoid + ".pdf")
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .body(pdf);
+        } catch (Exception e) {
+            log.error("Failed to generate PDF for Purchase Journal: {}", transactionPoid, e);
+            return internalServerError("Failed to generate PDF: " + e.getMessage());
+        }
     }
 
 }

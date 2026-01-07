@@ -17,24 +17,5 @@ public interface GlRecurringJvHdrRepository extends JpaRepository<GlRecurringJvH
 
     Optional<GlRecurringJvHdr> findByTransactionPoid(Long transactionPoid);
 
-    @Query("SELECT h FROM GlRecurringJvHdr h WHERE h.groupPoid = :groupPoid " +
-            "AND (:dateFrom IS NULL OR h.transactionDate >= :dateFrom) " +
-            "AND (:dateTo IS NULL OR h.transactionDate <= :dateTo) " +
-            "AND (:docRef IS NULL OR h.docRef LIKE %:docRef%) " +
-            "AND (:narration IS NULL OR h.narration LIKE %:narration%) " +
-            "AND (:refType IS NULL OR h.refType = :refType) " +
-            "AND (:employeeId IS NULL OR h.employeePoid = :employeeId) " +
-            "AND (:assetId IS NULL OR h.faPoid = :assetId) " +
-            "ORDER BY h.transactionDate DESC, h.transactionPoid DESC")
-    List<GlRecurringJvHdr> findWithFilters(
-            @Param("groupPoid") Long groupPoid,
-            @Param("dateFrom") Timestamp dateFrom,
-            @Param("dateTo") Timestamp dateTo,
-            @Param("docRef") String docRef,
-            @Param("narration") String narration,
-            @Param("refType") String refType,
-            @Param("employeeId") Long employeeId,
-            @Param("assetId") Long assetId);
-
 }
 

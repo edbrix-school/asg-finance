@@ -1,5 +1,8 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
+
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.*;
@@ -76,6 +79,7 @@ public class PdcChqBatchController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     public ResponseEntity<?> createPdcBatch(
 
@@ -117,6 +121,7 @@ public class PdcChqBatchController {
                     @ApiResponse(responseCode = "500", description = "Unexpected server error")
             }
     )
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{transactionPoid}")
     public ResponseEntity<?> updatePdcBatch(
             @Parameter(description = "Transaction POID to update", required = true)
@@ -149,6 +154,7 @@ public class PdcChqBatchController {
                     @ApiResponse(responseCode = "500", description = "Unexpected server error")
             }
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{transactionPoid}")
     public ResponseEntity<?> getPdcBatchById(
             @Parameter(description = "Transaction POID", required = true)
@@ -176,6 +182,7 @@ public class PdcChqBatchController {
                     @ApiResponse(responseCode = "500", description = "Unexpected server error")
             }
     )
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> deletePdcBatch(
             @Parameter(description = "Transaction POID to delete", required = true)
@@ -249,6 +256,7 @@ public class PdcChqBatchController {
                     @ApiResponse(responseCode = "500", description = "Unexpected server error")
             }
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     public ResponseEntity<?> listPdcBatch(
             @ParameterObject Pageable pageable,
@@ -291,6 +299,7 @@ public class PdcChqBatchController {
                     @ApiResponse(responseCode = "500", description = "Unexpected server error")
             }
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/validate-paygl")
     public ResponseEntity<?> validatePayGlBreakup(
             @Parameter(description = "GL POID to validate", required = true)
@@ -328,6 +337,7 @@ public class PdcChqBatchController {
                     @ApiResponse(responseCode = "500", description = "Error executing procedure")
             }
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping("/{transactionPoid}/run-batch-creation")
     public ResponseEntity<?> runBatchCreationProcedure(
             @Parameter(description = "Transaction POID for this batch", required = true)
@@ -374,6 +384,7 @@ public class PdcChqBatchController {
                     @ApiResponse(responseCode = "500", description = "Unexpected server error")
             }
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping("/{transactionPoid}/run-bank-posting")
     public ResponseEntity<?> runBankPostingProcedure(
             @Parameter(description = "Transaction POID for this batch", required = true)
@@ -423,6 +434,7 @@ public class PdcChqBatchController {
                     @ApiResponse(responseCode = "500", description = "Unexpected server error")
             }
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping("/{transactionPoid}/run-excel-batch-creation")
     public ResponseEntity<?> runExcelBatchCreationProcedure(
             @Parameter(description = "Transaction POID for this batch", required = true)
@@ -447,6 +459,7 @@ public class PdcChqBatchController {
         }
     }
 
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping(value = "/upload-excel", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> uploadExcel(
             @RequestPart("file") MultipartFile file

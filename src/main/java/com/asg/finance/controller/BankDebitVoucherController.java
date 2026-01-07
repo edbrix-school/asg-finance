@@ -1,5 +1,7 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.BankDebitVoucherRequest;
 import com.asg.finance.dto.BankDebitVoucherResponse;
@@ -10,6 +12,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
@@ -18,6 +21,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -138,6 +143,7 @@ public class BankDebitVoucherController {
                     )
             )
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     public ResponseEntity<?> createBankDebitVoucher(
             @Valid @RequestBody BankDebitVoucherRequest request) {
@@ -146,6 +152,7 @@ public class BankDebitVoucherController {
     }
 
     @Operation(summary = "Get Bank Debit Voucher")
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{transactionPoid}")
     public ResponseEntity<?> getBankDebitVoucher(
             @PathVariable @NotNull @Min(1) Long transactionPoid) {
@@ -154,6 +161,7 @@ public class BankDebitVoucherController {
     }
 
     @Operation(summary = "List Bank Debit Vouchers")
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
             content = @Content(
@@ -290,6 +298,7 @@ public class BankDebitVoucherController {
                     )
             )
     )
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{transactionPoid}")
     public ResponseEntity<?> updateBankDebitVoucher(
             @PathVariable @NotNull @Min(1) Long transactionPoid,
@@ -299,6 +308,7 @@ public class BankDebitVoucherController {
     }
 
     @Operation(summary = "Delete Bank Debit Voucher")
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> deleteBankDebitVoucher(
             @PathVariable @NotNull @Min(1) Long transactionPoid) {
@@ -307,6 +317,7 @@ public class BankDebitVoucherController {
     }
 
     @Operation(summary = "Get FF Charges")
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/ff-charges")
     public ResponseEntity<?> getFFCharges(
             @Parameter(description = "FF reference POID", required = true)
@@ -316,6 +327,7 @@ public class BankDebitVoucherController {
     }
 
     @Operation(summary = "Get FDA Charges")
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/fda-charges")
     public ResponseEntity<?> getFDACharges(
             @Parameter(description = "FDA reference POID", required = true)
@@ -325,6 +337,7 @@ public class BankDebitVoucherController {
     }
 
     @Operation(summary = "Get Bank Balance")
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/bank-balance")
     public ResponseEntity<?> getBankBalance(
             @Parameter(description = "Bank POID", required = true)
@@ -336,6 +349,7 @@ public class BankDebitVoucherController {
     }
 
     @Operation(summary = "Get Beneficiary Name by Beneficiary Id")
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/beneficiary-name")
     public ResponseEntity<?> getBeneficiaryName(
             @Parameter(description = "Beneficiary Id", required = true)
@@ -362,6 +376,7 @@ public class BankDebitVoucherController {
                     )
             )
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping("/validate-paygl")
     public ResponseEntity<?> validatePayGL(
             @Valid @RequestBody PayGLValidationRequest request) {
@@ -370,6 +385,7 @@ public class BankDebitVoucherController {
     }
 
     @Operation(summary = "Revert Reconciliation", description = "Reverts bank reconciliation")
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping("/{transactionPoid}/revert-reconciliation")
     public ResponseEntity<?> revertReconciliation(
             @PathVariable Long transactionPoid,
@@ -379,6 +395,34 @@ public class BankDebitVoucherController {
             return success("Reconciliation reverted successfully", null);
         } catch (Exception ex) {
             return internalServerError("Failed to revert reconciliation: " + ex.getMessage());
+        }
+    }
+
+    @AllowedAction(UserRolesRightsEnum.PRINT)
+    @Operation(
+            summary = "Generate PDF for IMCO Deposit Refund",
+            description = "Generate PDF report for a specific Bank Debit Voucher transaction",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "PDF generated successfully",
+                            content = @Content(mediaType = "application/pdf")),
+                    @ApiResponse(responseCode = "404", description = "Bank Debit Voucher not found"),
+                    @ApiResponse(responseCode = "500", description = "Failed to generate PDF")
+            }
+    )
+    @GetMapping("/print/{transactionPoid}")
+    public ResponseEntity<?> print(
+            @Parameter(description = "Transaction POID", example = "21")
+            @PathVariable Long transactionPoid) {
+        try {
+            byte[] pdf = bankDebitVoucherService.print(transactionPoid);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=bank-debit-voucher-" + transactionPoid + ".pdf")
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .body(pdf);
+        } catch (Exception e) {
+            log.error("Failed to generate PDF for Bank Debit Voucher: {}", transactionPoid, e);
+            return error("Failed to generate PDF: " + e.getMessage(), 500);
         }
     }
 

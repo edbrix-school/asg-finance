@@ -1,6 +1,8 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.FilterRequestDto;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.finance.dto.*;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.util.UserContext;
@@ -16,14 +18,15 @@ import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
 
-import static com.asg.common.lib.dto.response.ApiResponse.internalServerError;
-import static com.asg.common.lib.dto.response.ApiResponse.success;
+import static com.asg.common.lib.dto.response.ApiResponse.*;
 
 @RestController
 @RequestMapping("/petty-cash-voucher")
@@ -61,6 +64,7 @@ public class PettyCashVoucherController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     public ResponseEntity<?> createPettyCashVoucher(
 
@@ -124,6 +128,7 @@ public class PettyCashVoucherController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{transactionPoid}")
     public ResponseEntity<?> updatePettyCash(
             @Parameter(
@@ -189,6 +194,7 @@ public class PettyCashVoucherController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{transactionPoid}")
     public ResponseEntity<?> getPettyCashDetailsById(
             @Parameter(description = "Transaction Poid reference identifier", required = true)
@@ -201,7 +207,6 @@ public class PettyCashVoucherController {
 
 
     }
-
     @Operation(
             summary = "Soft delete a TaxMaster",
             description = "Marks a TaxMaster as deleted without permanently removing its data",
@@ -227,6 +232,7 @@ public class PettyCashVoucherController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> softDeleteTaxMaster(
             @Parameter(description = "Transaction Poid reference identifier", required = true)
@@ -308,6 +314,7 @@ public class PettyCashVoucherController {
                     }
             )
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     public ResponseEntity<?> listTaxMaster(@ParameterObject Pageable pageable,
                                            @RequestBody(required = false) FilterRequestDto filters,
@@ -338,6 +345,7 @@ public class PettyCashVoucherController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/po-change")
     public ResponseEntity<?> loadFromPo(
             @Parameter(description = "Group POID", example = "1001")
@@ -374,6 +382,7 @@ public class PettyCashVoucherController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/ff-changes")
     public ResponseEntity<?> loadFromFf(
             @Parameter(description = "Group POID", example = "1001")
@@ -410,6 +419,7 @@ public class PettyCashVoucherController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/fda-change")
     public ResponseEntity<?> loadFromFda(
             @Parameter(description = "Group POID", example = "1001")
@@ -445,6 +455,7 @@ public class PettyCashVoucherController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/gl-balance")
     public ResponseEntity<?> loadPettyGlBalance(
             @Parameter(description = "Document Key POID", example = "5001")
@@ -468,6 +479,34 @@ public class PettyCashVoucherController {
         );
 
         return success("Balance fetched successfully", response);
+    }
+
+    @AllowedAction(UserRolesRightsEnum.PRINT)
+    @Operation(
+            summary = "Generate PDF for Petty Cash Voucher",
+            description = "Generate PDF report for a specific Petty Cash Voucher transaction",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "PDF generated successfully",
+                            content = @Content(mediaType = "application/pdf")),
+                    @ApiResponse(responseCode = "404", description = "Petty Cash Voucher not found"),
+                    @ApiResponse(responseCode = "500", description = "Failed to generate PDF")
+            }
+    )
+    @GetMapping("/print/{transactionPoid}")
+    public ResponseEntity<?> print(
+            @Parameter(description = "Transaction POID", example = "21")
+            @PathVariable Long transactionPoid) {
+        try {
+            byte[] pdf = pettyCashVoucherService.print(transactionPoid);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=petty-cash-voucher-" + transactionPoid + ".pdf")
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .body(pdf);
+        } catch (Exception e) {
+            log.error("Failed to generate PDF for Petty Cash Voucher: {}", transactionPoid, e);
+            return error("Failed to generate PDF: " + e.getMessage(), 500);
+        }
     }
 
     private ResponseEntity<?> successs(String message, Object data) {

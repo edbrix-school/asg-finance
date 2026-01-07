@@ -34,4 +34,6 @@ public interface CreditNoteService {
     
     Long getPartyGLPoid(Long partyPoid, String partyType);
 
+    byte[] print(Long transactionPoid) throws Exception;
+
 }

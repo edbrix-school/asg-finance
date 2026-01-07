@@ -1,6 +1,8 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.FilterRequestDto;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.*;
@@ -13,8 +15,11 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,7 +27,7 @@ import java.time.LocalDate;
 import java.util.Map;
 
 import static com.asg.common.lib.dto.response.ApiResponse.*;
-
+@Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/v1/journal-voucher")
@@ -153,6 +158,7 @@ public class JournalVoucherController {
                     }
             )
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     public ResponseEntity<?> createJournalVoucher(
             @Valid @RequestBody JournalVoucherRequest request
@@ -197,6 +203,7 @@ public class JournalVoucherController {
                     )
             )
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     public ResponseEntity<?> listJournalVouchers(
             @ParameterObject Pageable pageable,
@@ -261,6 +268,7 @@ public class JournalVoucherController {
                     )
             )
     )
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{transactionPoid}")
     public ResponseEntity<?> updateJournalVoucher(
             @Parameter(description = "Transaction POID", required = true)
@@ -289,6 +297,7 @@ public class JournalVoucherController {
             @ApiResponse(responseCode = "401", description = "Unauthorized"),
             @ApiResponse(responseCode = "500", description = "Database error")
     })
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping("/create-fixed-asset")
     public ResponseEntity<?> createFixedAsset(
             @Valid @RequestBody CreateFixedAssetRequest request
@@ -312,6 +321,7 @@ public class JournalVoucherController {
             @ApiResponse(responseCode = "401", description = "Unauthorized"),
             @ApiResponse(responseCode = "500", description = "Database error")
     })
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{transactionPoid}")
     public ResponseEntity<?> getJournalVoucherById(
             @Parameter(description = "Transaction POID", required = true)
@@ -336,6 +346,7 @@ public class JournalVoucherController {
             @ApiResponse(responseCode = "401", description = "Unauthorized"),
             @ApiResponse(responseCode = "500", description = "Database error")
     })
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> deleteJournalVoucher(
             @Parameter(description = "Transaction POID", required = true)
@@ -365,6 +376,7 @@ public class JournalVoucherController {
             @ApiResponse(responseCode = "409", description = "Already posted"),
             @ApiResponse(responseCode = "500", description = "Posting failed")
     })
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PostMapping("/{transactionPoid}/post")
     public ResponseEntity<?> postJournalVoucher(
             @Parameter(description = "Transaction POID", required = true)
@@ -394,6 +406,7 @@ public class JournalVoucherController {
             @ApiResponse(responseCode = "404", description = "Transaction not found"),
             @ApiResponse(responseCode = "500", description = "Database error")
     })
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{transactionPoid}/totals")
     public ResponseEntity<?> getGlDetailTotals(
             @Parameter(description = "Transaction POID", required = true)
@@ -421,6 +434,7 @@ public class JournalVoucherController {
             @ApiResponse(responseCode = "404", description = "Asset not found"),
             @ApiResponse(responseCode = "500", description = "Database error")
     })
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/asset-depreciation-details")
     public ResponseEntity<?> getAssetDepreciationDetails(
             @Valid @RequestBody AssetDepreciationRequest request
@@ -445,6 +459,7 @@ public class JournalVoucherController {
             @ApiResponse(responseCode = "404", description = "Asset not found"),
             @ApiResponse(responseCode = "500", description = "Database error")
     })
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/asset-capitalization-details")
     public ResponseEntity<?> getAssetCapitalizationDetails(
             @Valid @RequestBody AssetDepreciationRequest request
@@ -471,6 +486,7 @@ public class JournalVoucherController {
             @ApiResponse(responseCode = "404", description = "Asset detail not found"),
             @ApiResponse(responseCode = "500", description = "Database error")
     })
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{transactionPoid}/asset-details/{sn}")
     public ResponseEntity<?> updateAssetDetail(
             @Parameter(description = "Transaction POID", required = true)
@@ -502,6 +518,7 @@ public class JournalVoucherController {
             @ApiResponse(responseCode = "404", description = "Currency rate not found"),
             @ApiResponse(responseCode = "500", description = "Database error")
     })
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/calculate-currency")
     public ResponseEntity<?> calculateCurrencyConversion(
             @Valid @RequestBody CurrencyConversionRequest request
@@ -513,6 +530,34 @@ public class JournalVoucherController {
             return badRequest(e.getMessage());
         } catch (Exception e) {
             return internalServerError("Failed to calculate currency conversion: " + e.getMessage());
+        }
+    }
+
+    @AllowedAction(UserRolesRightsEnum.PRINT)
+    @Operation(
+            summary = "Generate PDF for Journal Voucher",
+            description = "Generate PDF report for a specific Journal Voucher transaction",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "PDF generated successfully",
+                            content = @Content(mediaType = "application/pdf")),
+                    @ApiResponse(responseCode = "404", description = "Journal Voucher not found"),
+                    @ApiResponse(responseCode = "500", description = "Failed to generate PDF")
+            }
+    )
+    @GetMapping("/print/{transactionPoid}")
+    public ResponseEntity<?> print(
+            @Parameter(description = "Transaction POID", example = "92170")
+            @PathVariable Long transactionPoid) {
+        try {
+            byte[] pdf = journalVoucherService.print(transactionPoid);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=journal-voucher-" + transactionPoid + ".pdf")
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .body(pdf);
+        } catch (Exception e) {
+            log.error("Failed to generate PDF for Journal Voucher: {}", transactionPoid, e);
+            return error("Failed to generate PDF: " + e.getMessage(), 500);
         }
     }
 }

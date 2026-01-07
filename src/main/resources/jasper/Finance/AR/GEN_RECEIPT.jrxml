@@ -1,0 +1,355 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="GEN_RECEIPT" language="groovy" pageWidth="595" pageHeight="842" columnWidth="535" leftMargin="20" rightMargin="20" topMargin="18" bottomMargin="18" uuid="51f26c1c-332c-43f0-beb9-5722768520c7">
+    <property name="ireport.zoom" value="1.771561000000001"/>
+    <property name="ireport.x" value="0"/>
+    <property name="ireport.y" value="0"/>
+    <style name="Title" fontName="Times New Roman" fontSize="50" isBold="true" pdfFontName="Times-Bold"/>
+    <style name="SubTitle" forecolor="#736343" fontName="Arial" fontSize="18"/>
+    <style name="Column header" forecolor="#666666" fontName="Arial" fontSize="12" isBold="true" pdfFontName="Helvetica-Bold"/>
+    <style name="Detail" fontName="Arial" fontSize="12"/>
+    <style name="Row" mode="Transparent">
+        <conditionalStyle>
+            <conditionExpression><![CDATA[$V{REPORT_COUNT}%2 == 0]]></conditionExpression>
+            <style backcolor="#E6DAC3"/>
+        </conditionalStyle>
+    </style>
+    <parameter name="LOGIN_GROUP_POID" class="java.lang.String" isForPrompting="false">
+        <defaultValueExpression><![CDATA[1]]></defaultValueExpression>
+    </parameter>
+    <parameter name="LOGIN_COMP_POID" class="java.lang.String" isForPrompting="false">
+        <defaultValueExpression><![CDATA[1]]></defaultValueExpression>
+    </parameter>
+    <parameter name="LOGIN_USER_POID" class="java.lang.String" isForPrompting="false"/>
+    <parameter name="LOGIN_DIV_POID" class="java.lang.String" isForPrompting="false"/>
+    <parameter name="DOC_ID" class="java.lang.String">
+        <defaultValueExpression><![CDATA[]]></defaultValueExpression>
+    </parameter>
+    <parameter name="DOC_KEY_POID" class="java.lang.String"/>
+    <parameter name="SUBREPORT_DIR" class="java.lang.String" isForPrompting="false">
+        <defaultValueExpression><![CDATA["//10.100.100.159//ERP_Reports//Reports//"]]></defaultValueExpression>
+    </parameter>
+    <parameter name="SUB_HEADER" class="net.sf.jasperreports.engine.JasperReport"/>
+    <parameter name="BILL_SUBREPORT" class="net.sf.jasperreports.engine.JasperReport"/>
+    <parameter name="CHARGES_SUBREPORT" class="net.sf.jasperreports.engine.JasperReport"/>
+    <parameter name="PAYMENT_SUBREPORT" class="net.sf.jasperreports.engine.JasperReport"/>
+
+    <queryString>
+        <![CDATA[SELECT HDR.TRANSACTION_POID, HDR.TRANSACTION_DATE, GET_COMPANY_NAME(HDR.PRINT_DOC_COMP_ID) as COMPANY,
+HDR.DOC_REF, HDR.PRINT_DOC_COMP_ID, HDR.COMPANY_POID, FUNC_FOR_GL_ADDRESS(HDR.RCVD_OTH_POID) AS CREDIT_GL_ADDRESS,
+DECODE(HDR.RCVD_FROM_DTL_PRINT,NULL,GL.GL_DESCRIPTION,HDR.RCVD_FROM_DTL_PRINT) as RCVD_FROM,
+GL.GL_DESCRIPTION, HDR.RCPT_AMOUNT, HDR.CREATED_BY, HDR.INVOICE_AMOUNT, HDR.REMARKS,
+'Amount in words '||HDR.CURRENCY_CODE||' : '||FN_AMOUNT_IN_WORDS_COMMON( NVL(HDR.INVOICE_AMOUNT, 0), HDR.CURRENCY_CODE) as AMT_IN_WORDS,
+HDR.CURRENCY_CODE, HDR.CURRENCY_RATE
+FROM AR_GEN_RECEIPT_HDR HDR
+INNER JOIN GL_MASTER GL ON GL.GL_POID=HDR.RCVD_OTH_POID
+WHERE TRANSACTION_POID=$P{DOC_KEY_POID}]]>
+    </queryString>
+    <field name="TRANSACTION_POID" class="java.math.BigDecimal"/>
+    <field name="TRANSACTION_DATE" class="java.sql.Timestamp"/>
+    <field name="COMPANY" class="java.lang.String"/>
+    <field name="DOC_REF" class="java.lang.String"/>
+    <field name="PRINT_DOC_COMP_ID" class="java.math.BigDecimal"/>
+    <field name="COMPANY_POID" class="java.math.BigDecimal"/>
+    <field name="CREDIT_GL_ADDRESS" class="java.lang.String"/>
+    <field name="RCVD_FROM" class="java.lang.String"/>
+    <field name="GL_DESCRIPTION" class="java.lang.String"/>
+    <field name="RCPT_AMOUNT" class="java.math.BigDecimal"/>
+    <field name="CREATED_BY" class="java.lang.String"/>
+    <field name="INVOICE_AMOUNT" class="java.math.BigDecimal"/>
+    <field name="REMARKS" class="java.lang.String"/>
+    <field name="AMT_IN_WORDS" class="java.lang.String"/>
+    <field name="CURRENCY_CODE" class="java.lang.String"/>
+    <field name="CURRENCY_RATE" class="java.math.BigDecimal"/>
+    <variable name="TOTALAMT" class="java.math.BigDecimal"/>
+    <title>
+        <band height="119" splitType="Stretch">
+            <subreport isUsingCache="true">
+                <reportElement x="0" y="3" width="555" height="86" uuid="11dd97b8-4c92-45fe-85bb-3b9358474446"/>
+                <subreportParameter name="LOGIN_COMP_POID">
+                    <subreportParameterExpression><![CDATA[$F{PRINT_DOC_COMP_ID}]]></subreportParameterExpression>
+                </subreportParameter>
+                <subreportParameter name="LOGIN_DIV_POID">
+                    <subreportParameterExpression><![CDATA[$P{LOGIN_DIV_POID}]]></subreportParameterExpression>
+                </subreportParameter>
+                <connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+<!--                <subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "Templates//DocHeaderSubReport.jasper"]]></subreportExpression>-->
+                <subreportExpression><![CDATA[$P{SUB_HEADER}]]></subreportExpression>
+            </subreport>
+            <staticText>
+                <reportElement x="10" y="91" width="545" height="25" uuid="2fbb23e2-3586-41d6-a304-2d5a44d19aee"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="18" isBold="true" isItalic="false" isUnderline="false" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <text><![CDATA[RECEIPT]]></text>
+            </staticText>
+            <line>
+                <reportElement x="10" y="89" width="545" height="2" forecolor="#999999" uuid="c55c050b-0a1e-42b5-b367-ea36728b5ee8"/>
+                <graphicElement>
+                    <pen lineWidth="2.0"/>
+                </graphicElement>
+            </line>
+            <line>
+                <reportElement x="10" y="116" width="545" height="1" forecolor="#999999" uuid="523c27f0-48ea-438d-826c-9cdb20318f62"/>
+                <graphicElement>
+                    <pen lineWidth="2.0"/>
+                </graphicElement>
+            </line>
+        </band>
+    </title>
+    <pageHeader>
+        <band height="112" splitType="Stretch">
+            <textField isBlankWhenNull="true">
+                <reportElement x="442" y="-2" width="98" height="18" uuid="b89e929a-63b4-4f30-a5c2-debd57828084"/>
+                <textElement verticalAlignment="Middle">
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
+                    <paragraph leftIndent="3"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{DOC_REF}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement x="436" y="16" width="6" height="18" uuid="d617ef9e-af86-41e7-894e-ad604ec04ac1"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <text><![CDATA[:]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="346" y="16" width="90" height="18" uuid="31905794-eb9f-4e49-82a6-ff0f88c2d5d4"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="11" isBold="false"/>
+                </textElement>
+                <text><![CDATA[Date]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="436" y="-2" width="6" height="18" uuid="615ccb27-12ae-4986-bda6-080ec3f4feb0"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <text><![CDATA[:]]></text>
+            </staticText>
+            <textField pattern="dd-MMM-yyyy" isBlankWhenNull="true">
+                <reportElement x="442" y="16" width="98" height="18" uuid="5623a6e4-010b-4662-9fd3-1befe2ce6b4f"/>
+                <textElement verticalAlignment="Middle">
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
+                    <paragraph leftIndent="3"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{TRANSACTION_DATE}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement x="346" y="-2" width="90" height="18" uuid="8cf9315b-1352-4aff-9492-916bcf9ae42c"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="11" isBold="false" isUnderline="false"/>
+                </textElement>
+                <text><![CDATA[Doc Ref]]></text>
+            </staticText>
+            <textField isStretchWithOverflow="true" isBlankWhenNull="true">
+                <reportElement x="10" y="1" width="304" height="69" uuid="8e9ccd65-0470-4b85-8361-b534e6622242"/>
+                <textElement>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{CREDIT_GL_ADDRESS}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement x="346" y="34" width="90" height="18" uuid="e0a6415d-ed2e-4580-b35c-34a90c8801ce"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="11" isBold="false"/>
+                </textElement>
+                <text><![CDATA[Currency]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="436" y="34" width="6" height="18" uuid="1bc814fe-86ff-442f-87cd-3f5a6534dc22"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <text><![CDATA[:]]></text>
+            </staticText>
+            <textField isBlankWhenNull="true">
+                <reportElement x="442" y="34" width="98" height="18" uuid="cbc53da5-4288-4907-baee-f755a7ee7509"/>
+                <textElement verticalAlignment="Middle">
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
+                    <paragraph leftIndent="3"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{CURRENCY_CODE}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement x="346" y="52" width="90" height="18" uuid="91eef7cf-d284-4805-b4e4-f6f081c575e8"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="11" isBold="false"/>
+                </textElement>
+                <text><![CDATA[Receipt Amount]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="436" y="52" width="6" height="18" uuid="8aca20d9-def5-4444-810b-2bd63875ba08"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <text><![CDATA[:]]></text>
+            </staticText>
+            <textField pattern="#,##0.000" isBlankWhenNull="true">
+                <reportElement x="442" y="52" width="98" height="18" uuid="524af5ed-5293-4f63-b125-acaf7b70401f"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="11" isBold="true" pdfFontName="Helvetica-Bold"/>
+                    <paragraph leftIndent="3"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{INVOICE_AMOUNT}]]></textFieldExpression>
+                <patternExpression><![CDATA[$F{CURRENCY_CODE}=='BHD'?"#,##0.000":"#,##0.00"]]></patternExpression>
+            </textField>
+            <line>
+                <reportElement positionType="Float" x="10" y="89" width="530" height="2" forecolor="#999999" uuid="1067cc6a-3b91-4412-aa2d-379778331a9a"/>
+                <graphicElement>
+                    <pen lineWidth="2.0"/>
+                </graphicElement>
+            </line>
+            <staticText>
+                <reportElement x="346" y="70" width="90" height="18" uuid="1afdc153-52ad-4f7f-a5ab-5466520bcd53">
+                    <printWhenExpression><![CDATA[$F{CURRENCY_CODE} != "BHD"]]></printWhenExpression>
+                </reportElement>
+                <textElement verticalAlignment="Middle">
+                    <font size="12" isBold="false"/>
+                </textElement>
+                <text><![CDATA[Amount in BHD]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="436" y="70" width="6" height="18" uuid="cfc641ff-d4f4-4d05-83ce-6870962190d4">
+                    <printWhenExpression><![CDATA[$F{CURRENCY_CODE} != "BHD"]]></printWhenExpression>
+                </reportElement>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <text><![CDATA[:]]></text>
+            </staticText>
+            <textField pattern="#,##0.000" isBlankWhenNull="true">
+                <reportElement x="442" y="70" width="98" height="18" uuid="87c3ef64-310b-4765-a765-7c3324ca87d2">
+                    <printWhenExpression><![CDATA[$F{CURRENCY_CODE} != "BHD"]]></printWhenExpression>
+                </reportElement>
+                <textElement verticalAlignment="Middle">
+                    <font size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
+                    <paragraph leftIndent="3"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{RCPT_AMOUNT}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement positionType="Float" x="61" y="90" width="6" height="18" uuid="afedd4c7-ef76-49e7-b3a9-f6d1c8550813"/>
+                <textElement textAlignment="Center" verticalAlignment="Top">
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <text><![CDATA[:]]></text>
+            </staticText>
+            <staticText>
+                <reportElement positionType="Float" x="10" y="90" width="51" height="18" uuid="3cfd336b-9feb-4f0c-ad94-de762db28158"/>
+                <textElement verticalAlignment="Top">
+                    <font size="10" isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <text><![CDATA[Narration]]></text>
+            </staticText>
+            <textField isStretchWithOverflow="true" isBlankWhenNull="true">
+                <reportElement positionType="Float" x="69" y="90" width="471" height="18" uuid="49e0d343-f7d2-44f8-8dfe-be31addf6f71"/>
+                <textFieldExpression><![CDATA[$F{REMARKS}]]></textFieldExpression>
+            </textField>
+        </band>
+    </pageHeader>
+    <columnHeader>
+        <band splitType="Stretch"/>
+    </columnHeader>
+    <detail>
+        <band height="26" splitType="Stretch">
+            <subreport>
+                <reportElement x="10" y="0" width="530" height="24" uuid="c8877ff8-3884-441b-a307-3b85f44176be"/>
+                <subreportParameter name="DOC_KEY_POID">
+                    <subreportParameterExpression><![CDATA[$P{DOC_KEY_POID}]]></subreportParameterExpression>
+                </subreportParameter>
+                <connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+                <subreportExpression><![CDATA[$P{BILL_SUBREPORT}]]></subreportExpression>
+            </subreport>
+        </band>
+        <band height="30">
+            <subreport>
+                <reportElement x="10" y="4" width="530" height="24" uuid="f9f4f00f-1657-44d2-bc83-e492f29acee5"/>
+                <subreportParameter name="DOC_KEY_POID">
+                    <subreportParameterExpression><![CDATA[$P{DOC_KEY_POID}]]></subreportParameterExpression>
+                </subreportParameter>
+                <connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+                <subreportExpression><![CDATA[$P{CHARGES_SUBREPORT}]]></subreportExpression>
+            </subreport>
+            <line>
+                <reportElement x="10" y="2" width="530" height="1" uuid="604318db-0117-445b-ae42-56d04fce4a4d"/>
+                <graphicElement>
+                    <pen lineWidth="2.0" lineColor="#999999"/>
+                </graphicElement>
+            </line>
+        </band>
+        <band height="35">
+            <subreport>
+                <reportElement x="10" y="3" width="530" height="28" uuid="20956767-4468-4104-a966-76ebedb347cd"/>
+                <subreportParameter name="DOC_KEY_POID">
+                    <subreportParameterExpression><![CDATA[$P{DOC_KEY_POID}]]></subreportParameterExpression>
+                </subreportParameter>
+                <connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+                <subreportExpression><![CDATA[$P{PAYMENT_SUBREPORT}]]></subreportExpression>
+            </subreport>
+            <line>
+                <reportElement x="10" y="1" width="530" height="1" uuid="51129885-0d2c-4ef7-bdb4-1c4754c98640"/>
+                <graphicElement>
+                    <pen lineWidth="2.0" lineColor="#999999"/>
+                </graphicElement>
+            </line>
+        </band>
+    </detail>
+    <columnFooter>
+        <band splitType="Stretch"/>
+    </columnFooter>
+    <pageFooter>
+        <band height="105" splitType="Stretch">
+            <textField isBlankWhenNull="true">
+                <reportElement x="10" y="3" width="530" height="20" uuid="2895b3e0-3f27-4b67-9385-534103dc81cb"/>
+                <textElement>
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{AMT_IN_WORDS}]]></textFieldExpression>
+            </textField>
+            <line>
+                <reportElement x="10" y="0" width="530" height="1" uuid="2b7ef983-47ac-4727-bca7-88cef59c91a1"/>
+                <graphicElement>
+                    <pen lineWidth="2.0" lineColor="#999999"/>
+                </graphicElement>
+            </line>
+            <textField isBlankWhenNull="true">
+                <reportElement x="10" y="74" width="336" height="15" uuid="d2e601cb-262e-4aea-a140-929ff9eb7186"/>
+                <textElement verticalAlignment="Bottom">
+                    <font size="10" isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <textFieldExpression><![CDATA["For "+ $F{COMPANY}]]></textFieldExpression>
+            </textField>
+            <textField evaluationTime="Report" isBlankWhenNull="true">
+                <reportElement x="508" y="89" width="32" height="15" forecolor="#666666" uuid="af0f4871-44be-40e1-8440-56bc9e43f0be"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA[" " + $V{PAGE_NUMBER}]]></textFieldExpression>
+            </textField>
+            <textField isBlankWhenNull="true">
+                <reportElement x="448" y="89" width="60" height="15" forecolor="#666666" uuid="69be3812-9454-40b9-8ced-1db519615366"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA["Page "+$V{PAGE_NUMBER}+" of"]]></textFieldExpression>
+            </textField>
+            <textField isBlankWhenNull="true">
+                <reportElement x="10" y="89" width="75" height="15" forecolor="#736343" uuid="34f67890-ff4b-491f-abb0-50ecdd11b920"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="8" isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <textFieldExpression><![CDATA["ISO : " +$P{DOC_ID}]]></textFieldExpression>
+            </textField>
+            <line>
+                <reportElement x="10" y="23" width="530" height="1" uuid="810e067b-340c-4c50-9e19-44b04446d37f"/>
+                <graphicElement>
+                    <pen lineWidth="2.5" lineStyle="Double" lineColor="#999999"/>
+                </graphicElement>
+            </line>
+        </band>
+    </pageFooter>
+    <summary>
+        <band splitType="Stretch"/>
+    </summary>
+</jasperReport>

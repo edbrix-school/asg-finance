@@ -17,4 +17,5 @@ public interface BankDepositVoucherService {
     void softDeleteBankDepositVoucher(Long transactionPoid);
     Map<String, Object> listBankDepositVouchers(String documentId, FilterRequestDto filters, LocalDate startDate, LocalDate endDate, Pageable pageable);
     List<BankDepositVoucherDtlDto> loadPendingPayments(Long bankPoid, String type, String bankFilter);
+    byte[] print(Long transactionPoid) throws Exception;
 }

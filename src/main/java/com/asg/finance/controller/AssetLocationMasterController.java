@@ -1,5 +1,8 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
+
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.AssetLocationMasterRequestDto;
 import com.asg.finance.dto.AssetLocationMasterResponseDto;
@@ -70,6 +73,7 @@ public class AssetLocationMasterController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     public ResponseEntity<?> createAssetLocation(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
@@ -128,6 +132,7 @@ public class AssetLocationMasterController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{locationPoid}")
     public ResponseEntity<?> updateAssetLocationMaster(
             @Parameter(description = "AssetLocation  ID (Poid) to update", required = true, example = "51001")
@@ -146,7 +151,6 @@ public class AssetLocationMasterController {
             return internalServerError(ex.getMessage());
         }
     }
-
 
     @Operation(
             summary = "Soft delete a AssetLocation ",
@@ -173,6 +177,7 @@ public class AssetLocationMasterController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{locationPoid}")
     public ResponseEntity<?> softDeleteAssetMaster(
             @Parameter(description = "locationPoid reference identifier", required = true)
@@ -212,6 +217,7 @@ public class AssetLocationMasterController {
             },
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{locationPoid}")
     public ResponseEntity<?> getAssetMasterById(
             @Parameter(description = "locationPoid reference identifier", required = true)
@@ -295,6 +301,7 @@ public class AssetLocationMasterController {
     )
 
 
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     public ResponseEntity<?> getAssetLocations(@ParameterObject Pageable pageable,
                                                @RequestBody(required = false) FilterRequestDto filters) {

@@ -102,11 +102,6 @@ public class TelexFileGenerateProcRepositoryImpl implements TelexFileGeneratePro
     }
 
     @Override
-    public String validateBeneficiaryDetails(Long debitTransactionPoid) {
-        return null;
-    }
-
-    @Override
     public String createBankFileBatchNbb(Long transactionPoid, Long userPoid, Long companyPoid) {
         try {
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("PROC_BANK_FILE_CREATE_BCH_NBB");

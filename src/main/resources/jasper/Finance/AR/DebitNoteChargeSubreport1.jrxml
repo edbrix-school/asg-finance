@@ -1,0 +1,227 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="DebitNoteChargeSubreport1" language="groovy" pageWidth="521" pageHeight="802" columnWidth="521" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="a07fe0ef-932d-4384-ad4f-c652111ff74e">
+    <property name="ireport.zoom" value="1.3310000000000015"/>
+    <property name="ireport.x" value="0"/>
+    <property name="ireport.y" value="0"/>
+    <parameter name="DOC_KEY_POID" class="java.lang.String">
+        <defaultValueExpression><![CDATA[]]></defaultValueExpression>
+    </parameter>
+    <queryString>
+        <![CDATA[SELECT TRANSACTION_POID, CHARGE_NAME,DESCRIPTION, REMARKS,REMARKS_PRINTABLE, CURRENCY_CODE, CHECK_ALL,
+USD_ONLY,TAX_PERCENTAGE , SUM(CHARGE_AMOUNT) AS CHARGE_AMOUNT,
+SUM(CASE WHEN USD_ONLY = 'Y' THEN USD_TAX_AMOUNT ELSE TAX_AMOUNT END)  AS TAX_AMOUNT,
+SUM(CASE WHEN USD_ONLY = 'Y' THEN USD_ACTUAL_AMOUNT ELSE ACTUAL_AMOUNT END) AS ACTUAL_AMOUNT,
+SUM(PDA_AMOUNT) AS PDA_AMOUNT, SUM(USD) AS USD,
+SUM(TAX_AMOUNT) AS BHD_TAX_AMOUNT,
+SUM(ACTUAL_AMOUNT) AS BHD_ACTUAL_AMOUNT,
+CASE WHEN  EXTRACT(YEAR FROM TRANSACTION_DATE)>2018  THEN
+RTN_GLOBAL_PARAMETER( 1,'GLOBAL_TAX_APPLICABLE','TAX',COMPANY_POID,NULL) ELSE 'N' END AS TAX_APPLICABLE
+FROM(
+    SELECT DNCD.TRANSACTION_POID,DECODE(DNH.REMARKS_PRINTABLE,'N',SCM.CHARGE_NAME,'Y',NVL(DNCD.REMARKS,SCM.CHARGE_NAME)) AS CHARGE_NAME,
+    (DNCD.CHARGE_AMOUNT+NVL(DNCD.TAX_AMOUNT,0)) AS CHARGE_AMOUNT,DNH.USD_ONLY,DNCD.DESCRIPTION, DNCD.REMARKS,
+    DNCD.CHECK_ALL, DNCD.PDA_AMOUNT, DNH.REMARKS_PRINTABLE,DNH.COMPANY_POID,
+    DNH.CURRENCY_CODE, ROUND((DNCD.CHARGE_AMOUNT+NVL(DNCD.TAX_AMOUNT,0))/DNH.CURRENCY_RATE,2) AS USD,
+    CASE WHEN GTM.TAX_CATEGORY = 'E' THEN 'E'  ELSE CAST(NVL(DNCD.TAX_PERCENTAGE,0 ) AS VARCHAR(10)) END  AS TAX_PERCENTAGE ,
+    NVL(DNCD.TAX_AMOUNT,0) AS TAX_AMOUNT,DNCD.CHARGE_AMOUNT AS ACTUAL_AMOUNT, DNH.CURRENCY_RATE, DNH.TRANSACTION_DATE,
+    ROUND(NVL(DNCD.TAX_AMOUNT,0)/CURRENCY_RATE,2) AS USD_TAX_AMOUNT,
+    ROUND(DNCD.CHARGE_AMOUNT/CURRENCY_RATE,2) AS USD_ACTUAL_AMOUNT
+    FROM AR_DEBIT_NOTE_CHARGE_DTL DNCD
+    INNER JOIN AR_DEBIT_NOTE_HDR DNH ON DNH.TRANSACTION_POID = DNCD.TRANSACTION_POID
+    LEFT JOIN SHIP_CHARGE_MASTER SCM ON SCM.CHARGE_POID=DNCD.CHARGE_POID
+    LEFT JOIN GLOBAL_TAX_MASTER GTM ON GTM.TAX_POID =  DNCD.TAX_POID
+    WHERE DNCD.TRANSACTION_POID =  $P{DOC_KEY_POID}
+   )
+GROUP BY TRANSACTION_POID, CHARGE_NAME, DESCRIPTION, REMARKS,REMARKS_PRINTABLE,
+CURRENCY_CODE,CHECK_ALL, USD_ONLY, TAX_PERCENTAGE, COMPANY_POID, TRANSACTION_DATE]]>
+    </queryString>
+    <field name="TRANSACTION_POID" class="java.math.BigDecimal"/>
+    <field name="CHARGE_NAME" class="java.lang.String"/>
+    <field name="DESCRIPTION" class="java.lang.String"/>
+    <field name="REMARKS" class="java.lang.String"/>
+    <field name="REMARKS_PRINTABLE" class="java.lang.String"/>
+    <field name="CURRENCY_CODE" class="java.lang.String"/>
+    <field name="CHECK_ALL" class="java.lang.String"/>
+    <field name="USD_ONLY" class="java.lang.String"/>
+    <field name="TAX_PERCENTAGE" class="java.lang.String"/>
+    <field name="CHARGE_AMOUNT" class="java.math.BigDecimal"/>
+    <field name="TAX_AMOUNT" class="java.math.BigDecimal"/>
+    <field name="ACTUAL_AMOUNT" class="java.math.BigDecimal"/>
+    <field name="PDA_AMOUNT" class="java.math.BigDecimal"/>
+    <field name="USD" class="java.math.BigDecimal"/>
+    <field name="BHD_TAX_AMOUNT" class="java.math.BigDecimal"/>
+    <field name="BHD_ACTUAL_AMOUNT" class="java.math.BigDecimal"/>
+    <field name="TAX_APPLICABLE" class="java.lang.String"/>
+    <variable name="TOTAL_AMOUNT" class="java.math.BigDecimal" calculation="Sum">
+        <variableExpression><![CDATA[$F{CHARGE_AMOUNT}]]></variableExpression>
+    </variable>
+    <variable name="TOTAL_USD" class="java.math.BigDecimal" calculation="Sum">
+        <variableExpression><![CDATA[$F{USD}]]></variableExpression>
+    </variable>
+    <variable name="TOTAL_TAX" class="java.math.BigDecimal" calculation="Sum">
+        <variableExpression><![CDATA[$F{BHD_TAX_AMOUNT}]]></variableExpression>
+    </variable>
+    <variable name="TOTAL_EXCL_VAT" class="java.math.BigDecimal" calculation="Sum">
+        <variableExpression><![CDATA[$F{BHD_ACTUAL_AMOUNT}]]></variableExpression>
+    </variable>
+    <variable name="RETURN_AMOUNT" class="java.math.BigDecimal" calculation="Sum">
+        <variableExpression><![CDATA[($F{CURRENCY_CODE}=="BHD") ? $F{CHARGE_AMOUNT} : $V{TOTAL_USD}]]></variableExpression>
+    </variable>
+    <pageHeader>
+        <band height="18" splitType="Stretch">
+            <line>
+                <reportElement x="0" y="1" width="521" height="1" forecolor="#000000" uuid="3114fa01-715c-4b8a-b617-919a9150100c"/>
+                <graphicElement>
+                    <pen lineWidth="0.5" lineColor="#999999"/>
+                </graphicElement>
+            </line>
+            <line>
+                <reportElement x="0" y="16" width="521" height="1" forecolor="#000000" uuid="9dce6f88-9014-412f-8d57-79a01fe34c74"/>
+                <graphicElement>
+                    <pen lineWidth="1.5" lineColor="#999999"/>
+                </graphicElement>
+            </line>
+            <staticText>
+                <reportElement x="0" y="2" width="34" height="15" uuid="b294cfba-dfe0-49a0-9727-b478a3a21f5d"/>
+                <textElement verticalAlignment="Middle">
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <text><![CDATA[Sl No]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="34" y="2" width="184" height="15" uuid="157c5818-1a80-4340-8a60-083291a97a1a"/>
+                <textElement verticalAlignment="Middle">
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <text><![CDATA[Description]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="386" y="2" width="62" height="15" uuid="9b70a923-429b-4a9f-aca5-03be49bed7fe">
+                    <printWhenExpression><![CDATA[$F{CURRENCY_CODE}.equals("USD") && $F{USD_ONLY}=="N"]]></printWhenExpression>
+                </reportElement>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <text><![CDATA[Amount USD]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="449" y="2" width="46" height="15" uuid="2344d0f3-544d-4d2e-b897-b9552ab38c0d"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <text><![CDATA[Amount]]></text>
+            </staticText>
+            <textField isBlankWhenNull="true">
+                <reportElement x="495" y="2" width="26" height="15" uuid="0847cc1c-65c9-4543-b048-86498b6b5aca"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
+                    <paragraph leftIndent="1" rightIndent="3"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{USD_ONLY}=="N" ? "BHD" : $F{CURRENCY_CODE}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement x="238" y="2" width="40" height="15" uuid="8b06f2ce-beb4-4399-bb3d-93c407c05070">
+                    <printWhenExpression><![CDATA[$F{TAX_APPLICABLE}== 'Y']]></printWhenExpression>
+                </reportElement>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <text><![CDATA[Amount]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="281" y="2" width="35" height="15" uuid="9af3b1f6-ab38-4ed5-af29-b935bc312ddf">
+                    <printWhenExpression><![CDATA[$F{TAX_APPLICABLE}== 'Y']]></printWhenExpression>
+                </reportElement>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <text><![CDATA[VAT %]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="319" y="2" width="64" height="15" uuid="b73603fd-315c-4410-8451-98dcf7967c05">
+                    <printWhenExpression><![CDATA[$F{TAX_APPLICABLE}== 'Y']]></printWhenExpression>
+                </reportElement>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <text><![CDATA[VAT Amount]]></text>
+            </staticText>
+        </band>
+    </pageHeader>
+    <columnHeader>
+        <band splitType="Stretch"/>
+    </columnHeader>
+    <detail>
+        <band height="32" splitType="Stretch">
+            <textField isBlankWhenNull="true">
+                <reportElement x="0" y="0" width="34" height="20" uuid="f6ecbdce-b652-443a-8da7-52cbc2b1f591"/>
+                <textElement verticalAlignment="Middle">
+                    <font isBold="false"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$V{REPORT_COUNT}]]></textFieldExpression>
+            </textField>
+            <textField isStretchWithOverflow="true" isBlankWhenNull="true">
+                <reportElement x="50" y="16" width="183" height="15" uuid="fe96af65-c28e-4a4e-8182-f7f94f8a0f4c">
+                    <printWhenExpression><![CDATA[$F{REMARKS_PRINTABLE}.equals("N" )]]></printWhenExpression>
+                </reportElement>
+                <textElement verticalAlignment="Middle">
+                    <font size="8" isBold="false"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{REMARKS}]]></textFieldExpression>
+            </textField>
+            <textField pattern="#,##0.000" isBlankWhenNull="true">
+                <reportElement x="449" y="0" width="72" height="20" uuid="7e3c17fd-8ba4-4432-95b2-feaa2c2a24a4">
+                    <printWhenExpression><![CDATA[$F{USD_ONLY}=="N"]]></printWhenExpression>
+                </reportElement>
+                <textElement textAlignment="Right" verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$F{CHARGE_AMOUNT}]]></textFieldExpression>
+            </textField>
+            <textField pattern="#,##0.00" isBlankWhenNull="true">
+                <reportElement x="386" y="0" width="62" height="20" uuid="596f188c-809b-41cc-a638-8021667fec6c">
+                    <printWhenExpression><![CDATA[$F{CURRENCY_CODE}.equals("USD") && $F{USD_ONLY}=="N"]]></printWhenExpression>
+                </reportElement>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font isBold="false"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{USD}]]></textFieldExpression>
+            </textField>
+            <textField isBlankWhenNull="true">
+                <reportElement x="34" y="0" width="199" height="15" uuid="ed2b089c-89a9-4c8e-b06c-280cc93b64f2"/>
+                <textElement verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$F{CHARGE_NAME}]]></textFieldExpression>
+            </textField>
+            <textField pattern="#,##0.00" isBlankWhenNull="true">
+                <reportElement x="449" y="0" width="72" height="20" uuid="92b30e42-a1e9-4c80-8b07-94fed74a33f0">
+                    <printWhenExpression><![CDATA[$F{CURRENCY_CODE}.equals("USD") && $F{USD_ONLY}=="Y"]]></printWhenExpression>
+                </reportElement>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <paragraph rightIndent="1"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{USD}]]></textFieldExpression>
+            </textField>
+            <textField pattern="#,##0.00" isBlankWhenNull="true">
+                <reportElement x="281" y="0" width="35" height="20" uuid="9b2372de-0258-4186-8c2b-6acd3b6dc922">
+                    <printWhenExpression><![CDATA[$F{TAX_APPLICABLE}== 'Y']]></printWhenExpression>
+                </reportElement>
+                <textElement textAlignment="Center" verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$F{TAX_PERCENTAGE}]]></textFieldExpression>
+            </textField>
+            <textField pattern="#,##0.000" isBlankWhenNull="true">
+                <reportElement x="236" y="0" width="43" height="20" uuid="4f94d42a-50b9-4530-8ed7-c3d6212e0109">
+                    <printWhenExpression><![CDATA[$F{TAX_APPLICABLE}== 'Y']]></printWhenExpression>
+                </reportElement>
+                <textElement textAlignment="Right" verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$F{ACTUAL_AMOUNT}]]></textFieldExpression>
+            </textField>
+            <textField pattern="#,##0.000" isBlankWhenNull="true">
+                <reportElement x="319" y="0" width="64" height="20" uuid="a010287f-03fc-48cc-b354-6b5e3bf9975f">
+                    <printWhenExpression><![CDATA[$F{TAX_APPLICABLE}== 'Y']]></printWhenExpression>
+                </reportElement>
+                <textElement textAlignment="Right" verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$F{TAX_AMOUNT}]]></textFieldExpression>
+            </textField>
+        </band>
+    </detail>
+    <lastPageFooter>
+        <band height="2"/>
+    </lastPageFooter>
+</jasperReport>

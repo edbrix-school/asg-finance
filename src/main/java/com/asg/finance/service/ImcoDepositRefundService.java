@@ -20,4 +20,5 @@ public interface ImcoDepositRefundService {
     Map<String, Object> listImcoDepositRefund(String documentId, FilterRequestDto filters, LocalDate startDate, LocalDate endDate, Pageable pageable);
     ImcoRefundLoadResponseDto getChequeDetails(Long receiptPoid, String receiptNumber) throws SQLException;
     GlPostingViewResponseDto getGlPostingDetails(String docId, Long transactionPoid);
+    byte[] print(Long transactionPoid) throws Exception;
 }

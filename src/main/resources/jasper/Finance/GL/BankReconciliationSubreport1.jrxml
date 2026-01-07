@@ -1,0 +1,228 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="BankReconciliationSubreport1" language="groovy" pageWidth="530" pageHeight="842" columnWidth="530" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="b6d0b934-010b-4237-a2b5-d6145f1f58b6">
+	<property name="ireport.zoom" value="1.9487171000000054"/>
+	<property name="ireport.x" value="0"/>
+	<property name="ireport.y" value="0"/>
+	<parameter name="BANK_POID" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="LOGIN_COMP_POID" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="DOC_FROM_DATE" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="DOC_TO_DATE" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<queryString>
+		<![CDATA[SELECT GL.TRANSACTION_GROUP_POID,GL.TRANSACTION_COMPANY_POID, GL.DOC_ID ,GL.TRANSACTION_POID, GL.TRANSACTION_DATE,
+       GL.DOC_REF, GL.CHEQUE_REF, GL.DET_ROW_ID,GL.NARRATION, GL.GL_COMPANY_POID, GL.GL_POID, GL.CR_AMT, GL.DR_AMT,T.CLEARANCE_DATE
+       FROM  GL_LEDGER GL
+       LEFT JOIN( SELECT
+                 GL.TRANSACTION_GROUP_POID,GL.TRANSACTION_COMPANY_POID, GL.DOC_ID , GL.GL_POID , GL.DOC_REF,
+                 GL.TRANSACTION_POID,GL.TRANSACTION_DATE, GL.DET_ROW_ID, GL.GL_COMPANY_POID,GL.CLEARANCE_DATE
+           FROM GL_BANK_RECONCILIATION_TABLE GL
+           WHERE GL.GL_COMPANY_POID =$P{LOGIN_COMP_POID} AND GL.GL_POID=(SELECT GL_POID FROM GL_BANK_MASTER WHERE BANK_POID=$P{BANK_POID})
+                 )T ON GL.TRANSACTION_GROUP_POID=T.TRANSACTION_GROUP_POID AND
+                       GL.TRANSACTION_COMPANY_POID=T.TRANSACTION_COMPANY_POID AND
+                       GL.DOC_ID=T.DOC_ID AND
+                       GL.GL_POID=T.GL_POID AND
+                       GL.DOC_REF=T.DOC_REF AND
+                       GL.TRANSACTION_POID=T.TRANSACTION_POID AND
+                       GL.TRANSACTION_DATE=T.TRANSACTION_DATE AND
+                       GL.DET_ROW_ID=T.DET_ROW_ID AND
+                       GL.GL_COMPANY_POID=T.GL_COMPANY_POID
+       WHERE ( GL.TRANSACTION_GROUP_POID,GL.TRANSACTION_COMPANY_POID, GL.DOC_ID , GL.GL_POID , GL.DOC_REF,
+               GL.TRANSACTION_POID,GL.TRANSACTION_DATE, GL.DET_ROW_ID, GL.GL_COMPANY_POID
+             ) IN
+             (
+               SELECT
+                    GL.TRANSACTION_GROUP_POID,GL.TRANSACTION_COMPANY_POID, GL.DOC_ID , GL.GL_POID , GL.DOC_REF,
+                    GL.TRANSACTION_POID,GL.TRANSACTION_DATE, GL.DET_ROW_ID, GL.GL_COMPANY_POID
+               FROM GL_LEDGER GL
+               WHERE GL.GL_COMPANY_POID =$P{LOGIN_COMP_POID}  AND GL.GL_POID=(SELECT GL_POID FROM GL_BANK_MASTER WHERE BANK_POID=$P{BANK_POID})
+                           AND (TRUNC(GL.TRANSACTION_DATE) BETWEEN '01-JAN-2014' AND $P{DOC_TO_DATE})
+               MINUS
+
+               SELECT
+                    GL.TRANSACTION_GROUP_POID,GL.TRANSACTION_COMPANY_POID, GL.DOC_ID , GL.GL_POID , GL.DOC_REF,
+                    GL.TRANSACTION_POID,GL.TRANSACTION_DATE, DET_ROW_ID, GL_COMPANY_POID
+                FROM GL_BANK_RECONCILIATION_TABLE GL
+                WHERE GL.GL_COMPANY_POID =$P{LOGIN_COMP_POID} AND GL.GL_POID=(SELECT GL_POID FROM GL_BANK_MASTER WHERE BANK_POID=$P{BANK_POID})
+                      AND (TRUNC(GL.CLEARANCE_DATE)<= $P{DOC_TO_DATE})
+              )
+	    AND (NVL(GL.CR_AMT,0)!=0)
+              ORDER BY GL.TRANSACTION_DATE]]>
+	</queryString>
+	<field name="TRANSACTION_GROUP_POID" class="java.math.BigDecimal"/>
+	<field name="TRANSACTION_COMPANY_POID" class="java.math.BigDecimal"/>
+	<field name="DOC_ID" class="java.lang.String"/>
+	<field name="TRANSACTION_POID" class="java.math.BigDecimal"/>
+	<field name="TRANSACTION_DATE" class="java.sql.Timestamp"/>
+	<field name="DOC_REF" class="java.lang.String"/>
+	<field name="CHEQUE_REF" class="java.lang.String"/>
+	<field name="DET_ROW_ID" class="java.math.BigDecimal"/>
+	<field name="NARRATION" class="java.lang.String"/>
+	<field name="GL_COMPANY_POID" class="java.math.BigDecimal"/>
+	<field name="GL_POID" class="java.math.BigDecimal"/>
+	<field name="CR_AMT" class="java.math.BigDecimal"/>
+	<field name="DR_AMT" class="java.math.BigDecimal"/>
+	<field name="CLEARANCE_DATE" class="java.sql.Timestamp"/>
+	<variable name="DR_TOTAL" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$F{DR_AMT}]]></variableExpression>
+	</variable>
+	<variable name="CR_TOTAL" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$F{CR_AMT}]]></variableExpression>
+	</variable>
+	<columnHeader>
+		<band height="39" splitType="Stretch">
+			<staticText>
+				<reportElement x="86" y="18" width="67" height="20" uuid="431b9fbe-ea50-452f-a629-32a4c4a62e46"/>
+				<textElement verticalAlignment="Middle">
+					<font size="9" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Doc Ref]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="30" y="18" width="55" height="20" uuid="b9fb30e5-d83f-4637-a51e-34c4ffec3597"/>
+				<textElement verticalAlignment="Middle">
+					<font size="9" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Date]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="153" y="18" width="71" height="20" uuid="0a1bfba3-280a-4b4f-b76c-ee81446c5cd0"/>
+				<textElement verticalAlignment="Middle">
+					<font size="9" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Cheque Ref]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="224" y="18" width="166" height="20" uuid="f94421d6-e204-4d52-a26b-eddd7fbe1dd7"/>
+				<textElement verticalAlignment="Middle">
+					<font size="9" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Narration]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="450" y="18" width="80" height="20" uuid="522e5ec4-4710-43c3-83c7-3d81b171f680"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font size="9" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Amount]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="0" y="18" width="30" height="20" uuid="ec3a714a-c6f9-4e13-811d-b8f83b041098"/>
+				<textElement verticalAlignment="Middle">
+					<font size="9" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Sl No]]></text>
+			</staticText>
+			<line>
+				<reportElement x="0" y="38" width="530" height="1" forecolor="#999999" uuid="9a33d7db-c878-4ce8-96e4-5c8aa6b61c18"/>
+				<graphicElement>
+					<pen lineWidth="1.0" lineStyle="Solid"/>
+				</graphicElement>
+			</line>
+			<line>
+				<reportElement x="0" y="18" width="530" height="1" forecolor="#999999" uuid="dbab9884-dec5-4d34-ad35-baedc08e2141"/>
+			</line>
+			<staticText>
+				<reportElement x="0" y="0" width="530" height="18" uuid="ddaf0cb4-ae27-408c-9fa6-94aa7d611ed9"/>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Add:Cheque Issued but not Presented to the Bank]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="390" y="19" width="60" height="20" uuid="78143c5c-1758-4537-a3b4-559738d0a473"/>
+				<textElement verticalAlignment="Middle">
+					<font size="9" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Recon-Date]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="22" splitType="Stretch">
+			<textField pattern="dd-MMM-yyyy" isBlankWhenNull="true">
+				<reportElement x="30" y="0" width="55" height="20" uuid="ea81619c-6624-4888-b405-d39b1fc391d3"/>
+				<textElement verticalAlignment="Middle">
+					<font size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{TRANSACTION_DATE}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="0" y="0" width="30" height="20" uuid="c0c123b1-77da-4451-b99a-81a7755dccd1"/>
+				<textElement verticalAlignment="Middle">
+					<font size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{REPORT_COUNT}]]></textFieldExpression>
+			</textField>
+			<line>
+				<reportElement positionType="FixRelativeToBottom" x="0" y="20" width="530" height="1" forecolor="#999999" uuid="38d93234-3abc-432d-97f1-d53dafb942e0"/>
+				<graphicElement>
+					<pen lineWidth="0.5" lineStyle="Dashed"/>
+				</graphicElement>
+			</line>
+			<textField isBlankWhenNull="true">
+				<reportElement x="86" y="0" width="67" height="20" uuid="983eea4e-0f8e-40ec-ab70-15c3b3b15d87"/>
+				<textElement verticalAlignment="Middle">
+					<font size="8" isBold="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{DOC_REF}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.000" isBlankWhenNull="true">
+				<reportElement x="450" y="0" width="80" height="19" uuid="5e473656-0273-4d3a-86d9-f4c7414035b3"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{CR_AMT}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement x="224" y="0" width="166" height="20" uuid="c173e22b-d97f-40fc-8023-e123ec56cbaa"/>
+				<textElement verticalAlignment="Middle">
+					<font size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{NARRATION}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="153" y="0" width="71" height="20" uuid="8aa91a22-9a44-4cdd-a1cf-fd712fbd7040"/>
+				<textElement verticalAlignment="Middle">
+					<font size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{CHEQUE_REF}]]></textFieldExpression>
+			</textField>
+			<textField pattern="dd-MMM-yyyy" isBlankWhenNull="true">
+				<reportElement x="390" y="0" width="60" height="20" uuid="d8af082a-7ca9-4adf-bc76-e79faabeeb89"/>
+				<textElement verticalAlignment="Middle">
+					<font size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{CLEARANCE_DATE}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<lastPageFooter>
+		<band height="21">
+			<rectangle>
+				<reportElement x="439" y="1" width="91" height="20" backcolor="#CCCCCC" uuid="3dc37404-73ce-4230-b8a4-60e1cbe8b963"/>
+			</rectangle>
+			<textField pattern="#,##0.000" isBlankWhenNull="true">
+				<reportElement x="439" y="1" width="91" height="20" uuid="3937b65a-3ba1-4eef-9d6f-0cf4d6f3fb93"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{CR_TOTAL}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="390" y="1" width="49" height="20" uuid="f792348f-7551-4efa-9304-13d00cbcaa14"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Total:-]]></text>
+			</staticText>
+		</band>
+	</lastPageFooter>
+</jasperReport>
+

@@ -1,5 +1,8 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
+
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.ChequeReturnEditRequest;
 import com.asg.finance.dto.ChequeReturnRequest;
@@ -50,6 +53,7 @@ public class ChequeReturnController {
                     schema = @Schema(implementation = ChequeReturnRequest.class)
             )
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     public ResponseEntity<?> createChequeReturn(
             @Valid @RequestBody ChequeReturnRequest request
@@ -87,6 +91,7 @@ public class ChequeReturnController {
                     schema = @Schema(implementation = ChequeReturnEditRequest.class)
             )
     )
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PatchMapping("/{transactionPoid}")
     public ResponseEntity<?> partiallyUpdateChequeReturn(
             @Parameter(description = "TRANSACTION_POID", required = true)
@@ -126,6 +131,7 @@ public class ChequeReturnController {
                     schema = @Schema(implementation = ChequeReturnRequest.class)
             )
     )
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{transactionPoid}")
     public ResponseEntity<?> fullUpdateChequeReturn(
             @Parameter(description = "TRANSACTION_POID", required = true)
@@ -154,6 +160,7 @@ public class ChequeReturnController {
                     @ApiResponse(responseCode = "404", description = "Not found")
             }
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{transactionPoid}")
     public ResponseEntity<?> getChequeReturn(
             @Parameter(description = "TRANSACTION_POID", required = true) @PathVariable Long transactionPoid
@@ -176,6 +183,7 @@ public class ChequeReturnController {
                     @ApiResponse(responseCode = "404", description = "Not found")
             }
     )
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> softDeleteChequeReturn(
             @Parameter(description = "TRANSACTION_POID", required = true) @PathVariable Long transactionPoid
@@ -233,6 +241,7 @@ public class ChequeReturnController {
                             content = @Content(mediaType = "application/json"))
             }
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping(value = "/list", produces = "application/json", consumes = "application/json")
     public ResponseEntity<?> listOfRecordsWithGenericSearch(
             @ParameterObject
@@ -307,6 +316,7 @@ public class ChequeReturnController {
         return success("Cheque Return list fetched successfully", ChequeReturnList);
     }
 
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/load")
     public ResponseEntity<?> loadChequeReturn(
             @RequestParam @Parameter(description = "Cheque number", required = true, example = "348138") String chequeNumber,

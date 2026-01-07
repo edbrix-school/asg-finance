@@ -1,5 +1,7 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.CreditNoteHeaderDto;
 import com.asg.finance.dto.DefaultCreditValuesDto;
@@ -12,12 +14,15 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import com.asg.common.lib.dto.FilterDto;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -171,6 +176,7 @@ public class CreditNoteController {
                     }
             )
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     public ResponseEntity<?> createCreditNote(
             @Valid @RequestBody CreditNoteHeaderDto creditNoteDto) {
@@ -183,6 +189,7 @@ public class CreditNoteController {
             description = "Retrieves complete credit note details including header, GL entries, and charge details by transaction POID.",
             tags = {"Credit Note Management"}
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{transactionPoid}")
     public ResponseEntity<?> getCreditNoteById(
             @PathVariable Long transactionPoid) {
@@ -259,6 +266,7 @@ public class CreditNoteController {
                     }
             )
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     public ResponseEntity<?> getCreditNoteList(
             @ParameterObject Pageable pageable,
@@ -404,6 +412,7 @@ public class CreditNoteController {
                     }
             )
     )
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{transactionPoid}")
     public ResponseEntity<?> updateCreditNote(
             @PathVariable Long transactionPoid,
@@ -417,6 +426,7 @@ public class CreditNoteController {
             description = "Performs soft delete by setting DELETED='Y'. Validates deletion permissions and maintains referential integrity.",
             tags = {"Credit Note Management"}
     )
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> deleteCreditNote(
             @PathVariable Long transactionPoid,
@@ -443,6 +453,7 @@ public class CreditNoteController {
                 - Total Amount etc.
                 """
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/ref/ff/{refNo}")
     public ResponseEntity<?> getFFInvoiceCharges(
             @PathVariable Long refNo,
@@ -467,6 +478,7 @@ public class CreditNoteController {
                 - Manifest references
                 """
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/ref/sh/{refNo}")
     public ResponseEntity<?> getSHInvoiceCharges(
             @PathVariable Long refNo,
@@ -482,6 +494,7 @@ public class CreditNoteController {
                 PROC_AR_CN_CREATE_FROM_DN
                 """
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/ref/dn/{refNo}")
     public ResponseEntity<?> getDNInvoiceCharges(
             @PathVariable Long refNo,
@@ -500,6 +513,7 @@ public class CreditNoteController {
                 - FDA status
                 """
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/ref/fda/{fdaRef}")
     public ResponseEntity<?> getFDADetails(
             @PathVariable Long fdaRef,
@@ -525,6 +539,7 @@ public class CreditNoteController {
                 - Due Date (calculated)
                 """
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/default-credit/{partyPoid}")
     public ResponseEntity<?> getDefaultCreditValues(
             @PathVariable Long partyPoid,
@@ -553,6 +568,7 @@ public class CreditNoteController {
                 - Party GL POID
                 """
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/party-gl/{partyPoid}")
     public ResponseEntity<?> getPartyGLPoid(
             @PathVariable Long partyPoid,
@@ -563,6 +579,49 @@ public class CreditNoteController {
         } catch (Exception e) {
             log.error("Error fetching party GL POID for partyPoid: {}, partyType: {}", partyPoid, partyType, e);
             return internalServerError("Failed to fetch party GL POID: " + e.getMessage());
+        }
+    }
+
+    @AllowedAction(UserRolesRightsEnum.PRINT)
+    @Operation(
+            summary = "Generate Credit Note PDF",
+            description = """
+            Generates PDF for Credit Note or Tax Credit Note based on transaction data.
+            
+            ### PDF Generation Logic:
+            - Uses CreditNote.jrxml as main template
+            - Automatically selects appropriate subreports based on:
+              - REF_TYPE (GENERAL, CUSTOM, VOYAGE, FDA, FF, SH_INVOICE, DN_INVOICE, FF_INVOICE, MTA_INVOICE)
+              - YEAR (before/after 2018 for VAT handling)
+              - TAX_APPLICABLE flag
+            
+            ### Subreports Used:
+            - DocHeaderSubReport - Company header
+            - CreditNoteDtl_subreport1 - GL details (pre-2019)
+            - CreditNoteDtlSubreportVAT2019 - GL details with VAT (2019+)
+            - CreditNoteChargeSubreport1 - Charge details (pre-2019)
+            - CrdeitNoteChargeSubreportVAT2019 - Charge details with VAT (2019+)
+            - CrdeitNoteItemSubreport - Item details for MTA invoices
+            
+            ### Output:
+            - PDF file with credit note details
+            """,
+            tags = {"Credit Note Management"}
+    )
+    @GetMapping("/print/{transactionPoid}")
+    public ResponseEntity<?> print(
+            @Parameter(description = "Transaction POID", example = "155514")
+            @PathVariable Long transactionPoid) {
+        try {
+            byte[] pdf = creditNoteService.print(transactionPoid);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=credit-note-" + transactionPoid + ".pdf")
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .body(pdf);
+        } catch (Exception e) {
+            log.error("Failed to generate PDF for Credit note: {}", transactionPoid, e);
+            return error("Failed to generate PDF: " + e.getMessage(), 500);
         }
     }
 

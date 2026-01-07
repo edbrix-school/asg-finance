@@ -1,5 +1,8 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
+
 
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.security.util.UserContext;
@@ -49,6 +52,7 @@ public class SupplierCategoryController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{categoryPoid}")
     public ResponseEntity<?> softDeleteSupplierCategory(
             @Parameter(description = "ID of the supplier category to be soft deleted", example = "121")
@@ -83,6 +87,7 @@ public class SupplierCategoryController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{supplierCategoryPoid}")
     public ResponseEntity<?> getSupplierCategoryById(
             @Parameter(description = "ID of the supplier category to retrieve", example = "121")
@@ -128,6 +133,7 @@ public class SupplierCategoryController {
                     }
             )
     )
+    @AllowedAction(UserRolesRightsEnum.EDIT)
     @PutMapping("/{supCatPoid}")
     public ResponseEntity<?> updateSupplierCategory(
             @Parameter(description = "ID of the supplier category to update", example = "144")
@@ -182,6 +188,7 @@ public class SupplierCategoryController {
                     }
             )
     )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping
     public ResponseEntity<?> createSupplierCategory(
             @Valid @RequestBody SupplierCategoryDto supplierCategoryDto) {
@@ -256,6 +263,7 @@ public class SupplierCategoryController {
                     }
             )
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     public ResponseEntity<?> listOfRecordsWithGenericSearch(
             @ParameterObject Pageable pageable,

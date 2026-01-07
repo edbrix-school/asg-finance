@@ -1,5 +1,8 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.enums.UserRolesRightsEnum;
+
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.dto.response.GlVoucherPendingBillwiseBreakupResponseDto;
 import com.asg.finance.service.BillwiseBreakupService;
@@ -58,6 +61,7 @@ public class BillwiseBreakupController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/showPending")
     public ResponseEntity<?> getPendingBillwiseBreakup(
             @Parameter(description = "GL POID", required = true, example = "12345")
@@ -102,6 +106,7 @@ public class BillwiseBreakupController {
                     )
             }
     )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/showAllPending")
     public ResponseEntity<?> getAllPendingBillwiseBreakup(
             @Parameter(description = "GL POID", required = true, example = "12345")

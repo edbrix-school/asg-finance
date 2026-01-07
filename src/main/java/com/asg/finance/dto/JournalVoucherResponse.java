@@ -12,6 +12,5 @@ import lombok.NoArgsConstructor;
 public class JournalVoucherResponse {
     private Long transactionPoid;
     private String docRef;
-    private String status;
     private String message;
 }

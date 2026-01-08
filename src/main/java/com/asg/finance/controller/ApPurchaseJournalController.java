@@ -2,14 +2,13 @@ package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
-
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
-import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.*;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.finance.service.ApPurchaseServiceJournal;
+import com.asg.finance.service.CreditNoteService;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -43,6 +42,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 public class ApPurchaseJournalController {
 
     private final ApPurchaseServiceJournal service;
+    private final CreditNoteService creditNoteService;
 
     @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{transactionPoid}")
@@ -439,6 +439,36 @@ public class ApPurchaseJournalController {
         return success("MTA PO Booking details updated successfully", response);
     }
 
+    @AllowedAction(UserRolesRightsEnum.VIEW)
+    @Operation(
+            summary = "Get Default Supplier Values",
+            description = """
+                Fetches default credit values for a selected party using:
+                PROC_PI_SET_DEFAULT_CREDIT
+
+                ### Input:
+                - Party POID
+                - Party Type (CUSTOMER, SUPPLIER, PRINCIPAL)
+
+                ### Output:
+                - Credit Period
+                - Currency Code & Rate
+                - TIN Number
+                - Due Date (calculated)
+                """
+    )
+    @GetMapping("/default-value/{partyPoid}")
+    public ResponseEntity<?> getDefaultSupplierValues(
+            @PathVariable Long partyPoid,
+            @RequestParam String partyType) {
+        try {
+            DefaultCreditValuesDto result = creditNoteService.getDefaultCreditValues(partyPoid, partyType);
+            return success("Default supplier values fetched successfully", result);
+        } catch (Exception e) {
+            log.error("Error fetching default supplier values for partyPoid: {}, partyType: {}", partyPoid, partyType, e);
+            return internalServerError("Failed to fetch default credit values: " + e.getMessage());
+        }
+    }
     @AllowedAction(UserRolesRightsEnum.PRINT)
     @Operation(
             summary = "Generate PDF for Purchase Journal",
@@ -466,5 +496,4 @@ public class ApPurchaseJournalController {
             return internalServerError("Failed to generate PDF: " + e.getMessage());
         }
     }
-
 }

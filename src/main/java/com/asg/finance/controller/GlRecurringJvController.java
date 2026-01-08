@@ -1,6 +1,7 @@
 package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.finance.dto.CreateScheduleRequest;
 import com.asg.finance.dto.RecurringJvRequest;
@@ -28,6 +29,7 @@ import java.time.LocalDate;
 import java.util.Map;
 
 import static com.asg.common.lib.dto.response.ApiResponse.*;
+
 @Slf4j
 @RestController
 @RequiredArgsConstructor
@@ -140,7 +142,7 @@ public class GlRecurringJvController {
             @RequestParam String documentId,
             @Parameter(description = "Action requested", required = true, example = "create")
             @RequestParam String actionRequested) {
-        return success("Recurring JV created successfully", recurringJvService.createRecurringJv(request,documentId));
+        return success("Recurring JV created successfully", recurringJvService.createRecurringJv(request, documentId));
     }
 
     @Operation(summary = "List Recurring JVs")
@@ -271,7 +273,7 @@ public class GlRecurringJvController {
             @RequestParam String documentId,
             @Parameter(description = "Action requested", required = true, example = "edit")
             @RequestParam String actionRequested) {
-        return success("Recurring JV updated successfully", recurringJvService.updateRecurringJv(transactionPoid, request,documentId));
+        return success("Recurring JV updated successfully", recurringJvService.updateRecurringJv(transactionPoid, request, documentId));
     }
 
     @Operation(summary = "Delete Recurring JV")
@@ -279,11 +281,9 @@ public class GlRecurringJvController {
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> deleteRecurringJv(
             @PathVariable Long transactionPoid,
-            @Parameter(description = "Document identifier", required = true, example = "400-102")
-            @RequestParam String documentId,
-            @Parameter(description = "Action requested", required = true, example = "delete")
-            @RequestParam String actionRequested) {
-        recurringJvService.deleteRecurringJv(transactionPoid);
+            @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto
+    ) {
+        recurringJvService.deleteRecurringJv(transactionPoid, deleteReasonDto);
         return success("Recurring JV deleted successfully", null);
     }
 

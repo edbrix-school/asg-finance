@@ -1,5 +1,6 @@
 package com.asg.finance.service;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.finance.dto.*;
 import org.springframework.data.domain.Pageable;
@@ -20,7 +21,7 @@ public interface PettyCashVoucherService {
 
 
 
-    void deletePettyCashVoucher(Long transactionPoid, String documentId, String refType, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto);
+    void deletePettyCashVoucher(Long transactionPoid, String documentId, String refType, DeleteReasonDto deleteReasonDto);
 
     Map<String, Object> listPettyCashVoucher(String documentId, FilterRequestDto filters, LocalDate startDate, LocalDate endDate, Pageable pageable);
 

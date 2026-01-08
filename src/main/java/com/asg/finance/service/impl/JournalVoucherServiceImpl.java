@@ -575,14 +575,13 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         }
         
         String deleteReason = deleteReasonDto != null ? deleteReasonDto.getDeleteReason() : null;
-        LocalDate transactionDate = deleteReasonDto != null ? deleteReasonDto.getTransactionDate() : null;
-        
+
         documentDeleteService.deleteDocument(
                 transactionPoid,
                 "GL_JOURNAL_VOUCHER_HDR",
                 "TRANSACTION_POID",
                 deleteReason,
-                transactionDate
+                entity.getTransactionDate()
         );
     }
 

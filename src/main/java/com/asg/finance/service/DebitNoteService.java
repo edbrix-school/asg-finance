@@ -1,5 +1,6 @@
 package com.asg.finance.service;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.finance.dto.DebitNoteHeaderDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import org.springframework.data.domain.Pageable;
@@ -13,7 +14,7 @@ public interface DebitNoteService {
     
     DebitNoteHeaderDto updateDebitNote(Long transactionPoid, DebitNoteHeaderDto debitNoteDto);
     
-    void deleteDebitNote(Long transactionPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto);
+    void deleteDebitNote(Long transactionPoid, DeleteReasonDto deleteReasonDto);
     
     DebitNoteHeaderDto getDebitNote(Long transactionPoid);
     

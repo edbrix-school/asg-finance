@@ -1,5 +1,6 @@
 package com.asg.finance.service;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.finance.dto.GlAgeingMasterDto;
 import com.asg.finance.dto.GlAgeingMasterResponseDto;
 import com.asg.common.lib.dto.FilterRequestDto;
@@ -15,7 +16,7 @@ public interface GlAgeingMasterService {
     
     GlAgeingMasterDto updateAgeingMaster(Long ageingPoid, GlAgeingMasterDto ageingMasterDto);
 
-    void softDeleteAgeingMaster(Long ageingPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto);
+    void softDeleteAgeingMaster(Long ageingPoid, DeleteReasonDto deleteReasonDto);
 
     Map<String, Object> listAgeingMasters(String documentId, FilterRequestDto filters, Pageable pageable);
 }

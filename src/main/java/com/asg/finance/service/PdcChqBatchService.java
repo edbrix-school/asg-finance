@@ -1,5 +1,6 @@
 package com.asg.finance.service;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.finance.dto.*;
 import org.springframework.data.domain.Pageable;
@@ -16,7 +17,7 @@ public interface PdcChqBatchService {
 
     PdcChqBatchHdrResponseDto findById(Long transactionPoid);
 
-    void deletePdcBatch(Long transactionPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto);
+    void deletePdcBatch(Long transactionPoid, DeleteReasonDto deleteReasonDto);
 
     Map<String, Object> listPdcBatchCreation(String documentId, FilterRequestDto filters, LocalDate startDate, LocalDate endDate, Pageable pageable);
 

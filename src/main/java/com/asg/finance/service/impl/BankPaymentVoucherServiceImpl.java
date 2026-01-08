@@ -85,8 +85,11 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     @Autowired
     private CostCenterBreakupService costCenterBreakupService;
 
-    @Autowired private PrintService printService;
-    @Autowired private DataSource dataSource;
+    @Autowired
+    private PrintService printService;
+
+    @Autowired
+    private DataSource dataSource;
 
     @Autowired
     private DocumentDeleteService documentDeleteService;

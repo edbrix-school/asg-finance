@@ -1,5 +1,6 @@
 package com.asg.finance.service;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.finance.dto.*;
 import org.springframework.data.domain.Pageable;
@@ -16,7 +17,7 @@ public interface ApPurchaseServiceJournal {
 
     ApPurchaseInvoiceHdrDto updateApPurchaseInvoice(Long transactionPoid, ApPurchaseInvoiceHdrDto dto);
 
-    ApPurchaseInvoiceHdrDto softDeleteApPurchaseInvoice(Long transactionPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto);
+    ApPurchaseInvoiceHdrDto softDeleteApPurchaseInvoice(Long transactionPoid, DeleteReasonDto deleteReasonDto);
 
     Map<String, Object> listOfRecordsAndGenericSearch(String docId, FilterRequestDto request, LocalDate startDate, LocalDate endDate, Pageable pageable);
 

@@ -1,5 +1,6 @@
 package com.asg.finance.service;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.finance.dto.CostCenterListResponseDto;
 import com.asg.finance.dto.CostCenterRequestDTO;
 import com.asg.finance.dto.CostCenterTreeResponseDto;
@@ -13,7 +14,7 @@ import java.util.Map;
 public interface CostCenterService {
     Long createCostCenter(CostCenterRequestDTO dto);
 
-    void softDeleteCountry(Long costCenterPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto);
+    void softDeleteCountry(Long costCenterPoid, DeleteReasonDto deleteReasonDto);
 
     Long updateCostCenter(Long id, CostCenterRequestDTO dto);
 

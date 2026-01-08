@@ -1,5 +1,6 @@
 package com.asg.finance.service;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.finance.dto.BankDepositVoucherDtlDto;
 import com.asg.finance.dto.BankDepositVoucherRequestDto;
 import com.asg.finance.dto.BankDepositVoucherResponseDto;
@@ -14,7 +15,7 @@ public interface BankDepositVoucherService {
     BankDepositVoucherResponseDto createBankDepositVoucher(BankDepositVoucherRequestDto request);
     BankDepositVoucherResponseDto updateBankDepositVoucher(Long transactionPoid, BankDepositVoucherRequestDto request);
     BankDepositVoucherResponseDto getBankDepositVoucherById(Long transactionPoid);
-    void softDeleteBankDepositVoucher(Long transactionPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto);
+    void softDeleteBankDepositVoucher(Long transactionPoid, DeleteReasonDto deleteReasonDto);
     Map<String, Object> listBankDepositVouchers(String documentId, FilterRequestDto filters, LocalDate startDate, LocalDate endDate, Pageable pageable);
     List<BankDepositVoucherDtlDto> loadPendingPayments(Long bankPoid, String type, String bankFilter);
     byte[] print(Long transactionPoid) throws Exception;

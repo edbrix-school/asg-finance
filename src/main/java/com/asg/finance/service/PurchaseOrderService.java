@@ -1,5 +1,6 @@
 package com.asg.finance.service;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.finance.dto.PurchaseOrderRequest;
 import com.asg.finance.dto.PurchaseOrderResponse;
@@ -17,7 +18,7 @@ public interface PurchaseOrderService {
 
     PurchaseOrderResponse findById(Long transactionPoid);
 
-    void deletePurchaseOrder(Long transactionPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto);
+    void deletePurchaseOrder(Long transactionPoid, DeleteReasonDto deleteReasonDto);
 
     Map<String, Object> listPurchaseOrder(String documentId, FilterRequestDto filters, LocalDate startDate, LocalDate endDate, Pageable pageable);
 

@@ -1,9 +1,7 @@
 package com.asg.finance.service.impl;
 
-import com.asg.common.lib.dto.FilterDto;
-import com.asg.common.lib.dto.FilterRequestDto;
-import com.asg.common.lib.dto.LovGetListDto;
-import com.asg.common.lib.dto.RawSearchResult;
+import com.asg.common.lib.dto.*;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
@@ -53,6 +51,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     private final JdbcTemplate jdbcTemplate;
     private final PrintService printService;
     private final DataSource dataSource;
+    private final DocumentDeleteService documentDeleteService;
 
     @Override
     @Transactional
@@ -151,20 +150,20 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
 
     @Override
     @Transactional
-    public void deletePurchaseOrder(Long transactionPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto) {
+    public void deletePurchaseOrder(Long transactionPoid, DeleteReasonDto deleteReasonDto) {
 
         PurchaseOrder header = purchaseOrderRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() ->
                         new EntityNotFoundException("Purchase Order not found for TransactionPoid: " + transactionPoid)
                 );
-        header.setDeleted("Y");
-        if (deleteReasonDto != null && deleteReasonDto.getDeleteReason() != null) {
-            header.setDeleteReason(deleteReasonDto.getDeleteReason());
-        }
-        header.setLastModifiedDate(LocalDateTime.now());
-        header.setLastModifiedBy(getCurrentUser());
 
-        purchaseOrderRepository.save(header);
+        documentDeleteService.deleteDocument(
+                transactionPoid,
+                "AP_PURCHASE_ORDER_HDR",
+                "TRANSACTION_POID",
+                deleteReasonDto.getDeleteReason(),
+                header.getTransactionDate()
+        );
 
         log.info("Purchase Order deleted successfully: {}", transactionPoid);
     }

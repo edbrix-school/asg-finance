@@ -1,5 +1,6 @@
 package com.asg.finance.service;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.finance.dto.AssetLocationMasterRequestDto;
 import com.asg.finance.dto.AssetLocationMasterResponseDto;
 import com.asg.common.lib.dto.FilterRequestDto;
@@ -13,7 +14,7 @@ public interface AssetLocationMasterService {
 
     AssetLocationMasterResponseDto getAssetLocationMasterById(Long assetPoid);
 
-    void softDeleteAssetLocationMaster(Long assetPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto);
+    void softDeleteAssetLocationMaster(Long assetPoid, DeleteReasonDto deleteReasonDto);
 
     Map<String, Object> listAssetLocations(String documentId, FilterRequestDto filters, Pageable pageable);
 

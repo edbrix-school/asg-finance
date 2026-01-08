@@ -1,10 +1,8 @@
 package com.asg.finance.service.impl;
 
-import com.asg.common.lib.dto.FilterDto;
-import com.asg.common.lib.dto.FilterRequestDto;
-import com.asg.common.lib.dto.RawSearchResult;
-import com.asg.common.lib.dto.TaxMasterDto;
+import com.asg.common.lib.dto.*;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.finance.entity.GLMaster;
 import com.asg.finance.entity.TaxMaster;
 import com.asg.finance.repository.GLMasterRepository;
@@ -36,8 +34,8 @@ import java.util.Map;
 public class TaxMasterServiceImpl implements TaxMasterService {
     private final TaxMasterRepository repository;
     private final GLMasterRepository glMasterRepository;
-    @Autowired
-    private DocumentSearchService documentService;
+    private final DocumentSearchService documentService;
+    private final DocumentDeleteService documentDeleteService;
 
     public TaxMasterResponseDTO createTaxMaster(TaxMasterRequestDTO request) {
         if (repository.existsByTaxCode(request.getTaxCode())) {
@@ -172,15 +170,17 @@ public class TaxMasterServiceImpl implements TaxMasterService {
     }
 
     @Transactional
-    public void softDeleteTaxMaster(Long taxPoid) {
+    public void softDeleteTaxMaster(Long taxPoid, DeleteReasonDto deleteReasonDto) {
         TaxMaster existingTaxRecord = repository.findByTaxPoid(taxPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("TaxMaster", "taxPoid", taxPoid));
 
-        existingTaxRecord.setDeleted("Y");
-        existingTaxRecord.setActive("N");
-        existingTaxRecord.setLastModifiedDate(LocalDateTime.now());
-        existingTaxRecord.setLastModifiedBy(getCurrentUser());
-        repository.save(existingTaxRecord);
+        documentDeleteService.deleteDocument(
+                taxPoid,
+                "GLOBAL_TAX_MASTER",
+                "TAX_POID",
+                deleteReasonDto.getDeleteReason(),
+                existingTaxRecord.getCreatedDate().toLocalDate()
+        );
     }
 
     @Override

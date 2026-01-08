@@ -1,5 +1,6 @@
 package com.asg.finance.service;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.finance.dto.CreateScheduleRequest;
 import com.asg.finance.dto.CreateScheduleResponse;
 import com.asg.finance.dto.RecurringJvCreateResponse;
@@ -21,7 +22,7 @@ public interface GlRecurringJvService {
     
     RecurringJvCreateResponse updateRecurringJv(Long transactionPoid, RecurringJvRequest request,String docId);
     
-    void deleteRecurringJv(Long transactionPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto);
+    void deleteRecurringJv(Long transactionPoid, DeleteReasonDto deleteReasonDto);
     
     CreateScheduleResponse createSchedule(Long transactionPoid, CreateScheduleRequest request);
     

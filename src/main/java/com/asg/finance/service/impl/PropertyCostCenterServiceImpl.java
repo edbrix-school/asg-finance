@@ -43,7 +43,8 @@ public class PropertyCostCenterServiceImpl implements IPropertyCostCenterService
     @Autowired
     private LovDataService lovService;
 
-
+    @Autowired
+    private DocumentDeleteService documentDeleteService;
 
     private void validatePropertyType(PropertyCostCenterRequest request) {
         if (request.getPropertyType() != null && !request.getPropertyType().matches("MAIN_GROUP|SUB_GROUP|CHILD")) {
@@ -192,7 +193,7 @@ public class PropertyCostCenterServiceImpl implements IPropertyCostCenterService
                 "PROPERTY_COST_CENTER_MASTER",
                 "PROPERTY_COST_CENTER_POID",
                 deleteReasonDto.getDeleteReason(),
-                entity.getCreatedDate()
+                entity.getCreatedDate().toLocalDate()
         );
     }
 

@@ -47,10 +47,8 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
     private final GlBankDepositVoucherDtlRepository dtlRepository;
     private final DocumentSearchService documentService;
     private final DocumentDeleteService documentDeleteService;
-
     private final PrintService printService;
     private final DataSource dataSource;
-
     private final LovDataService lovService;
 
     @PersistenceContext

@@ -373,7 +373,7 @@ public class GLMasterServiceImpl implements GLMasterService {
 
 
     @Override
-    public void deleteGLMaster(Long glPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto) {
+    public void deleteGLMaster(Long glPoid, DeleteReasonDto deleteReasonDto) {
         GLMasterEntity entity = glMasterRepo.findById(glPoid)
                 .orElseThrow(() -> new RuntimeException("GL Master not found: " + glPoid));
 

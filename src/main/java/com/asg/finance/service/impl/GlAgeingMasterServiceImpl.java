@@ -48,12 +48,11 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
 
     private static final String LOV_NAME = "GL_AGEING_TYPES";
 
-
     @Autowired
     private DocumentDeleteService documentDeleteService;
-    
     @Autowired
-    DocumentSearchService documentService;
+    private DocumentSearchService documentService;
+
     @PersistenceContext
     private EntityManager entityManager;
 

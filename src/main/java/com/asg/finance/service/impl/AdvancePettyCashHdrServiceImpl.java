@@ -45,12 +45,8 @@ public class AdvancePettyCashHdrServiceImpl implements AdvancePettyCashHdrServic
     private final AdvancePettyCashHdrRepository repository;
     private final AdvancePettyCashDtlRepository detailRepository;
     private final GLMasterRepository glMasterRepository;
-    
-    @Autowired
-    private DocumentSearchService documentService;
-
-    @Autowired
-    private DocumentDeleteService documentDeleteService;
+    private final DocumentSearchService documentService;
+    private final DocumentDeleteService documentDeleteService;
 
     @Override
     public AdvancePettyCashHdrResponseDTO createAdvancePettyCash(AdvancePettyCashHdrRequestDTO request) {

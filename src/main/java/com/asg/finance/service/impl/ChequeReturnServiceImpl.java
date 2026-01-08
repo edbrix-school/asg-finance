@@ -286,6 +286,8 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
                         .docRef(header.getDocRef())
                         .chequeNumber(header.getChequeNumber())
                         .closeDetail(header.getCloseDetail())
+                        .createdBy(header.getCreatedBy())
+                        .createdDate(header.getCreatedDate())
                         .build(),
                 details.stream().map(this::toChequeDetailDto).collect(Collectors.toList()),
                 gls.stream().map(this::toGlDetailDto).collect(Collectors.toList())

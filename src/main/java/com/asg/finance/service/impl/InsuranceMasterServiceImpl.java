@@ -79,7 +79,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                 insuranceId,
                 "GLOBAL_INSURANCE_HDR",
                 "TRANSACTION_POID",
-                deleteReasonDto.getDeleteReason(),
+                deleteReasonDto,
                 null
         );
     }

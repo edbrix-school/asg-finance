@@ -172,7 +172,7 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
                     transactionPoid,
                     "GL_BANK_DEBIT_HDR",
                     "TRANSACTION_POID",
-                    deleteReasonDto.getDeleteReason(),
+                    deleteReasonDto,
                     hdr.getTransactionDate()
             );
 

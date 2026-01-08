@@ -161,7 +161,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                 transactionPoid,
                 "AP_PURCHASE_ORDER_HDR",
                 "TRANSACTION_POID",
-                deleteReasonDto.getDeleteReason(),
+                deleteReasonDto,
                 header.getTransactionDate()
         );
 

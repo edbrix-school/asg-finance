@@ -411,7 +411,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                 favAcPoid,
                 "GL_FAV_AC_MASTER",
                 "FAV_AC_POID",
-                deleteReasonDto.getDeleteReason(),
+                deleteReasonDto,
                 null
         );
     }

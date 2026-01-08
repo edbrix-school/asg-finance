@@ -90,7 +90,7 @@ public class CostCenterServiceImpl implements CostCenterService {
                 costCenterPoid,
                 "GL_COST_CENTER_MASTER",
                 "COST_CENTER_POID",
-                deleteReasonDto.getDeleteReason(),
+                deleteReasonDto,
                 null
         );
     }

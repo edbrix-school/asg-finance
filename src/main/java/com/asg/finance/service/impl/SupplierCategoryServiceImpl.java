@@ -52,7 +52,7 @@ public class SupplierCategoryServiceImpl implements SupplierCategoryService {
                 supplierCategoryPoid,
                 "AP_SUPPLIER_CATEGORY",
                 "SUPPLIER_CATEGORY_POID",
-                deleteReasonDto != null ? deleteReasonDto.getDeleteReason() : null,
+                deleteReasonDto,
                 null
         );
     }

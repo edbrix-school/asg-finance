@@ -158,7 +158,7 @@ public class PettyCashUserRoleServiceImpl implements PettyCashUserRoleService {
                 refTypePoid,
                 "GL_PETTY_CASH_USERROLE_MASTER",
                 "REF_TYPE_POID",
-                deleteReasonDto.getDeleteReason(),
+                deleteReasonDto,
                 null
         );
     }

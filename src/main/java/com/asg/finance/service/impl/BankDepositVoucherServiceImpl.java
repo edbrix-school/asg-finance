@@ -189,7 +189,7 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
                 transactionPoid,
                 "GL_BANK_DEPOSIT_VOUCHER_HDR",
                 "TRANSACTION_POID",
-                deleteReasonDto.getDeleteReason(),
+                deleteReasonDto,
                 hdr.getTransactionDate()
         );
     }

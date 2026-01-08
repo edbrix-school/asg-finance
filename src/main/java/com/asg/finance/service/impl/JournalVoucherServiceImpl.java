@@ -573,14 +573,12 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
             log.error("Cannot delete: Journal Voucher has been posted to GL");
             throw new IllegalStateException("Cannot delete: Journal Voucher has been posted to GL");
         }
-        
-        String deleteReason = deleteReasonDto != null ? deleteReasonDto.getDeleteReason() : null;
 
         documentDeleteService.deleteDocument(
                 transactionPoid,
                 "GL_JOURNAL_VOUCHER_HDR",
                 "TRANSACTION_POID",
-                deleteReason,
+                deleteReasonDto,
                 entity.getTransactionDate()
         );
     }

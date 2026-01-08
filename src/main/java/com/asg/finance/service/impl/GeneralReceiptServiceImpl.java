@@ -641,7 +641,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                 transactionPoid,
                 "AR_GEN_RECEIPT_HDR",
                 "TRANSACTION_POID",
-                deleteReasonDto.getDeleteReason(),
+                deleteReasonDto,
                 header.getTransactionDate()
         );
         log.info("Successfully deleted general receipt: {}", header.getDocRef());

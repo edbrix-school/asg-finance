@@ -92,7 +92,7 @@ public class FixedAssetCategoryServiceImpl implements FixedAssetCategoryService 
                 faCategoryPoid,
                 "FIXED_ASSET_CATEGORY_MASTER",
                 "FA_CATEGORY_POID",
-                deleteReasonDto.getDeleteReason(),
+                deleteReasonDto,
                 null
         );
     }

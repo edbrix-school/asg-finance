@@ -278,7 +278,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     transactionPoid,
                     "AR_CREDIT_NOTE_HDR",
                     "TRANSACTION_POID",
-                    deleteReasonDto.getDeleteReason(),
+                    deleteReasonDto,
                     existing.getTransactionDate()
             );
         } catch (Exception e) {

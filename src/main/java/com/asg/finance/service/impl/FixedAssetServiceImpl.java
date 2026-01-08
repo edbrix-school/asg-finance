@@ -402,7 +402,7 @@ public class FixedAssetServiceImpl implements FixedAssetService {
                 faPoid,
                 "FIXED_ASSET_MASTER",
                 "FA_POID",
-                deleteReasonDto.getDeleteReason(),
+                deleteReasonDto,
                 null
         );
     }

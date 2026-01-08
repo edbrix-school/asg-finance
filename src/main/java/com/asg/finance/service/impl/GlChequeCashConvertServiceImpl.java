@@ -172,7 +172,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
                 transactionPoid,
                 "GL_CHEQUE_CASH_CONVERT_HDR",
                 "TRANSACTION_POID",
-                deleteReasonDto.getDeleteReason(),
+                deleteReasonDto,
                 null
         );
     }

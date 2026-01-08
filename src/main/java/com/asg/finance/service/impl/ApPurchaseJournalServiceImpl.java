@@ -1202,7 +1202,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                 transactionPoid,
                 "AP_PURCHASE_INVOICE_HDR",
                 "TRANSACTION_POID",
-                deleteReasonDto.getDeleteReason(),
+                deleteReasonDto,
                 existing.getTransactionDate()
         );
 

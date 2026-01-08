@@ -308,7 +308,7 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
                 ageingPoid,
                 "GL_AGEING_MASTER",
                 "AGEING_POID",
-                deleteReasonDto.getDeleteReason(),
+                deleteReasonDto,
                 null
         );
     }

@@ -252,7 +252,7 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
                 transactionPoid,
                 "GL_IMCO_CHEQUE_REFUND_HDR",
                 "TRANSACTION_POID",
-                deleteReasonDto.getDeleteReason(),
+                deleteReasonDto,
                 existing.getTransactionDate()
         );
     }

@@ -384,7 +384,7 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
                 transactionPoid,
                 "GL_CONTRA_VOUCHER_HDR",
                 "TRANSACTION_POID",
-                deleteReasonDto.getDeleteReason(),
+                deleteReasonDto,
                 existing.getTransactionDate()
         );
 

@@ -277,7 +277,7 @@ public class AssetInformationServiceImpl implements AssetInformationService {
                     iaPoid,
                     "ASSET_INFORMATION_MASTER",
                     "IA_POID",
-                    deleteReasonDto.getDeleteReason(),
+                    deleteReasonDto,
                     null
             );
         } catch (ResourceNotFoundException ex) {

@@ -117,7 +117,7 @@ public class AdvancePettyCashHdrServiceImpl implements AdvancePettyCashHdrServic
                 transactionPoid,
                 "GL_ADVANCE_PETTY_CASH_HDR",
                 "TRANSACTION_POID",
-                deleteReasonDto.getDeleteReason(),
+                deleteReasonDto,
                 existing.getTransactionDate()
         );
     }

@@ -130,7 +130,7 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
                 transactionPoid,
                 "GL_PDC_CHQ_BATCH_HDR",
                 "TRANSACTION_POID",
-                deleteReasonDto.getDeleteReason(),
+                deleteReasonDto,
                 hdr.getTransactionDate().toLocalDate()
         );
     }

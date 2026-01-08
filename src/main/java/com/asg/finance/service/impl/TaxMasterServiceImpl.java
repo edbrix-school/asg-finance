@@ -97,7 +97,6 @@ public class TaxMasterServiceImpl implements TaxMasterService {
         return getTaxMasterResponseDTO(updated);
     }
 
-
     private void validateRequest(TaxMasterRequestDTO request) {
         if (!request.getTaxType().matches("INPUT_VAT|OUTPUT_VAT")) {
             throw new ValidationException("Invalid Tax Type. Allowed: INPUT_VAT, OUTPUT_VAT");
@@ -106,7 +105,6 @@ public class TaxMasterServiceImpl implements TaxMasterService {
             throw new ValidationException("Invalid GL Type. Allowed: DR, CR");
         }
     }
-
 
     private String getCurrentUser() {
         return UserContext.getUserId() != null ? String.valueOf(UserContext.getUserId()) : "SYSTEM";
@@ -178,7 +176,7 @@ public class TaxMasterServiceImpl implements TaxMasterService {
                 taxPoid,
                 "GLOBAL_TAX_MASTER",
                 "TAX_POID",
-                deleteReasonDto.getDeleteReason(),
+                deleteReasonDto,
                 existingTaxRecord.getCreatedDate().toLocalDate()
         );
     }

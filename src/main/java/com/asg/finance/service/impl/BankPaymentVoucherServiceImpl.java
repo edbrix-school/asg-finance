@@ -261,7 +261,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                 transactionPoid,
                 "GL_BANK_PAYMENT_HDR",
                 "TRANSACTION_POID",
-                deleteReasonDto.getDeleteReason(),
+                deleteReasonDto,
                 existing.getTransactionDate()
         );
     }

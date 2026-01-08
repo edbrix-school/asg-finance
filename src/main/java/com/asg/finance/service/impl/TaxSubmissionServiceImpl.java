@@ -247,7 +247,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
                 transactionPoid,
                 "GLOBAL_TAX_SUBMISSION_HDR",
                 "TRANSACTION_POID",
-                deleteReasonDto.getDeleteReason(),
+                deleteReasonDto,
                 header.getTransactionDate().toLocalDateTime().toLocalDate()
         );
 

@@ -410,7 +410,7 @@ GlRecurringJvHdr header = GlRecurringJvHdr.builder()
                 transactionPoid,
                 "GL_RECURRING_JV_HDR",
                 "TRANSACTION_POID",
-                deleteReasonDto.getDeleteReason(),
+                deleteReasonDto,
                 header.getTransactionDate()
         );
     }

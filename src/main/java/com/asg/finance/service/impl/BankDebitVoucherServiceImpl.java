@@ -264,7 +264,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                 transactionPoid,
                 "GL_BANK_DEBIT_HDR",
                 "TRANSACTION_POID",
-                deleteReasonDto.getDeleteReason(),
+                deleteReasonDto,
                 header.getTransactionDate().toLocalDate()
         );
     }

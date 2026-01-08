@@ -114,7 +114,7 @@ public class AssetLocationMasterServiceImpl implements AssetLocationMasterServic
                 locationPoid,
                 "ASSET_LOCATION_MASTER",
                 "LOCATION_POID",
-                deleteReasonDto.getDeleteReason(),
+                deleteReasonDto,
                 null
         );
     }

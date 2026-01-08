@@ -91,7 +91,7 @@ public class BankPayeeServiceImpl implements IBankPayeeService {
                 payingPoid,
                 "BANK_PAYEE_MASTER",
                 "PAYING_POID",
-                deleteReasonDto.getDeleteReason(),
+                deleteReasonDto,
                 null
         );
     }

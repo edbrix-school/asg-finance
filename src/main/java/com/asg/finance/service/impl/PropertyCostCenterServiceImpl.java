@@ -192,7 +192,7 @@ public class PropertyCostCenterServiceImpl implements IPropertyCostCenterService
                 costCenterPoid,
                 "PROPERTY_COST_CENTER_MASTER",
                 "PROPERTY_COST_CENTER_POID",
-                deleteReasonDto.getDeleteReason(),
+                deleteReasonDto,
                 entity.getCreatedDate().toLocalDate()
         );
     }

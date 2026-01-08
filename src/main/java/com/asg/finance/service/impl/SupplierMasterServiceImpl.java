@@ -144,7 +144,7 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                 supplierPoid,
                 "AP_SUPPLIER_MASTER",
                 "SUPPLIER_POID",
-                deleteReasonDto.getDeleteReason(),
+                deleteReasonDto,
                 supplierMasterEntity.getCreatedDate()
         );
     }

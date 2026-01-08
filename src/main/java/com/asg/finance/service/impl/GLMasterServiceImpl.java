@@ -387,7 +387,7 @@ public class GLMasterServiceImpl implements GLMasterService {
                 glPoid,
                 "GL_MASTER",
                 "GL_POID",
-                deleteReasonDto.getDeleteReason(),
+                deleteReasonDto,
                 null
         );
     }

@@ -1476,7 +1476,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                 transactionPoid,
                 "GL_PETTY_CASH_PAYMENT_HDR",
                 "TRANSACTION_POID",
-                deleteReasonDto.getDeleteReason(),
+                deleteReasonDto,
                 header.getTransactionDate()
                         .toInstant()
                         .atZone(ZoneId.systemDefault())

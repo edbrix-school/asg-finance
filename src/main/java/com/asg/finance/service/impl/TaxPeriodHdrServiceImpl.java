@@ -153,7 +153,7 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
                 transactionPoid,
                 "GLOBAL_TAX_PERIOD_HDR",
                 "TRANSACTION_POID",
-                reasonDto.getDeleteReason(),
+                reasonDto,
                 savedEntity.getTransactionDate()
         );
     }

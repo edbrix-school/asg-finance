@@ -541,7 +541,7 @@ public class GlBankServiceImpl implements GlBankService {
                 bankPoid,
                 "GL_BANK_MASTER",
                 "BANK_POID",
-                deleteReasonDto.getDeleteReason(),
+                deleteReasonDto,
                 null
         );
     }

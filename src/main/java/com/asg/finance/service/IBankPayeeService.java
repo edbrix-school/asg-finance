@@ -11,7 +11,7 @@ import java.util.Map;
 public interface IBankPayeeService {
     BankPayeeResponse createPayee(BankPayeeRequest request);
     BankPayeeResponse getPayeeById(Long poid);
-    void softDeleteBypPayingPoid(Long id);
+    void softDeleteBypPayingPoid(Long id, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto);
     BankPayeeResponse updatePayee(Long payingPoid, BankPayeeRequest request);
     Map<String, Object> listPayees(String documentId, FilterRequestDto filters, Pageable pageable);
 }

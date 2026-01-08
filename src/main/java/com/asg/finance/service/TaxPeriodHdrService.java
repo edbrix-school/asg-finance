@@ -16,7 +16,7 @@ public interface TaxPeriodHdrService {
     TaxPeriodHdrResponseDto createTaxPeriodHdr(TaxPeriodHdrRequestDto request);
     TaxPeriodHdrResponseDto updateTaxPeriodHdr(Long transactionPoid, TaxPeriodHdrRequestDto request);
     TaxPeriodHdrResponseDto getTaxPeriodHdrById(Long transactionPoid);
-    void softDeleteTaxPeriodHdr(Long transactionPoid);
+    void softDeleteTaxPeriodHdr(Long transactionPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto);
     Page<TaxPeriodChargeDtlResponseDto> getTaxPeriodCharges(Long transactionPoid, Pageable pageable);
     Page<TaxPeriodStockDtlResponseDto> getTaxPeriodStocks(Long transactionPoid, Pageable pageable);
     String copyTaxPeriod(Long transactionPoid, Long companyPoid, Long userPoid);

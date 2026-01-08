@@ -13,7 +13,7 @@ import java.util.Map;
 public interface SupplierMasterService {
     SupplierMasterDto getSupplierMaster(Long supplierPoid);
 
-    void deleteSupplierMaster(Long supplierPoid);
+    void deleteSupplierMaster(Long supplierPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto);
 
     SupplierMasterDto updateSupplierMaster(Long supplierPoid, SupplierMasterDto supplierMasterDto);
 

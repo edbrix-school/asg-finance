@@ -11,6 +11,7 @@ import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.PrintService;
 import com.asg.finance.repository.GLMasterRepository;
 import com.asg.finance.repository.TaxMasterRepository;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.utility.ASGHelperUtils;
@@ -88,6 +89,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
     @Autowired
     private DocumentSearchService documentService;
+
+    @Autowired
+    private DocumentDeleteService documentDeleteService;
 
     @Autowired
     private LovDataService lovService;
@@ -268,9 +272,18 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
     @Override
     @Transactional
-    public void deleteCreditNote(Long transactionPoid) {
+    @Override
+    public void deleteCreditNote(Long transactionPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto) {
         try {
-            executeSoftDeleteSP(transactionPoid);
+            ArCreditNoteHdr existing = creditNoteRepository.findById(transactionPoid)
+                    .orElseThrow(() -> new com.asg.common.lib.exception.ResourceNotFoundException("Credit Note not found"));
+            documentDeleteService.deleteDocument(
+                    transactionPoid,
+                    "AR_CREDIT_NOTE_HDR",
+                    "TRANSACTION_POID",
+                    deleteReasonDto != null ? deleteReasonDto.getDeleteReason() : null,
+                    java.sql.Date.valueOf(existing.getTransactionDate())
+            );
         } catch (SQLException e) {
             log.error("Database error deleting credit note", e);
             throw new RuntimeException("Database error occurred while deleting credit note");

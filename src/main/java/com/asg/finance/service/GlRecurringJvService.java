@@ -21,7 +21,7 @@ public interface GlRecurringJvService {
     
     RecurringJvCreateResponse updateRecurringJv(Long transactionPoid, RecurringJvRequest request,String docId);
     
-    void deleteRecurringJv(Long transactionPoid);
+    void deleteRecurringJv(Long transactionPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto);
     
     CreateScheduleResponse createSchedule(Long transactionPoid, CreateScheduleRequest request);
     

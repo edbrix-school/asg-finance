@@ -13,7 +13,7 @@ public interface AssetLocationMasterService {
 
     AssetLocationMasterResponseDto getAssetLocationMasterById(Long assetPoid);
 
-    void softDeleteAssetLocationMaster(Long assetPoid);
+    void softDeleteAssetLocationMaster(Long assetPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto);
 
     Map<String, Object> listAssetLocations(String documentId, FilterRequestDto filters, Pageable pageable);
 

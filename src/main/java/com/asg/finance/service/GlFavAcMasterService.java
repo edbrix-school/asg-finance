@@ -18,7 +18,7 @@ public interface GlFavAcMasterService {
 
     GlFavAcMasterResponse getFavoriteAccountById(Long favAcPoid);
 
-    void softDeleteFavoriteAccount(Long favAcPoid);
+    void softDeleteFavoriteAccount(Long favAcPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto);
 
     Map<String, Object> listOfRecordsAndGenericSearch(String docId, FilterRequestDto request, Pageable pageable);
 }

@@ -20,8 +20,7 @@ public interface PettyCashVoucherService {
 
 
 
-    void  deletePettyCashVoucher(Long transactionPoid,
-                                  String docId, String refType);
+    void  deletePettyCashVoucher(Long transactionPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto);
 
     Map<String, Object> listPettyCashVoucher(String documentId, FilterRequestDto filters, LocalDate startDate, LocalDate endDate, Pageable pageable);
 

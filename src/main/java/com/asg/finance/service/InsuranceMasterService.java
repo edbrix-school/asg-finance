@@ -11,7 +11,7 @@ import java.util.Map;
 public interface InsuranceMasterService {
     InsuranceMasterResponseDto createInsuranceMaster(InsuranceMasterRequestDto request);
     InsuranceMasterResponseDto updateInsuranceMaster(Long insuranceId, InsuranceMasterRequestDto request);
-    void softDeleteInsuranceMaster(Long insuranceId);
+    void softDeleteInsuranceMaster(Long insuranceId, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto);
     InsuranceMasterResponseDto getInsuranceMasterById(Long insuranceId);
     Map<String, Object> listInsuranceMasters(String documentId, FilterRequestDto filters, LocalDate startDate, LocalDate endDate, Pageable pageable);
     InsuranceMasterResponseDto renewInsurance(Long insuranceId, InsuranceMasterRequestDto request);

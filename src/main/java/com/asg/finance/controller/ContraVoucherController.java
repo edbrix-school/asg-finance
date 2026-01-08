@@ -1,6 +1,7 @@
 package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.finance.dto.ContraVoucherRequest;
@@ -14,6 +15,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springdoc.core.annotations.ParameterObject;
@@ -257,12 +259,13 @@ public class ContraVoucherController {
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> deleteContraVoucher(
             @Parameter(description = "Transaction POID", required = true, example = "261")
-            @PathVariable Long transactionPoid) {
+            @PathVariable Long transactionPoid,
+            @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto) {
 
         log.info("deleteContraVoucher started for transactionPoid={}, groupPoid={}", 
                 transactionPoid, UserContext.getGroupPoid());
 
-        contraVoucherService.deleteContraVoucher(transactionPoid);
+        contraVoucherService.deleteContraVoucher(transactionPoid, deleteReasonDto);
 
         log.info("deleteContraVoucher completed for transactionPoid={}", transactionPoid);
         

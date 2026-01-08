@@ -15,7 +15,7 @@ public interface TaxSubmissionService {
 
     TaxSubmissionResponse updateTaxSubmission(Long transactionPoid, UpdateTaxSubmissionRequest request);
 
-    void deleteTaxSubmission(Long transactionPoid);
+    void deleteTaxSubmission(Long transactionPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto);
 
     Map<String, Object> listTaxSubmission(FilterRequestDto filters,
                                           Pageable pageable, LocalDate periodFrom, LocalDate periodTo);

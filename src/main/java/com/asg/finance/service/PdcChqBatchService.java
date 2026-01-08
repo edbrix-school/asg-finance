@@ -16,7 +16,7 @@ public interface PdcChqBatchService {
 
     PdcChqBatchHdrResponseDto findById(Long transactionPoid);
 
-    void deletePdcBatch(Long transactionPoid);
+    void deletePdcBatch(Long transactionPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto);
 
     Map<String, Object> listPdcBatchCreation(String documentId, FilterRequestDto filters, LocalDate startDate, LocalDate endDate, Pageable pageable);
 

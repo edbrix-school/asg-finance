@@ -16,7 +16,7 @@ public interface ApPurchaseServiceJournal {
 
     ApPurchaseInvoiceHdrDto updateApPurchaseInvoice(Long transactionPoid, ApPurchaseInvoiceHdrDto dto);
 
-    ApPurchaseInvoiceHdrDto softDeleteApPurchaseInvoice(Long transactionPoid, String modifiedBy);
+    ApPurchaseInvoiceHdrDto softDeleteApPurchaseInvoice(Long transactionPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto);
 
     Map<String, Object> listOfRecordsAndGenericSearch(String docId, FilterRequestDto request, LocalDate startDate, LocalDate endDate, Pageable pageable);
 

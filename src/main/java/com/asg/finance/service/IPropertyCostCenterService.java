@@ -15,7 +15,7 @@ public interface IPropertyCostCenterService {
 
     PropertyCostCenterResponse updatePropertyCostCenter(Long costCenterPoid, PropertyCostCenterRequest request);
 
-    void softDeleteByPoid(Long costCenterPoid);
+    void softDeleteByPoid(Long costCenterPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto);
     
     /**
      * Get Property Cost Center tree view (hierarchical structure)

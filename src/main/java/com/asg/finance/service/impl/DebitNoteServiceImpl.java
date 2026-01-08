@@ -6,6 +6,7 @@ import com.asg.common.lib.dto.LovGetListDto;
 import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
@@ -70,6 +71,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
     private final LovDataService lovService;
     private final PrintService printService;
     private final DataSource dataSource;
+    private final DocumentDeleteService documentDeleteService;
 
     @Value("${app.doc-id.debit-note:300-110}")
     private String debitNoteDocId;
@@ -149,17 +151,16 @@ public class DebitNoteServiceImpl implements DebitNoteService {
 
     @Override
     @Transactional
-    public void deleteDebitNote(Long transactionPoid) {
+    public void deleteDebitNote(Long transactionPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto) {
         ArDebitNoteHdr entity = debitNoteHdrRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("DebitNote", "transactionPoid", transactionPoid));
-
-        String refPoid = getOldJobPoid(entity, entity.getRefType());
-        entity.setDeleted("Y");
-        entity.setLastModifiedDate(LocalDateTime.now());
-        entity.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
-        debitNoteHdrRepository.save(entity);
-
-        // Optional: also delete breakup rows if business expects; currently we keep DB cleanup to service if needed.
+        documentDeleteService.deleteDocument(
+                transactionPoid,
+                "AR_DEBIT_NOTE_HDR",
+                "TRANSACTION_POID",
+                deleteReasonDto != null ? deleteReasonDto.getDeleteReason() : null,
+                java.sql.Date.valueOf(entity.getTransactionDate())
+        );
     }
 
     private String getOldJobPoid(ArDebitNoteHdr entity, String refType) {

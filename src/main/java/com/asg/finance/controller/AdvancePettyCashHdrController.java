@@ -1,6 +1,7 @@
 package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 
 import com.asg.common.lib.dto.FilterRequestDto;
@@ -150,9 +151,10 @@ public class AdvancePettyCashHdrController {
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> softDeleteAdvancePettyCash(
             @Parameter(description = "Transaction POID", required = true)
-            @PathVariable Long transactionPoid
+            @PathVariable Long transactionPoid,
+            @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto
     ) {
-        service.softDeleteAdvancePettyCash(transactionPoid);
+        service.softDeleteAdvancePettyCash(transactionPoid, deleteReasonDto);
         return success("Advance Petty Cash has been soft deleted successfully");
     }
 

@@ -11,6 +11,6 @@ public interface PettyCashUserRoleService {
     PettyCashUserroleResponseDto createPettyCashUserRole(PettyCashUserRoleRequestDto request);
     PettyCashUserroleResponseDto updatePettyCashUserRole(Long refTypePoid, PettyCashUserRoleRequestDto requestDto);
     PettyCashUserroleResponseDto getPettyCashUserRole(Long refTypePoid);
-    void softDeletePettyCashUserRole(Long refTypePoid);
+    void softDeletePettyCashUserRole(Long refTypePoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto);
     Map<String, Object> listPettyCashUserRole(String documentId, FilterRequestDto filters, Pageable pageable);
 }

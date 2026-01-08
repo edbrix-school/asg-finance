@@ -1,5 +1,6 @@
 package com.asg.finance.service;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.finance.dto.ContraVoucherRequest;
 import com.asg.finance.dto.ContraVoucherFullResponse;
@@ -20,7 +21,7 @@ public interface ContraVoucherService {
 
     ContraVoucherFullResponse getContraVoucherById(Long transactionPoid);
 
-    void deleteContraVoucher(Long transactionPoid);
+    void deleteContraVoucher(Long transactionPoid, DeleteReasonDto deleteReasonDto);
 
     String checkGlNature(Long creditGlId);
 

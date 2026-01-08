@@ -13,7 +13,7 @@ public interface FixedAssetService {
     FixedAssetResponseDto createFixedAsset(FixedAssetRequestDto request);
     FixedAssetResponseDto updateFixedAsset(Long faPoid, FixedAssetRequestDto request);
     FixedAssetResponseDto getFixedAssetById(Long faPoid);
-    void softDeleteFixedAsset(Long faPoid);
+    void softDeleteFixedAsset(Long faPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto);
     List<Long> createMultipleCopies(Long faPoid, int noOfCopies);
     Map<String, Object> listFixedAssetCategories(String documentId, FilterRequestDto filters, Pageable pageable);
 }

@@ -25,7 +25,7 @@ public interface GLMasterService {
 
     GLMasterResponseDto updateGLMaster(Long glPoid, GLMasterRequestDto req);
 
-    void deleteGLMaster(Long glPoid);
+    void deleteGLMaster(Long glPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto);
 
     // Tree functionality
     List<GlMasterTreeNodeDto> getGlMasterTree(String documentId, String actionRequested, GlMasterTreeRequest request);

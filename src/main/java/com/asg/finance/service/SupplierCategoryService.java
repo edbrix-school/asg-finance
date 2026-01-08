@@ -7,7 +7,7 @@ import org.springframework.data.domain.Pageable;
 import java.util.Map;
 
 public interface SupplierCategoryService {
-     SupplierCategoryDto softDeleteSupplierCategory(Long supplierCategoryPoid);
+     SupplierCategoryDto softDeleteSupplierCategory(Long supplierCategoryPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto);
 
      SupplierCategoryDto getSupplierCategoryById(Long supplierCategoryPoid);
 

@@ -15,7 +15,7 @@ public interface GlBankService {
 
      GlBankDto fetchGlBank(Long bankPoid);
 
-    void deleteBankMaster(Long bankPoid);
+    void deleteBankMaster(Long bankPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto);
 
     Map<String, Object> listOfRecordsAndGenericSearch(String docId, FilterRequestDto request, Pageable pageable);
 }

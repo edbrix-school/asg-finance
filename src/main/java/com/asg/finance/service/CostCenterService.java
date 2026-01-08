@@ -13,7 +13,7 @@ import java.util.Map;
 public interface CostCenterService {
     Long createCostCenter(CostCenterRequestDTO dto);
 
-    void softDeleteCountry(Long costCenterPoid);
+    void softDeleteCountry(Long costCenterPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto);
 
     Long updateCostCenter(Long id, CostCenterRequestDTO dto);
 

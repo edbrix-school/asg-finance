@@ -11,6 +11,6 @@ public interface FixedAssetCategoryService {
     FixedAssetCategoryResponseDto createFixedAssetCategory(FixedAssetCategoryRequestDto request);
     FixedAssetCategoryResponseDto updateFixedAssetCategory(Long faCategoryPoid, FixedAssetCategoryRequestDto requestDto);
     FixedAssetCategoryResponseDto getFixedAssetCategory(Long faCategoryPoid);
-    void softDeleteFixedAssetCategory(Long faCategoryPoid);
+    void softDeleteFixedAssetCategory(Long faCategoryPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto);
     Map<String, Object> listFixedAssetCategories(String documentId, FilterRequestDto filters, Pageable pageable);
 }

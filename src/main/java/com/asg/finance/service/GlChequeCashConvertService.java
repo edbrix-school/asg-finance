@@ -14,7 +14,7 @@ public interface GlChequeCashConvertService {
 
     GlChequeCashConvertHdrDto getGlChequeCashConvert(Long transactionPoid);
 
-    void softDeleteByTransactionPoid(Long transactionPoid);
+    void softDeleteByTransactionPoid(Long transactionPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto);
 
     Map<String, Object> listOfRecordsAndGenericSearch(String documentId, FilterRequestDto filters, LocalDate startDate, LocalDate endDate, Pageable pageable);
 

@@ -13,7 +13,7 @@ public interface TaxMasterService {
     TaxMasterResponseDTO createTaxMaster(TaxMasterRequestDTO request);
     TaxMasterResponseDTO updateTaxMaster(Long taxPoid, TaxMasterRequestDTO request);
     TaxMasterResponseDTO getTaxMasterById(Long taxPoid);
-    void softDeleteTaxMaster(Long taxPoid);
+    void softDeleteTaxMaster(Long taxPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto);
     Map<String, Object> listTaxMaster(String documentId, FilterRequestDto filters, Pageable pageable);
     TaxMasterDto getTaxMasterDtoById(Long taxPoid);
     List<TaxMasterDto> getTaxMasterDtosByIds(List<Long> taxPoids);

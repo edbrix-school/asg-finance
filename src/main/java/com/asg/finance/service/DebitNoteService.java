@@ -13,7 +13,7 @@ public interface DebitNoteService {
     
     DebitNoteHeaderDto updateDebitNote(Long transactionPoid, DebitNoteHeaderDto debitNoteDto);
     
-    void deleteDebitNote(Long transactionPoid);
+    void deleteDebitNote(Long transactionPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto);
     
     DebitNoteHeaderDto getDebitNote(Long transactionPoid);
     

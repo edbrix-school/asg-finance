@@ -19,7 +19,7 @@ public interface BankDebitVoucherService {
 
     BankDebitVoucherResponse updateBankDebitVoucher(Long transactionPoid, BankDebitVoucherRequest request, String documentId);
 
-    void softDeleteBankDebitVoucher(Long transactionPoid);
+    void softDeleteBankDebitVoucher(Long transactionPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto);
 
     Map<String, Object> listBankDebitVouchers(String documentId, FilterRequestDto filters, LocalDate startDateValue, LocalDate endDateValue, Pageable pageable);
 

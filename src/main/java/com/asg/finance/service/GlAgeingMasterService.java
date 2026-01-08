@@ -15,7 +15,7 @@ public interface GlAgeingMasterService {
     
     GlAgeingMasterDto updateAgeingMaster(Long ageingPoid, GlAgeingMasterDto ageingMasterDto);
 
-    void softDeleteAgeingMaster(Long ageingPoid);
+    void softDeleteAgeingMaster(Long ageingPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto);
 
     Map<String, Object> listAgeingMasters(String documentId, FilterRequestDto filters, Pageable pageable);
 }

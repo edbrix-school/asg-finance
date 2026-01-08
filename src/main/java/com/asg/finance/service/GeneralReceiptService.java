@@ -42,7 +42,7 @@ public interface GeneralReceiptService {
      * Delete general receipt (soft delete)
      * @param transactionPoid Transaction POID
      */
-    void deleteGeneralReceipt(Long transactionPoid);
+    void deleteGeneralReceipt(Long transactionPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto);
 
     /**
      * Generic list with search and pagination using DocumentService

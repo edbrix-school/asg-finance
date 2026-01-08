@@ -8,6 +8,7 @@ import com.asg.finance.validation.ValidChequeHeader;
 import lombok.*;
 
 import java.time.LocalDate;
+import java.util.Date;
 import java.util.List;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
@@ -37,6 +38,9 @@ public class ChequeReturnRequest {
         private String remarks;
         private String status;
         private String closeDetail;
+        private String createdBy;
+        private Date createdDate;
+
     }
 
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder

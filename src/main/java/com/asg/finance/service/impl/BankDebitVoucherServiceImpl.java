@@ -3,6 +3,7 @@ package com.asg.finance.service.impl;
 import com.asg.common.lib.dto.*;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
 import com.asg.common.lib.dto.request.GlobalTermsInsertRequestDto;
+import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.GlobalTermsResponseDto;
 import com.asg.common.lib.exception.ResourceAlreadyExistsException;
 import com.asg.common.lib.exception.ResourceNotFoundException;
@@ -144,7 +145,10 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
         persistChildCollections(request, savedHeader.getTransactionPoid(), true,documentId);
 
-        return mapEntityToResponse(savedHeader);
+        // Load breakup data in response
+        BankDebitVoucherResponse response = mapEntityToResponse(savedHeader);
+        loadBreakupsIntoResponse(response, savedHeader.getTransactionPoid(), documentId, savedHeader.getGroupPoid(), savedHeader.getCompanyPoid());
+        return response;
     }
 
     @Override
@@ -154,6 +158,9 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         ReconcileResultDto reconDto = fetchReconDate("400-111", transactionPoid);
 
         BankDebitVoucherResponse response = mapEntityToResponse(header);
+
+        // Load breakup data into response (reusable method)
+        loadBreakupsIntoResponse(response, transactionPoid, documentId, header.getGroupPoid(), header.getCompanyPoid());
 
         GlobalTermsResponseDto termsResponse =
                 globalTermsServiceClient.loadGlobalTermsList(
@@ -246,7 +253,10 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
         persistChildCollections(request, header.getTransactionPoid(), false,documentId);
 
-        return mapEntityToResponse(header);
+        // Load breakup data in response (like CreditNote, DebitNote, ApPurchaseJournal)
+        BankDebitVoucherResponse response = mapEntityToResponse(header);
+        loadBreakupsIntoResponse(response, header.getTransactionPoid(), documentId, header.getGroupPoid(), header.getCompanyPoid());
+        return response;
     }
 
     @Override
@@ -395,7 +405,8 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                             dto.setDocId(documentId);
                             dto.setTransactionPoid(transactionPoid);
                             dto.setMainDetRowId(detRowId);
-                            dto.setCostDetRowId(dto.getCostDetRowId());
+                            dto.setGlPoid(dtl.getGlPoid());
+                            dto.setCostDetRowId(p.getCostDetRowId());
                             dto.setCostGroup(p.getCostGroup());
                             dto.setCostPoid(p.getCostPoid());
                             dto.setAmount(p.getAmount());
@@ -451,7 +462,8 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                             dto.setDocId(documentId);
                             dto.setTransactionPoid(transactionPoid);
                             dto.setMainDetRowId(dtl.getDetRowId());
-                            dto.setCostDetRowId(dto.getCostDetRowId());
+                            dto.setGlPoid(dtl.getGlPoid());
+                            dto.setCostDetRowId(p.getCostDetRowId());
                             dto.setCostGroup(p.getCostGroup());
                             dto.setCostPoid(p.getCostPoid());
                             dto.setAmount(p.getAmount());
@@ -899,6 +911,86 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         t.setClauseDetails(dto.getClauseDetails());
 
         return t;
+    }
+
+    /**
+     * Load billwise and cost center breakup data into response (reusable method)
+     * Called from GET, CREATE, and UPDATE methods
+     * Similar pattern to CreditNote, DebitNote, ApPurchaseJournal
+     */
+    private void loadBreakupsIntoResponse(BankDebitVoucherResponse response, Long transactionPoid, String documentId, Long groupPoid, Long companyPoid) {
+        if (response.getPaymentGlDetails() == null || response.getPaymentGlDetails().isEmpty()) {
+            return;
+        }
+
+        Long userPoid = UserContext.getUserPoid();
+
+        GlVoucherLoadBillwiseBreakupResponseDto billwiseResponse =
+                billwiseBreakupService.loadBillwiseBreakup(groupPoid, companyPoid, documentId, transactionPoid);
+
+        GlVoucherCostCenterBreakupResponseDto costCenterResponse =
+                costCenterBreakupService.loadCostCenterData(documentId, transactionPoid, groupPoid, companyPoid, userPoid);
+
+        for (PaymentGlDetails dtl : response.getPaymentGlDetails()) {
+            Long detRowId = dtl.getDetRowId();
+
+            // Billwise → popup list
+            if (billwiseResponse != null
+                    && billwiseResponse.getLoadBillwiseBreakupResponseDtoList() != null) {
+
+                List<BillwiseBreakupPopupRequestDto> bwList =
+                        billwiseResponse.getLoadBillwiseBreakupResponseDtoList().stream()
+                                .filter(bw -> Objects.equals(bw.getMainDetRowId(), detRowId))
+                                .map(bw -> {
+                                    BillwiseBreakupPopupRequestDto dto = new BillwiseBreakupPopupRequestDto();
+                                    dto.setBillDetRowId(bw.getBillDetRowId());
+                                    dto.setBillRefType(bw.getBillRefType());
+                                    dto.setBillRef(bw.getBillRef());
+                                    dto.setBillDueDate(bw.getBillDueDate());
+                                    // Amount & type from DR/CR amounts - check > 0 (like CreditNote, ApPurchaseJournal)
+                                    if (bw.getDrAmt() != null && bw.getDrAmt().compareTo(BigDecimal.ZERO) > 0) {
+                                        dto.setType("DR");
+                                        dto.setAmount(bw.getDrAmt());
+                                    } else if (bw.getCrAmt() != null && bw.getCrAmt().compareTo(BigDecimal.ZERO) > 0) {
+                                        dto.setType("CR");
+                                        dto.setAmount(bw.getCrAmt());
+                                    } else {
+                                        // Default to CR with zero amount if neither condition is met
+                                        dto.setType("CR");
+                                        dto.setAmount(BigDecimal.ZERO);
+                                    }
+                                    dto.setBillRemarks(bw.getBillRemarks());
+                                    return dto;
+                                })
+                                .collect(Collectors.toList());
+
+                dtl.setBreakupList(bwList);
+            }
+
+            // Cost center → popup list
+            if (costCenterResponse != null
+                    && costCenterResponse.getCostBreakupList() != null) {
+
+                List<CostCenterBreakupPopupRequestDto> ccList =
+                        costCenterResponse.getCostBreakupList().stream()
+                                .filter(cc -> Objects.equals(cc.getMainDetRowId(), detRowId))
+                                .map(cc -> {
+                                    CostCenterBreakupPopupRequestDto dto = new CostCenterBreakupPopupRequestDto();
+                                    dto.setCostDetRowId(cc.getCostDetRowId());
+                                    dto.setCostGroup(cc.getCostGroup());
+                                    dto.setCostPoid(cc.getCostPoid());
+                                    dto.setAmount(
+                                            cc.getAmount() != null
+                                                    ? BigDecimal.valueOf(cc.getAmount())
+                                                    : BigDecimal.ZERO
+                                    );
+                                    return dto;
+                                })
+                                .collect(Collectors.toList());
+
+                dtl.setCostCenterList(ccList);
+            }
+        }
     }
 
     private Set<Long> ids(List<?> list) {

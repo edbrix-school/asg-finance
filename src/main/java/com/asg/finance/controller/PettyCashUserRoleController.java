@@ -1,6 +1,7 @@
 package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 
 import com.asg.common.lib.security.util.UserContext;
@@ -185,9 +186,10 @@ public class PettyCashUserRoleController {
     @DeleteMapping("/{refTypePoid}")
     public ResponseEntity<?> softDeletePettyCashUserRole(
             @Parameter(description = "refTypePoid reference identifier", required = true)
-            @PathVariable Long refTypePoid) {
+            @PathVariable Long refTypePoid,
+            @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto) {
 
-        pettyCashUserRoleService.softDeletePettyCashUserRole(refTypePoid);
+        pettyCashUserRoleService.softDeletePettyCashUserRole(refTypePoid, deleteReasonDto);
         return success("Petty Cash User Role has been soft deleted successfully");
     }
 

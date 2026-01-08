@@ -5,6 +5,7 @@ import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.finance.client.RoleServiceClient;
 import com.asg.finance.entity.GLMaster;
 import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.utility.ASGHelperUtils;
 import com.asg.finance.dto.PettyCashUserRoleRequestDto;
 import com.asg.finance.dto.PettyCashUserroleResponseDto;
@@ -37,6 +38,7 @@ public class PettyCashUserRoleServiceImpl implements PettyCashUserRoleService {
     private final RoleServiceClient roleServiceClient;
     private final GLMasterRepository glMasterRepository;
     private final DocumentSearchService documentService;
+    private final DocumentDeleteService documentDeleteService;
 
     public PettyCashUserroleResponseDto createPettyCashUserRole(PettyCashUserRoleRequestDto request) {
         PettyCashUserroleMaster entity = covertFromGlPettyDtoToGlPettyEntity(request);
@@ -148,14 +150,17 @@ public class PettyCashUserRoleServiceImpl implements PettyCashUserRoleService {
     }
 
     @Transactional
-    public void softDeletePettyCashUserRole(Long refTypePoid) {
+    public void softDeletePettyCashUserRole(Long refTypePoid, DeleteReasonDto deleteReasonDto) {
         PettyCashUserroleMaster existingEntity = repository.findById(refTypePoid)
-                .orElseThrow(() -> new ResourceNotFoundException("Petty cash user role not found with ID: ", "refTypePoid",refTypePoid));
-        existingEntity.setDeleted("Y");
-        existingEntity.setActive("N");
-        existingEntity.setLastModifiedDate(LocalDateTime.now());
-        existingEntity.setLastModifiedBy(getCurrentUser());
-        repository.save(existingEntity);
+                .orElseThrow(() -> new ResourceNotFoundException("Petty cash user role not found with ID: ", "refTypePoid", refTypePoid));
+        
+        documentDeleteService.deleteDocument(
+                refTypePoid,
+                "GL_PETTY_CASH_USERROLE_MASTER",
+                "REF_TYPE_POID",
+                deleteReasonDto.getDeleteReason(),
+                null
+        );
     }
 
     @Override

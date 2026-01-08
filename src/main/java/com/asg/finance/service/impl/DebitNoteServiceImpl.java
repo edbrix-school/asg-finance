@@ -158,8 +158,8 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                 transactionPoid,
                 "AR_DEBIT_NOTE_HDR",
                 "TRANSACTION_POID",
-                deleteReasonDto != null ? deleteReasonDto.getDeleteReason() : null,
-                java.sql.Date.valueOf(entity.getTransactionDate())
+                deleteReasonDto.getDeleteReason(),
+                entity.getTransactionDate()
         );
     }
 

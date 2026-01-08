@@ -1,8 +1,10 @@
 package com.asg.finance.service.impl;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.finance.dto.AssetLocationMasterRequestDto;
 import com.asg.finance.dto.AssetLocationMasterResponseDto;
@@ -37,6 +39,9 @@ public class AssetLocationMasterServiceImpl implements AssetLocationMasterServic
 
     @Autowired
     private DocumentSearchService documentService;
+
+    @Autowired
+    private DocumentDeleteService documentDeleteService;
 
 
     @Transactional
@@ -101,15 +106,17 @@ public class AssetLocationMasterServiceImpl implements AssetLocationMasterServic
 
     @Override
     @Transactional
-    public void softDeleteAssetLocationMaster(Long locationPoid) {
+    public void softDeleteAssetLocationMaster(Long locationPoid, DeleteReasonDto deleteReasonDto) {
         AssetLocation entity = repository.findById(locationPoid)
                 .orElseThrow(() -> new IllegalArgumentException("Asset Location not found for POID: " + locationPoid));
 
-        entity.setDeleted("Y");
-        entity.setActive("N");
-        entity.setLastModifiedDate(LocalDateTime.now());
-        entity.setLastModifiedBy(getCurrentUser());
-        repository.save(entity);
+        documentDeleteService.deleteDocument(
+                locationPoid,
+                "ASSET_LOCATION_MASTER",
+                "LOCATION_POID",
+                deleteReasonDto.getDeleteReason(),
+                null
+        );
     }
 
     @Override

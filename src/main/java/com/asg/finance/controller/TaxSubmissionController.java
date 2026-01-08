@@ -1,6 +1,7 @@
 package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 
 import com.asg.finance.dto.*;
@@ -162,12 +163,13 @@ public class TaxSubmissionController {
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> deleteTaxSubmission(
             @Parameter(description = "Transaction POID", required = true)
-            @PathVariable Long transactionPoid) {
+            @PathVariable Long transactionPoid,
+            @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto) {
 
         log.info("deleteTaxSubmission started for transactionPoid={} groupPoid={}", 
                 transactionPoid, UserContext.getGroupPoid());
         
-        taxSubmissionService.deleteTaxSubmission(transactionPoid);
+        taxSubmissionService.deleteTaxSubmission(transactionPoid, deleteReasonDto);
         
         log.info("deleteTaxSubmission completed for transactionPoid={}", transactionPoid);
         return success("Tax submission deleted successfully", null);

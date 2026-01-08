@@ -5,6 +5,7 @@ import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
@@ -60,6 +61,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
     private final LovDataService lovService;
     private final PrintService printService;
     private final DataSource dataSource;
+    private final DocumentDeleteService documentDeleteService;
 
     @Override
     public GlChequeCashConvertHdrDto getGlChequeCashConvert(Long transactionPoid) {
@@ -160,14 +162,18 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
 
     @Transactional
     @Override
-    public void softDeleteByTransactionPoid(Long transactionPoid) {
+    public void softDeleteByTransactionPoid(Long transactionPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto) {
+        GlChequeCashConvertHdrEntity entity = glChequeCashConvertHdrRepository.findById(transactionPoid)
+                .orElseThrow(() -> new ResourceNotFoundException("ChequeAndCashConvert", "transactionPoid", transactionPoid));
 
-        GlChequeCashConvertHdrEntity entity = glChequeCashConvertHdrRepository.findById(transactionPoid).orElseThrow(() -> new ResourceNotFoundException("ChequeAndCashConvert", "transactionPoid", transactionPoid));
-        entity.setDeleted("Y");
-        entity.setLastModifiedDate(LocalDateTime.now());
-        entity.setLastModifiedBy(getCurrentUser());
-        glChequeCashConvertHdrRepository.save(entity);
-
+        // Use DocumentDeleteService for consistent soft delete handling
+        documentDeleteService.deleteDocument(
+                transactionPoid,
+                "GL_CHEQUE_CASH_CONVERT_HDR",
+                "TRANSACTION_POID",
+                deleteReasonDto.getDeleteReason(),
+                null
+        );
     }
 
     public Map<String, Object> listOfRecordsAndGenericSearch(String documentId, FilterRequestDto filters, LocalDate startDate, LocalDate endDate, Pageable pageable) {

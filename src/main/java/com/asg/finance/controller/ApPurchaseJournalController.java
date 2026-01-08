@@ -1,11 +1,11 @@
 package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
-import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.*;
 import com.asg.common.lib.exception.ValidationException;
@@ -28,7 +28,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-
+import jakarta.validation.Valid;
 
 import java.util.List;
 import java.util.Map;
@@ -185,9 +185,11 @@ public class ApPurchaseJournalController {
             )
     })
     public ResponseEntity<?> softDeleteApPurchaseJournal(
-            @PathVariable Long transactionPoid) {
+            @Parameter(description = "Transaction POID", required = true)
+            @PathVariable Long transactionPoid,
+            @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto) {
 
-        service.softDeleteApPurchaseInvoice(transactionPoid, UserContext.getDocumentId());
+        service.softDeleteApPurchaseInvoice(transactionPoid, deleteReasonDto);
 
         return success("AP Purchase Journal deleted successfully");
     }

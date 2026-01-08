@@ -1,6 +1,7 @@
 package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 
 import com.asg.common.lib.security.util.UserContext;
@@ -186,10 +187,11 @@ public class ChequeReturnController {
     @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> softDeleteChequeReturn(
-            @Parameter(description = "TRANSACTION_POID", required = true) @PathVariable Long transactionPoid
+            @Parameter(description = "TRANSACTION_POID", required = true) @PathVariable Long transactionPoid,
+            @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto
     ) {
         try {
-            service.softDeleteChequeReturn(transactionPoid);
+            service.softDeleteChequeReturn(transactionPoid, deleteReasonDto);
             return success("Cheque Return soft deleted successfully");
         } catch (jakarta.persistence.EntityNotFoundException ex) {
             return notFound(ex.getMessage());

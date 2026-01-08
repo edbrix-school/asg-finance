@@ -4,7 +4,9 @@ import com.asg.common.lib.dto.DetailsDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.finance.dto.CostCenterListResponseDto;
 import com.asg.finance.dto.CostCenterRequestDTO;
@@ -35,6 +37,7 @@ import java.util.stream.Collectors;
 public class CostCenterServiceImpl implements CostCenterService {
     private final CostCenterRepository repository;
     private final DocumentSearchService documentService;
+    private final DocumentDeleteService documentDeleteService;
     private final CostCenterTreeViewRepository costCenterTreeViewRepository;
     
     private static final Logger log = LoggerFactory.getLogger(CostCenterServiceImpl.class);
@@ -74,18 +77,22 @@ public class CostCenterServiceImpl implements CostCenterService {
     }
 
     @Transactional
-    public void softDeleteCountry(Long CostCenterPoid) {
-        CostCenter existingCountry = repository.findById(CostCenterPoid)
-                .orElseThrow(() -> new ResourceNotFoundException("CostCenter", "costCenterPoid", CostCenterPoid));
+    public void softDeleteCountry(Long costCenterPoid, DeleteReasonDto deleteReasonDto) {
+        CostCenter existing = repository.findById(costCenterPoid)
+                .orElseThrow(() -> new ResourceNotFoundException("CostCenter", "costCenterPoid", costCenterPoid));
+        
         // Check if this cost center has active children
-        if (hasActiveChildren(CostCenterPoid)) {
+        if (hasActiveChildren(costCenterPoid)) {
             throw new ValidationException("This Cost Center Master cannot be deleted as it has related child records.");
         }
-        existingCountry.setDeleted("Y");
-        existingCountry.setActive("N");
-        existingCountry.setLastModifiedDate(LocalDateTime.now());
-        existingCountry.setLastModifiedBy(getCurrentUser());
-        repository.save(existingCountry);
+        
+        documentDeleteService.deleteDocument(
+                costCenterPoid,
+                "GL_COST_CENTER_MASTER",
+                "COST_CENTER_POID",
+                deleteReasonDto.getDeleteReason(),
+                null
+        );
     }
 
     private boolean hasActiveChildren(Long parentPoid) {

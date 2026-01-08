@@ -1,8 +1,10 @@
 package com.asg.finance.service.impl;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.finance.dto.AssetInformationMasterRequest;
 import com.asg.finance.dto.AssetInformationMasterResponse;
@@ -38,6 +40,7 @@ public class AssetInformationServiceImpl implements AssetInformationService {
 
     private final AssetInformationRepository repository;
     private final DocumentSearchService documentService;
+    private final DocumentDeleteService documentDeleteService;
 
     @Override
     public AssetInformationMasterResponse createAssetInformation(AssetInformationMasterRequest request) {
@@ -265,18 +268,19 @@ public class AssetInformationServiceImpl implements AssetInformationService {
     }
 
     @Override
-    public void softDeleteAssetInformationByPoidId(Long iaPoid) {
+    public void softDeleteAssetInformationByPoidId(Long iaPoid, DeleteReasonDto deleteReasonDto) {
         try {
             AssetInformationMasterEntity entity = repository.findByIaPoidAndDeleted(iaPoid, "N")
                     .orElseThrow(() -> new ResourceNotFoundException("Asset Information", "iaPoid", iaPoid));
 
-            entity.setDeleted("Y");
-            entity.setActive("N");
-            entity.setLastModifiedBy(getCurrentUser());
-            entity.setLastModifiedDate(LocalDateTime.now());
-            repository.save(entity);
+            documentDeleteService.deleteDocument(
+                    iaPoid,
+                    "ASSET_INFORMATION_MASTER",
+                    "IA_POID",
+                    deleteReasonDto.getDeleteReason(),
+                    null
+            );
         } catch (ResourceNotFoundException ex) {
-            // Re-throw ResourceNotFoundException as-is (handled by GlobalExceptionHandler)
             throw ex;
         } catch (DataAccessException ex) {
             log.error("Database error while soft deleting asset information: {}", iaPoid, ex);

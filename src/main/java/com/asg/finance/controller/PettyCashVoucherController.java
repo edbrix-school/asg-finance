@@ -1,6 +1,7 @@
 package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.finance.dto.*;
@@ -238,9 +239,10 @@ public class PettyCashVoucherController {
             @Parameter(description = "Transaction Poid reference identifier", required = true)
             @PathVariable Long transactionPoid,
             @Parameter(description = "Reference type for petty cash creation. Allowed values: FF, FDA, PO", required = false, example = "FF")
-            @RequestParam String refType) {
+            @RequestParam String refType,
+            @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto) {
 
-        pettyCashVoucherService.deletePettyCashVoucher(transactionPoid, UserContext.getDocumentId(), refType);
+        pettyCashVoucherService.deletePettyCashVoucher(transactionPoid, UserContext.getDocumentId(), refType, deleteReasonDto);
         return success("Petty Cash Voucher Payment has been soft deleted successfully");
     }
 

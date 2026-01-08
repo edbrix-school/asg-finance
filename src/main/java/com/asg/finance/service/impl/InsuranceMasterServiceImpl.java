@@ -3,6 +3,7 @@ package com.asg.finance.service.impl;
 import com.asg.common.lib.dto.*;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.finance.client.RoleServiceClient;
 import com.asg.finance.dto.masters.*;
@@ -32,6 +33,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
 
     private final InsuranceMasterRepository insuranceMasterRepository;
     private final DocumentSearchService documentService;
+    private final DocumentDeleteService documentDeleteService;
     private final RoleServiceClient roleServiceClient;
     
     @Autowired
@@ -65,19 +67,21 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
 
     @Override
     @Transactional
-    public void softDeleteInsuranceMaster(Long insuranceId) {
+    public void softDeleteInsuranceMaster(Long insuranceId, DeleteReasonDto deleteReasonDto) {
         InsuranceMaster insuranceMaster = insuranceMasterRepository.findById(insuranceId)
                 .orElseThrow(() -> new ResourceNotFoundException("Insurance Master", "ID", insuranceId));
 
         if (insuranceMasterRepository.hasPjReference(insuranceId)) {
             throw new ValidationException("Cannot delete — Insurance linked with Purchase Journal Reference");
         }
-
-        insuranceMaster.setDeleted("Y");
-        insuranceMaster.setLastModifiedBy(getCurrentUser());
-        insuranceMaster.setLastModifiedDate(LocalDateTime.now());
-
-        insuranceMasterRepository.save(insuranceMaster);
+        
+        documentDeleteService.deleteDocument(
+                insuranceId,
+                "GLOBAL_INSURANCE_HDR",
+                "TRANSACTION_POID",
+                deleteReasonDto.getDeleteReason(),
+                null
+        );
     }
 
     @Override

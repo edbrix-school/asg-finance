@@ -4,6 +4,7 @@ import com.asg.common.lib.dto.*;
 
 import com.asg.common.lib.dto.request.DocReleaseLockRequestDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.utility.ASGHelperUtils;
@@ -61,6 +62,9 @@ public class GLMasterServiceImpl implements GLMasterService {
 
     @Autowired
     private LovDataService lovService;
+
+    @Autowired
+    private DocumentDeleteService documentDeleteService;
 
     private String getCurrentUser() {
         return ASGHelperUtils.getCurrentUser(); // dynamically fetch current user
@@ -369,7 +373,7 @@ public class GLMasterServiceImpl implements GLMasterService {
 
 
     @Override
-    public void deleteGLMaster(Long glPoid) {
+    public void deleteGLMaster(Long glPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto) {
         GLMasterEntity entity = glMasterRepo.findById(glPoid)
                 .orElseThrow(() -> new RuntimeException("GL Master not found: " + glPoid));
 
@@ -378,12 +382,14 @@ public class GLMasterServiceImpl implements GLMasterService {
             throw new ValidationException("This GL Master cannot be deleted as it has related child records.");
         }
 
-        entity.setActiveFlag("N");   // mark inactive
-        entity.setDeletedFlag("Y");  // mark deleted (you need to add this field if not present)
-        entity.setLastModifiedBy(getCurrentUser());
-        entity.setLastModifiedDate(LocalDateTime.now());
-
-        glMasterRepo.save(entity);
+        // Use DocumentDeleteService for consistent soft delete handling
+        documentDeleteService.deleteDocument(
+                glPoid,
+                "GL_MASTER",
+                "GL_POID",
+                deleteReasonDto.getDeleteReason(),
+                null
+        );
     }
 
     private boolean hasActiveChildren(Long parentPoid) {

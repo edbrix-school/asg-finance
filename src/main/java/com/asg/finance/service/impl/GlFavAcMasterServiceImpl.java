@@ -6,6 +6,7 @@ import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.finance.client.RoleServiceClient;
 import com.asg.finance.entity.GLMaster;
 import com.asg.finance.repository.GLMasterRepository;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.finance.dto.*;
@@ -48,6 +49,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
     private final DocumentSearchService documentService;
     private final GLMasterRepository glMasterRepository;
     private final LovDataService lovService;
+    private final DocumentDeleteService documentDeleteService;
 
     @Override
     public GlFavAcMasterResponse createFavoriteAccount(GlFavAcMasterRequest request) {
@@ -400,19 +402,18 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
 
     @Override
     @Transactional
-    public void softDeleteFavoriteAccount(Long favAcPoid) {
+    public void softDeleteFavoriteAccount(Long favAcPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto) {
         GlFavAcMaster existing = masterRepository.findByFavAcPoid(favAcPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Favorite Account Master", "favAcPoid", favAcPoid));
-        existing.setActive("N");
-        existing.setDeleted("Y");
-        existing.setLastModifiedBy(getCurrentUser());
-        existing.setLastModifiedDate(Timestamp.valueOf(LocalDateTime.now()));
-        masterRepository.save(existing);
 
-        glAcDtlRepository.deleteByFavAcPoid(favAcPoid);
-        userRoleDtlRepository.deleteByFavAcPoid(favAcPoid);
-
-
+        // Use DocumentDeleteService for consistent soft delete handling
+        documentDeleteService.deleteDocument(
+                favAcPoid,
+                "GL_FAV_AC_MASTER",
+                "FAV_AC_POID",
+                deleteReasonDto.getDeleteReason(),
+                null
+        );
     }
 
     public Map<String, Object> listOfRecordsAndGenericSearch(String docId, FilterRequestDto request, Pageable pageable) {

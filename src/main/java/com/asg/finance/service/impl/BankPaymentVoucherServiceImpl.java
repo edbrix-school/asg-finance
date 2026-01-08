@@ -258,8 +258,8 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                 transactionPoid,
                 "GL_BANK_PAYMENT_HDR",
                 "TRANSACTION_POID",
-                deleteReasonDto != null ? deleteReasonDto.getDeleteReason() : null,
-                java.sql.Date.valueOf(existing.getTransactionDate())
+                deleteReasonDto.getDeleteReason(),
+                existing.getTransactionDate()
         );
     }
 

@@ -216,9 +216,10 @@ public class FixedAssetController {
     @DeleteMapping("/{faPoid}")
     public ResponseEntity<?> softDeleteFixedAsset(
             @Parameter(description = "faPoid reference identifier", required = true)
-            @PathVariable Long faPoid) {
+            @PathVariable Long faPoid,
+            @Valid @RequestBody(required = false) com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto) {
 
-        fixedAssetService.softDeleteFixedAsset(faPoid);
+        fixedAssetService.softDeleteFixedAsset(faPoid, deleteReasonDto);
         return success("Fixed Asset has been soft deleted successfully");
     }
 

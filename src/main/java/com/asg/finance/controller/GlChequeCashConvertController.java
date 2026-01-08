@@ -1,6 +1,7 @@
 package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.GlChequeCashConvertHdrDto;
@@ -98,10 +99,11 @@ public class GlChequeCashConvertController {
     @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> deleteGlChequeCashConvert(
-            @Parameter(description = "ID of the  to be deleted", required = true, example = "301")
-            @PathVariable Long transactionPoid) {
+            @Parameter(description = "ID of the record to be deleted", required = true, example = "301")
+            @PathVariable Long transactionPoid,
+            @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto) {
 
-        service.softDeleteByTransactionPoid(transactionPoid);
+        service.softDeleteByTransactionPoid(transactionPoid, deleteReasonDto);
         return success("GL Cheque Cash Convert Record deleted successfully");
     }
 

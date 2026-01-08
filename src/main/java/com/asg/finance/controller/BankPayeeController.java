@@ -1,6 +1,7 @@
 package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 
 import com.asg.common.lib.security.util.UserContext;
@@ -132,9 +133,12 @@ public class BankPayeeController {
     })
     @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{payingPoid}")
-    public ResponseEntity<?> softDeleteById(@PathVariable Long payingPoid) {
+    public ResponseEntity<?> softDeleteById(
+            @Parameter(description = "Bank Payee POID", required = true)
+            @PathVariable Long payingPoid,
+            @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto) {
 
-        bankPayeeService.softDeleteBypPayingPoid(payingPoid);
+        bankPayeeService.softDeleteBypPayingPoid(payingPoid, deleteReasonDto);
         return success("Bank Payee has been soft deleted successfully", null);
     }
 

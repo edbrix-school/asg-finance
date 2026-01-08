@@ -3,6 +3,8 @@ package com.asg.finance.service.impl;
 import com.asg.common.lib.dto.DetailsDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.LovDataService;
+import com.asg.common.lib.service.DocumentDeleteService;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.finance.dto.PropertyCostCenterRequest;
 import com.asg.finance.dto.PropertyCostCenterResponse;
 import com.asg.finance.dto.PropertyCostCenterTreeNodeDto;
@@ -40,6 +42,8 @@ public class PropertyCostCenterServiceImpl implements IPropertyCostCenterService
 
     @Autowired
     private LovDataService lovService;
+
+
 
     private void validatePropertyType(PropertyCostCenterRequest request) {
         if (request.getPropertyType() != null && !request.getPropertyType().matches("MAIN_GROUP|SUB_GROUP|CHILD")) {
@@ -175,23 +179,21 @@ public class PropertyCostCenterServiceImpl implements IPropertyCostCenterService
 
     @Override
     @Transactional
-    public void softDeleteByPoid(Long costCenterPoid) {
-        // Fetch the Property Cost Center by its POID
+    public void softDeleteByPoid(Long costCenterPoid, DeleteReasonDto deleteReasonDto) {
         PropertyCostCenter entity = repository.findByPropertyCostCenterPoidAndDeleted(costCenterPoid, "N")
                 .orElseThrow(() -> new ResourceNotFoundException("Property Cost Center", "POID", costCenterPoid));
 
-        // Check if this property cost center has active children
         if (hasActiveChildren(costCenterPoid)) {
             throw new ValidationException("This Property Cost Center cannot be deleted as it has related child records.");
         }
 
-        // Mark the record as deleted
-        entity.setDeleted("Y");
-        entity.setLastModifiedBy(getCurrentUser());  // Assuming a helper method for fetching current user
-        entity.setLastModifiedDate(LocalDateTime.now());  // Set the current date/time as last modified date
-
-        // Save the soft-deleted entity
-        repository.save(entity);
+        documentDeleteService.deleteDocument(
+                costCenterPoid,
+                "PROPERTY_COST_CENTER_MASTER",
+                "PROPERTY_COST_CENTER_POID",
+                deleteReasonDto.getDeleteReason(),
+                entity.getCreatedDate()
+        );
     }
 
     private boolean hasActiveChildren(Long parentPoid) {

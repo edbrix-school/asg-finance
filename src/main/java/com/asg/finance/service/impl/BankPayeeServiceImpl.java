@@ -1,7 +1,9 @@
 package com.asg.finance.service.impl;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.exception.ResourceAlreadyExistsException;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.utility.ASGHelperUtils;
 import com.asg.finance.dto.BankPayeeRequest;
@@ -34,6 +36,9 @@ public class BankPayeeServiceImpl implements IBankPayeeService {
 
     @Autowired
     private DocumentSearchService documentService;
+
+    @Autowired
+    private DocumentDeleteService documentDeleteService;
 
     @Transactional
     public BankPayeeResponse createPayee(BankPayeeRequest request) {
@@ -78,14 +83,17 @@ public class BankPayeeServiceImpl implements IBankPayeeService {
         return response;
     }
 
-    public void softDeleteBypPayingPoid(Long payingPoid) {
+    public void softDeleteBypPayingPoid(Long payingPoid, DeleteReasonDto deleteReasonDto) {
         BankPayee entity = repository.findByPayingPoidAndDeleted(payingPoid , "N")
                 .orElseThrow(() -> new RuntimeException("Payee with ID " + payingPoid + " not found"));
-        entity.setActive("N");
-        entity.setDeleted("Y");
-        entity.setLastModifiedDate(LocalDateTime.now());
-        entity.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
-        repository.save(entity);
+        
+        documentDeleteService.deleteDocument(
+                payingPoid,
+                "BANK_PAYEE_MASTER",
+                "PAYING_POID",
+                deleteReasonDto.getDeleteReason(),
+                null
+        );
     }
 
     @Override

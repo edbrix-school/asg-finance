@@ -1,6 +1,7 @@
 package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 
 import com.asg.common.lib.exception.ResourceNotFoundException;
@@ -279,9 +280,10 @@ public class GlFavAcMasterController {
                     required = true,
                     example = "116"
             )
-            @PathVariable Long favAcPoid) {
+            @PathVariable Long favAcPoid,
+            @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto) {
 
-        service.softDeleteFavoriteAccount(favAcPoid);
+        service.softDeleteFavoriteAccount(favAcPoid, deleteReasonDto);
         return success("Favorite Account Record deleted successfully");
     }
 

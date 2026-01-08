@@ -151,13 +151,16 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
 
     @Override
     @Transactional
-    public void deletePurchaseOrder(Long transactionPoid) {
+    public void deletePurchaseOrder(Long transactionPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto) {
 
         PurchaseOrder header = purchaseOrderRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() ->
                         new EntityNotFoundException("Purchase Order not found for TransactionPoid: " + transactionPoid)
                 );
         header.setDeleted("Y");
+        if (deleteReasonDto != null && deleteReasonDto.getDeleteReason() != null) {
+            header.setDeleteReason(deleteReasonDto.getDeleteReason());
+        }
         header.setLastModifiedDate(LocalDateTime.now());
         header.setLastModifiedBy(getCurrentUser());
 

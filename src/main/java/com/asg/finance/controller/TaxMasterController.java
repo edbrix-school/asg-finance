@@ -2,6 +2,7 @@ package com.asg.finance.controller;
 
 
 import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.TaxMasterRequestDTO;
@@ -240,9 +241,10 @@ public class TaxMasterController {
     @DeleteMapping("/{taxPoid}")
     public ResponseEntity<?> softDeleteTaxMaster(
             @Parameter(description = "taxPoid reference identifier", required = true)
-            @PathVariable Long taxPoid) {
+            @PathVariable Long taxPoid,
+            @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto) {
 
-        service.softDeleteTaxMaster(taxPoid);
+        service.softDeleteTaxMaster(taxPoid, deleteReasonDto);
         return success("Tax Master has been soft deleted successfully");
     }
 

@@ -1,11 +1,13 @@
 package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.*;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
 import com.asg.common.lib.dto.request.GlobalTermsInsertRequestDto;
 import com.asg.common.lib.dto.response.GlobalTermsResponseDto;
 import com.asg.common.lib.exception.ResourceAlreadyExistsException;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.finance.client.GlobalTermsServiceClient;
 import com.asg.finance.repository.GLMasterRepository;
@@ -79,6 +81,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
     private final GlobalTermsCustomChangesRepository globalTermsCustomChangesRepository;
     private final PrintService printService;
     private final DataSource dataSource;
+    private final DocumentDeleteService documentDeleteService;
 
     @Override
     public BankDebitVoucherResponse createBankDebitVoucher(BankDebitVoucherRequest request, String documentId) {
@@ -250,16 +253,20 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
     }
 
     @Override
-    public void softDeleteBankDebitVoucher(Long transactionPoid) {
+    public void softDeleteBankDebitVoucher(Long transactionPoid, DeleteReasonDto deleteReasonDto) {
         GlBankDebitHdr header = headerRepository.findByTransactionPoidAndNotDeleted(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Bank Debit Voucher", "transactionPoid", transactionPoid));
 
         // Validate voucher can be deleted
         validator.validateVoucherStatusInNewTransaction(header);
 
-        header.setDeleted("Y");
-        populateUpdateAudit(header);
-        headerRepository.save(header);
+        documentDeleteService.deleteDocument(
+                transactionPoid,
+                "GL_BANK_DEBIT_HDR",
+                "TRANSACTION_POID",
+                deleteReasonDto.getDeleteReason(),
+                header.getTransactionDate().toLocalDate()
+        );
     }
 
     @Override

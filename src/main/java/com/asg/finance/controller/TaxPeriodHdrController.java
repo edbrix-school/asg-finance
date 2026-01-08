@@ -1,6 +1,7 @@
 package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 
 
@@ -213,9 +214,10 @@ public class TaxPeriodHdrController {
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> softDeleteTaxPeriodHdr(
             @Parameter(description = "transactionPoid reference identifier", required = true)
-            @PathVariable Long transactionPoid) {
+            @PathVariable Long transactionPoid,
+            @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto) {
 
-        taxPeriodHdrService.softDeleteTaxPeriodHdr(transactionPoid);
+        taxPeriodHdrService.softDeleteTaxPeriodHdr(transactionPoid, deleteReasonDto);
         return success("Tax Period has been soft deleted successfully");
     }
 

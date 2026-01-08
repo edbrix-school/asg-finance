@@ -272,21 +272,21 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
     @Override
     @Transactional
-    @Override
     public void deleteCreditNote(Long transactionPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto) {
         try {
-            ArCreditNoteHdr existing = creditNoteRepository.findById(transactionPoid)
-                    .orElseThrow(() -> new com.asg.common.lib.exception.ResourceNotFoundException("Credit Note not found"));
+            ArCreditNoteHdr existing = creditNoteHdrRepository.findById(transactionPoid)
+                    .orElseThrow(() -> new ResourceNotFoundException("Credit Note", "transactionPoid", transactionPoid));
+            
             documentDeleteService.deleteDocument(
                     transactionPoid,
                     "AR_CREDIT_NOTE_HDR",
                     "TRANSACTION_POID",
-                    deleteReasonDto != null ? deleteReasonDto.getDeleteReason() : null,
-                    java.sql.Date.valueOf(existing.getTransactionDate())
+                    deleteReasonDto.getDeleteReason(),
+                    existing.getTransactionDate()
             );
-        } catch (SQLException e) {
-            log.error("Database error deleting credit note", e);
-            throw new RuntimeException("Database error occurred while deleting credit note");
+        } catch (Exception e) {
+            log.error("Error deleting credit note", e);
+            throw new RuntimeException("Failed to delete credit note: " + e.getMessage());
         }
     }
 

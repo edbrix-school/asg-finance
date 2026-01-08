@@ -1,11 +1,13 @@
 package com.asg.finance.service.impl;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.LovGetListDto;
 import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.common.lib.service.LovDataService;
@@ -44,6 +46,7 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
     private final GlBankDepositVoucherHdrRepository hdrRepository;
     private final GlBankDepositVoucherDtlRepository dtlRepository;
     private final DocumentSearchService documentService;
+    private final DocumentDeleteService documentDeleteService;
 
     private final PrintService printService;
     private final DataSource dataSource;
@@ -180,14 +183,17 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
 
     @Override
     @Transactional
-    public void softDeleteBankDepositVoucher(Long transactionPoid) {
+    public void softDeleteBankDepositVoucher(Long transactionPoid, DeleteReasonDto deleteReasonDto) {
         GlBankDepositVoucherHdr hdr = hdrRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Bank Deposit Voucher", "transactionPoid", transactionPoid));
 
-        hdr.setDeleted("Y");
-        hdr.setLastModifiedBy(getCurrentUser());
-        hdr.setLastModifiedDate(LocalDateTime.now());
-        hdrRepository.save(hdr);
+        documentDeleteService.deleteDocument(
+                transactionPoid,
+                "GL_BANK_DEPOSIT_VOUCHER_HDR",
+                "TRANSACTION_POID",
+                deleteReasonDto.getDeleteReason(),
+                hdr.getTransactionDate()
+        );
     }
 
     @Override

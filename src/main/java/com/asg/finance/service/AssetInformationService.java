@@ -2,6 +2,7 @@ package com.asg.finance.service;
 
 import com.asg.finance.dto.AssetInformationMasterRequest;
 import com.asg.finance.dto.AssetInformationMasterResponse;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import org.springframework.data.domain.Pageable;
 
@@ -34,6 +35,6 @@ public interface AssetInformationService {
     /**
      * Soft delete an Asset Information record (mark deleted = 'Y')
      */
-    void softDeleteAssetInformationByPoidId(Long iaPoid);
+    void softDeleteAssetInformationByPoidId(Long iaPoid, DeleteReasonDto deleteReasonDto);
 
 }

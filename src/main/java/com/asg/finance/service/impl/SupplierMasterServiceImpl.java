@@ -136,13 +136,16 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
 
     @Override
     @Transactional
-    public void deleteSupplierMaster(Long supplierPoid) {
+    public void deleteSupplierMaster(Long supplierPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto) {
         SupplierMasterEntity supplierMasterEntity = supplierMasterRepository.findBySupplierPoid(supplierPoid);
         if (supplierMasterEntity == null) {
             throw new ResourceNotFoundException("Supplier Master", "supplierPoid", supplierPoid);
         }
         supplierMasterEntity.setActive("N");
         supplierMasterEntity.setDeleted("Y");
+        if (deleteReasonDto != null && deleteReasonDto.getDeleteReason() != null) {
+            supplierMasterEntity.setDeleteReason(deleteReasonDto.getDeleteReason());
+        }
         supplierMasterEntity.setLastModifiedDate(LocalDate.now());
         supplierMasterEntity.setLastModifiedBy(getCurrentUser());
 

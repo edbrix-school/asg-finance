@@ -1,6 +1,7 @@
 package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.CostCenterListResponseDto;
@@ -120,9 +121,10 @@ public class CostCenterController {
     @DeleteMapping("/{costCenterPoid}")
     public ResponseEntity<?> softDeleteCountry(
             @Parameter(description = "CostCenterPoid reference identifier", required = true)
-            @PathVariable Long costCenterPoid) {
+            @PathVariable Long costCenterPoid,
+            @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto) {
 
-        costCenterServiceImpl.softDeleteCountry(costCenterPoid);
+        costCenterServiceImpl.softDeleteCountry(costCenterPoid, deleteReasonDto);
         return success("Cost Center has been soft deleted successfully");
     }
 

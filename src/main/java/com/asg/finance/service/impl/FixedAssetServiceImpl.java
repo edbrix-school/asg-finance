@@ -394,7 +394,7 @@ public class FixedAssetServiceImpl implements FixedAssetService {
     }
 
     @Transactional
-    public void softDeleteFixedAsset(Long faPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto) {
+    public void softDeleteFixedAsset(Long faPoid, DeleteReasonDto deleteReasonDto) {
         FixedAsset existing = repository.findByFaPoid(faPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Fixed Asset not found with ID: ", "faPoid", faPoid));
         

@@ -1,6 +1,7 @@
 package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.finance.dto.DebitNoteHeaderDto;
 import com.asg.common.lib.dto.FilterRequestDto;
@@ -213,7 +214,7 @@ public class DebitNoteController {
     @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> deleteDebitNote(@PathVariable Long transactionPoid,
-                                             @Valid @RequestBody(required = false) com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto) {
+                                             @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto) {
         debitNoteService.deleteDebitNote(transactionPoid, deleteReasonDto);
         return success("Debit Note deleted successfully");
     }

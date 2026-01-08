@@ -1,9 +1,6 @@
 package com.asg.finance.service.impl;
 
-import com.asg.common.lib.dto.FilterDto;
-import com.asg.common.lib.dto.FilterRequestDto;
-import com.asg.common.lib.dto.LovGetListDto;
-import com.asg.common.lib.dto.RawSearchResult;
+import com.asg.common.lib.dto.*;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.LoadBillwiseBreakupResponseDto;
@@ -272,7 +269,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
     @Override
     @Transactional
-    public void deleteCreditNote(Long transactionPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto) {
+    public void deleteCreditNote(Long transactionPoid, DeleteReasonDto deleteReasonDto) {
         try {
             ArCreditNoteHdr existing = creditNoteHdrRepository.findById(transactionPoid)
                     .orElseThrow(() -> new ResourceNotFoundException("Credit Note", "transactionPoid", transactionPoid));

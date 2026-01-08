@@ -138,7 +138,7 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
 
     @Override
     @Transactional
-    public void deleteSupplierMaster(Long supplierPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto) {
+    public void deleteSupplierMaster(Long supplierPoid, DeleteReasonDto deleteReasonDto) {
         SupplierMasterEntity supplierMasterEntity = supplierMasterRepository.findBySupplierPoid(supplierPoid);
         documentDeleteService.deleteDocument(
                 supplierPoid,

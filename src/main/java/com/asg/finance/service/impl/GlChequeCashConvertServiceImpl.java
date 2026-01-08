@@ -1,5 +1,6 @@
 package com.asg.finance.service.impl;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
@@ -162,7 +163,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
 
     @Transactional
     @Override
-    public void softDeleteByTransactionPoid(Long transactionPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto) {
+    public void softDeleteByTransactionPoid(Long transactionPoid, DeleteReasonDto deleteReasonDto) {
         GlChequeCashConvertHdrEntity entity = glChequeCashConvertHdrRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("ChequeAndCashConvert", "transactionPoid", transactionPoid));
 

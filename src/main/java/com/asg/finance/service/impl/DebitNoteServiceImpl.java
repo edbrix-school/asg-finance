@@ -1,9 +1,6 @@
 package com.asg.finance.service.impl;
 
-import com.asg.common.lib.dto.FilterDto;
-import com.asg.common.lib.dto.FilterRequestDto;
-import com.asg.common.lib.dto.LovGetListDto;
-import com.asg.common.lib.dto.RawSearchResult;
+import com.asg.common.lib.dto.*;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentDeleteService;
@@ -151,7 +148,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
 
     @Override
     @Transactional
-    public void deleteDebitNote(Long transactionPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto) {
+    public void deleteDebitNote(Long transactionPoid, DeleteReasonDto deleteReasonDto) {
         ArDebitNoteHdr entity = debitNoteHdrRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("DebitNote", "transactionPoid", transactionPoid));
         documentDeleteService.deleteDocument(

@@ -1,5 +1,6 @@
 package com.asg.finance.service.impl;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
@@ -297,7 +298,7 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
 
     @Override
     @Transactional
-    public void softDeleteAgeingMaster(Long ageingPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto) {
+    public void softDeleteAgeingMaster(Long ageingPoid, DeleteReasonDto deleteReasonDto) {
         // Fetch the AgeingMaster entity to validate existence and get transaction date
         GlAgeingMasterEntity ageing = ageingMasterRepository.findById(ageingPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("AgeingMaster", "ageingPoid", ageingPoid));

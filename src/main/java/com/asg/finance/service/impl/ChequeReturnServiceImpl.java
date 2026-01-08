@@ -1,5 +1,6 @@
 package com.asg.finance.service.impl;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
@@ -302,7 +303,7 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
     // ============================================================
     @Override
     @Transactional
-    public void softDeleteChequeReturn(Long transactionPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto) {
+    public void softDeleteChequeReturn(Long transactionPoid, DeleteReasonDto deleteReasonDto) {
         ChequeReturn existing = headerRepo.findById(transactionPoid)
                 .orElseThrow(() -> new EntityNotFoundException("Cheque Return not found: " + transactionPoid));
 

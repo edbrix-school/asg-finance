@@ -1,10 +1,7 @@
 package com.asg.finance.service.impl;
 
 import com.asg.common.lib.client.ParameterServiceClient;
-import com.asg.common.lib.dto.FilterDto;
-import com.asg.common.lib.dto.FilterRequestDto;
-import com.asg.common.lib.dto.LovGetListDto;
-import com.asg.common.lib.dto.RawSearchResult;
+import com.asg.common.lib.dto.*;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
@@ -630,7 +627,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
 
     @Override
     @Transactional
-    public void deleteGeneralReceipt(Long transactionPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto) {
+    public void deleteGeneralReceipt(Long transactionPoid, DeleteReasonDto deleteReasonDto) {
         log.info("Deleting general receipt: {}", transactionPoid);
         ArGenReceiptHdr header = receiptHdrRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("General Receipt", "transactionPoid", transactionPoid));

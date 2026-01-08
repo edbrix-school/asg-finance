@@ -402,7 +402,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
 
     @Override
     @Transactional
-    public void softDeleteFavoriteAccount(Long favAcPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto) {
+    public void softDeleteFavoriteAccount(Long favAcPoid, DeleteReasonDto deleteReasonDto) {
         GlFavAcMaster existing = masterRepository.findByFavAcPoid(favAcPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Favorite Account Master", "favAcPoid", favAcPoid));
 

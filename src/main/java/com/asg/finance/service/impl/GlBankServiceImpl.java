@@ -1,5 +1,6 @@
 package com.asg.finance.service.impl;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
@@ -529,7 +530,7 @@ public class GlBankServiceImpl implements GlBankService {
 
     @Override
     @Transactional
-    public void deleteBankMaster(Long bankPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto) {
+    public void deleteBankMaster(Long bankPoid, DeleteReasonDto deleteReasonDto) {
         GlBankEntity bankEntity = bankRepository.findByBankPoid(bankPoid);
         if (bankEntity == null) {
             throw new ResourceNotFoundException("Bank", "bankPoid", bankPoid);

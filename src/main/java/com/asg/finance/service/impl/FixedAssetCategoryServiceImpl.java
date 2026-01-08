@@ -84,7 +84,7 @@ public class FixedAssetCategoryServiceImpl implements FixedAssetCategoryService 
     }
 
     @Override
-    public void softDeleteFixedAssetCategory(Long faCategoryPoid, com.asg.common.lib.dto.DeleteReasonDto deleteReasonDto) {
+    public void softDeleteFixedAssetCategory(Long faCategoryPoid, DeleteReasonDto deleteReasonDto) {
         FixedAssetCategory existing = fixedAssetCategoryRepository.findById(faCategoryPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Fixed Asset Category not found with ID: ", "faCategoryPoid", faCategoryPoid));
         

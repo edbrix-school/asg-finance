@@ -10,8 +10,8 @@ import org.springframework.scheduling.annotation.EnableAsync;
 @SpringBootApplication
 @EnableAsync
 @ComponentScan(basePackages = {"com.asg"})
-@EnableJpaRepositories(basePackages = {"com.asg.common.lib.repository", "com.asg.finance.repository"})
-@EntityScan(basePackages = {"com.asg.common.lib.entity", "com.asg.finance.entity"})
+@EnableJpaRepositories(basePackages = {"com.asg"})
+@EntityScan(basePackages = {"com.asg"})
 public class FinanceApplication {
 
 	public static void main(String[] args) {

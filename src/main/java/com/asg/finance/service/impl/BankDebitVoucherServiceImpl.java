@@ -728,6 +728,10 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         response.setFileGeneratedBy(entity.getFileGeneratedBy());
         response.setPayingTo(entity.getPayingTo());
         response.setFileUniqueId(entity.getFileUniqueId());
+        response.setCreatedBy(entity.getCreatedBy());
+        response.setCreatedDate(entity.getCreatedDate());
+        response.setLastModifiedBy(entity.getLastModifiedBy());
+        response.setLastModifiedDate(entity.getLastModifiedDate());
 //        response.setConfidentialRemarks(entity.getConfidentialRemarks());
 
 

@@ -841,7 +841,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                 .deleted("N")
                 .verified("N")
                 .dataLoaded("N")
-                .extraCharges("N")
+                .extraCharges(dto.getExtraCharges() != null ? dto.getExtraCharges() : "N")
                 .lineType("GENERAL")  // Set line type
                 .rcvdType("GENERAL")  // Set received type
                 .createdBy(currentUser)
@@ -867,6 +867,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         header.setCurrencyCode(dto.getCurrency());
         header.setCurrencyRate(dto.getRate());
         header.setMulticompany(dto.getMulticompany() != null ? dto.getMulticompany() : "N");
+        header.setExtraCharges(dto.getExtraCharges() != null ? dto.getExtraCharges() : "N");
         header.setTtBankPoid(dto.getTtBankPoid());
         header.setCostCenterPoid(dto.getCostCenterPoid());
         header.setLastModifiedBy(currentUser);
@@ -1314,6 +1315,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                 .approvalStatus(approvalStatus)
                 .verified(header.getVerified())
                 .multicompany(header.getMulticompany())
+                .extraChargesFlag(header.getExtraCharges())
                 .createdBy(header.getCreatedBy())
                 .createdDate(header.getCreatedDate())
                 .payments(convertPaymentDetailsToDto(header.getPaymentDetails()))

@@ -4,6 +4,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -26,6 +28,8 @@ public class GlMasterDto {
     private String remarks;
     private Integer seqno;
     private String active;
+    private String createdBy;
+    private LocalDateTime createdDate;
     private String groupCodeOld;
     private String glAcType;
     private String deleted;

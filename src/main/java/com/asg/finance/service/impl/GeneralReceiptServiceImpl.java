@@ -147,7 +147,8 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         if (request.getBills() != null && !request.getBills().isEmpty()) {
             saveBillDetails(header, request.getBills(), currentUser, now, true);
         }
-        if (request.getExtraCharges() != null && !request.getExtraCharges().isEmpty()) {
+        if ("Y".equals(request.getHeader().getExtraCharges()) && 
+            request.getExtraCharges() != null && !request.getExtraCharges().isEmpty()) {
             saveChargeDetails(header, request.getExtraCharges(), currentUser, now, true);
         }
         if (request.getAdvances() != null && !request.getAdvances().isEmpty()) {
@@ -172,6 +173,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
      */
     public GeneralReceiptResponse completeReceiptCreation(ArGenReceiptHdr header) {
         GeneralReceiptResponse response = getGeneralReceiptByTransactionPoid(header.getTransactionPoid());
+        response.setMessage("General Receipt created successfully");
         try {
             log.info("Receipt data committed. Now calling GL posting procedure...");
             // Process GL posting or approval - called OUTSIDE any transaction
@@ -574,7 +576,8 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
             entityManager.flush();
             callBillwiseCheckProcedure(transactionPoid, header.getCompanyPoid());
         }
-        if (request.getExtraCharges() != null && !request.getExtraCharges().isEmpty()) {
+        if ("Y".equals(request.getHeader().getExtraCharges()) && 
+            request.getExtraCharges() != null && !request.getExtraCharges().isEmpty()) {
             List<ArGenReceiptChargesDtl> details = new ArrayList<>();
             for (int i = 0; i < request.getExtraCharges().size(); i++) {
                 GeneralReceiptChargeDto charge = request.getExtraCharges().get(i);
@@ -685,14 +688,20 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         GLMasterEntity creditGL = creditGLList.get(0);
 
         // 3. Validate amount matching
-        BigDecimal paymentTotal = request.getPayments().stream()
-                .map(GeneralReceiptPaymentDto::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (request.getPayments() != null && !request.getPayments().isEmpty()) {
+            BigDecimal paymentTotal = request.getPayments().stream()
+                    .map(GeneralReceiptPaymentDto::getAmount)
+                    .filter(amount -> amount != null)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        if (header.getReceiptAmount().compareTo(paymentTotal) != 0) {
-            throw new ValidationException(String.format(
-                    "Receipt amount (%.3f) does not match sum of payment amounts (%.3f)",
-                    header.getReceiptAmount(), paymentTotal));
+            log.debug("Amount validation - Receipt amount: {}, Payment total: {}", 
+                    header.getReceiptAmount(), paymentTotal);
+
+            if (header.getReceiptAmount().compareTo(paymentTotal) != 0) {
+                throw new ValidationException(String.format(
+                        "Receipt amount (%.3f) does not match sum of payment amounts (%.3f)",
+                        header.getReceiptAmount(), paymentTotal));
+            }
         }
 
         // 4. Validate cheque dates if applicable

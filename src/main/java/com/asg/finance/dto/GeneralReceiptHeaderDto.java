@@ -66,5 +66,8 @@ public class GeneralReceiptHeaderDto {
 
     @Schema(description = "Cost center POID", example = "FIN-001")
     private String costCenterPoid;
+
+    @Schema(description = "Extra charges flag (Y/N)", example = "Y")
+    private String extraCharges;
 }
 

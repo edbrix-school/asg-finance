@@ -90,6 +90,9 @@ public class GeneralReceiptResponse {
     @Schema(description = "Extra charges")
     private List<GeneralReceiptChargeDto> extraCharges;
 
+    @Schema(description = "Extra charges flag (Y/N)", example = "Y")
+    private String extraChargesFlag;
+
     @Schema(description = "Advance details")
     private List<GeneralReceiptAdvanceDto> advances;
 }

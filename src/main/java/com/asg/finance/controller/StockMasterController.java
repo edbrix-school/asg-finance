@@ -14,7 +14,7 @@ import java.util.List;
 import static com.asg.common.lib.dto.response.ApiResponse.success;
 
 @RestController
-@RequestMapping("/api/stock-master")
+@RequestMapping("/v1/stock-master")
 @RequiredArgsConstructor
 public class StockMasterController {
     

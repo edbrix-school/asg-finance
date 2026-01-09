@@ -271,7 +271,7 @@ public class GlBankController {
     @PostMapping("/createEntry")
     public ResponseEntity<?> createNewEntry(
             @Valid @RequestBody GlBankDto bankDto) {
-        GlBankEntity data = bankService.createEntry(bankDto);
+        GlBankDto data = bankService.createEntry(bankDto);
         Map<String, String> response = new HashMap<>();
         response.put("bankPoid", data.getBankPoid().toString());
         return success("Bank Master Created successfully", response);

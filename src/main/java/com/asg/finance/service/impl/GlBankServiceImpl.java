@@ -289,11 +289,11 @@ public class GlBankServiceImpl implements GlBankService {
         newEntity.setStockFinishedYn(dto.getStockFinishedYn());
         newEntity.setRemarks(dto.getRemarks());
         newEntity.setCreatedBy(getCurrentUser());
-        newEntity.setCreatedDate(LocalDateTime.now());
+        newEntity.setCreatedDate(Timestamp.valueOf(LocalDateTime.now()));
         newEntity.setLastModifiedBy(getCurrentUser());
-        newEntity.setLastModifiedDate(LocalDateTime.now());
+        newEntity.setLastModifiedDate(Timestamp.valueOf(LocalDateTime.now()));
         newEntity.setLastChqNo(dto.getLastChqNo());
-        newEntity.setLastModifiedDate(LocalDateTime.now());
+        newEntity.setLastModifiedDate(Timestamp.valueOf(LocalDateTime.now()));
         entitiesToSave.add(newEntity);
     }
 
@@ -310,7 +310,7 @@ public class GlBankServiceImpl implements GlBankService {
         entity.setRemarks(dto.getRemarks());
         entity.setLastChqNo(dto.getLastChqNo());
         entity.setLastModifiedBy(getCurrentUser());
-        entity.setLastModifiedDate(LocalDateTime.now());
+        entity.setLastModifiedDate(Timestamp.valueOf(LocalDateTime.now()));
         entities.add(entity);
     }
 

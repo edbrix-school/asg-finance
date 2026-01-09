@@ -272,9 +272,7 @@ public class PurchaseOrderController {
             )
     )
 
-    @AllowedAction(UserRolesRightsEnum.CREATE)
-
-
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     public ResponseEntity<?> getListPurchaseOrder(@ParameterObject Pageable pageable,
                                                   @RequestBody(required = false) FilterRequestDto filters,

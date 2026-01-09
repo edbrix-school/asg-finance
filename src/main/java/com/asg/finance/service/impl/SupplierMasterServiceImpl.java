@@ -4,6 +4,7 @@ import com.asg.common.lib.dto.response.AddressMasterResponse;
 import com.asg.common.lib.exception.AsgException;
 import com.asg.common.lib.exception.ResourceAlreadyExistsException;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.finance.client.AddressMasterServiceClient;
 import com.asg.common.lib.dto.*;
@@ -67,6 +68,7 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
     private final JdbcTemplate jdbcTemplate;
     private final AddressMasterServiceClient addressMasterServiceClient;
     private final LovDataService lovDataService;
+    private final DocumentDeleteService documentDeleteService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -136,22 +138,15 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
 
     @Override
     @Transactional
-    public void deleteSupplierMaster(Long supplierPoid) {
+    public void deleteSupplierMaster(Long supplierPoid, DeleteReasonDto deleteReasonDto) {
         SupplierMasterEntity supplierMasterEntity = supplierMasterRepository.findBySupplierPoid(supplierPoid);
-        if (supplierMasterEntity == null) {
-            throw new ResourceNotFoundException("Supplier Master", "supplierPoid", supplierPoid);
-        }
-        supplierMasterEntity.setActive("N");
-        supplierMasterEntity.setDeleted("Y");
-        supplierMasterEntity.setLastModifiedDate(LocalDate.now());
-        supplierMasterEntity.setLastModifiedBy(getCurrentUser());
-
-        supplierMasterRepository.save(supplierMasterEntity);
-
-        supplierMasterPaymentDtlRepository.deleteByIdSupplierPoid(supplierPoid);
-        supplierMasterMangementDtlRepository.deleteByIdSupplierPoid(supplierPoid);
-        supplierMasterServiceDtlRepository.deleteByIdSupplierPoid(supplierPoid);
-        supplierMasterQstnDtlRepository.deleteByIdSupplierPoid(supplierPoid);
+        documentDeleteService.deleteDocument(
+                supplierPoid,
+                "AP_SUPPLIER_MASTER",
+                "SUPPLIER_POID",
+                deleteReasonDto,
+                supplierMasterEntity.getCreatedDate()
+        );
     }
 
     @Override

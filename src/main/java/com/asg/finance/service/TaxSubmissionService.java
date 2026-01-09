@@ -1,5 +1,6 @@
 package com.asg.finance.service;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.finance.dto.*;
 import org.springframework.data.domain.Pageable;
@@ -15,7 +16,7 @@ public interface TaxSubmissionService {
 
     TaxSubmissionResponse updateTaxSubmission(Long transactionPoid, UpdateTaxSubmissionRequest request);
 
-    void deleteTaxSubmission(Long transactionPoid);
+    void deleteTaxSubmission(Long transactionPoid, DeleteReasonDto deleteReasonDto);
 
     Map<String, Object> listTaxSubmission(FilterRequestDto filters,
                                           Pageable pageable, LocalDate periodFrom, LocalDate periodTo);

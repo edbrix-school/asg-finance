@@ -1,6 +1,7 @@
 package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.request.DocReleaseLockRequestDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
@@ -16,6 +17,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
 import jakarta.validation.Valid;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -140,9 +142,10 @@ public class GLMasterController {
     @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{glPoid}")
     public ResponseEntity<?> delete(
-            @Parameter(description = "GL Master POID", required = true) @PathVariable Long glPoid) {
+            @Parameter(description = "GL Master POID", required = true) @PathVariable Long glPoid,
+            @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto) {
 
-        glMasterService.deleteGLMaster(glPoid);
+        glMasterService.deleteGLMaster(glPoid, deleteReasonDto);
         return success("GL Master has been soft deleted successfully");
     }
 

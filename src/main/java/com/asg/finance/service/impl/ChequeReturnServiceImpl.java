@@ -1,8 +1,10 @@
 package com.asg.finance.service.impl;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.finance.dto.ChequeReturnEditRequest;
@@ -41,6 +43,7 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
     private final ChequeReturnDetailRepository detailRepo;
     private final ChequeReturnGlDetailRepository glDetailRepo;
     private final DocumentSearchService documentService;
+    private final DocumentDeleteService documentDeleteService;
     private final ChequeReturnLoadRepository chequeReturnLoadRepository;
     private final LovDataService lovService;
 
@@ -302,13 +305,20 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
     // ============================================================
     @Override
     @Transactional
-    public void softDeleteChequeReturn(Long transactionPoid) {
-        ChequeReturn header = headerRepo.findById(transactionPoid)
+    public void softDeleteChequeReturn(Long transactionPoid, DeleteReasonDto deleteReasonDto) {
+        ChequeReturn existing = headerRepo.findById(transactionPoid)
                 .orElseThrow(() -> new EntityNotFoundException("Cheque Return not found: " + transactionPoid));
 
-        header.setDeleted("Y");
-        header.setLastModifiedDate(getCurrentDbDate());
-        headerRepo.save(header);
+        documentDeleteService.deleteDocument(
+                transactionPoid,
+                "GL_CHEQUE_RETURN_HDR",
+                "TRANSACTION_POID",
+                deleteReasonDto,
+                existing.getTransactionDate()
+                        .toInstant()
+                        .atZone(ZoneId.systemDefault())
+                        .toLocalDate()
+        );
     }
 
     // ============================================================

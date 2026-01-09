@@ -19,7 +19,6 @@ public class CostCenterBreakupServiceImpl implements CostCenterBreakupService {
 
     private final CostCenterBreakupDtlRepository costCenterRepository;
 
-
     public GlVoucherCostCenterBreakupResponseDto loadCostCenterData(String docId, Long transactionPoid,Long groupPoid, Long companyPoid,Long userPoid) {
 
         GlVoucherCostCenterBreakupResponseDto breakupList = costCenterRepository.loadCostCenters(

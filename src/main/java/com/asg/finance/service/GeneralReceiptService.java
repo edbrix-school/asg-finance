@@ -1,5 +1,6 @@
 package com.asg.finance.service;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.finance.dto.GeneralReceiptRequest;
 import com.asg.finance.dto.GeneralReceiptResponse;
 import com.asg.common.lib.dto.FilterRequestDto;
@@ -42,7 +43,7 @@ public interface GeneralReceiptService {
      * Delete general receipt (soft delete)
      * @param transactionPoid Transaction POID
      */
-    void deleteGeneralReceipt(Long transactionPoid);
+    void deleteGeneralReceipt(Long transactionPoid, DeleteReasonDto deleteReasonDto);
 
     /**
      * Generic list with search and pagination using DocumentService

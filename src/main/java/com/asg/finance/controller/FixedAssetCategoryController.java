@@ -1,6 +1,7 @@
 package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 
 import com.asg.common.lib.security.util.UserContext;
@@ -219,10 +220,11 @@ public class FixedAssetCategoryController {
     @DeleteMapping("/{faCategoryPoid}")
     public ResponseEntity<?> softDeleteFixedAssetCategory(
             @Parameter(description = "faCategoryPoid reference identifier", required = true)
-            @PathVariable Long faCategoryPoid
+            @PathVariable Long faCategoryPoid,
+            @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto
     ) {
 
-        fixedAssetCategoryService.softDeleteFixedAssetCategory(faCategoryPoid);
+        fixedAssetCategoryService.softDeleteFixedAssetCategory(faCategoryPoid, deleteReasonDto);
         return success("Fixed Asset Category has been soft deleted successfully");
     }
 

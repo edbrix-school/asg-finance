@@ -1,5 +1,6 @@
 package com.asg.finance.service;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.finance.dto.*;
 import org.springframework.data.domain.Pageable;
@@ -16,7 +17,7 @@ public interface BankPaymentVoucherService {
 
     BankPaymentVoucherResponse updateBankPaymentVoucher(Long transactionPoid, BankPaymentVoucherRequest req, String documentId);
 
-    void softDeleteVoucher(Long transactionPoid, String documentId);
+    void softDeleteVoucher(Long transactionPoid, String documentId, DeleteReasonDto deleteReasonDto);
 
     Map<String, BigDecimal> getBankBalance(String docId, Long docKeyPoid, Date docDate, Long bankPoid);
 

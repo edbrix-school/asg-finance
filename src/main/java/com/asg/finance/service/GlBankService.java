@@ -1,5 +1,6 @@
 package com.asg.finance.service;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.finance.entity.GlBankEntity;
 import com.asg.finance.dto.GlBankDto;
 import com.asg.common.lib.dto.FilterRequestDto;
@@ -15,7 +16,7 @@ public interface GlBankService {
 
      GlBankDto fetchGlBank(Long bankPoid);
 
-    void deleteBankMaster(Long bankPoid);
+    void deleteBankMaster(Long bankPoid, DeleteReasonDto deleteReasonDto);
 
     Map<String, Object> listOfRecordsAndGenericSearch(String docId, FilterRequestDto request, Pageable pageable);
 }

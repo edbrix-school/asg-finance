@@ -1,6 +1,7 @@
 package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 
 
@@ -56,10 +57,11 @@ public class SupplierCategoryController {
     @DeleteMapping("/{categoryPoid}")
     public ResponseEntity<?> softDeleteSupplierCategory(
             @Parameter(description = "ID of the supplier category to be soft deleted", example = "121")
-            @PathVariable("categoryPoid") Long supplierCategoryPoid) {
+            @PathVariable("categoryPoid") Long supplierCategoryPoid,
+            @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto) {
 
-        SupplierCategoryDto supplierCategoryDto = supplierCategoriesService.softDeleteSupplierCategory(supplierCategoryPoid);
-        return success("Supplier Category deleted successfully", supplierCategoryDto);
+        supplierCategoriesService.softDeleteSupplierCategory(supplierCategoryPoid, deleteReasonDto);
+        return success("Supplier Category deleted successfully");
     }
 
 

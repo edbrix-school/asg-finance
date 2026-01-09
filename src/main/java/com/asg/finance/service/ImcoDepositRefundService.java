@@ -1,6 +1,7 @@
 package com.asg.finance.service;
 
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.response.GlPostingViewResponseDto;
 import com.asg.finance.dto.ImcoDepositRefundRequestDTO;
 import com.asg.finance.dto.ImcoDepositRefundResponseDTO;
@@ -16,7 +17,7 @@ import java.util.Map;
 public interface ImcoDepositRefundService {
     ImcoDepositRefundResponseDTO createImcoDepositRefund(ImcoDepositRefundRequestDTO request);
     ImcoDepositRefundResponseDTO getImcoDepositRefundById(Long transactionPoid);
-    void softDeleteImcoDepositRefund(Long transactionPoid);
+    void softDeleteImcoDepositRefund(Long transactionPoid, DeleteReasonDto deleteReasonDto);
     Map<String, Object> listImcoDepositRefund(String documentId, FilterRequestDto filters, LocalDate startDate, LocalDate endDate, Pageable pageable);
     ImcoRefundLoadResponseDto getChequeDetails(Long receiptPoid, String receiptNumber) throws SQLException;
     GlPostingViewResponseDto getGlPostingDetails(String docId, Long transactionPoid);

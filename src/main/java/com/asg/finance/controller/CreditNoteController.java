@@ -1,6 +1,7 @@
 package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.CreditNoteHeaderDto;
@@ -430,11 +431,8 @@ public class CreditNoteController {
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> deleteCreditNote(
             @PathVariable Long transactionPoid,
-            @Parameter(description = "Document identifier", required = true, example = "300-111")
-            @RequestParam String documentId,
-            @Parameter(description = "Action requested", required = true, example = "DELETE")
-            @RequestParam String actionRequested) {
-            creditNoteService.deleteCreditNote(transactionPoid);
+            @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto) {
+            creditNoteService.deleteCreditNote(transactionPoid, deleteReasonDto);
             return success("Credit note deleted successfully", null);
     }
 

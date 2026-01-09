@@ -1,10 +1,8 @@
 package com.asg.finance.service.impl;
 
-import com.asg.common.lib.dto.DetailsDto;
-import com.asg.common.lib.dto.FilterDto;
-import com.asg.common.lib.dto.FilterRequestDto;
-import com.asg.common.lib.dto.RawSearchResult;
+import com.asg.common.lib.dto.*;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.finance.entity.StockMasterEntity;
 import com.asg.finance.entity.TaxMaster;
 import com.asg.finance.repository.TaxMasterRepository;
@@ -57,6 +55,7 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
     private final StockCategoryMasterRepository stockCategoryMasterRepository;
     private final EntityManager entityManager;
     private final DocumentSearchService documentService;
+    private final DocumentDeleteService documentDeleteService;
 
     @Override
     @Transactional
@@ -142,13 +141,21 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
     }
 
     @Transactional
-    public void softDeleteTaxPeriodHdr(Long transactionPoid) {
+    public void softDeleteTaxPeriodHdr(Long transactionPoid, DeleteReasonDto reasonDto) {
         TaxPeriodHdr savedEntity = taxPeriodHdrRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Tax Period not found with ID: ", "transactionPoid", transactionPoid));
         savedEntity.setDeleted("Y");
         savedEntity.setLastModifiedDate(LocalDateTime.now());
         savedEntity.setLastModifiedBy(getCurrentUser());
         taxPeriodHdrRepository.save(savedEntity);
+
+        documentDeleteService.deleteDocument(
+                transactionPoid,
+                "GLOBAL_TAX_PERIOD_HDR",
+                "TRANSACTION_POID",
+                reasonDto,
+                savedEntity.getTransactionDate()
+        );
     }
 
 

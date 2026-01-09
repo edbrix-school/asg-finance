@@ -1,5 +1,6 @@
 package com.asg.finance.service.impl;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
@@ -8,6 +9,7 @@ import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.finance.entity.GlBankEntity;
 import com.asg.finance.entity.TaxMaster;
 import com.asg.finance.repository.*;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.finance.dto.GlBankChequeDtlDto;
@@ -53,6 +55,8 @@ public class GlBankServiceImpl implements GlBankService {
     private final GLMasterRepository glMasterRepository;
 
     private final LovDataService lovService;
+
+    private final DocumentDeleteService documentDeleteService;
 
 
     @Override
@@ -526,21 +530,20 @@ public class GlBankServiceImpl implements GlBankService {
 
     @Override
     @Transactional
-    public void deleteBankMaster(Long bankPoid) {
+    public void deleteBankMaster(Long bankPoid, DeleteReasonDto deleteReasonDto) {
         GlBankEntity bankEntity = bankRepository.findByBankPoid(bankPoid);
         if (bankEntity == null) {
             throw new ResourceNotFoundException("Bank", "bankPoid", bankPoid);
-
         }
 
-        bankEntity.setDeleted("Y");
-        bankEntity.setActive("N");
-        bankEntity.setLastModifiedBy(getCurrentUser());
-        bankEntity.setLastModifiedDate(Timestamp.valueOf(LocalDateTime.now()));
-        bankRepository.save(bankEntity);
-        chequeDtlRepository.deleteByBankPoid(bankPoid);
-        commissionDtlRepository.deleteByBankPoid(bankPoid);
-
+        // Use DocumentDeleteService for consistent soft delete handling
+        documentDeleteService.deleteDocument(
+                bankPoid,
+                "GL_BANK_MASTER",
+                "BANK_POID",
+                deleteReasonDto,
+                null
+        );
     }
 
     public Map<String, Object> listOfRecordsAndGenericSearch(String docId, FilterRequestDto request, Pageable pageable) {

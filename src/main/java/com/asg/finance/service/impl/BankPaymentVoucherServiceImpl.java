@@ -1,11 +1,13 @@
 package com.asg.finance.service.impl;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.LoadBillwiseBreakupResponseDto;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
@@ -83,8 +85,14 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     @Autowired
     private CostCenterBreakupService costCenterBreakupService;
 
-    @Autowired private PrintService printService;
-    @Autowired private DataSource dataSource;
+    @Autowired
+    private PrintService printService;
+
+    @Autowired
+    private DataSource dataSource;
+
+    @Autowired
+    private DocumentDeleteService documentDeleteService;
 
     @Override
     @Transactional
@@ -235,7 +243,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
     @Override
     @Transactional
-    public void softDeleteVoucher(Long transactionPoid,String documentId) {
+    public void softDeleteVoucher(Long transactionPoid, String documentId, DeleteReasonDto deleteReasonDto) {
         GLPaymentVoucherHDREntity existing = paymentVoucherRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ValidationException("Bank Payment Voucher not found for ID: " + transactionPoid));
 
@@ -249,10 +257,13 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
             releaseOldJobValuesInNewTransaction(transactionPoid, jobPoid, refType);
         }
 
-        existing.setDeleted("Y");
-        existing.setLastModifiedBy(Objects.requireNonNull(UserContext.getCurrentUser()).getUserName());
-        existing.setLastModifiedDate(LocalDateTime.now());
-        paymentVoucherRepository.save(existing);
+        documentDeleteService.deleteDocument(
+                transactionPoid,
+                "GL_BANK_PAYMENT_HDR",
+                "TRANSACTION_POID",
+                deleteReasonDto,
+                existing.getTransactionDate()
+        );
     }
 
     private BankPaymentVoucherResponse mapToResponse(

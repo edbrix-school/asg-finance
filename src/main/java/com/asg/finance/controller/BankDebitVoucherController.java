@@ -1,6 +1,7 @@
 package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.BankDebitVoucherRequest;
@@ -311,8 +312,9 @@ public class BankDebitVoucherController {
     @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> deleteBankDebitVoucher(
-            @PathVariable @NotNull @Min(1) Long transactionPoid) {
-        bankDebitVoucherService.softDeleteBankDebitVoucher(transactionPoid);
+            @PathVariable @NotNull @Min(1) Long transactionPoid,
+            @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto) {
+        bankDebitVoucherService.softDeleteBankDebitVoucher(transactionPoid, deleteReasonDto);
         return success("Bank Debit Voucher soft deleted successfully", transactionPoid);
     }
 

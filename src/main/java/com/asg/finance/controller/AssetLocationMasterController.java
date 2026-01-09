@@ -1,6 +1,7 @@
 package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 
 import com.asg.common.lib.security.util.UserContext;
@@ -180,9 +181,10 @@ public class AssetLocationMasterController {
     @DeleteMapping("/{locationPoid}")
     public ResponseEntity<?> softDeleteAssetMaster(
             @Parameter(description = "locationPoid reference identifier", required = true)
-            @PathVariable Long locationPoid) {
+            @PathVariable Long locationPoid,
+            @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto) {
 
-        service.softDeleteAssetLocationMaster(locationPoid);
+        service.softDeleteAssetLocationMaster(locationPoid, deleteReasonDto);
         return success("Asset Location Master has been soft deleted successfully");
     }
 

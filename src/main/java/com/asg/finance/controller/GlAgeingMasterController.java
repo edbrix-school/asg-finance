@@ -1,6 +1,7 @@
 package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 
 import com.asg.common.lib.exception.ResourceNotFoundException;
@@ -244,10 +245,11 @@ public class GlAgeingMasterController {
     @DeleteMapping("/{ageingPoid}")
     public ResponseEntity<?> softDeleteAgeingMaster(
             @Parameter(description = "Unique identifier of the ageing record", required = true)
-            @PathVariable Long ageingPoid
+            @PathVariable Long ageingPoid,
+            @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto
     ) {
         try {
-            ageingMasterService.softDeleteAgeingMaster(ageingPoid);
+            ageingMasterService.softDeleteAgeingMaster(ageingPoid, deleteReasonDto);
             return success("Ageing Master has been soft deleted successfully");
         } catch (ResourceNotFoundException ex) {
             return notFound("Ageing Master not found with ID: " + ageingPoid);

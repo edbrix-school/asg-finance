@@ -1,6 +1,7 @@
 package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 
 import com.asg.common.lib.dto.FilterDto;
@@ -252,9 +253,12 @@ public class AssetInformationController {
     })
     @AllowedAction(UserRolesRightsEnum.DELETE)
     @DeleteMapping("/{iaPoid}")
-    public ResponseEntity<?> softDeleteAssetInformation(@PathVariable Long iaPoid) {
+    public ResponseEntity<?> softDeleteAssetInformation(
+            @Parameter(description = "Asset Information POID", required = true)
+            @PathVariable Long iaPoid,
+            @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto) {
 
-        assetInformationService.softDeleteAssetInformationByPoidId(iaPoid);
+        assetInformationService.softDeleteAssetInformationByPoidId(iaPoid, deleteReasonDto);
         return success("Successfully deleted the Assert Information", Map.of("message", "Asset Information with ID " + iaPoid + " has been soft deleted"));
     }
 

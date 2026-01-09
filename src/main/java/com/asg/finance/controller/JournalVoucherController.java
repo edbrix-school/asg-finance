@@ -1,6 +1,7 @@
 package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
@@ -350,10 +351,11 @@ public class JournalVoucherController {
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> deleteJournalVoucher(
             @Parameter(description = "Transaction POID", required = true)
-            @PathVariable Long transactionPoid
+            @PathVariable Long transactionPoid,
+            @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto
     ) {
         try {
-            journalVoucherService.deleteJournalVoucher(transactionPoid);
+            journalVoucherService.deleteJournalVoucher(transactionPoid, deleteReasonDto);
             return success("Journal Voucher deleted successfully", null);
         } catch (ResourceNotFoundException e) {
             return notFound(e.getMessage());

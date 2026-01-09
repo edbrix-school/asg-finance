@@ -1,6 +1,7 @@
 package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 
 import com.asg.common.lib.security.util.UserContext;
@@ -450,9 +451,10 @@ public class GlBankController {
                     required = true,
                     example = "181"
             )
-            @PathVariable Long bankPoid) {
+            @PathVariable Long bankPoid,
+            @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto) {
 
-        bankService.deleteBankMaster(bankPoid);
+        bankService.deleteBankMaster(bankPoid, deleteReasonDto);
         return success("Bank Master soft deleted and related details removed");
     }
 

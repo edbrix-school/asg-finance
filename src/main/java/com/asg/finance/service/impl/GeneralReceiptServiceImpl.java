@@ -1,11 +1,9 @@
 package com.asg.finance.service.impl;
 
 import com.asg.common.lib.client.ParameterServiceClient;
-import com.asg.common.lib.dto.FilterDto;
-import com.asg.common.lib.dto.FilterRequestDto;
-import com.asg.common.lib.dto.LovGetListDto;
-import com.asg.common.lib.dto.RawSearchResult;
+import com.asg.common.lib.dto.*;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
@@ -63,6 +61,9 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
     private final LovDataService lovService;
     private final PrintService printService;
     private final DataSource dataSource;
+    
+    @Autowired
+    private DocumentDeleteService documentDeleteService;
     
     @Autowired
     private ApplicationContext applicationContext;
@@ -626,44 +627,23 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
 
     @Override
     @Transactional
-    public void deleteGeneralReceipt(Long transactionPoid) {
+    public void deleteGeneralReceipt(Long transactionPoid, DeleteReasonDto deleteReasonDto) {
         log.info("Deleting general receipt: {}", transactionPoid);
-
-        // 1. Find receipt
         ArGenReceiptHdr header = receiptHdrRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("General Receipt", "transactionPoid", transactionPoid));
-
-        // 2. Check if already deleted
         if ("Y".equalsIgnoreCase(header.getDeleted())) {
             throw new ValidationException("Receipt is already deleted");
         }
-
-        // 3. Check if verified/posted - cannot delete posted receipts
         if ("Y".equalsIgnoreCase(header.getVerified())) {
             throw new ValidationException("Cannot delete receipt that has been verified/posted to GL");
         }
-
-        // 4. Check for downstream linkages (GL_LEDGER records)
-        Long glLedgerCount = checkDownstreamLinkages(transactionPoid);
-        if (glLedgerCount != null && glLedgerCount > 0) {
-            throw new ValidationException("Cannot delete receipt - it has downstream linkages in GL Ledger (" + glLedgerCount + " records)");
-        }
-
-        // 5. Hard delete child tables (cascade delete)
-        log.debug("Deleting child records for receipt: {}", transactionPoid);
-        advanceDtlRepository.deleteByReceiptHdr_TransactionPoid(transactionPoid);
-        pymtDetailsRepository.deleteByTransactionPoid(transactionPoid);
-        billDtlRepository.deleteByTransactionPoid(transactionPoid);
-        chargesDtlRepository.deleteByTransactionPoid(transactionPoid);
-
-        // 6. Soft delete parent table
-        String currentUser = getCurrentUser();
-        LocalDateTime now = LocalDateTime.now();
-        header.setDeleted("Y");
-        header.setLastModifiedBy(currentUser);
-        header.setLastModifiedDate(now);
-        receiptHdrRepository.save(header);
-
+        documentDeleteService.deleteDocument(
+                transactionPoid,
+                "AR_GEN_RECEIPT_HDR",
+                "TRANSACTION_POID",
+                deleteReasonDto,
+                header.getTransactionDate()
+        );
         log.info("Successfully deleted general receipt: {}", header.getDocRef());
     }
 

@@ -2,6 +2,7 @@ package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.*;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.finance.client.CompanyServiceClient;
 import com.asg.common.lib.entity.DocumentEntity;
 import com.asg.common.lib.repository.DocumentCommonRepository;
@@ -53,6 +54,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
     private final TableMetaRepository tableMetaRepository;
     private final DocumentCommonRepository documentRepository;
     private final CompanyServiceClient companyServiceClient;
+    private final DocumentDeleteService documentDeleteService;
 
     @Override
     @Transactional
@@ -226,7 +228,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
 
     @Override
     @Transactional
-    public void deleteTaxSubmission(Long transactionPoid) {
+    public void deleteTaxSubmission(Long transactionPoid, DeleteReasonDto deleteReasonDto) {
         Long groupPoid = UserContext.getGroupPoid();
         log.info("deleteTaxSubmission started for transactionPoid={} groupPoid={}", transactionPoid, groupPoid);
 
@@ -241,9 +243,14 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
             throw new ValidationException("Cannot delete tax submission that is already approved or posted");
         }
 
-        // Soft delete
-        header.setDeleted("Y");
-        hdrRepository.save(header);
+        documentDeleteService.deleteDocument(
+                transactionPoid,
+                "GLOBAL_TAX_SUBMISSION_HDR",
+                "TRANSACTION_POID",
+                deleteReasonDto,
+                header.getTransactionDate().toLocalDateTime().toLocalDate()
+        );
+
 
         log.info("deleteTaxSubmission completed for transactionPoid={}", transactionPoid);
     }

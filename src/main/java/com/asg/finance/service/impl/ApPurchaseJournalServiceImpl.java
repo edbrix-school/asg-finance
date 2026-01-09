@@ -1,10 +1,12 @@
 package com.asg.finance.service.impl;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
@@ -59,6 +61,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
     private final ApPurchaseJournalRepository apPurchaseJournalRepositoryImpl;
     private final LovDataService lovService;
     private final DocumentSearchService documentService;
+    private final DocumentDeleteService documentDeleteService;
     private final BillwiseBreakupService billwiseBreakupService;
     private final CostCenterBreakupService costCenterBreakupService;
     private final PrintService printService;
@@ -1191,22 +1194,19 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
     @Override
     @Transactional
-    public ApPurchaseInvoiceHdrDto softDeleteApPurchaseInvoice(Long transactionPoid, String modifiedBy) {
+    public ApPurchaseInvoiceHdrDto softDeleteApPurchaseInvoice(Long transactionPoid, DeleteReasonDto deleteReasonDto) {
         ApPurchaseInvoiceHdrEntity existing = repository.findById(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("ApPurchaseJournal", "transactionPoid", transactionPoid));
 
+        documentDeleteService.deleteDocument(
+                transactionPoid,
+                "AP_PURCHASE_INVOICE_HDR",
+                "TRANSACTION_POID",
+                deleteReasonDto,
+                existing.getTransactionDate()
+        );
 
-        existing.setDeleted("Y");
-        existing.setLastModifiedBy(modifiedBy);
-        existing.setLastModifiedDate(LocalDateTime.now());
-
-        apPurchaseInvoiceItemDtlRepository.deleteByIdTransactionPoid(transactionPoid);
-        apPurchaseInvoiceGlDtlRepository.deleteByIdTransactionPoid(transactionPoid);
-        apPurchaseInvoiceAssetDtlRepository.deleteByIdTransactionPoid(transactionPoid);
-        apPurchaseInvRjvDetailsRepository.deleteByIdTransactionPoid(transactionPoid);
-
-        ApPurchaseInvoiceHdrEntity saved = repository.save(existing);
-        return fetchApPurchaseInvoiceHdr(saved.getTransactionPoid());
+        return fetchApPurchaseInvoiceHdr(transactionPoid);
     }
 
     @Override

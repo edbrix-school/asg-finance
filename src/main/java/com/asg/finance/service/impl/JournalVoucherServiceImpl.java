@@ -328,6 +328,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                     }
                 }
                 case ACTION_ISCREATED -> {
+                   validateGLPoid(dto.getGlPoid());
                     Long detRowId = dto.getDetRowId() != null ? dto.getDetRowId() : getNextDetRowIdForGl(transactionPoid);
                     GlJournalVoucherDtl detail = GlJournalVoucherDtl.builder()
                             .transactionPoid(transactionPoid)
@@ -950,5 +951,10 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         return printService.fillReportToPdf(mainReport, params, dataSource);
     }
 
+    private void validateGLPoid(Long glPoid){
+        if (!glMasterRepository.existsByGlPoid(glPoid)) {
+            throw new ResourceNotFoundException("Gl Master", "glPoid", glPoid);
+        }
+    }
 
 }

@@ -14,6 +14,8 @@ import com.asg.finance.entity.SupplierCategoryEntity;
 import com.asg.finance.repository.SupplierCategoryRepository;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.SupplierCategoryService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
@@ -36,6 +38,7 @@ public class SupplierCategoryServiceImpl implements SupplierCategoryService {
 
     private final SupplierCategoryRepository supplierCategoriesRepository;
     private final DocumentSearchService documentService;
+    private final LoggingService loggingService;
     private final DocumentDeleteService documentDeleteService;
 
     @PersistenceContext
@@ -92,6 +95,20 @@ public class SupplierCategoryServiceImpl implements SupplierCategoryService {
         SupplierCategoryEntity entity = supplierCategoriesRepository.findById(supplierCategoryPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Supplier Category", "supplierCategoryPoid", supplierCategoryPoid));
 
+        // Create a copy of the existing entity for logging
+        SupplierCategoryEntity oldEntity = new SupplierCategoryEntity();
+        oldEntity.setSupplierCategoryPoid(entity.getSupplierCategoryPoid());
+        oldEntity.setGroupPoid(entity.getGroupPoid());
+        oldEntity.setSupplierCategoryCode(entity.getSupplierCategoryCode());
+        oldEntity.setSupplierCategoryName(entity.getSupplierCategoryName());
+        oldEntity.setSupplierCategoryName2(entity.getSupplierCategoryName2());
+        oldEntity.setSequenceNumber(entity.getSequenceNumber());
+        oldEntity.setActive(entity.getActive());
+        oldEntity.setDeleted(entity.getDeleted());
+        oldEntity.setGeneralRemarks(entity.getGeneralRemarks());
+        oldEntity.setCreatedDate(entity.getCreatedDate());
+        oldEntity.setLastModifiedDate(entity.getLastModifiedDate());
+
         if (StringUtils.isNotBlank(supplierCategoryDto.getSupplierCategoryName()) && !supplierCategoryDto.getSupplierCategoryName().equals(entity.getSupplierCategoryName())) {
             if (supplierCategoriesRepository.existsBySupplierCategoryNameAndSupplierCategoryPoidNot(supplierCategoryDto.getSupplierCategoryName(), supplierCategoryPoid)) {
                 throw new ResourceAlreadyExistsException("Supplier Category Name", supplierCategoryDto.getSupplierCategoryName());
@@ -120,6 +137,14 @@ public class SupplierCategoryServiceImpl implements SupplierCategoryService {
         entity.setLastModifiedDate(LocalDateTime.now());
 
         SupplierCategoryEntity updatedEntity = supplierCategoriesRepository.save(entity);
+        
+        // Log the update
+        String key = updatedEntity.getSupplierCategoryPoid().toString();
+        String docId = UserContext.getDocumentId();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, docId, key);
+        loggingService.logChanges(oldEntity, updatedEntity, SupplierCategoryEntity.class, 
+                docId, key, LogDetailsEnum.MODIFIED, "SUPPLIER_CATEGORY_POID");
+
         return mapToDto(updatedEntity);
     }
 
@@ -152,6 +177,12 @@ log.info("SupplierCategoryDto: {}", supplierCategoryDto);
 
         entityManager.flush();
         entityManager.refresh(savedEntity);
+        
+        // Log the creation
+        String key = savedEntity.getSupplierCategoryPoid().toString();
+        String docId = UserContext.getDocumentId();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, key);
+        
         log.info("savedEntity: {}", savedEntity);
         return mapToDto(savedEntity);
     }

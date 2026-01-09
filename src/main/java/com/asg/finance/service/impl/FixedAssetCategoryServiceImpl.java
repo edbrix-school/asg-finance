@@ -1,12 +1,14 @@
 package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.*;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.finance.client.RoleServiceClient;
 import com.asg.finance.entity.GLMaster;
 import com.asg.finance.repository.GLMasterRepository;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.utility.ASGHelperUtils;
 import com.asg.finance.dto.FixedAssetCategoryRequestDto;
 import com.asg.finance.dto.FixedAssetCategoryResponseDto;
@@ -41,6 +43,7 @@ public class FixedAssetCategoryServiceImpl implements FixedAssetCategoryService 
     private final RoleServiceClient roleServiceClient;
     private final GLMasterRepository glMasterRepository;
     private final CostCenterRepository costCenterRepository;
+    private final LoggingService loggingService;
 
     @Override
     public FixedAssetCategoryResponseDto createFixedAssetCategory(FixedAssetCategoryRequestDto request) {
@@ -49,6 +52,10 @@ public class FixedAssetCategoryServiceImpl implements FixedAssetCategoryService 
         }
             FixedAssetCategory entity = convertFromFixedAssetDtoToFixedAssetEntity(request);
         FixedAssetCategory fixedAssetCategory = fixedAssetCategoryRepository.save(entity);
+        
+        // Log the creation
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), fixedAssetCategory.getFaCategoryPoid().toString());
+        
         return convertFromFixedAssetEntityToFixedAssetDto(fixedAssetCategory);
     }
 
@@ -56,6 +63,22 @@ public class FixedAssetCategoryServiceImpl implements FixedAssetCategoryService 
     public FixedAssetCategoryResponseDto updateFixedAssetCategory(Long faCategoryPoid, FixedAssetCategoryRequestDto requestDto) {
         FixedAssetCategory fixedAssetCategory = fixedAssetCategoryRepository.findById(faCategoryPoid).orElseThrow(
                 () -> new ResourceNotFoundException("Fixed Asset Category  not found with ID: ", "faCategoryPoid",faCategoryPoid));
+        
+        // Create a copy of the old entity for logging
+        FixedAssetCategory oldEntity = new FixedAssetCategory();
+        oldEntity.setFaCategoryPoid(fixedAssetCategory.getFaCategoryPoid());
+        oldEntity.setFaCategoryCode(fixedAssetCategory.getFaCategoryCode());
+        oldEntity.setFaCategoryDescription(fixedAssetCategory.getFaCategoryDescription());
+        oldEntity.setFaCategoryDescription2(fixedAssetCategory.getFaCategoryDescription2());
+        oldEntity.setAssetType(fixedAssetCategory.getAssetType());
+        oldEntity.setFaGlAccount(fixedAssetCategory.getFaGlAccount());
+        oldEntity.setFaAccumulationAccount(fixedAssetCategory.getFaAccumulationAccount());
+        oldEntity.setFaDepreciationAccount(fixedAssetCategory.getFaDepreciationAccount());
+        oldEntity.setCostCenter(fixedAssetCategory.getCostCenter());
+        oldEntity.setUserRolePoid(fixedAssetCategory.getUserRolePoid());
+        oldEntity.setActive(fixedAssetCategory.getActive());
+        oldEntity.setSeqNo(fixedAssetCategory.getSeqNo());
+        
         if (fixedAssetCategoryRepository.existsByFaCategoryDescriptionIgnoreCaseAndFaCategoryPoidNot(
                 requestDto.getFaCategoryDescription(), faCategoryPoid)) {
             throw new ValidationException("FA Category Description already exists: " + requestDto.getFaCategoryDescription());
@@ -74,6 +97,11 @@ public class FixedAssetCategoryServiceImpl implements FixedAssetCategoryService 
         fixedAssetCategory.setLastModifiedBy(getCurrentUser());
         fixedAssetCategory.setLastModifiedDate(LocalDateTime.now());
         FixedAssetCategory updatedEntity = fixedAssetCategoryRepository.save(fixedAssetCategory);
+        
+        // Log the update
+        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), faCategoryPoid.toString());
+        loggingService.logChanges(oldEntity, updatedEntity, FixedAssetCategory.class, UserContext.getDocumentId(), faCategoryPoid.toString(), LogDetailsEnum.MODIFIED, "faCategoryPoid");
+        
         return convertFromFixedAssetEntityToFixedAssetDto(updatedEntity);
     }
 

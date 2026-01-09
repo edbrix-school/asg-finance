@@ -5,8 +5,10 @@ import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.exception.ResourceNotFoundException;
-import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.DocumentDeleteService;
+import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.finance.dto.*;
 import com.asg.finance.entity.PdcBatchExcelUploadTemp;
 import com.asg.finance.entity.PdcChqBatchDtlEntity;
@@ -46,6 +48,7 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
     private final DocumentDeleteService documentDeleteService;
     private final PdcBatchCreationRepository pdcBatchCreationRepository;
     private final PdcBatchExcelUploadTempRepository tempRepo;
+    private final LoggingService loggingService;
 
     @Transactional
     public PdcChqBatchHdrResponseDto createBatch(PdcChqBatchHdrRequestDto dto) {
@@ -60,6 +63,10 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
         List<PdcChqBatchDtlResponseDto> dtlResponses =
                 saveDetailRows(dto.getChequeDetails(), transactionPoid);
 
+        // Log the creation
+        String key = transactionPoid.toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, "400-113", key);
+
         return mapHeaderEntityToResponseDto(hdr, dtlResponses);
     }
 
@@ -71,6 +78,37 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
 
         PdcChqBatchHdrEntity hdr = hdrRepo.findById(transactionPoid)
                 .orElseThrow(() -> new RuntimeException("PDC Batch not found: " + transactionPoid));
+
+        // Create a copy of the existing entity for logging
+        PdcChqBatchHdrEntity oldEntity = PdcChqBatchHdrEntity.builder()
+                .transactionPoid(hdr.getTransactionPoid())
+                .transactionDate(hdr.getTransactionDate())
+                .docRef(hdr.getDocRef())
+                .groupPoid(hdr.getGroupPoid())
+                .companyPoid(hdr.getCompanyPoid())
+                .payGlPoid(hdr.getPayGlPoid())
+                .payingTo(hdr.getPayingTo())
+                .payingType(hdr.getPayingType())
+                .divisionCode(hdr.getDivisionCode())
+                .bankPoid(hdr.getBankPoid())
+                .chqStartNo(hdr.getChqStartNo())
+                .chqStartDate(hdr.getChqStartDate())
+                .chqAmount(hdr.getChqAmount())
+                .noOfChqs(hdr.getNoOfChqs())
+                .totalAmount(hdr.getTotalAmount())
+                .narration(hdr.getNarration())
+                .billType(hdr.getBillType())
+                .billRef(hdr.getBillRef())
+                .costGroup(hdr.getCostGroup())
+                .costPoid(hdr.getCostPoid())
+                .prePrinted(hdr.getPrePrinted())
+                .accountPayee(hdr.getAccountPayee())
+                .deleted(hdr.getDeleted())
+                .createdBy(hdr.getCreatedBy())
+                .createdDate(hdr.getCreatedDate())
+                .lastModifiedBy(hdr.getLastModifiedBy())
+                .lastModifiedDate(hdr.getLastModifiedDate())
+                .build();
 
         hdr.setTransactionDate(dto.getTransactionDate());
         hdr.setGroupPoid(dto.getGroupPoid());
@@ -99,6 +137,12 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
         dtlRepo.deleteByTransactionPoid(transactionPoid);
         List<PdcChqBatchDtlResponseDto> dtls =
                 saveDetailRows(dto.getChequeDetails(), transactionPoid);
+
+        // Log the update
+        String key = transactionPoid.toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, "400-113", key);
+        loggingService.logChanges(oldEntity, hdr, PdcChqBatchHdrEntity.class, 
+                "400-113", key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
         return mapHeaderEntityToResponseDto(hdr, dtls);
     }

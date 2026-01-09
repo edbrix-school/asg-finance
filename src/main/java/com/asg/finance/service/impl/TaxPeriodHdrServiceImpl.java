@@ -18,6 +18,8 @@ import com.asg.finance.repository.master.StockCategoryMasterRepository;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.TaxPeriodHdrService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -55,6 +57,7 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
     private final StockCategoryMasterRepository stockCategoryMasterRepository;
     private final EntityManager entityManager;
     private final DocumentSearchService documentService;
+    private final LoggingService loggingService;
     private final DocumentDeleteService documentDeleteService;
 
     @Override
@@ -107,6 +110,11 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
             globalTaxPeriodStockDtlRepository.saveAll(stockDtlEntities);
         }
 
+        // Log the creation
+        String key = taxPeriodHdr.getTransactionPoid().toString();
+        String docId = UserContext.getDocumentId();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, key);
+
         return convertFromTaxPeriodHdrEntityToTaxPeriodHdrDto(taxPeriodHdr);
     }
 
@@ -117,6 +125,22 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
         validatePeriodOverlapForUpdate(request.getPeriodFrom(), request.getPeriodTo(), transactionPoid);
         TaxPeriodHdr existingEntity = taxPeriodHdrRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Tax Period not found for id: ", "transactionPoid", transactionPoid));
+
+        // Create a copy of the existing entity for logging
+        TaxPeriodHdr oldEntity = new TaxPeriodHdr();
+        oldEntity.setTransactionPoid(existingEntity.getTransactionPoid());
+        oldEntity.setGroupPoid(existingEntity.getGroupPoid());
+        oldEntity.setCompanyPoid(existingEntity.getCompanyPoid());
+        oldEntity.setTransactionDate(existingEntity.getTransactionDate());
+        oldEntity.setDocRef(existingEntity.getDocRef());
+        oldEntity.setDescription(existingEntity.getDescription());
+        oldEntity.setPeriodFrom(existingEntity.getPeriodFrom());
+        oldEntity.setPeriodTo(existingEntity.getPeriodTo());
+        oldEntity.setDeleted(existingEntity.getDeleted());
+        oldEntity.setCreatedBy(existingEntity.getCreatedBy());
+        oldEntity.setCreatedDate(existingEntity.getCreatedDate());
+        oldEntity.setLastModifiedBy(existingEntity.getLastModifiedBy());
+        oldEntity.setLastModifiedDate(existingEntity.getLastModifiedDate());
 
         TaxPeriodHdr updatedEntity = convertFromTaxPeriodHdrDtoToTaxPeriodHdrEntity(request);
 
@@ -131,6 +155,14 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
         if (request.getStocks() != null && !request.getStocks().isEmpty()) {
             updateTaxPeriodStocks(request.getStocks(), savedEntity.getTransactionPoid());
         }
+        
+        // Log the update
+        String key = savedEntity.getTransactionPoid().toString();
+        String docId = UserContext.getDocumentId();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, docId, key);
+        loggingService.logChanges(oldEntity, savedEntity, TaxPeriodHdr.class, 
+                docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+        
         return convertFromTaxPeriodHdrEntityToTaxPeriodHdrDto(savedEntity);
     }
 

@@ -4,6 +4,7 @@ import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceAlreadyExistsException;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.finance.entity.GlBankEntity;
@@ -11,6 +12,7 @@ import com.asg.finance.entity.TaxMaster;
 import com.asg.finance.repository.*;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.finance.dto.GlBankChequeDtlDto;
 import com.asg.finance.dto.GlBankCommissionDtlDto;
@@ -57,6 +59,8 @@ public class GlBankServiceImpl implements GlBankService {
     private final LovDataService lovService;
 
     private final DocumentDeleteService documentDeleteService;
+    
+    private final LoggingService loggingService;
 
 
     @Override
@@ -87,6 +91,10 @@ public class GlBankServiceImpl implements GlBankService {
         if (bankEntity == null) {
             throw new ResourceNotFoundException("Bank", "bankPoid", bankPoid);
         }
+
+        // Create a copy of the old entity for logging
+        GlBankEntity oldEntity = new GlBankEntity();
+        BeanUtils.copyProperties(bankEntity, oldEntity);
 
         boolean existsByBankCode = bankRepository.existsByBankCodeIgnoreCaseAndBankPoidNot(glBankDto.getBankCode(), bankPoid);
 
@@ -125,6 +133,10 @@ public class GlBankServiceImpl implements GlBankService {
 
         List<GlBankCommissionDtlEntity> updatedCommissionDtlEntities = glBankDto.getCommissionDetails() != null && !glBankDto.getCommissionDetails().isEmpty() ? processCommissionDetails(bankPoid, glBankDto.getCommissionDetails()) : new ArrayList<>();
 
+        // Log the update
+        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), bankPoid.toString());
+        loggingService.logChanges(oldEntity, updatedGlBankEntity, GlBankEntity.class, UserContext.getDocumentId(), bankPoid.toString(), LogDetailsEnum.MODIFIED, "bankPoid");
+
         return convertGlBankEntityToGlBankDto(updatedGlBankEntity, updatedChequeDtlEntities, updatedCommissionDtlEntities);
     }
 
@@ -162,6 +174,10 @@ public class GlBankServiceImpl implements GlBankService {
 
         saveBankChequeDetails(bankMasterDto, bankMasterData);
         saveBankCommisionDetails(bankMasterDto, bankMasterData);
+        
+        // Log the creation
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), bankMasterData.getBankPoid().toString());
+        
         return bankMasterData;
     }
 

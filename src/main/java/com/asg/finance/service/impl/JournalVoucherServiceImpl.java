@@ -8,6 +8,8 @@ import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.PrintService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.finance.projection.CurrencyRateProjection;
 import com.asg.finance.repository.GLMasterRepository;
@@ -85,6 +87,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
     private final DocumentDeleteService documentDeleteService;
     private final PrintService printService;
     private final DataSource dataSource;
+    private final LoggingService loggingService;
 
     @Override
     @Transactional
@@ -138,6 +141,10 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
 
         log.info("Journal Voucher created successfully - TransactionPoid: {}, DocRef: {}, RefType: {}", 
                 header.getTransactionPoid(), header.getDocRef(), request.getRefType());
+        
+        // Log the creation
+        String key = header.getTransactionPoid().toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, key);
         
         return JournalVoucherResponse.builder()
                 .transactionPoid(header.getTransactionPoid())
@@ -485,6 +492,30 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         GlJournalVoucherHdr existing = glJournalVoucherHdrRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Journal Voucher", "POID", transactionPoid));
         
+        // Create a copy of the existing entity for logging
+        GlJournalVoucherHdr oldEntity = GlJournalVoucherHdr.builder()
+                .transactionPoid(existing.getTransactionPoid())
+                .transactionDate(existing.getTransactionDate())
+                .groupPoid(existing.getGroupPoid())
+                .companyPoid(existing.getCompanyPoid())
+                .docRef(existing.getDocRef())
+                .refType(existing.getRefType())
+                .currencyCode(existing.getCurrencyCode())
+                .currencyRate(existing.getCurrencyRate())
+                .amount(existing.getAmount())
+                .bhdAmount(existing.getBhdAmount())
+                .postingNarration(existing.getPostingNarration())
+                .wdvAccountGl(existing.getWdvAccountGl())
+                .multiCompany(existing.getMultiCompany())
+                .remarks(existing.getRemarks())
+                .confidentialRemarks(existing.getConfidentialRemarks())
+                .deleted(existing.getDeleted())
+                .createdBy(existing.getCreatedBy())
+                .createdDate(existing.getCreatedDate())
+                .lastModifiedBy(existing.getLastModifiedBy())
+                .lastModifiedDate(existing.getLastModifiedDate())
+                .build();
+        
 
         if (!existing.getRefType().equals(request.getRefType())) {
             throw new IllegalArgumentException("RefType cannot be changed after creation");
@@ -523,6 +554,12 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
             saveCapitalizationDetails(transactionPoid, request.getAssetCapitalization());
             saveGlDetails(existing, request.getGlDetails(), isMultiCompany,docId);
         }
+
+        // Log the update
+        String key = transactionPoid.toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, docId, key);
+        loggingService.logChanges(oldEntity, existing, GlJournalVoucherHdr.class, 
+                docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
         return JournalVoucherResponse.builder()
                 .transactionPoid(existing.getTransactionPoid())

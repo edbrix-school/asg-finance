@@ -11,6 +11,8 @@ import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.common.lib.service.LovDataService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.dto.BankDepositVoucherDtlDto;
 import com.asg.finance.dto.BankDepositVoucherRequestDto;
@@ -50,6 +52,7 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
     private final PrintService printService;
     private final DataSource dataSource;
     private final LovDataService lovService;
+    private final LoggingService loggingService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -58,6 +61,15 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
     public BankDepositVoucherResponseDto createBankDepositVoucher(BankDepositVoucherRequestDto request) {
         Long transactionPoid = createHeaderAndDetails(request);
         callUpdatePaymentProcedure(transactionPoid, request.getGroupPoid(), request.getCompanyPoid(), request.getType());
+        
+        // Get the saved entity for logging
+        GlBankDepositVoucherHdr savedEntity = hdrRepository.findByTransactionPoid(transactionPoid)
+                .orElseThrow(() -> new ResourceNotFoundException("Bank Deposit Voucher", "transactionPoid", transactionPoid));
+        
+        // Log the creation
+        String key = transactionPoid.toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), key);
+        
         return getBankDepositVoucherById(transactionPoid);
     }
 
@@ -116,6 +128,27 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
         GlBankDepositVoucherHdr hdr = hdrRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Bank Deposit Voucher", "transactionPoid", transactionPoid));
 
+        // Create a copy of the existing entity for logging
+        GlBankDepositVoucherHdr oldEntity = GlBankDepositVoucherHdr.builder()
+                .transactionPoid(hdr.getTransactionPoid())
+                .transactionDate(hdr.getTransactionDate())
+                .groupPoid(hdr.getGroupPoid())
+                .companyPoid(hdr.getCompanyPoid())
+                .docRef(hdr.getDocRef())
+                .bankPoid(hdr.getBankPoid())
+                .postingNarration(hdr.getPostingNarration())
+                .remarks(hdr.getRemarks())
+                .grandTotal(hdr.getGrandTotal())
+                .refType(hdr.getRefType())
+                .bankFilter(hdr.getBankFilter())
+                .groupPosting(hdr.getGroupPosting())
+                .createdBy(hdr.getCreatedBy())
+                .createdDate(hdr.getCreatedDate())
+                .lastModifiedBy(hdr.getLastModifiedBy())
+                .lastModifiedDate(hdr.getLastModifiedDate())
+                .deleted(hdr.getDeleted())
+                .build();
+
         List<GlBankDepositVoucherDtl> existingDetails = dtlRepository.findByTransactionPoid(transactionPoid);
         for (GlBankDepositVoucherDtl detail : existingDetails) {
             hdrRepository.callChequeStatusValidation(detail.getRefDocRef(), detail.getRefDocPoid());
@@ -149,6 +182,12 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
             dtlRepository.saveAll(details);
         }
         callMarkPaymentsCompleted(transactionPoid, hdr.getGroupPoid(), hdr.getCompanyPoid(), request.getType());
+
+        // Log the update
+        String key = transactionPoid.toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), key);
+        loggingService.logChanges(oldEntity, hdr, GlBankDepositVoucherHdr.class, 
+                UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
         return getBankDepositVoucherById(transactionPoid);
     }

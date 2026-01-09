@@ -12,6 +12,8 @@ import com.asg.finance.repository.GLMasterRepository;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.finance.dto.AdvancePettyCashDtlResponseDTO;
 import com.asg.finance.dto.AdvancePettyCashHdrRequestDTO;
 import com.asg.finance.dto.AdvancePettyCashHdrResponseDTO;
@@ -45,6 +47,9 @@ public class AdvancePettyCashHdrServiceImpl implements AdvancePettyCashHdrServic
     private final AdvancePettyCashHdrRepository repository;
     private final AdvancePettyCashDtlRepository detailRepository;
     private final GLMasterRepository glMasterRepository;
+    private final LoggingService loggingService;
+    
+    @Autowired
     private final DocumentSearchService documentService;
     private final DocumentDeleteService documentDeleteService;
 
@@ -55,6 +60,11 @@ public class AdvancePettyCashHdrServiceImpl implements AdvancePettyCashHdrServic
         try {
             AdvancePettyCashHdr entity = convertFromDtoToEntity(request);
             AdvancePettyCashHdr saved = repository.save(entity);
+            String key = saved.getTransactionPoid().toString();
+            
+            // Log the creation
+            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), key);
+            
             return convertFromEntityToDto(saved);
         } catch (Exception ex) {
             String errorMessage = extractTriggerErrorMessage(ex);
@@ -73,6 +83,31 @@ public class AdvancePettyCashHdrServiceImpl implements AdvancePettyCashHdrServic
         
         validateTransactionDate(request.getTransactionDate());
         validateClosedStatus(request.getStatus(), request.getClosedReason());
+
+        // Create a copy of the existing entity for logging
+        AdvancePettyCashHdr oldEntity = AdvancePettyCashHdr.builder()
+                .transactionPoid(existing.getTransactionPoid())
+                .transactionDate(existing.getTransactionDate())
+                .groupPoid(existing.getGroupPoid())
+                .companyPoid(existing.getCompanyPoid())
+                .docRef(existing.getDocRef())
+                .currencyCode(existing.getCurrencyCode())
+                .currencyRate(existing.getCurrencyRate())
+                .pettyCashGlPoid(existing.getPettyCashGlPoid())
+                .payingTo(existing.getPayingTo())
+                .iouAmount(existing.getIouAmount())
+                .settledAmount(existing.getSettledAmount())
+                .balanceAmount(existing.getBalanceAmount())
+                .narration(existing.getNarration())
+                .status(existing.getStatus())
+                .closedReason(existing.getClosedReason())
+                .remarks(existing.getRemarks())
+                .deleted(existing.getDeleted())
+                .createdBy(existing.getCreatedBy())
+                .createdDate(existing.getCreatedDate())
+                .lastModifiedBy(existing.getLastModifiedBy())
+                .lastModifiedDate(existing.getLastModifiedDate())
+                .build();
 
         existing.setTransactionDate(request.getTransactionDate());
         existing.setPettyCashGlPoid(request.getPettyCashGlPoid());
@@ -93,6 +128,13 @@ public class AdvancePettyCashHdrServiceImpl implements AdvancePettyCashHdrServic
             existing.setLastModifiedBy(getCurrentUser());
             existing.setLastModifiedDate(LocalDateTime.now());
             AdvancePettyCashHdr updated = repository.save(existing);
+            String key = updated.getTransactionPoid().toString();
+            
+            // Log the update
+            loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), key);
+            loggingService.logChanges(oldEntity, updated, AdvancePettyCashHdr.class, 
+                    UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+            
             return convertFromEntityToDto(updated);
         } catch (Exception ex) {
             String errorMessage = extractTriggerErrorMessage(ex);

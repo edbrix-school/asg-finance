@@ -2,6 +2,9 @@ package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.LoggingService;
 
 import static com.asg.common.lib.dto.response.ApiResponse.error;
 import static com.asg.common.lib.dto.response.ApiResponse.success;
@@ -11,6 +14,8 @@ import java.util.List;
 
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.LoggingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -45,6 +50,7 @@ import lombok.extern.slf4j.Slf4j;
 public class BankReconciliationController {
 
 	private final BankReconciliationService service;
+    private final LoggingService loggingService;
 
 	@AllowedAction(UserRolesRightsEnum.VIEW)
 	@GetMapping("/view")
@@ -77,6 +83,7 @@ public class BankReconciliationController {
 			@Parameter(description = "GL transaction POID", required = true, example = "5001") @PathVariable Long glPoid){
 		BankRenconciliationBankInfoDTO responses = service.getBankInfo(glPoid);
 
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), glPoid.toString());
 		if (responses.getBank() == null)
 			return error(String.format("No bank data found for POID: %s", glPoid), 404);
 

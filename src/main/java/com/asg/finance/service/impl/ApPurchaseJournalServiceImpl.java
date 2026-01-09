@@ -10,6 +10,8 @@ import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.finance.service.ApPurchaseServiceJournal;
 import com.asg.finance.service.BillwiseBreakupService;
 import com.asg.finance.service.CostCenterBreakupService;
@@ -66,6 +68,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
     private final CostCenterBreakupService costCenterBreakupService;
     private final PrintService printService;
     private final DataSource dataSource;
+    private final LoggingService loggingService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -431,6 +434,10 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         }
         saveAssetDetails(transactionPoid, apPurchaseInvoiceHdrDto);
         saveRjvDetails(transactionPoid, apPurchaseInvoiceHdrDto);
+
+        // Log the creation
+        String key = transactionPoid.toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, documentId, key);
 
         return fetchApPurchaseInvoiceHdr(transactionPoid);
     }
@@ -806,6 +813,59 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
     public ApPurchaseInvoiceHdrDto updateApPurchaseInvoice(Long transactionPoid, ApPurchaseInvoiceHdrDto apPurchaseInvoiceHdrDto) {
         ApPurchaseInvoiceHdrEntity apPurchaseInvoiceHdrEntity = repository.findById(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("ApPurchaseJournal", "transactionPoid", transactionPoid));
+
+        // Create a copy of the existing entity for logging
+        ApPurchaseInvoiceHdrEntity oldEntity = new ApPurchaseInvoiceHdrEntity();
+        oldEntity.setTransactionPoid(apPurchaseInvoiceHdrEntity.getTransactionPoid());
+        oldEntity.setTransactionDate(apPurchaseInvoiceHdrEntity.getTransactionDate());
+        oldEntity.setGroupPoid(apPurchaseInvoiceHdrEntity.getGroupPoid());
+        oldEntity.setDocRef(apPurchaseInvoiceHdrEntity.getDocRef());
+        oldEntity.setPoRef(apPurchaseInvoiceHdrEntity.getPoRef());
+        oldEntity.setFdaRef(apPurchaseInvoiceHdrEntity.getFdaRef());
+        oldEntity.setFfRef(apPurchaseInvoiceHdrEntity.getFfRef());
+        oldEntity.setShipRef(apPurchaseInvoiceHdrEntity.getShipRef());
+        oldEntity.setCompanyPoid(apPurchaseInvoiceHdrEntity.getCompanyPoid());
+        oldEntity.setCurrencyCode(apPurchaseInvoiceHdrEntity.getCurrencyCode());
+        oldEntity.setCurrencyRate(apPurchaseInvoiceHdrEntity.getCurrencyRate());
+        oldEntity.setSupplierPoid(apPurchaseInvoiceHdrEntity.getSupplierPoid());
+        oldEntity.setLocationPoid(apPurchaseInvoiceHdrEntity.getLocationPoid());
+        oldEntity.setSubTotal(apPurchaseInvoiceHdrEntity.getSubTotal());
+        oldEntity.setDiscount(apPurchaseInvoiceHdrEntity.getDiscount());
+        oldEntity.setExpenseBySupplier(apPurchaseInvoiceHdrEntity.getExpenseBySupplier());
+        oldEntity.setGrandTotal(apPurchaseInvoiceHdrEntity.getGrandTotal());
+        oldEntity.setRemarks(apPurchaseInvoiceHdrEntity.getRemarks());
+        oldEntity.setCreatedBy(apPurchaseInvoiceHdrEntity.getCreatedBy());
+        oldEntity.setCreatedDate(apPurchaseInvoiceHdrEntity.getCreatedDate());
+        oldEntity.setLastModifiedBy(apPurchaseInvoiceHdrEntity.getLastModifiedBy());
+        oldEntity.setLastModifiedDate(apPurchaseInvoiceHdrEntity.getLastModifiedDate());
+        oldEntity.setDeleted(apPurchaseInvoiceHdrEntity.getDeleted());
+        oldEntity.setItemTotal(apPurchaseInvoiceHdrEntity.getItemTotal());
+        oldEntity.setChargeTotal(apPurchaseInvoiceHdrEntity.getChargeTotal());
+        oldEntity.setGlTotal(apPurchaseInvoiceHdrEntity.getGlTotal());
+        oldEntity.setType(apPurchaseInvoiceHdrEntity.getType());
+        oldEntity.setDescription(apPurchaseInvoiceHdrEntity.getDescription());
+        oldEntity.setCreditPeriod(apPurchaseInvoiceHdrEntity.getCreditPeriod());
+        oldEntity.setDueDate(apPurchaseInvoiceHdrEntity.getDueDate());
+        oldEntity.setInvnoOld(apPurchaseInvoiceHdrEntity.getInvnoOld());
+        oldEntity.setModcodeOld(apPurchaseInvoiceHdrEntity.getModcodeOld());
+        oldEntity.setRefType(apPurchaseInvoiceHdrEntity.getRefType());
+        oldEntity.setSalesQtnPoid(apPurchaseInvoiceHdrEntity.getSalesQtnPoid());
+        oldEntity.setNarration(apPurchaseInvoiceHdrEntity.getNarration());
+        oldEntity.setSupplierInvDate(apPurchaseInvoiceHdrEntity.getSupplierInvDate());
+        oldEntity.setSupplierInvNo(apPurchaseInvoiceHdrEntity.getSupplierInvNo());
+        oldEntity.setSupplierInvRemark(apPurchaseInvoiceHdrEntity.getSupplierInvRemark());
+        oldEntity.setMtaRef(apPurchaseInvoiceHdrEntity.getMtaRef());
+        oldEntity.setMultiCompany(apPurchaseInvoiceHdrEntity.getMultiCompany());
+        oldEntity.setBhdAmount(apPurchaseInvoiceHdrEntity.getBhdAmount());
+        oldEntity.setSupplierInvAmount(apPurchaseInvoiceHdrEntity.getSupplierInvAmount());
+        oldEntity.setRoundingAmount(apPurchaseInvoiceHdrEntity.getRoundingAmount());
+        oldEntity.setBillType(apPurchaseInvoiceHdrEntity.getBillType());
+        oldEntity.setProvisionalInvoice(apPurchaseInvoiceHdrEntity.getProvisionalInvoice());
+        oldEntity.setPartyType(apPurchaseInvoiceHdrEntity.getPartyType());
+        oldEntity.setGrnSupplierPoid(apPurchaseInvoiceHdrEntity.getGrnSupplierPoid());
+        oldEntity.setPartyTinNumber(apPurchaseInvoiceHdrEntity.getPartyTinNumber());
+        oldEntity.setPaidAgainst(apPurchaseInvoiceHdrEntity.getPaidAgainst());
+        oldEntity.setFdaCoveringRef(apPurchaseInvoiceHdrEntity.getFdaCoveringRef());
 
 
         if (apPurchaseInvoiceHdrDto.getTransactionDate() != null)
@@ -1189,7 +1249,14 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
             }
         }
 
-        return fetchApPurchaseInvoiceHdr(savedEntity.getTransactionPoid());
+        // Log the update
+        String key = savedEntity.getTransactionPoid().toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), key);
+        loggingService.logChanges(oldEntity, savedEntity, ApPurchaseInvoiceHdrEntity.class, 
+                UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+
+//        return fetchApPurchaseInvoiceHdr(savedEntity.getTransactionPoid());
+        return null;
     }
 
     @Override

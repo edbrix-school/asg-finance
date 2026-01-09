@@ -24,6 +24,8 @@ import com.asg.finance.repository.master.HrEmployeeMasterRepository;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.SupplierMasterService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import jakarta.persistence.PersistenceContext;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.domain.Page;
@@ -68,6 +70,7 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
     private final JdbcTemplate jdbcTemplate;
     private final AddressMasterServiceClient addressMasterServiceClient;
     private final LovDataService lovDataService;
+    private final LoggingService loggingService;
     private final DocumentDeleteService documentDeleteService;
 
     @PersistenceContext
@@ -156,6 +159,10 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
         if (existingEntity == null) {
             throw new ResourceNotFoundException("Supplier Master", "supplierPoid", supplierPoid);
         }
+
+        // Create a copy of the existing entity for logging
+        SupplierMasterEntity oldEntity = new SupplierMasterEntity();
+        BeanUtils.copyProperties(existingEntity, oldEntity);
 
         boolean existsByGroupPoid = groupRepository.existsByGroupPoid(UserContext.getGroupPoid());
 
@@ -246,7 +253,7 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
         BeanUtils.copyProperties(supplierMasterDto, existingEntity, "supplierPoid", "supplierCode", "createdBy", "createdDate");
         existingEntity.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
         existingEntity.setLastModifiedDate(LocalDate.now());
-        supplierMasterRepository.save(existingEntity);
+        SupplierMasterEntity updatedEntity = supplierMasterRepository.save(existingEntity);
 
         if (supplierMasterDto.getPaymentDtl() != null && !supplierMasterDto.getPaymentDtl().isEmpty()) {
             processPaymentDtl(supplierPoid, supplierMasterDto.getPaymentDtl());
@@ -269,6 +276,14 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                 UserContext.getUserPoid(),
                 "Y",
                 supplierMasterDto.getSupplierPoid());
+        
+        // Log the update
+        String key = updatedEntity.getSupplierPoid().toString();
+        String docId = UserContext.getDocumentId();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, docId, key);
+        loggingService.logChanges(oldEntity, updatedEntity, SupplierMasterEntity.class, 
+                docId, key, LogDetailsEnum.MODIFIED, "SUPPLIER_POID");
+        
         return getSupplierMaster(supplierPoid);
     }
 
@@ -548,6 +563,11 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
         }
 
         callSupplierValidationProcedure(UserContext.getGroupPoid(), supplierMasterDto.getCustomerPoid(), UserContext.getUserPoid(), "Y", supplierMasterDto.getSupplierPoid());
+
+        // Log the creation
+        String key = savedEntity.getSupplierPoid().toString();
+        String docId = UserContext.getDocumentId();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, key);
 
         return getSupplierMaster(savedEntity.getSupplierPoid());
     }

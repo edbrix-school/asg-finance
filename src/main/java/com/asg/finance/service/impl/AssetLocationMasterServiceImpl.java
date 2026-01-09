@@ -6,6 +6,8 @@ import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.finance.dto.AssetLocationMasterRequestDto;
 import com.asg.finance.dto.AssetLocationMasterResponseDto;
 import com.asg.finance.entity.AssetLocation;
@@ -41,6 +43,9 @@ public class AssetLocationMasterServiceImpl implements AssetLocationMasterServic
     private DocumentSearchService documentService;
 
     @Autowired
+    private LoggingService loggingService;
+
+    @Autowired
     private DocumentDeleteService documentDeleteService;
 
 
@@ -69,6 +74,11 @@ public class AssetLocationMasterServiceImpl implements AssetLocationMasterServic
         entity.setLastModifiedDate(LocalDateTime.now());
 
         entity = repository.save(entity);
+        
+        // Log the creation
+        String key = entity.getLocationPoid().toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), key);
+        
         return convertEntityToResponseDto(entity);
     }
 
@@ -83,6 +93,21 @@ public class AssetLocationMasterServiceImpl implements AssetLocationMasterServic
     public AssetLocationMasterResponseDto updateAssetLocationMaster(Long locationPoid, AssetLocationMasterRequestDto dto) {
         AssetLocation entity = repository.findById(locationPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Asset Location not found for Location POID: ", "locationPoid", locationPoid));
+
+        // Create a copy of the existing entity for logging
+        AssetLocation oldEntity = AssetLocation.builder()
+                .locationPoid(entity.getLocationPoid())
+                .locationCode(entity.getLocationCode())
+                .description(entity.getDescription())
+                .seqNo(entity.getSeqNo())
+                .groupPoid(entity.getGroupPoid())
+                .createdBy(entity.getCreatedBy())
+                .createdDate(entity.getCreatedDate())
+                .lastModifiedBy(entity.getLastModifiedBy())
+                .lastModifiedDate(entity.getLastModifiedDate())
+                .deleted(entity.getDeleted())
+                .active(entity.getActive())
+                .build();
 
         // Uniqueness checks (excluding current record)
         if (repository.existsByLocationCodeAndLocationPoidNot(dto.getLocationCode(), locationPoid)) {
@@ -101,7 +126,15 @@ public class AssetLocationMasterServiceImpl implements AssetLocationMasterServic
         entity.setLastModifiedBy(getCurrentUser());
         entity.setLastModifiedDate(LocalDateTime.now());
 
-        return convertEntityToResponseDto(repository.save(entity));
+        AssetLocation savedEntity = repository.save(entity);
+        
+        // Log the update
+        String key = savedEntity.getLocationPoid().toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), key);
+        loggingService.logChanges(oldEntity, savedEntity, AssetLocation.class, 
+                UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "LOCATION_POID");
+        
+        return convertEntityToResponseDto(savedEntity);
     }
 
     @Override

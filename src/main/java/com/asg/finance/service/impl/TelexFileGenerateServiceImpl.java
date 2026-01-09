@@ -23,6 +23,8 @@ import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.BankFileBatchService;
 import com.asg.finance.service.TelexFileGenerateService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -51,6 +53,7 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
     private final LovDataService lovService;
     private final GlBankDebitHdrRepository glBankDebitHdrRepository;
     private final BankFileBatchService bankFileBatchService;
+    private final LoggingService loggingService;
     private final DocumentDeleteService documentDeleteService;
 
     @Override
@@ -96,6 +99,10 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
                 }
             });
             
+            String key = savedHdr.getTransactionPoid().toString();
+            String docId = UserContext.getDocumentId();
+            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, key);
+            
             return getTelexFileById(transactionPoid);
         } catch (Exception e) {
             String errorMessage = extractTriggerErrorMessage(e);
@@ -109,6 +116,22 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
         try {
             GlBankFileHdr hdr = hdrRepository.findByTransactionPoid(transactionPoid)
                     .orElseThrow(() -> new ResourceNotFoundException("Telex File", "transactionPoid", transactionPoid));
+            
+            GlBankFileHdr oldHdr = new GlBankFileHdr();
+            oldHdr.setTransactionPoid(hdr.getTransactionPoid());
+            oldHdr.setTransactionDate(hdr.getTransactionDate());
+            oldHdr.setBankPoid(hdr.getBankPoid());
+            oldHdr.setBankList(hdr.getBankList());
+            oldHdr.setLongNarration(hdr.getLongNarration());
+            oldHdr.setOnlyApproval(hdr.getOnlyApproval());
+            oldHdr.setTtSuppressBalanceCheck(hdr.getTtSuppressBalanceCheck());
+            oldHdr.setGroupPoid(hdr.getGroupPoid());
+            oldHdr.setCompanyPoid(hdr.getCompanyPoid());
+            oldHdr.setCreatedBy(hdr.getCreatedBy());
+            oldHdr.setCreatedDate(hdr.getCreatedDate());
+            oldHdr.setLastModifiedBy(hdr.getLastModifiedBy());
+            oldHdr.setLastModifiedDate(hdr.getLastModifiedDate());
+            oldHdr.setDeleted(hdr.getDeleted());
 
             hdr.setTransactionDate(request.getTransactionDate());
             hdr.setBankPoid(request.getBankPoid());
@@ -143,6 +166,12 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
                     processFileAsync(transactionPoid, userId);
                 }
             });
+            
+            String key = transactionPoid.toString();
+            String docId = UserContext.getDocumentId();
+            loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, docId, key);
+            loggingService.logChanges(oldHdr, hdr, GlBankFileHdr.class, 
+                    docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
             
             return getTelexFileById(transactionPoid);
         } catch (Exception e) {

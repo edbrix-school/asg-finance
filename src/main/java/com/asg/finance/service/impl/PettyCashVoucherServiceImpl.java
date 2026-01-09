@@ -9,6 +9,8 @@ import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.LoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.ShowPendingBillwiseBreakupResponseDto;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.finance.entity.GLMaster;
@@ -78,6 +80,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
     private final PrintService printService;
     private final DataSource dataSource;
+    private final LoggingService loggingService;
 
     @Override
     @Transactional
@@ -303,6 +306,10 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     }
                 }
             }
+
+            // Logging for create operation
+            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), savedHeader.getTransactionPoid().toString());
+            loggingService.logChanges(null, savedHeader, GlPettyCashPaymentHdr.class, UserContext.getDocumentId(), savedHeader.getTransactionPoid().toString(), LogDetailsEnum.CREATED, "transactionPoid");
 
             return mapToResponseDto(savedHeader, paymentDtls, chargeDtls, itemDtls);
 
@@ -753,6 +760,50 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             GlPettyCashPaymentHdr existingHdr = glPettyCashPaymentHdrRepository.findByTransactionPoid(transactionPoid)
                     .orElseThrow(() -> new RuntimeException("Petty cash not found with ID: " + transactionPoid));
 
+            // Create copy of old entity for logging
+            GlPettyCashPaymentHdr oldEntity = GlPettyCashPaymentHdr.builder()
+                    .transactionPoid(existingHdr.getTransactionPoid())
+                    .docRef(existingHdr.getDocRef())
+                    .transactionDate(existingHdr.getTransactionDate())
+                    .groupPoid(existingHdr.getGroupPoid())
+                    .companyPoid(existingHdr.getCompanyPoid())
+                    .currencyCode(existingHdr.getCurrencyCode())
+                    .currencyRate(existingHdr.getCurrencyRate())
+                    .pettyCashGlPoid(existingHdr.getPettyCashGlPoid())
+                    .balance(existingHdr.getBalance())
+                    .amount(existingHdr.getAmount())
+                    .payingTo(existingHdr.getPayingTo())
+                    .narration(existingHdr.getNarration())
+                    .advance(existingHdr.getAdvance())
+                    .refType(existingHdr.getRefType())
+                    .fdaRef(existingHdr.getFdaRef())
+                    .ffRef(existingHdr.getFfRef())
+                    .settledDate(existingHdr.getSettledDate())
+                    .remarks(existingHdr.getRemarks())
+                    .settledTotal(existingHdr.getSettledTotal())
+                    .status(existingHdr.getStatus())
+                    .grandTotal(existingHdr.getGrandTotal())
+                    .mtaRef(existingHdr.getMtaRef())
+                    .multiCompany(existingHdr.getMultiCompany())
+                    .poRef(existingHdr.getPoRef())
+                    .salesQtnRef(existingHdr.getSalesQtnRef())
+                    .crTotal(existingHdr.getCrTotal())
+                    .drTotal(existingHdr.getDrTotal())
+                    .roundingAmount(existingHdr.getRoundingAmount())
+                    .grnSupplierPoid(existingHdr.getGrnSupplierPoid())
+                    .supplierGlPoid(existingHdr.getSupplierGlPoid())
+                    .customerGlPoid(existingHdr.getCustomerGlPoid())
+                    .advancePettyCashPoid(existingHdr.getAdvancePettyCashPoid())
+                    .advanceStatus(existingHdr.getAdvanceStatus())
+                    .advanceAmount(existingHdr.getAdvanceAmount())
+                    .companyDivPoid(existingHdr.getCompanyDivPoid())
+                    .deleted(existingHdr.getDeleted())
+                    .createdBy(existingHdr.getCreatedBy())
+                    .createdDate(existingHdr.getCreatedDate())
+                    .lastModifiedBy(existingHdr.getLastModifiedBy())
+                    .lastModifiedDate(existingHdr.getLastModifiedDate())
+                    .build();
+
             StringBuilder oldRefType = new StringBuilder();
             StringBuilder oldRefPoid = new StringBuilder();
             Long userGroupPoid = UserContext.getGroupPoid();
@@ -1002,6 +1053,11 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             }
 
             //  Step 8: Return the final response DTO
+            
+            // Logging for update operation
+            loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), transactionPoid.toString());
+            loggingService.logChanges(oldEntity, updatedHdr, GlPettyCashPaymentHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "transactionPoid");
+            
             return mapToResponseDto(updatedHdr, paymentDtls, chargeDtls, itemDtls);
 
         } catch (Exception e) {

@@ -3,8 +3,10 @@ package com.asg.finance.controller;
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.finance.dto.*;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.finance.service.BankPaymentVoucherService;
@@ -37,6 +39,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 public class BankPaymentVoucherController {
 
     private final BankPaymentVoucherService service;
+    private final LoggingService loggingService;
 
     @Operation(
             summary = "Get Bank Payment Voucher by ID",
@@ -61,6 +64,7 @@ public class BankPaymentVoucherController {
             @PathVariable Long transactionPoid) {
 
         try {
+            loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
             return success("Voucher fetched successfully", service.getVoucherById(transactionPoid, UserContext.getDocumentId()));
         } catch (ValidationException ex) {
             return internalServerError(ex.getMessage());
@@ -291,6 +295,7 @@ public class BankPaymentVoucherController {
             @RequestParam(required = false) Long docKeyPoid,
             @RequestParam(required = false) Date docDate) {
         try {
+            loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), bankPoid.toString());
             return success("Bank balance fetched successfully", service.getBankBalance(UserContext.getDocumentId(), docKeyPoid, docDate, bankPoid));
         } catch (Exception ex) {
             return internalServerError("Failed to fetch bank balance: " + ex.getMessage());
@@ -303,6 +308,7 @@ public class BankPaymentVoucherController {
     public ResponseEntity<?> validateChequePrint(
             @PathVariable Long transactionPoid) {
         try {
+            loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
             service.validateChequePrint(transactionPoid);
             return success("Cheque print validation successful", null);
         } catch (Exception ex) {
@@ -403,6 +409,7 @@ public class BankPaymentVoucherController {
             @RequestParam String ffPoid) {
         BankPayCreateFromFfResponse response = service.createBankPayFromFf(ffPoid);
         try {
+            loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), ffPoid);
             return success("FF charges loaded successfully", response);
         } catch (Exception ex) {
             return internalServerError("Failed to load FF charges: " + ex.getMessage());
@@ -430,6 +437,7 @@ public class BankPaymentVoucherController {
         BankPayCreateFromFdaResponse response =
                 service.createBankPayFromFda(fdaPoid);
         try {
+            loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), fdaPoid);
             return success("FDA charges loaded successfully", response);
         } catch (Exception ex) {
             return internalServerError("Failed to load FDA charges: " + ex.getMessage());
@@ -458,6 +466,7 @@ public class BankPaymentVoucherController {
 
         BankPayCreateFromMtaResponse response = service.createBankPayment(rfqPoid);
         try {
+            loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), rfqPoid);
             return success("MTA charges loaded successfully", response);
         } catch (Exception ex) {
             return internalServerError("Failed to load MTA charges: " + ex.getMessage());

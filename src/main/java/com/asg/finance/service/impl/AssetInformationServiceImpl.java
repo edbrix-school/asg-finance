@@ -6,6 +6,8 @@ import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.finance.dto.AssetInformationMasterRequest;
 import com.asg.finance.dto.AssetInformationMasterResponse;
 import com.asg.common.lib.dto.FilterRequestDto;
@@ -40,6 +42,7 @@ public class AssetInformationServiceImpl implements AssetInformationService {
 
     private final AssetInformationRepository repository;
     private final DocumentSearchService documentService;
+    private final LoggingService loggingService;
     private final DocumentDeleteService documentDeleteService;
 
     @Override
@@ -89,6 +92,11 @@ public class AssetInformationServiceImpl implements AssetInformationService {
 
         try {
             AssetInformationMasterEntity savedEntity = repository.save(entity);
+            
+            // Log the creation
+            String key = savedEntity.getIaPoid().toString();
+            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), key);
+            
             return mapToResponse(savedEntity);
         } catch (DataAccessException ex) {
             log.error("Database error while creating asset information", ex);
@@ -105,6 +113,37 @@ public class AssetInformationServiceImpl implements AssetInformationService {
     public AssetInformationMasterResponse updateAssetInformation(Long iaPoid, AssetInformationMasterRequest request) {
         AssetInformationMasterEntity existing = repository.findByIaPoid(iaPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Information Asset Master", "iaPoid", iaPoid));
+
+        // Create a copy of the existing entity for logging
+        AssetInformationMasterEntity oldEntity = AssetInformationMasterEntity.builder()
+                .iaPoid(existing.getIaPoid())
+                .groupPoid(existing.getGroupPoid())
+                .companyPoid(existing.getCompanyPoid())
+                .iaCode(existing.getIaCode())
+                .iaName(existing.getIaName())
+                .iaDescription(existing.getIaDescription())
+                .operatingUnit(existing.getOperatingUnit())
+                .typeOfInformationAsset(existing.getTypeOfInformationAsset())
+                .assetCustodian(existing.getAssetCustodian())
+                .assetClassification(existing.getAssetClassification())
+                .integrity(existing.getIntegrity())
+                .availability(existing.getAvailability())
+                .dataRetentionPeriod(existing.getDataRetentionPeriod())
+                .personalData(existing.getPersonalData())
+                .personalSensitiveData(existing.getPersonalSensitiveData())
+                .sensitiveCustomerData(existing.getSensitiveCustomerData())
+                .active(existing.getActive())
+                .deleted(existing.getDeleted())
+                .seqNo(existing.getSeqNo())
+                .processName(existing.getProcessName())
+                .processOwner(existing.getProcessOwner())
+                .protectionLevelOrigin(existing.getProtectionLevelOrigin())
+                .protectionLevelMoved(existing.getProtectionLevelMoved())
+                .createdBy(existing.getCreatedBy())
+                .createdDate(existing.getCreatedDate())
+                .lastModifiedBy(existing.getLastModifiedBy())
+                .lastModifiedDate(existing.getLastModifiedDate())
+                .build();
 
         // Only validate uniqueness if the values have changed
         if (request.getIaCode() != null && !request.getIaCode().equals(existing.getIaCode()) &&
@@ -148,6 +187,13 @@ public class AssetInformationServiceImpl implements AssetInformationService {
         try {
             // No need to call save() as the entity is already managed by JPA
             // The changes will be persisted automatically at the end of the transaction
+            
+            // Log the update
+            String key = existing.getIaPoid().toString();
+            loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), key);
+            loggingService.logChanges(oldEntity, existing, AssetInformationMasterEntity.class, 
+                    UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "IA_POID");
+            
             return mapToResponse(existing);
         } catch (DataAccessException ex) {
             log.error("Database error while updating asset information", ex);

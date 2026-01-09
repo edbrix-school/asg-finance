@@ -1,9 +1,11 @@
 package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.*;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.DocumentDeleteService;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.finance.client.RoleServiceClient;
 import com.asg.finance.dto.masters.*;
@@ -35,6 +37,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
     private final DocumentSearchService documentService;
     private final DocumentDeleteService documentDeleteService;
     private final RoleServiceClient roleServiceClient;
+    private final LoggingService loggingService;
     
     @Autowired
     private LovDataService lovService;
@@ -171,6 +174,10 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
             InsuranceMaster saved = insuranceMasterRepository.save(insuranceMaster);
             buildAndSetChildDetails(request, saved);
             InsuranceMaster finalSaved = insuranceMasterRepository.save(saved);
+            
+            // Logging for create operation
+            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), finalSaved.getTransactionPoid().toString());
+            
             return mapToResponseDto(finalSaved);
         } catch (Exception e) {
             System.err.println("Error in createInsuranceMaster: " + e.getMessage());
@@ -187,6 +194,32 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
 
         InsuranceMaster existing = insuranceMasterRepository.findById(insuranceId)
                 .orElseThrow(() -> new ResourceNotFoundException("Insurance Master", "ID", insuranceId));
+
+        // Create copy of old entity for logging
+        InsuranceMaster oldEntity = InsuranceMaster.builder()
+                .transactionPoid(existing.getTransactionPoid())
+                .groupPoid(existing.getGroupPoid())
+                .companyPoid(existing.getCompanyPoid())
+                .insuranceType(existing.getInsuranceType())
+                .insuranceCategory(existing.getInsuranceCategory())
+                .policyNo(existing.getPolicyNo())
+                .insuranceProvider(existing.getInsuranceProvider())
+                .fromDate(existing.getFromDate())
+                .expiryDate(existing.getExpiryDate())
+                .currencyPoid(existing.getCurrencyPoid())
+                .exchangeRate(existing.getExchangeRate())
+                .insuranceAmount(existing.getInsuranceAmount())
+                .premiumAmount(existing.getPremiumAmount())
+                .paymentFrequency(existing.getPaymentFrequency())
+                .oneTime(existing.getOneTime())
+                .description(existing.getDescription())
+                .pjRefPoid(existing.getPjRefPoid())
+                .deleted(existing.getDeleted())
+                .createdBy(existing.getCreatedBy())
+                .createdDate(existing.getCreatedDate())
+                .lastModifiedBy(existing.getLastModifiedBy())
+                .lastModifiedDate(existing.getLastModifiedDate())
+                .build();
 
         // Validate unique policy number per company (excluding current record)
 
@@ -276,6 +309,11 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         }
 
         InsuranceMaster updated = insuranceMasterRepository.save(existing);
+        
+        // Logging for update operation
+        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), insuranceId.toString());
+        loggingService.logChanges(oldEntity, updated, InsuranceMaster.class, UserContext.getDocumentId(), insuranceId.toString(), LogDetailsEnum.MODIFIED, "transactionPoid");
+        
         return mapToResponseDto(updated);
     }
 

@@ -3,6 +3,9 @@ package com.asg.finance.service.impl;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.GlVoucherPendingBillwiseBreakupResponseDto;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.repository.BillwiseBreakupDtlRepository;
 import com.asg.finance.service.BillwiseBreakupService;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +22,7 @@ import java.util.List;
 public class BillwiseBreakupServiceImpl implements BillwiseBreakupService {
 
     private final BillwiseBreakupDtlRepository billwiseBreakupDtlRepository;
+    private final LoggingService loggingService;
 
     @Override
     public GlVoucherLoadBillwiseBreakupResponseDto loadBillwiseBreakup(Long groupPoid, Long companyPoid, String docId, Long transactionPoid) {
@@ -63,6 +67,9 @@ public class BillwiseBreakupServiceImpl implements BillwiseBreakupService {
         }
         billwiseBreakupDtlRepository.insertBillwiseBreakup(breakupList);
 
+        // Log the creation
+        String key = first.getTransactionPoid().toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, first.getDocId(), key);
     }
 
     @Override
@@ -99,5 +106,11 @@ public class BillwiseBreakupServiceImpl implements BillwiseBreakupService {
         );
 
         billwiseBreakupDtlRepository.insertBillwiseBreakup(request);
+        
+        // Log the update
+        String key = first.getTransactionPoid().toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, first.getDocId(), key);
+        loggingService.logChanges(null, request, List.class, 
+                first.getDocId(), key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
     }
 }

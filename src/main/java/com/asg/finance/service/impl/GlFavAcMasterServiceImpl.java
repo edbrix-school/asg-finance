@@ -2,7 +2,9 @@ package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.*;
 import com.asg.common.lib.entity.Company;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.finance.client.RoleServiceClient;
 import com.asg.finance.entity.GLMaster;
 import com.asg.finance.repository.GLMasterRepository;
@@ -50,6 +52,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
     private final GLMasterRepository glMasterRepository;
     private final LovDataService lovService;
     private final DocumentDeleteService documentDeleteService;
+    private final LoggingService loggingService;
 
     @Override
     public GlFavAcMasterResponse createFavoriteAccount(GlFavAcMasterRequest request) {
@@ -140,6 +143,9 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
             }
         }
 
+        // Logging for create operation
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), savedMaster.getFavAcPoid().toString());
+
         return getFavoriteAccountById(savedMaster.getFavAcPoid());
     }
 
@@ -189,6 +195,22 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
 
         String currentUser = getCurrentUser();
         Timestamp now = new Timestamp(System.currentTimeMillis());
+
+        // Create copy of old entity for logging
+        GlFavAcMaster oldEntity = GlFavAcMaster.builder()
+                .favAcPoid(existing.getFavAcPoid())
+                .groupPoid(existing.getGroupPoid())
+                .favAcCode(existing.getFavAcCode())
+                .description(existing.getDescription())
+                .description2(existing.getDescription2())
+                .active(existing.getActive())
+                .seqNo(existing.getSeqNo())
+                .createdBy(existing.getCreatedBy())
+                .createdDate(existing.getCreatedDate())
+                .lastModifiedBy(existing.getLastModifiedBy())
+                .lastModifiedDate(existing.getLastModifiedDate())
+                .deleted(existing.getDeleted())
+                .build();
 
         // Update master record
         existing.setFavAcCode(request.getFavAcCode());
@@ -240,6 +262,10 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                 userRoleDtlRepository.save(userRoleDtl);
             }
         }
+
+        // Logging for update operation
+        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), favAcPoid.toString());
+        loggingService.logChanges(oldEntity, existing, GlFavAcMaster.class, UserContext.getDocumentId(), favAcPoid.toString(), LogDetailsEnum.MODIFIED, "favAcPoid");
 
         return getFavoriteAccountById(favAcPoid);
     }

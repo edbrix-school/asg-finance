@@ -3,6 +3,8 @@ package com.asg.finance.controller;
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.LoggingService;
 
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.security.util.UserContext;
@@ -39,6 +41,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 public class PdcChqBatchController {
 
     private final PdcChqBatchService service;
+    private final LoggingService loggingService;
 
     @Operation(
             summary = "Create PDC Cheque Batch",
@@ -163,6 +166,7 @@ public class PdcChqBatchController {
     ) {
         try {
             PdcChqBatchHdrResponseDto response = service.findById(transactionPoid);
+            loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
             return success("PDC Batch fetched successfully", response);
         } catch (Exception ex) {
             return internalServerError("Failed to fetch PDC Batch: " + ex.getMessage());
@@ -309,6 +313,7 @@ public class PdcChqBatchController {
     ) {
         try {
             PayGlBreakupCheckResponseDto resp = service.validatePayGl(payGlPoid);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), payGlPoid.toString());
             return success("Pay GL breakup check completed", resp);
 
         } catch (Exception ex) {

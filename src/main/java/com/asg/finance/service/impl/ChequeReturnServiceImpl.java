@@ -7,6 +7,8 @@ import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.finance.dto.ChequeReturnEditRequest;
 import com.asg.finance.dto.ChequeReturnLoadResponseDto;
 import com.asg.finance.dto.ChequeReturnRequest;
@@ -46,6 +48,7 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
     private final DocumentDeleteService documentDeleteService;
     private final ChequeReturnLoadRepository chequeReturnLoadRepository;
     private final LovDataService lovService;
+    private final LoggingService loggingService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -99,6 +102,10 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
         // Schedule after save procedure to run after transaction commit
         scheduleAfterSave(header.getTransactionPoid(), header.getDocRef());
         
+        // Log the creation
+        String key = header.getTransactionPoid().toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, DOC_ID_CHEQUE_RETURN, key);
+        
         return toResponse(header, request, "Cheque Return created successfully.");
     }
 
@@ -111,6 +118,24 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
         ChequeReturn header = headerRepo.findById(transactionPoid)
                 .orElseThrow(() -> new EntityNotFoundException("Cheque Return not found: " + transactionPoid));
 
+        // Create a copy of the existing entity for logging
+        ChequeReturn oldEntity = ChequeReturn.builder()
+                .transactionPoid(header.getTransactionPoid())
+                .transactionDate(header.getTransactionDate())
+                .groupPoid(header.getGroupPoid())
+                .companyPoid(header.getCompanyPoid())
+                .docRef(header.getDocRef())
+                .chequeNumber(header.getChequeNumber())
+                .status(header.getStatus())
+                .remarks(header.getRemarks())
+                .deleted(header.getDeleted())
+                .createdBy(header.getCreatedBy())
+                .createdDate(header.getCreatedDate())
+                .lastModifiedBy(header.getLastModifiedBy())
+                .lastModifiedDate(header.getLastModifiedDate())
+                .closeDetail(header.getCloseDetail())
+                .build();
+
         // 🔹 2. Check if already closed
         if ("CLOSED".equalsIgnoreCase(header.getStatus())) {
             throw new IllegalArgumentException("Cannot edit Cheque Return - already in CLOSED status");
@@ -122,6 +147,12 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
         header.setLastModifiedDate(getCurrentDbDate());
         header.setLastModifiedBy(UserContext.getUserId());
         headerRepo.save(header);
+        
+        // Log the update
+        String key = transactionPoid.toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, DOC_ID_CHEQUE_RETURN, key);
+        loggingService.logChanges(oldEntity, header, ChequeReturn.class, 
+                DOC_ID_CHEQUE_RETURN, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
         return getChequeReturn(transactionPoid);
     }
 
@@ -137,6 +168,24 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
         // Validate header exists
         ChequeReturn header = headerRepo.findById(transactionPoid)
                 .orElseThrow(() -> new EntityNotFoundException("Cheque Return not found: " + transactionPoid));
+
+        // Create a copy of the existing entity for logging
+        ChequeReturn oldEntity = ChequeReturn.builder()
+                .transactionPoid(header.getTransactionPoid())
+                .transactionDate(header.getTransactionDate())
+                .groupPoid(header.getGroupPoid())
+                .companyPoid(header.getCompanyPoid())
+                .docRef(header.getDocRef())
+                .chequeNumber(header.getChequeNumber())
+                .status(header.getStatus())
+                .remarks(header.getRemarks())
+                .deleted(header.getDeleted())
+                .createdBy(header.getCreatedBy())
+                .createdDate(header.getCreatedDate())
+                .lastModifiedBy(header.getLastModifiedBy())
+                .lastModifiedDate(header.getLastModifiedDate())
+                .closeDetail(header.getCloseDetail())
+                .build();
 
         // Check if already closed
         if ("CLOSED".equalsIgnoreCase(header.getStatus())) {
@@ -170,6 +219,12 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
         headerRepo.save(header);
         // Schedule after save procedure to run after transaction commit
         scheduleAfterSave(header.getTransactionPoid(), header.getDocRef());
+        
+        // Log the update
+        String key = transactionPoid.toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, DOC_ID_CHEQUE_RETURN, key);
+        loggingService.logChanges(oldEntity, header, ChequeReturn.class, 
+                DOC_ID_CHEQUE_RETURN, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
         return toResponse(header, request, "Cheque Return updated successfully.");
     }
 

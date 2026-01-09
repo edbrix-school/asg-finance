@@ -3,9 +3,13 @@ package com.asg.finance.controller;
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.LoggingService;
 
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.BankDepositVoucherDtlDto;
 import com.asg.finance.dto.BankDepositVoucherRequestDto;
@@ -44,6 +48,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 public class BankDepositVoucherController {
 
     private final BankDepositVoucherService service;
+    private final LoggingService loggingService;
 
     @Operation(
             summary = "Create Bank Deposit Voucher",
@@ -193,6 +198,7 @@ public class BankDepositVoucherController {
             @PathVariable Long transactionPoid
     ) {
         BankDepositVoucherResponseDto response = service.getBankDepositVoucherById(transactionPoid);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
         return success("Bank Deposit Voucher fetched successfully", response);
     }
 
@@ -232,6 +238,7 @@ public class BankDepositVoucherController {
                 return badRequest("Both startDate and endDate should be specified or both dates should be empty.");
             }
             Map<String, Object> data = service.listBankDepositVouchers(UserContext.getDocumentId(), filters, startDate, endDate, pageable);
+
             return success("Bank Deposit Vouchers fetched successfully", data);
         } catch (Exception ex) {
             return internalServerError("Unable to fetch Bank Deposit Voucher list: " + ex.getMessage());
@@ -260,6 +267,7 @@ public class BankDepositVoucherController {
             @RequestParam(required = false) String bankFilter
     ) {
         List<BankDepositVoucherDtlDto> pendingPayments = service.loadPendingPayments(bankPoid, type, bankFilter);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), bankPoid.toString());
         return success("Pending payments loaded successfully", pendingPayments);
     }
 

@@ -7,6 +7,9 @@ import java.util.List;
 import java.util.Map;
 
 import com.asg.common.lib.service.PrintService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.entity.BankReconciliation;
 import com.asg.finance.service.BankReconciliationService;
 import net.sf.jasperreports.engine.JasperReport;
@@ -33,6 +36,7 @@ public class BankReconciliationServiceImpl implements BankReconciliationService 
 	private final BankReconciliationRepository repository;
     private final PrintService printService;
     private final DataSource dataSource;
+    private final LoggingService loggingService;
 
 	@Override
 	public List<BankReconciliationResponse> getReconciliationView(Long groupPoid, Long companyPoid, Long bankPoid,
@@ -48,35 +52,69 @@ public class BankReconciliationServiceImpl implements BankReconciliationService 
 
 	@Override
 	public String saveReconciliation(List<BankReconciliationRequest> dto) {
-		return repository.saveReconciliation(dto);
+		String result = repository.saveReconciliation(dto);
+		
+		// Log the creation if successful
+		if (result != null && !result.toLowerCase().startsWith("error")) {
+			for (BankReconciliationRequest req : dto) {
+				String key = req.getTransactionPoid() != null ? req.getTransactionPoid().toString() : "unknown";
+				loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), key);
+			}
+		}
+		
+		return result;
 	}
 
-	@Override
-	public String holdCheque(List<BankReconcHoldAndUholdRequest> req) {
-		return repository.holdCheque(req);
-	}
-	
+    @Override
+    public String holdCheque(List<BankReconcHoldAndUholdRequest> req) {
+        return repository.holdCheque(req);
+    }
 
-	@Override
-	public String unholdCheque(List<BankReconcHoldAndUholdRequest> req) {
-		return repository.unholdCheque(req);
-	}
+    @Override
+    public String unholdCheque(List<BankReconcHoldAndUholdRequest> req) {
+        return repository.unholdCheque(req);
+    }
 
-	@Override
-	public String updateStatementDate(Long companyPoid, Long postedBy, Long bankPoid, Date statementDate) {
-		return repository.updateStatementDate(companyPoid, postedBy, bankPoid, statementDate);
-	}
 
-	@Override
+    @Override
+    public String updateStatementDate(Long companyPoid,
+                                      Long postedBy,
+                                      Long bankPoid,
+                                      Date statementDate) {
+
+        return repository.updateStatementDate(
+                companyPoid,
+                postedBy,
+                bankPoid,
+                statementDate
+        );
+    }
+
+    @Override
 	public String pollAutoRefresh(String userId, Long companyPoid, String loginUrl) {
-		return repository.pollAutoRefresh(userId, companyPoid, loginUrl);
+		String result = repository.pollAutoRefresh(userId, companyPoid, loginUrl);
+		
+		return result;
 	}
 
 	@Override
 	public String revertReconciliation(String docId, String transactionPoid, Long loginUserPoid, Long loginGroupPoid,
 			Long loginCompanyPoid, String mailAlert) {
-		return repository.revertReconciliation(docId, transactionPoid, loginUserPoid, loginGroupPoid, loginCompanyPoid,
+		String result = repository.revertReconciliation(docId, transactionPoid, loginUserPoid, loginGroupPoid, loginCompanyPoid,
 				mailAlert);
+		
+		// Log the modification if successful
+		if (result != null && !result.toLowerCase().startsWith("error")) {
+			loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), transactionPoid);
+			
+			// Create objects for detailed logging
+			Map<String, Object> oldData = Map.of("transactionPoid", transactionPoid, "status", "reconciled");
+			Map<String, Object> newData = Map.of("transactionPoid", transactionPoid, "status", "reverted", "docId", docId, "loginUserPoid", loginUserPoid, "mailAlert", mailAlert);
+			loggingService.logChanges(oldData, newData, Map.class, 
+					UserContext.getDocumentId(), transactionPoid, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+		}
+		
+		return result;
 	}
 
 	@Override

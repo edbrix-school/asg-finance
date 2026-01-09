@@ -3,6 +3,8 @@ package com.asg.finance.controller;
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.LoggingService;
 
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.security.util.UserContext;
@@ -41,6 +43,8 @@ public class AssetInformationController {
 
     @Autowired
     private AssetInformationService assetInformationService;
+    @Autowired
+    private LoggingService loggingService;
 
     @Operation(
             summary = "List Asset Information with Search and Sort",
@@ -120,7 +124,8 @@ public class AssetInformationController {
             @RequestBody(required = false) FilterRequestDto filters
     ) {
         Map<String, Object> assetInformation = assetInformationService.listAssetInformation(UserContext.getDocumentId(), filters, pageable);
-        return success("Asset Information list fetched successfully", assetInformation);
+
+            return success("Asset Information list fetched successfully", assetInformation);
     }
 
     @Operation(
@@ -238,6 +243,7 @@ public class AssetInformationController {
     public ResponseEntity<?> getAssetInformationById(@PathVariable Long iaPoid) {
 
         AssetInformationMasterResponse response = assetInformationService.getAssetInformationByPoidId(iaPoid);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), iaPoid.toString());
         return success("Asset Information fetched successfully", response);
     }
 

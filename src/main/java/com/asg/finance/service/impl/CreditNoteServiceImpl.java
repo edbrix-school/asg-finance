@@ -4,7 +4,9 @@ import com.asg.common.lib.dto.*;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.LoadBillwiseBreakupResponseDto;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.finance.repository.GLMasterRepository;
 import com.asg.finance.repository.TaxMasterRepository;
@@ -94,6 +96,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     private LovDataService lovService;
 
     @Autowired private PrintService printService;
+    
+    @Autowired
+    private LoggingService loggingService;
 
     @Override
     @Transactional(propagation = Propagation.REQUIRED)
@@ -166,6 +171,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             List<ArCreditNoteChargeDtl> chargeDetails = creditNoteChargeDtlRepository.findByTransactionPoidOrderByDetRowId(transactionPoid);
             result.setChargeDetails(chargeDetails.stream().map(charge -> mapChargeToDto(charge, result.getRefType())).collect(Collectors.toList()));
 
+            // Log the creation
+            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), transactionPoid.toString());
+
             return result;
 
         } catch (SQLException e) {
@@ -227,6 +235,36 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             executeBeforeSaveValidation(creditNoteDto);
             calculateDueDateFromCreditPeriod(creditNoteDto);
 
+            // Create a copy of the old entity for logging
+            ArCreditNoteHdr oldEntity = ArCreditNoteHdr.builder()
+                    .transactionPoid(existing.getTransactionPoid())
+                    .transactionDate(existing.getTransactionDate())
+                    .docRef(existing.getDocRef())
+                    .companyPoid(existing.getCompanyPoid())
+                    .currencyCode(existing.getCurrencyCode())
+                    .currencyRate(existing.getCurrencyRate())
+                    .partyType(existing.getPartyType())
+                    .partyPoid(existing.getPartyPoid())
+                    .refType(existing.getRefType())
+                    .postingNarration(existing.getPostingNarration())
+                    .remarks(existing.getRemarks())
+                    .grandTotal(existing.getGrandTotal())
+                    .shInvoicePoid(existing.getShInvoicePoid())
+                    .dnInvoicePoid(existing.getDnInvoicePoid())
+                    .ffInvoicePoid(existing.getFfInvoicePoid())
+                    .fdaRefPoid(existing.getFdaRefPoid())
+                    .dueDate(existing.getDueDate())
+                    .creditPeriod(existing.getCreditPeriod())
+                    .tinNumber(existing.getTinNumber())
+                    .bhdAmount(existing.getBhdAmount())
+                    .bankPoid(existing.getBankPoid())
+                    .billRefType(existing.getBillRefType())
+                    .remarksPrintable(existing.getRemarksPrintable())
+                    .multiCompany(existing.getMultiCompany())
+                    .fdaDirect(existing.getFdaDirect())
+                    .otherCurrAmount(existing.getOtherCurrAmount())
+                    .build();
+
             updateHeaderFromDto(existing, creditNoteDto);
             existing.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
             existing.setLastModifiedDate(Timestamp.from(Instant.now()));
@@ -257,6 +295,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             List<CreditNoteGLDetailDto> glDetailDtos = glDetails.stream().map(this::mapGLToDto).collect(Collectors.toList());
             loadBillwiseAndCostCenterBreakup(glDetailDtos, transactionPoid, "300-111");
             result.setGlDetails(glDetailDtos);
+            
+            // Log the update
+            loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), transactionPoid.toString());
+            loggingService.logChanges(oldEntity, existing, ArCreditNoteHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "transactionPoid");
+            
             return result;
         } catch (SQLException e) {
             log.error("Database error updating credit note", e);

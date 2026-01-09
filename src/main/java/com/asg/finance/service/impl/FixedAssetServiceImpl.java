@@ -2,9 +2,11 @@ package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.*;
 
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.finance.dto.masters.*;
 import com.asg.finance.entity.AssetLocation;
@@ -62,6 +64,9 @@ public class FixedAssetServiceImpl implements FixedAssetService {
 
     @Autowired
     LovDataService lovService;
+    
+    @Autowired
+    LoggingService loggingService;
 
     public FixedAssetResponseDto createFixedAsset(FixedAssetRequestDto requestDto) {
 
@@ -73,6 +78,10 @@ public class FixedAssetServiceImpl implements FixedAssetService {
         }
         FixedAsset entity = convertFromFixedAssetDtoToFixedAssetEntity(requestDto);
         FixedAsset savedEntity = repository.save(entity);
+        
+        // Log the creation
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), savedEntity.getFaPoid().toString());
+        
         return convertFromFixedAssetEntityToFixedAssetDto(savedEntity);
     }
 
@@ -370,6 +379,10 @@ public class FixedAssetServiceImpl implements FixedAssetService {
         FixedAsset existingEntity = repository.findById(faPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Fixed Asset not found for id: ", "faPoid", faPoid));
 
+        // Create a copy of the old entity for logging
+        FixedAsset oldEntity = new FixedAsset();
+        BeanUtils.copyProperties(existingEntity, oldEntity);
+
         if (repository.existsByFaCodeAndFaPoidNot(requestDto.getFaCode(), faPoid)) {
             throw new ValidationException("FA Code must be unique" + faPoid);
         }
@@ -383,6 +396,11 @@ public class FixedAssetServiceImpl implements FixedAssetService {
         updatedEntity.setLastModifiedBy(getCurrentUser());
         updatedEntity.setLastModifiedDate(LocalDateTime.now());
         FixedAsset savedEntity = repository.save(updatedEntity);
+        
+        // Log the update
+        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), faPoid.toString());
+        loggingService.logChanges(oldEntity, savedEntity, FixedAsset.class, UserContext.getDocumentId(), faPoid.toString(), LogDetailsEnum.MODIFIED, "faPoid");
+        
         return convertFromFixedAssetEntityToFixedAssetDto(savedEntity);
     }
 

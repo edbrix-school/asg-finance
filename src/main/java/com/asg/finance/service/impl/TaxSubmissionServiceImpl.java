@@ -18,6 +18,8 @@ import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.PeriodValidationHelper;
 import com.asg.finance.service.TaxSubmissionService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.finance.service.TaxSubmissionStoredProcedureHelper;
 import org.springframework.lang.Nullable;
 
@@ -54,6 +56,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
     private final TableMetaRepository tableMetaRepository;
     private final DocumentCommonRepository documentRepository;
     private final CompanyServiceClient companyServiceClient;
+    private final LoggingService loggingService;
     private final DocumentDeleteService documentDeleteService;
 
     @Override
@@ -124,6 +127,11 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         GlobalTaxSubmissionHdr savedHeader = hdrRepository.save(header);
         log.info("createTaxSubmission persisted header transactionPoid={}", savedHeader.getTransactionPoid());
 
+        // Log the creation
+        String key = savedHeader.getTransactionPoid().toString();
+        String docId = UserContext.getDocumentId();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, key);
+
         // Build response
         TaxSubmissionResponse response = buildResponse(savedHeader, new ArrayList<>());
 
@@ -157,6 +165,24 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
 
         GlobalTaxSubmissionHdr header = hdrRepository.findByTransactionPoidAndGroupPoid(transactionPoid, groupPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Tax Submission", "transactionPoid", transactionPoid));
+
+        // Create a copy of the existing entity for logging
+        GlobalTaxSubmissionHdr oldEntity = new GlobalTaxSubmissionHdr();
+        oldEntity.setTransactionPoid(header.getTransactionPoid());
+        oldEntity.setCompanyPoid(header.getCompanyPoid());
+        oldEntity.setPeriodFrom(header.getPeriodFrom());
+        oldEntity.setPeriodTo(header.getPeriodTo());
+        oldEntity.setRemarks(header.getRemarks());
+        oldEntity.setDocRef(header.getDocRef());
+        oldEntity.setTransactionDate(header.getTransactionDate());
+        oldEntity.setGroupPoid(header.getGroupPoid());
+        oldEntity.setCreatedBy(header.getCreatedBy());
+        oldEntity.setStatus(header.getStatus());
+        oldEntity.setApprovalStatus(header.getApprovalStatus());
+        oldEntity.setDeleted(header.getDeleted());
+        oldEntity.setPeriodClosedDate(header.getPeriodClosedDate());
+        oldEntity.setPeriodClosedBy(header.getPeriodClosedBy());
+        oldEntity.setLastmodifiedBy(header.getLastmodifiedBy());
 
         // Check if can be updated (not closed/approved/posted)
         if (header.getPeriodClosedDate() != null) {
@@ -217,6 +243,13 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         header.setLastmodifiedBy(userId);
 
         GlobalTaxSubmissionHdr savedHeader = hdrRepository.save(header);
+
+        // Log the update
+        String key = savedHeader.getTransactionPoid().toString();
+        String docId = UserContext.getDocumentId();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, docId, key);
+        loggingService.logChanges(oldEntity, savedHeader, GlobalTaxSubmissionHdr.class, 
+                docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
         // Build response
         List<GlobalTaxSubmissionDtl> details = dtlRepository.findByTransactionPoid(transactionPoid);

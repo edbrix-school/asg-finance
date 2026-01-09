@@ -9,6 +9,8 @@ import com.asg.common.lib.entity.Company;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.finance.entity.GLMaster;
 import com.asg.finance.repository.GLMasterRepository;
 import com.asg.common.lib.service.DocumentSearchService;
@@ -61,6 +63,7 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
     private final DocumentDeleteService documentDeleteService;
     private final LovDataService lovService;
     private final PrintService printService;
+    private final LoggingService loggingService;
 
     @Override
     public Map<String, Object> listContraVouchers(String docId, FilterRequestDto request, Pageable pageable, LocalDate periodFrom, LocalDate periodTo) {
@@ -225,6 +228,10 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
 
         GlContraVoucherHdr savedHeader = hdrRepository.save(header);
 
+        // Log the creation
+        String key = savedHeader.getTransactionPoid().toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, "400-103", key);
+
         // Process details from request
         if (request.getDetails() != null && !request.getDetails().isEmpty()) {
             Long nextDetRowId = 1L;
@@ -263,6 +270,34 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
         GlContraVoucherHdr header = hdrRepository.findByTransactionPoid(request.getTransactionPoid())
                 .orElseThrow(() -> new RuntimeException("Contra voucher not found with transactionPoid: " + request.getTransactionPoid()));
 
+        // Create a copy of the existing entity for logging
+        GlContraVoucherHdr oldEntity = new GlContraVoucherHdr();
+        oldEntity.setTransactionPoid(header.getTransactionPoid());
+        oldEntity.setCreditGl(header.getCreditGl());
+        oldEntity.setDebitGl(header.getDebitGl());
+        oldEntity.setCurrencyCode(header.getCurrencyCode());
+        oldEntity.setCurrencyRate(header.getCurrencyRate());
+        oldEntity.setAmount(header.getAmount());
+        oldEntity.setBhdAmount(header.getBhdAmount());
+        oldEntity.setPostingNarration(header.getPostingNarration());
+        oldEntity.setChequeNo(header.getChequeNo());
+        oldEntity.setManual(header.getManual());
+        oldEntity.setChequeDate(header.getChequeDate());
+        oldEntity.setMultiCompany(header.getMultiCompany());
+        oldEntity.setDocRef(header.getDocRef());
+        oldEntity.setTransactionDate(header.getTransactionDate());
+        oldEntity.setDeleted(header.getDeleted());
+        oldEntity.setOldJvno(header.getOldJvno());
+        oldEntity.setRemarks(header.getRemarks());
+        oldEntity.setCompanyPoid(header.getCompanyPoid());
+        oldEntity.setDrTotal(header.getDrTotal());
+        oldEntity.setCrTotal(header.getCrTotal());
+        oldEntity.setGroupPoid(header.getGroupPoid());
+        oldEntity.setCreatedBy(header.getCreatedBy());
+        oldEntity.setCreatedDate(header.getCreatedDate());
+        oldEntity.setLastmodifiedBy(header.getLastmodifiedBy());
+        oldEntity.setLastmodifiedDate(header.getLastmodifiedDate());
+
         header.setCreditGl(request.getCreditGl());
         header.setDebitGl(request.getDebitGl());
         header.setCurrencyCode(request.getCurrencyCode());
@@ -288,6 +323,12 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
         header.setCrTotal(request.getCrTotal());
 
         GlContraVoucherHdr savedHeader = hdrRepository.save(header);
+
+        // Log the update
+        String key = savedHeader.getTransactionPoid().toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, "400-103", key);
+        loggingService.logChanges(oldEntity, savedHeader, GlContraVoucherHdr.class, 
+                "400-103", key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
         // Process details based on actionType
         if (request.getDetails() != null && !request.getDetails().isEmpty()) {

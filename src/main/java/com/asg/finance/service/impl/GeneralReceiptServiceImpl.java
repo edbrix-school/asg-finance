@@ -2,9 +2,11 @@ package com.asg.finance.service.impl;
 
 import com.asg.common.lib.client.ParameterServiceClient;
 import com.asg.common.lib.dto.*;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.common.lib.utility.ASGHelperUtils;
@@ -61,6 +63,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
     private final LovDataService lovService;
     private final PrintService printService;
     private final DataSource dataSource;
+    private final LoggingService loggingService;
     
     @Autowired
     private DocumentDeleteService documentDeleteService;
@@ -156,6 +159,9 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
 
         // 7. Flush all changes to commit the receipt data
         entityManager.flush();
+        
+        // Log the creation
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), header.getTransactionPoid().toString());
         
         log.info("Successfully created general receipt: {}", header.getDocRef());
         
@@ -504,6 +510,27 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         ArGenReceiptHdr header = receiptHdrRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("General Receipt", "transactionPoid", transactionPoid));
 
+        // Create a copy of the old entity for logging
+        ArGenReceiptHdr oldEntity = ArGenReceiptHdr.builder()
+                .transactionPoid(header.getTransactionPoid())
+                .transactionDate(header.getTransactionDate())
+                .docRef(header.getDocRef())
+                .groupPoid(header.getGroupPoid())
+                .companyPoid(header.getCompanyPoid())
+                .rcvdOthPoid(header.getRcvdOthPoid())
+                .rcptAmount(header.getRcptAmount())
+                .remarks(header.getRemarks())
+                .rcvdFromDtlPrint(header.getRcvdFromDtlPrint())
+                .refType(header.getRefType())
+                .currencyCode(header.getCurrencyCode())
+                .currencyRate(header.getCurrencyRate())
+                .multicompany(header.getMulticompany())
+                .ttBankPoid(header.getTtBankPoid())
+                .costCenterPoid(header.getCostCenterPoid())
+                .verified(header.getVerified())
+                .deleted(header.getDeleted())
+                .build();
+
         if ("Y".equals(header.getVerified())) {
             throw new ValidationException("Cannot update receipt that has been verified/posted to GL");
         }
@@ -623,6 +650,10 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         }
 
         entityManager.flush();
+        
+        // Log the update
+        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), transactionPoid.toString());
+        loggingService.logChanges(oldEntity, header, ArGenReceiptHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "transactionPoid");
     }
 
     @Override

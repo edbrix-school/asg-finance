@@ -3,6 +3,8 @@ package com.asg.finance.controller;
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.LoggingService;
 
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.GlBankDto;
@@ -38,6 +40,8 @@ public class GlBankController {
 
     @Autowired
     GlBankService bankService;
+    
+    private final LoggingService loggingService;
 
     @Operation(
             summary = "Update Bank Master",
@@ -408,6 +412,7 @@ public class GlBankController {
             @PathVariable Long bankPoid
     ) {
         GlBankDto data = bankService.fetchGlBank(bankPoid);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), bankPoid.toString());
         return success("Bank Master Fetched successfully", data);
     }
 
@@ -563,6 +568,7 @@ public class GlBankController {
             @RequestBody(required = false) FilterRequestDto filters
     ) {
         Map<String, Object> bankRecords = bankService.listOfRecordsAndGenericSearch(UserContext.getDocumentId(), filters, pageable);
-        return success("Bank records fetched successfully", bankRecords);
+
+            return success("Bank records fetched successfully", bankRecords);
     }
 }

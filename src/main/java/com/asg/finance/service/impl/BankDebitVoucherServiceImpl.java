@@ -10,6 +10,8 @@ import com.asg.common.lib.exception.ResourceAlreadyExistsException;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.PrintService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.finance.client.GlobalTermsServiceClient;
 import com.asg.finance.repository.GLMasterRepository;
 import com.asg.finance.repository.TaxMasterRepository;
@@ -82,6 +84,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
     private final GlobalTermsCustomChangesRepository globalTermsCustomChangesRepository;
     private final PrintService printService;
     private final DataSource dataSource;
+    private final LoggingService loggingService;
     private final DocumentDeleteService documentDeleteService;
 
     @Override
@@ -148,7 +151,10 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
         persistChildCollections(request, savedHeader.getTransactionPoid(), true,documentId);
 
-        // Load breakup data in response
+        // Log the creation
+        String key = savedHeader.getTransactionPoid().toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, documentId, key);
+
         BankDebitVoucherResponse response = mapEntityToResponse(savedHeader);
         loadBreakupsIntoResponse(response, savedHeader.getTransactionPoid(), documentId, savedHeader.getGroupPoid(), savedHeader.getCompanyPoid());
         return response;
@@ -192,6 +198,60 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
         GlBankDebitHdr header = headerRepository.findByTransactionPoidAndNotDeleted(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Bank Debit Voucher", "transactionPoid", transactionPoid));
+
+        // Create a copy of the existing entity for logging
+        GlBankDebitHdr oldEntity = new GlBankDebitHdr();
+        oldEntity.setTransactionPoid(header.getTransactionPoid());
+        oldEntity.setTransactionDate(header.getTransactionDate());
+        oldEntity.setGroupPoid(header.getGroupPoid());
+        oldEntity.setCompanyPoid(header.getCompanyPoid());
+        oldEntity.setDocRef(header.getDocRef());
+        oldEntity.setPayGlPoid(header.getPayGlPoid());
+        oldEntity.setPayingTo(header.getPayingTo());
+        oldEntity.setPayingType(header.getPayingType());
+        oldEntity.setDivisionCode(header.getDivisionCode());
+        oldEntity.setBankPoid(header.getBankPoid());
+        oldEntity.setAmount(header.getAmount());
+        oldEntity.setShortNarration(header.getShortNarration());
+        oldEntity.setLongNarration(header.getLongNarration());
+        oldEntity.setBankBalance(header.getBankBalance());
+        oldEntity.setAvailableBalance(header.getAvailableBalance());
+        oldEntity.setMultiCompany(header.getMultiCompany());
+        oldEntity.setCreatedBy(header.getCreatedBy());
+        oldEntity.setCreatedDate(header.getCreatedDate());
+        oldEntity.setLastModifiedBy(header.getLastModifiedBy());
+        oldEntity.setLastModifiedDate(header.getLastModifiedDate());
+        oldEntity.setDeleted(header.getDeleted());
+        oldEntity.setTtDate(header.getTtDate());
+        oldEntity.setCurrencyCode(header.getCurrencyCode());
+        oldEntity.setCurrencyRate(header.getCurrencyRate());
+        oldEntity.setTtRemarkPoid(header.getTtRemarkPoid());
+        oldEntity.setCurrencyAmt(header.getCurrencyAmt());
+        oldEntity.setBankCharges(header.getBankCharges());
+        oldEntity.setGainLoss(header.getGainLoss());
+        oldEntity.setGainLossType(header.getGainLossType());
+        oldEntity.setRefType(header.getRefType());
+        oldEntity.setFfRef(header.getFfRef());
+        oldEntity.setFdaRef(header.getFdaRef());
+        oldEntity.setSalesQtnRef(header.getSalesQtnRef());
+        oldEntity.setMtaRef(header.getMtaRef());
+        oldEntity.setPayingToName(header.getPayingToName());
+        oldEntity.setRemarks(header.getRemarks());
+        oldEntity.setFileGenerated(header.getFileGenerated());
+        oldEntity.setFileName(header.getFileName());
+        oldEntity.setFileUniqueId(header.getFileUniqueId());
+        oldEntity.setFileGeneratedBy(header.getFileGeneratedBy());
+        oldEntity.setFileGeneratedDate(header.getFileGeneratedDate());
+        oldEntity.setTtChargeType(header.getTtChargeType());
+        oldEntity.setTtSpecialRate(header.getTtSpecialRate());
+        oldEntity.setBeneficiaryIban(header.getBeneficiaryIban());
+        oldEntity.setBeneficiaryBankPoid(header.getBeneficiaryBankPoid());
+        oldEntity.setSuppressValidation(header.getSuppressValidation());
+        oldEntity.setRateDealNo(header.getRateDealNo());
+        oldEntity.setTaxAmount(header.getTaxAmount());
+        oldEntity.setTaxPoid(header.getTaxPoid());
+        oldEntity.setTaxPercentage(header.getTaxPercentage());
+        oldEntity.setBankPurposePoid(header.getBankPurposePoid());
 
         validator.validate(request, false);
 
@@ -256,7 +316,12 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
         persistChildCollections(request, header.getTransactionPoid(), false,documentId);
 
-        // Load breakup data in response (like CreditNote, DebitNote, ApPurchaseJournal)
+        // Log the update
+        String key = header.getTransactionPoid().toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, documentId, key);
+        loggingService.logChanges(oldEntity, header, GlBankDebitHdr.class,
+                documentId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+
         BankDebitVoucherResponse response = mapEntityToResponse(header);
         loadBreakupsIntoResponse(response, header.getTransactionPoid(), documentId, header.getGroupPoid(), header.getCompanyPoid());
         return response;

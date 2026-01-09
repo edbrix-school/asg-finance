@@ -17,6 +17,8 @@ import com.asg.finance.repository.PurchaseOrderRepository;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.PurchaseOrderService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import net.sf.jasperreports.engine.JasperReport;
@@ -51,6 +53,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     private final JdbcTemplate jdbcTemplate;
     private final PrintService printService;
     private final DataSource dataSource;
+    private final LoggingService loggingService;
     private final DocumentDeleteService documentDeleteService;
 
     @Override
@@ -88,6 +91,9 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                         throw new IllegalArgumentException("Invalid RefType: " + refType);
             }
 
+            // Logging for create operation
+            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, documentId, savedPO.getTransactionPoid().toString());
+
             return mapToPurchaseOrderResponse(savedPO, savedItems);
 
         } catch (Exception ex) {
@@ -103,6 +109,57 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         try {
             PurchaseOrder existingPO = purchaseOrderRepository.findById(transactionPoid)
                     .orElseThrow(() -> new RuntimeException("Purchase Order not found with ID: " + transactionPoid));
+
+            // Create a copy of the existing entity for logging
+            PurchaseOrder oldEntity = new PurchaseOrder();
+            oldEntity.setTransactionPoid(existingPO.getTransactionPoid());
+            oldEntity.setTransactionDate(existingPO.getTransactionDate());
+            oldEntity.setGroupPoid(existingPO.getGroupPoid());
+            oldEntity.setDocRef(existingPO.getDocRef());
+            oldEntity.setCompanyPoid(existingPO.getCompanyPoid());
+            oldEntity.setCurrencyCode(existingPO.getCurrencyCode());
+            oldEntity.setCurrencyRate(existingPO.getCurrencyRate());
+            oldEntity.setExpectedDate(existingPO.getExpectedDate());
+            oldEntity.setSupplierPoid(existingPO.getSupplierPoid());
+            oldEntity.setPaymentTerms(existingPO.getPaymentTerms());
+            oldEntity.setModeOfTransport(existingPO.getModeOfTransport());
+            oldEntity.setDeliveryTerms(existingPO.getDeliveryTerms());
+            oldEntity.setFreightForwarder(existingPO.getFreightForwarder());
+            oldEntity.setShippingMark(existingPO.getShippingMark());
+            oldEntity.setBillingAddressPoid(existingPO.getBillingAddressPoid());
+            oldEntity.setDeliveryAddressPoid(existingPO.getDeliveryAddressPoid());
+            oldEntity.setSubTotal(existingPO.getSubTotal());
+            oldEntity.setDiscount(existingPO.getDiscount());
+            oldEntity.setExpenseBySupplier(existingPO.getExpenseBySupplier());
+            oldEntity.setGrandTotal(existingPO.getGrandTotal());
+            oldEntity.setRemarks(existingPO.getRemarks());
+            oldEntity.setRfqPoid(existingPO.getRfqPoid());
+            oldEntity.setPoStatus(existingPO.getPoStatus());
+            oldEntity.setItemTotal(existingPO.getItemTotal());
+            oldEntity.setChargeTotal(existingPO.getChargeTotal());
+            oldEntity.setType(existingPO.getType());
+            oldEntity.setDescription(existingPO.getDescription());
+            oldEntity.setDeliveryMethod(existingPO.getDeliveryMethod());
+            oldEntity.setDeliveryAddress(existingPO.getDeliveryAddress());
+            oldEntity.setSalesQtnPoid(existingPO.getSalesQtnPoid());
+            oldEntity.setDescriptionPrintYn(existingPO.getDescriptionPrintYn());
+            oldEntity.setSalesInvPoid(existingPO.getSalesInvPoid());
+            oldEntity.setSalesInvDocRef(existingPO.getSalesInvDocRef());
+            oldEntity.setRefType(existingPO.getRefType());
+            oldEntity.setMultiCompany(existingPO.getMultiCompany());
+            oldEntity.setVoucherNarration(existingPO.getVoucherNarration());
+            oldEntity.setPjPoid(existingPO.getPjPoid());
+            oldEntity.setValidityDate(existingPO.getValidityDate());
+            oldEntity.setTermsPoid(existingPO.getTermsPoid());
+            oldEntity.setPurchaseRequestPoid(existingPO.getPurchaseRequestPoid());
+            oldEntity.setPrintDivPoid(existingPO.getPrintDivPoid());
+            oldEntity.setGrnPoid(existingPO.getGrnPoid());
+            oldEntity.setGrnRef(existingPO.getGrnRef());
+            oldEntity.setGrnDate(existingPO.getGrnDate());
+            oldEntity.setShipmentMonth(existingPO.getShipmentMonth());
+            oldEntity.setDiscountPercentage(existingPO.getDiscountPercentage());
+            oldEntity.setItemDiscountTotal(existingPO.getItemDiscountTotal());
+            oldEntity.setItemDiscountTotalPercentage(existingPO.getItemDiscountTotalPercentage());
 
             updatePurchaseOrderFields(existingPO, request);
 
@@ -128,6 +185,10 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
 
                 default -> throw new RuntimeException("Invalid RefType for update: " + refType);
             }
+
+            // Logging for update operation
+            loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, documentId, updatedPO.getTransactionPoid().toString());
+            loggingService.logChanges(oldEntity, updatedPO, PurchaseOrder.class, documentId, updatedPO.getTransactionPoid().toString(), LogDetailsEnum.MODIFIED, "transactionPoid");
 
             return mapToPurchaseOrderResponse(updatedPO, updatedItems);
 

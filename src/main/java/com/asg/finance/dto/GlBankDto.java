@@ -6,6 +6,7 @@ import jakarta.validation.constraints.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.sql.Timestamp;
 import java.util.Date;
 import java.util.List;
 
@@ -75,6 +76,8 @@ public class GlBankDto {
     private String correspondantBank;
     @Size(max = 300, message = "Edi bank account no must be at most 300 characters")
     private String ediBankAccountNo;
+    private String createdBy;
+    private Timestamp createdDate;
 
     private LovGetListDto companyDet;
     private LovGetListDto currencyDet;

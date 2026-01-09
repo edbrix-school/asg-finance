@@ -169,6 +169,8 @@ public class JournalVoucherController {
             return success("Journal Voucher created successfully", response);
         } catch (IllegalArgumentException e) {
             return badRequest(e.getMessage());
+        } catch (ResourceNotFoundException e) {
+            return notFound("Journal Voucher not found: " + e.getMessage());
         } catch (Exception e) {
             return internalServerError("Failed to create journal voucher: " + e.getMessage());
         }

@@ -30,7 +30,7 @@ import java.util.Map;
 import static com.asg.common.lib.dto.response.ApiResponse.*;
 
 @RestController
-@RequestMapping("/petty-cash-voucher")
+@RequestMapping("/v1/petty-cash-voucher")
 @Slf4j
 public class PettyCashVoucherController {
 

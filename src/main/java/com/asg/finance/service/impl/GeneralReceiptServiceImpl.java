@@ -687,19 +687,29 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         }
         GLMasterEntity creditGL = creditGLList.get(0);
 
-        // 3. Validate amount matching
+        // 3. Validate amount matching - exclude deleted payments
         if (request.getPayments() != null && !request.getPayments().isEmpty()) {
             BigDecimal paymentTotal = request.getPayments().stream()
+                    .filter(payment -> {
+                        String actionType = payment.getActionType();
+                        // Exclude payments marked as deleted
+                        return actionType == null || 
+                               !"isDeleted".equalsIgnoreCase(actionType.trim());
+                    })
                     .map(GeneralReceiptPaymentDto::getAmount)
                     .filter(amount -> amount != null)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            log.debug("Amount validation - Receipt amount: {}, Payment total: {}", 
-                    header.getReceiptAmount(), paymentTotal);
+            log.debug("Amount validation - Receipt amount: {}, Payment total: {}, Active payments count: {}", 
+                    header.getReceiptAmount(), paymentTotal, 
+                    request.getPayments().stream().filter(p -> {
+                        String actionType = p.getActionType();
+                        return actionType == null || !"isDeleted".equalsIgnoreCase(actionType.trim());
+                    }).count());
 
             if (header.getReceiptAmount().compareTo(paymentTotal) != 0) {
                 throw new ValidationException(String.format(
-                        "Receipt amount (%.3f) does not match sum of payment amounts (%.3f)",
+                        "Receipt amount (%.2f) does not match sum of active payment amounts (%.2f). Please update the receipt amount to match the total payments.",
                         header.getReceiptAmount(), paymentTotal));
             }
         }

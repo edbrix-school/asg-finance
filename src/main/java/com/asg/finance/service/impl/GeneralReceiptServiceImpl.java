@@ -655,8 +655,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         entityManager.flush();
         
         // Log the update
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), transactionPoid.toString());
-        loggingService.logChanges(oldEntity, header, ArGenReceiptHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "transactionPoid");
+        loggingService.logChanges(oldEntity, header, ArGenReceiptHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
     }
 
     @Override

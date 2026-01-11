@@ -187,8 +187,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             }
 
             // Logging for update operation
-            loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, documentId, updatedPO.getTransactionPoid().toString());
-            loggingService.logChanges(oldEntity, updatedPO, PurchaseOrder.class, documentId, updatedPO.getTransactionPoid().toString(), LogDetailsEnum.MODIFIED, "transactionPoid");
+            loggingService.logChanges(oldEntity, updatedPO, PurchaseOrder.class, documentId, updatedPO.getTransactionPoid().toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
             return mapToPurchaseOrderResponse(updatedPO, updatedItems);
 

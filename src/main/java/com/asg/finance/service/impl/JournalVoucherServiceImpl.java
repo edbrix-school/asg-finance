@@ -557,7 +557,6 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
 
         // Log the update
         String key = transactionPoid.toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, docId, key);
         loggingService.logChanges(oldEntity, existing, GlJournalVoucherHdr.class, 
                 docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 

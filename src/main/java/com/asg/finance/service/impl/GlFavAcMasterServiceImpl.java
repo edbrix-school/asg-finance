@@ -264,8 +264,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
         }
 
         // Logging for update operation
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), favAcPoid.toString());
-        loggingService.logChanges(oldEntity, existing, GlFavAcMaster.class, UserContext.getDocumentId(), favAcPoid.toString(), LogDetailsEnum.MODIFIED, "favAcPoid");
+        loggingService.logChanges(oldEntity, existing, GlFavAcMaster.class, UserContext.getDocumentId(), favAcPoid.toString(), LogDetailsEnum.MODIFIED, "FAV_AC_POID");
 
         return getFavoriteAccountById(favAcPoid);
     }

@@ -1055,8 +1055,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             //  Step 8: Return the final response DTO
             
             // Logging for update operation
-            loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), transactionPoid.toString());
-            loggingService.logChanges(oldEntity, updatedHdr, GlPettyCashPaymentHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "transactionPoid");
+            loggingService.logChanges(oldEntity, updatedHdr, GlPettyCashPaymentHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
             
             return mapToResponseDto(updatedHdr, paymentDtls, chargeDtls, itemDtls);
 

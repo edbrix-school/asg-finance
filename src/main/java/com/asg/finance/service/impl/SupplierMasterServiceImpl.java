@@ -280,7 +280,6 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
         // Log the update
         String key = updatedEntity.getSupplierPoid().toString();
         String docId = UserContext.getDocumentId();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, docId, key);
         loggingService.logChanges(oldEntity, updatedEntity, SupplierMasterEntity.class, 
                 docId, key, LogDetailsEnum.MODIFIED, "SUPPLIER_POID");
         

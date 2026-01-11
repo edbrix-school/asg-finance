@@ -247,7 +247,6 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         // Log the update
         String key = savedHeader.getTransactionPoid().toString();
         String docId = UserContext.getDocumentId();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, docId, key);
         loggingService.logChanges(oldEntity, savedHeader, GlobalTaxSubmissionHdr.class, 
                 docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 

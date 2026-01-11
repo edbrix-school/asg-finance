@@ -1251,12 +1251,9 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
         // Log the update
         String key = savedEntity.getTransactionPoid().toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), key);
-        loggingService.logChanges(oldEntity, savedEntity, ApPurchaseInvoiceHdrEntity.class, 
+        loggingService.logChanges(oldEntity, savedEntity, ApPurchaseInvoiceHdrEntity.class,
                 UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
-
-//        return fetchApPurchaseInvoiceHdr(savedEntity.getTransactionPoid());
-        return null;
+        return fetchApPurchaseInvoiceHdr(savedEntity.getTransactionPoid());
     }
 
     @Override

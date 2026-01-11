@@ -185,10 +185,8 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
 
         // Log the update
         String key = transactionPoid.toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), key);
         loggingService.logChanges(oldEntity, hdr, GlBankDepositVoucherHdr.class, 
                 UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
-
         return getBankDepositVoucherById(transactionPoid);
     }
 

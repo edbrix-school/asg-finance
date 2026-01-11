@@ -130,7 +130,6 @@ public class AssetLocationMasterServiceImpl implements AssetLocationMasterServic
         
         // Log the update
         String key = savedEntity.getLocationPoid().toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), key);
         loggingService.logChanges(oldEntity, savedEntity, AssetLocation.class, 
                 UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "LOCATION_POID");
         

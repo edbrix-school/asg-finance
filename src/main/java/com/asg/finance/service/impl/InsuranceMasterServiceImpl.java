@@ -311,8 +311,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         InsuranceMaster updated = insuranceMasterRepository.save(existing);
         
         // Logging for update operation
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), insuranceId.toString());
-        loggingService.logChanges(oldEntity, updated, InsuranceMaster.class, UserContext.getDocumentId(), insuranceId.toString(), LogDetailsEnum.MODIFIED, "transactionPoid");
+        loggingService.logChanges(oldEntity, updated, InsuranceMaster.class, UserContext.getDocumentId(), insuranceId.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
         
         return mapToResponseDto(updated);
     }

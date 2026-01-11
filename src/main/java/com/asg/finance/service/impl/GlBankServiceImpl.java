@@ -136,8 +136,7 @@ public class GlBankServiceImpl implements GlBankService {
         List<GlBankCommissionDtlEntity> updatedCommissionDtlEntities = glBankDto.getCommissionDetails() != null && !glBankDto.getCommissionDetails().isEmpty() ? processCommissionDetails(bankPoid, glBankDto.getCommissionDetails()) : new ArrayList<>();
 
         // Log the update
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), bankPoid.toString());
-        loggingService.logChanges(oldEntity, updatedGlBankEntity, GlBankEntity.class, UserContext.getDocumentId(), bankPoid.toString(), LogDetailsEnum.MODIFIED, "bankPoid");
+        loggingService.logChanges(oldEntity, updatedGlBankEntity, GlBankEntity.class, UserContext.getDocumentId(), bankPoid.toString(), LogDetailsEnum.MODIFIED, "BANK_POID");
 
         return convertGlBankEntityToGlBankDto(updatedGlBankEntity, updatedChequeDtlEntities, updatedCommissionDtlEntities);
     }
@@ -178,7 +177,6 @@ public class GlBankServiceImpl implements GlBankService {
         saveBankCommisionDetails(bankMasterDto, bankMasterData);        
         loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), bankMasterData.getBankPoid().toString());
         return fetchGlBank(bankMasterData.getBankPoid());
-        return bankMasterData;
     }
 
     private void saveBankCommisionDetails(GlBankDto bankMasterDto, GlBankEntity bankMasterData) {

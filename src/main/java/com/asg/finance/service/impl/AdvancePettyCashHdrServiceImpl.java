@@ -131,8 +131,7 @@ public class AdvancePettyCashHdrServiceImpl implements AdvancePettyCashHdrServic
             String key = updated.getTransactionPoid().toString();
             
             // Log the update
-            loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), key);
-            loggingService.logChanges(oldEntity, updated, AdvancePettyCashHdr.class, 
+            loggingService.logChanges(oldEntity, updated, AdvancePettyCashHdr.class,
                     UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
             
             return convertFromEntityToDto(updated);

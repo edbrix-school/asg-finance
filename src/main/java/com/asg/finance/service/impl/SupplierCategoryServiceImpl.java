@@ -141,7 +141,6 @@ public class SupplierCategoryServiceImpl implements SupplierCategoryService {
         // Log the update
         String key = updatedEntity.getSupplierCategoryPoid().toString();
         String docId = UserContext.getDocumentId();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, docId, key);
         loggingService.logChanges(oldEntity, updatedEntity, SupplierCategoryEntity.class, 
                 docId, key, LogDetailsEnum.MODIFIED, "SUPPLIER_CATEGORY_POID");
 

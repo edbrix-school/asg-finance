@@ -169,7 +169,6 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
             
             String key = transactionPoid.toString();
             String docId = UserContext.getDocumentId();
-            loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, docId, key);
             loggingService.logChanges(oldHdr, hdr, GlBankFileHdr.class, 
                     docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
             

@@ -150,7 +150,6 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
         
         // Log the update
         String key = transactionPoid.toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, DOC_ID_CHEQUE_RETURN, key);
         loggingService.logChanges(oldEntity, header, ChequeReturn.class, 
                 DOC_ID_CHEQUE_RETURN, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
         return getChequeReturn(transactionPoid);
@@ -222,7 +221,6 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
         
         // Log the update
         String key = transactionPoid.toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, DOC_ID_CHEQUE_RETURN, key);
         loggingService.logChanges(oldEntity, header, ChequeReturn.class, 
                 DOC_ID_CHEQUE_RETURN, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
         return toResponse(header, request, "Cheque Return updated successfully.");

@@ -205,8 +205,7 @@ public class PropertyCostCenterServiceImpl implements IPropertyCostCenterService
         entity = repository.save(entity);
 
         // Logging for update operation
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), entity.getPropertyCostCenterPoid().toString());
-        loggingService.logChanges(oldEntity, entity, PropertyCostCenter.class, UserContext.getDocumentId(), entity.getPropertyCostCenterPoid().toString(), LogDetailsEnum.MODIFIED, "propertyCostCenterPoid");
+        loggingService.logChanges(oldEntity, entity, PropertyCostCenter.class, UserContext.getDocumentId(), entity.getPropertyCostCenterPoid().toString(), LogDetailsEnum.MODIFIED, "PROPERTY_COST_CENTER_POID");
 
         return convertEntityToResponseDTO(entity);
     }

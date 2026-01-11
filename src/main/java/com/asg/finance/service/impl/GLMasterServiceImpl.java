@@ -335,7 +335,6 @@ public class GLMasterServiceImpl implements GLMasterService {
 
         // Log the update
         String key = entity.getGlPoid().toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), key);
         loggingService.logChanges(oldEntity, entity, GLMasterEntity.class, 
                 UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "GL_POID");
 

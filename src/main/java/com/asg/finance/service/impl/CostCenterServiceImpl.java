@@ -166,7 +166,6 @@ public class CostCenterServiceImpl implements CostCenterService {
         
         // Log the update
         String key = savedEntity.getCostCenterPoid().toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), key);
         loggingService.logChanges(oldEntity, savedEntity, CostCenter.class, 
                 UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "COST_CENTER_POID");
         

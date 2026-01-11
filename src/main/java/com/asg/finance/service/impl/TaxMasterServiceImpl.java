@@ -125,8 +125,7 @@ public class TaxMasterServiceImpl implements TaxMasterService {
         // Log the update
         String key = updated.getTaxPoid().toString();
         String docId = UserContext.getDocumentId();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, docId, key);
-        loggingService.logChanges(oldEntity, updated, TaxMaster.class, 
+        loggingService.logChanges(oldEntity, updated, TaxMaster.class,
                 docId, key, LogDetailsEnum.MODIFIED, "TAX_POID");
 
         return getTaxMasterResponseDTO(updated);

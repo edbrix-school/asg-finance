@@ -148,8 +148,7 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
         updateAgeingMastersChildDetails(ageingMasterDto.getAgeingDetails(), ageingPoid);
 
         // Log the update
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), ageingPoid.toString());
-        loggingService.logChanges(oldEntity, existingEntity, GlAgeingMasterEntity.class, UserContext.getDocumentId(), ageingPoid.toString(), LogDetailsEnum.MODIFIED, "ageingPoid");
+        loggingService.logChanges(oldEntity, existingEntity, GlAgeingMasterEntity.class, UserContext.getDocumentId(), ageingPoid.toString(), LogDetailsEnum.MODIFIED, "AGEING_POID");
 
         return fetchAgeingMaster(ageingPoid);
     }

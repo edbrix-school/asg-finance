@@ -425,7 +425,6 @@ GlRecurringJvHdr header = GlRecurringJvHdr.builder()
         
         // Log the update
         String key = transactionPoid.toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, docId, key);
         loggingService.logChanges(oldEntity, header, GlRecurringJvHdr.class, 
                 docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
         

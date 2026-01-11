@@ -326,9 +326,8 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
 
         // Log the update
         String key = savedHeader.getTransactionPoid().toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, "400-103", key);
         loggingService.logChanges(oldEntity, savedHeader, GlContraVoucherHdr.class, 
-                "400-103", key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+                UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
         // Process details based on actionType
         if (request.getDetails() != null && !request.getDetails().isEmpty()) {

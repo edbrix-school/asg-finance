@@ -99,8 +99,7 @@ public class FixedAssetCategoryServiceImpl implements FixedAssetCategoryService 
         FixedAssetCategory updatedEntity = fixedAssetCategoryRepository.save(fixedAssetCategory);
         
         // Log the update
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), faCategoryPoid.toString());
-        loggingService.logChanges(oldEntity, updatedEntity, FixedAssetCategory.class, UserContext.getDocumentId(), faCategoryPoid.toString(), LogDetailsEnum.MODIFIED, "faCategoryPoid");
+        loggingService.logChanges(oldEntity, updatedEntity, FixedAssetCategory.class, UserContext.getDocumentId(), faCategoryPoid.toString(), LogDetailsEnum.MODIFIED, "FA_CATEGORY_POID");
         
         return convertFromFixedAssetEntityToFixedAssetDto(updatedEntity);
     }

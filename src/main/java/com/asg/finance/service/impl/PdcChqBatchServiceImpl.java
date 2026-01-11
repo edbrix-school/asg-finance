@@ -140,7 +140,6 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
 
         // Log the update
         String key = transactionPoid.toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, "400-113", key);
         loggingService.logChanges(oldEntity, hdr, PdcChqBatchHdrEntity.class, 
                 "400-113", key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 

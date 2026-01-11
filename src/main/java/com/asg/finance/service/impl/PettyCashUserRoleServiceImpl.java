@@ -167,7 +167,6 @@ public class PettyCashUserRoleServiceImpl implements PettyCashUserRoleService {
         
         // Log the update
         String key = updatedEntity.getRefTypePoid().toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), key);
         loggingService.logChanges(oldEntity, updatedEntity, PettyCashUserroleMaster.class, 
                 UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "REF_TYPE_POID");
         

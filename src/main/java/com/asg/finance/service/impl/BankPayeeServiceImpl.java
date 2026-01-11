@@ -161,7 +161,6 @@ public class BankPayeeServiceImpl implements IBankPayeeService {
 
         // Log the update
         String key = entity.getPayingPoid().toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), key);
         loggingService.logChanges(oldEntity, entity, BankPayee.class, 
                 UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "PAYING_POID");
 

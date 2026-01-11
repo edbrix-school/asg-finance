@@ -159,7 +159,6 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
         // Log the update
         String key = savedEntity.getTransactionPoid().toString();
         String docId = UserContext.getDocumentId();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, docId, key);
         loggingService.logChanges(oldEntity, savedEntity, TaxPeriodHdr.class, 
                 docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
         

@@ -109,7 +109,6 @@ public class BillwiseBreakupServiceImpl implements BillwiseBreakupService {
         
         // Log the update
         String key = first.getTransactionPoid().toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, first.getDocId(), key);
         loggingService.logChanges(null, request, List.class, 
                 first.getDocId(), key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
     }

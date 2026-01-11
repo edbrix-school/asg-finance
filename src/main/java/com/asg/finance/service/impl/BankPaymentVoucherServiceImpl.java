@@ -301,7 +301,6 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         // Log the update
         String key = transactionPoid.toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, documentId, key);
         loggingService.logChanges(oldEntity, updatedHeader, GLPaymentVoucherHDREntity.class, 
                 documentId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
@@ -760,7 +759,6 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         // Log the update
         String key = transactionPoid.toString();
         String docId = UserContext.getDocumentId();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, docId, key);
         loggingService.logChanges(oldEntity, updatedHeader, GLPaymentVoucherHDREntity.class, 
                 docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
     }
@@ -797,7 +795,6 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         // Log the update
         String key = transactionPoid.toString();
         String docId = UserContext.getDocumentId();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, docId, key);
         loggingService.logChanges(oldEntity, updatedHeader, GLPaymentVoucherHDREntity.class, 
                 docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
     }
@@ -832,7 +829,6 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         // Log the update
         String key = transactionPoid.toString();
         String docId = UserContext.getDocumentId();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, docId, key);
         loggingService.logChanges(oldEntity, updatedHeader, GLPaymentVoucherHDREntity.class, 
                 docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
     }
@@ -870,7 +866,6 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         // Log the update
         String key = transactionPoid.toString();
         String docId = UserContext.getDocumentId();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, docId, key);
         loggingService.logChanges(oldEntity, updatedHeader, GLPaymentVoucherHDREntity.class, 
                 docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
     }
@@ -902,7 +897,6 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         
         // Log the update
         String key = transactionPoid.toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, documentId, key);
         loggingService.logChanges(oldEntity, updatedHeader, GLPaymentVoucherHDREntity.class, 
                 documentId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
         

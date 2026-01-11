@@ -297,9 +297,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             result.setGlDetails(glDetailDtos);
             
             // Log the update
-            loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), transactionPoid.toString());
-            loggingService.logChanges(oldEntity, existing, ArCreditNoteHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "transactionPoid");
-            
+            loggingService.logChanges(oldEntity, existing, ArCreditNoteHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
             return result;
         } catch (SQLException e) {
             log.error("Database error updating credit note", e);

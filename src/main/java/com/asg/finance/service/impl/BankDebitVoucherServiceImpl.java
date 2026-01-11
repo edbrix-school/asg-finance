@@ -318,7 +318,6 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
         // Log the update
         String key = header.getTransactionPoid().toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, documentId, key);
         loggingService.logChanges(oldEntity, header, GlBankDebitHdr.class,
                 documentId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 

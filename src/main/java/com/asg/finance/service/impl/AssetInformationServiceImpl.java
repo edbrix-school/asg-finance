@@ -190,8 +190,7 @@ public class AssetInformationServiceImpl implements AssetInformationService {
             
             // Log the update
             String key = existing.getIaPoid().toString();
-            loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), key);
-            loggingService.logChanges(oldEntity, existing, AssetInformationMasterEntity.class, 
+            loggingService.logChanges(oldEntity, existing, AssetInformationMasterEntity.class,
                     UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "IA_POID");
             
             return mapToResponse(existing);

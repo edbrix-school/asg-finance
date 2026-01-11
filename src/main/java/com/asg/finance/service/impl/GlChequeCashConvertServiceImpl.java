@@ -420,8 +420,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         }
 
         // Log the update
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), transactionPoid.toString());
-        loggingService.logChanges(oldEntity, savedHdr, GlChequeCashConvertHdrEntity.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "transactionPoid");
+        loggingService.logChanges(oldEntity, savedHdr, GlChequeCashConvertHdrEntity.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
         return getGlChequeCashConvert(savedHdr.getTransactionPoid());
         } catch (Exception ex) {

@@ -398,8 +398,7 @@ public class FixedAssetServiceImpl implements FixedAssetService {
         FixedAsset savedEntity = repository.save(updatedEntity);
         
         // Log the update
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), faPoid.toString());
-        loggingService.logChanges(oldEntity, savedEntity, FixedAsset.class, UserContext.getDocumentId(), faPoid.toString(), LogDetailsEnum.MODIFIED, "faPoid");
+        loggingService.logChanges(oldEntity, savedEntity, FixedAsset.class, UserContext.getDocumentId(), faPoid.toString(), LogDetailsEnum.MODIFIED, "FA_POID");
         
         return convertFromFixedAssetEntityToFixedAssetDto(savedEntity);
     }

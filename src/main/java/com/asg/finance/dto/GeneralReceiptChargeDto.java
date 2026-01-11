@@ -24,8 +24,7 @@ public class GeneralReceiptChargeDto {
             example = "BANK_CHARGES", required = true)
     private String chargeType;
 
-    @NotBlank(message = "GL account is required")
-    @Schema(description = "GL Account Code", example = "GL-5110", required = true)
+    @Schema(description = "GL Account Code (auto-fetched from stored procedure based on charge type)", example = "GL-5110")
     private String gl;
 
     @NotNull(message = "Amount is required")

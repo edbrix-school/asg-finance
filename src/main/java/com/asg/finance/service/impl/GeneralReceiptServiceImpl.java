@@ -150,7 +150,8 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         if (request.getBills() != null && !request.getBills().isEmpty()) {
             saveBillDetails(header, request.getBills(), currentUser, now, true);
         }
-        if (request.getExtraCharges() != null && !request.getExtraCharges().isEmpty()) {
+        if ("Y".equals(request.getHeader().getExtraCharges()) && 
+            request.getExtraCharges() != null && !request.getExtraCharges().isEmpty()) {
             saveChargeDetails(header, request.getExtraCharges(), currentUser, now, true);
         }
         if (request.getAdvances() != null && !request.getAdvances().isEmpty()) {
@@ -178,6 +179,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
      */
     public GeneralReceiptResponse completeReceiptCreation(ArGenReceiptHdr header) {
         GeneralReceiptResponse response = getGeneralReceiptByTransactionPoid(header.getTransactionPoid());
+        response.setMessage("General Receipt created successfully");
         try {
             log.info("Receipt data committed. Now calling GL posting procedure...");
             // Process GL posting or approval - called OUTSIDE any transaction
@@ -601,7 +603,8 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
             entityManager.flush();
             callBillwiseCheckProcedure(transactionPoid, header.getCompanyPoid());
         }
-        if (request.getExtraCharges() != null && !request.getExtraCharges().isEmpty()) {
+        if ("Y".equals(request.getHeader().getExtraCharges()) && 
+            request.getExtraCharges() != null && !request.getExtraCharges().isEmpty()) {
             List<ArGenReceiptChargesDtl> details = new ArrayList<>();
             for (int i = 0; i < request.getExtraCharges().size(); i++) {
                 GeneralReceiptChargeDto charge = request.getExtraCharges().get(i);
@@ -715,15 +718,31 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         }
         GLMasterEntity creditGL = creditGLList.get(0);
 
-        // 3. Validate amount matching
-        BigDecimal paymentTotal = request.getPayments().stream()
-                .map(GeneralReceiptPaymentDto::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // 3. Validate amount matching - exclude deleted payments
+        if (request.getPayments() != null && !request.getPayments().isEmpty()) {
+            BigDecimal paymentTotal = request.getPayments().stream()
+                    .filter(payment -> {
+                        String actionType = payment.getActionType();
+                        // Exclude payments marked as deleted
+                        return actionType == null || 
+                               !"isDeleted".equalsIgnoreCase(actionType.trim());
+                    })
+                    .map(GeneralReceiptPaymentDto::getAmount)
+                    .filter(amount -> amount != null)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        if (header.getReceiptAmount().compareTo(paymentTotal) != 0) {
-            throw new ValidationException(String.format(
-                    "Receipt amount (%.3f) does not match sum of payment amounts (%.3f)",
-                    header.getReceiptAmount(), paymentTotal));
+            log.debug("Amount validation - Receipt amount: {}, Payment total: {}, Active payments count: {}", 
+                    header.getReceiptAmount(), paymentTotal, 
+                    request.getPayments().stream().filter(p -> {
+                        String actionType = p.getActionType();
+                        return actionType == null || !"isDeleted".equalsIgnoreCase(actionType.trim());
+                    }).count());
+
+            if (header.getReceiptAmount().compareTo(paymentTotal) != 0) {
+                throw new ValidationException(String.format(
+                        "Receipt amount (%.2f) does not match sum of active payment amounts (%.2f). Please update the receipt amount to match the total payments.",
+                        header.getReceiptAmount(), paymentTotal));
+            }
         }
 
         // 4. Validate cheque dates if applicable
@@ -863,7 +882,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                 .deleted("N")
                 .verified("N")
                 .dataLoaded("N")
-                .extraCharges("N")
+                .extraCharges(dto.getExtraCharges() != null ? dto.getExtraCharges() : "N")
                 .lineType("GENERAL")  // Set line type
                 .rcvdType("GENERAL")  // Set received type
                 .createdBy(currentUser)
@@ -889,6 +908,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         header.setCurrencyCode(dto.getCurrency());
         header.setCurrencyRate(dto.getRate());
         header.setMulticompany(dto.getMulticompany() != null ? dto.getMulticompany() : "N");
+        header.setExtraCharges(dto.getExtraCharges() != null ? dto.getExtraCharges() : "N");
         header.setTtBankPoid(dto.getTtBankPoid());
         header.setCostCenterPoid(dto.getCostCenterPoid());
         header.setLastModifiedBy(currentUser);
@@ -1336,6 +1356,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                 .approvalStatus(approvalStatus)
                 .verified(header.getVerified())
                 .multicompany(header.getMulticompany())
+                .extraChargesFlag(header.getExtraCharges())
                 .createdBy(header.getCreatedBy())
                 .createdDate(header.getCreatedDate())
                 .payments(convertPaymentDetailsToDto(header.getPaymentDetails()))

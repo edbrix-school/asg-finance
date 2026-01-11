@@ -34,6 +34,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -482,6 +483,8 @@ public class GLMasterServiceImpl implements GLMasterService {
         dto.setActive("Y".equals(entity.getActiveFlag()));
         dto.setBillWise("Y".equals(entity.getBillWiseFlag()));
         dto.setPrepaymentLedger("Y".equals(entity.getPrepaymentLedgerFlag()));
+        dto.setCreatedBy(entity.getCreatedBy());
+        dto.setCreatedDate(entity.getCreatedDate());
 
         List<GLPaymentDetailsEntity> paymentDetails = payDtlRepo.findAllByGlMaster_GlPoid(entity.getGlPoid());
         if (!paymentDetails.isEmpty()) {

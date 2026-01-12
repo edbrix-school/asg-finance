@@ -121,6 +121,10 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
             BigDecimal drTotal,
             BigDecimal crTotal) {
 
+        // Load all cost center and billwise data once
+        GlVoucherCostCenterBreakupResponseDto costCenterResponse = loadAllCostCenterData(header.getTransactionPoid());
+        GlVoucherLoadBillwiseBreakupResponseDto billwiseResponse = loadAllBillwiseData(header.getTransactionPoid());
+
         RecurringJvResponse response = new RecurringJvResponse();
         response.setTransactionPoid(header.getTransactionPoid());
         response.setDocRef(header.getDocRef());
@@ -141,14 +145,13 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
         response.setCrTotal(crTotal);
         response.setGlPosting(false);
 
-
-
         boolean hasBillWiseCapable = details.stream()
                 .anyMatch(dtl -> dtl.getGlPoid() != null &&
                     glMasterRepository.findById(dtl.getGlPoid())
                         .map(gl -> "Y".equalsIgnoreCase(gl.getBillwise()))
                         .orElse(false));
         response.setBillWiseCapable(hasBillWiseCapable);
+        
         if (header.getEmployeePoid() != null) {
             response.setEmployeeDet(lovService.getDetailsByPoidAndLovName(header.getEmployeePoid(), "RJV_EMPLOYEE_DTLS"));
         }
@@ -159,19 +162,46 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
             response.setCompanyDet(lovService.getDetailsByPoidAndLovName(header.getCompanyPoid(), "COMPANY"));
         }
 
-   List<RecurringJvDetailResponse> detailResponses = details.stream()
-                .map(dtl -> convertDetailToResponse(dtl, header.getEmployeePoid(), header.getFaPoid()))
+        List<RecurringJvDetailResponse> detailResponses = details.stream()
+                .map(dtl -> convertDetailToResponseWithBreakups(dtl, header.getEmployeePoid(), header.getFaPoid(), costCenterResponse, billwiseResponse))
                 .collect(Collectors.toList());
         response.setDetails(detailResponses);
+        
         List<RecurringJvScheduleDetailResponse> scheduleResponses = scheduleDetails.stream()
-  .map(schedule -> convertScheduleToResponse(schedule, header.getDocRef()))
+                .map(schedule -> convertScheduleToResponse(schedule, header.getDocRef()))
                 .collect(Collectors.toList());
         response.setScheduleDetails(scheduleResponses);
 
         return response;
     }
 
-    private RecurringJvDetailResponse convertDetailToResponse(GlRecurringJvDtl dtl,Long employeePoid,Long FaPoid) {
+    private GlVoucherCostCenterBreakupResponseDto loadAllCostCenterData(Long transactionPoid) {
+        try {
+            return costCenterBreakupService.loadCostCenterData(
+                    "400-102", transactionPoid, getGroupId(), getCompanyId(), getUserPoid());
+        } catch (Exception e) {
+            log.warn("Failed to load cost center breakup for transaction: {}", transactionPoid, e);
+            return null;
+        }
+    }
+
+    private GlVoucherLoadBillwiseBreakupResponseDto loadAllBillwiseData(Long transactionPoid) {
+        try {
+            return billwiseBreakupService.loadBillwiseBreakup(
+                    getGroupId(), getCompanyId(), "400-102", transactionPoid);
+        } catch (Exception e) {
+            log.warn("Failed to load billwise breakup for transaction: {}", transactionPoid, e);
+            return null;
+        }
+    }
+
+    private RecurringJvDetailResponse convertDetailToResponseWithBreakups(
+            GlRecurringJvDtl dtl, 
+            Long employeePoid, 
+            Long FaPoid,
+            GlVoucherCostCenterBreakupResponseDto costCenterResponse,
+            GlVoucherLoadBillwiseBreakupResponseDto billwiseResponse) {
+        
         RecurringJvDetailResponse response = new RecurringJvDetailResponse();
         response.setLineId(dtl.getDetRowId());
         response.setType(dtl.getType());
@@ -185,11 +215,53 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
             response.setGlDet(lovService.getDetailsByPoidAndLovName(dtl.getGlPoid(), "GL_MASTER_LEDGERS"));
         }
 
-        
-        response.setCostCenter(loadCostCenterBreakup(dtl.getTransactionPoid(), dtl.getDetRowId()));
-        response.setBillWiseBreakup(loadBillWiseBreakup(dtl.getTransactionPoid(), dtl.getDetRowId()));
+        response.setCostCenter(filterCostCenterBreakup(costCenterResponse, dtl.getDetRowId()));
+        response.setBillWiseBreakup(filterBillwiseBreakup(billwiseResponse, dtl.getDetRowId()));
 
         return response;
+    }
+
+    private List<CostCenterBreakupPopupRequestDto> filterCostCenterBreakup(
+            GlVoucherCostCenterBreakupResponseDto response, Long detRowId) {
+        
+        if (response == null || response.getCostBreakupList() == null) {
+            return Collections.emptyList();
+        }
+        
+        return response.getCostBreakupList().stream()
+                .filter(cc -> cc.getMainDetRowId().equals(detRowId))
+                .map(cc -> {
+                    CostCenterBreakupPopupRequestDto dto = new CostCenterBreakupPopupRequestDto();
+                    dto.setCostDetRowId(cc.getCostDetRowId());
+                    dto.setCostGroup(cc.getCostGroup());
+                    dto.setCostPoid(cc.getCostPoid());
+                    dto.setAmount(BigDecimal.valueOf(cc.getAmount()));
+                    return dto;
+                })
+                .collect(Collectors.toList());
+    }
+
+    private List<BillwiseBreakupPopupRequestDto> filterBillwiseBreakup(
+            GlVoucherLoadBillwiseBreakupResponseDto response, Long detRowId) {
+        
+        if (response == null || response.getLoadBillwiseBreakupResponseDtoList() == null) {
+            return Collections.emptyList();
+        }
+        
+        return response.getLoadBillwiseBreakupResponseDtoList().stream()
+                .filter(bw -> bw.getMainDetRowId().equals(detRowId))
+                .map(bw -> {
+                    BillwiseBreakupPopupRequestDto dto = new BillwiseBreakupPopupRequestDto();
+                    dto.setBillDetRowId(bw.getBillDetRowId());
+                    dto.setBillRefType(bw.getBillRefType());
+                    dto.setBillRef(bw.getBillRef());
+                    dto.setBillDueDate(bw.getBillDueDate());
+                    dto.setAmount(bw.getDrAmt() != null ? bw.getDrAmt() : bw.getCrAmt());
+                    dto.setType(bw.getDrAmt() != null && bw.getDrAmt().compareTo(BigDecimal.ZERO) > 0 ? "Dr" : "Cr");
+                    dto.setBillRemarks(bw.getBillRemarks());
+                    return dto;
+                })
+                .collect(Collectors.toList());
     }
 
     private RecurringJvScheduleDetailResponse convertScheduleToResponse(GlRecurringJvMonthDtl schedule,String docRef) {

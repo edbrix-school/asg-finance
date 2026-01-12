@@ -185,6 +185,10 @@ public class FixedAssetCategoryServiceImpl implements FixedAssetCategoryService 
         fixedAssetCategoryResponseDto.setUserRolesPoidDet(userRoleDtos);
         fixedAssetCategoryResponseDto.setActive(fixedAssetCategory.getActive());
         fixedAssetCategoryResponseDto.setSeqNo(fixedAssetCategory.getSeqNo());
+        fixedAssetCategoryResponseDto.setCreatedBy(fixedAssetCategory.getCreatedBy());
+        fixedAssetCategoryResponseDto.setCreatedDate(fixedAssetCategory.getCreatedDate());
+        fixedAssetCategoryResponseDto.setLastModifiedBy(fixedAssetCategory.getLastModifiedBy());
+        fixedAssetCategoryResponseDto.setLastModifiedDate(fixedAssetCategory.getLastModifiedDate());
         return fixedAssetCategoryResponseDto;
     }
 

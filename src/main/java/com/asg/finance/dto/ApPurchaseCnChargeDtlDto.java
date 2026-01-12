@@ -22,4 +22,7 @@ public class ApPurchaseCnChargeDtlDto {
     private BigDecimal chargeBaseAmount;
     private String chargeFrom;
     private Long supplierPoidFf;
+    
+    // Action type field
+    private String actionType; // isCreated, isUpdated, isDeleted
 }

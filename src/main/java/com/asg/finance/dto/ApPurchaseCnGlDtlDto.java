@@ -23,6 +23,9 @@ public class ApPurchaseCnGlDtlDto {
     private String description;
     private String refDocId;
     private Long refDocPoid;
+    
+    // Action type field
+    private String actionType; // isCreated, isUpdated, isDeleted
 
     private List<BillwiseBreakupPopupRequestDto> breakupList;
     private List<CostCenterBreakupPopupRequestDto> costCenterList;

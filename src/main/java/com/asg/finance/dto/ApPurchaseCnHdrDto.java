@@ -87,6 +87,9 @@ public class ApPurchaseCnHdrDto {
     private String lastModifiedBy;
     private Timestamp lastModifiedDate;
     
+    // Action type field
+    private String actionType; // isCreated, isUpdated, isDeleted
+    
     @Valid
     private List<ApPurchaseCnItemDtlDto> itemDetails; // For MTA PO
     

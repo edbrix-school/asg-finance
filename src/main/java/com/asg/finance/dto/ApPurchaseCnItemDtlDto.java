@@ -24,4 +24,7 @@ public class ApPurchaseCnItemDtlDto {
     private BigDecimal taxAmount;
     private BigDecimal amount;
     private BigDecimal baseAmount;
+    
+    // Action type field
+    private String actionType; // isCreated, isUpdated, isDeleted
 }

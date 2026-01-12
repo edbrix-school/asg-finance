@@ -83,11 +83,10 @@ class FixedAssetCategoryControllerTest {
         when(fixedAssetCategoryService.createFixedAssetCategory(any())).thenReturn(responseDto);
 
         mockMvc.perform(post("/v1/asset-category")
-                        .param("documentId", "800-000")
-                        .param("actionRequested", "create")
-                        .param("userPoid", "101")
                         .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
+                .andDo(result -> System.out.println("Response: " + result.getResponse().getContentAsString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success", is(true)))
                 .andExpect(jsonPath("$.message", is("Fixed Asset Category created successfully")))
@@ -102,9 +101,8 @@ class FixedAssetCategoryControllerTest {
                 .thenThrow(new ValidationException("Duplicate Code"));
 
         mockMvc.perform(post("/v1/asset-category")
-                        .param("documentId", "800-000")
-                        .param("actionRequested", "create")
                         .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success", is(false)))
@@ -119,13 +117,12 @@ class FixedAssetCategoryControllerTest {
                 .thenThrow(new RuntimeException("Something went wrong"));
 
         mockMvc.perform(post("/v1/asset-category")
-                        .param("documentId", "800-000")
-                        .param("actionRequested", "create")
                         .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.success", is(false)))
-                .andExpect(jsonPath("$.message", containsString("Failed To Create Fixed Asset Category")));
+                .andExpect(jsonPath("$.message", containsString("Something went wrong")));
 
         verify(fixedAssetCategoryService, times(1)).createFixedAssetCategory(any());
     }
@@ -135,10 +132,8 @@ class FixedAssetCategoryControllerTest {
         when(fixedAssetCategoryService.updateFixedAssetCategory(eq(1L), any())).thenReturn(responseDto);
 
         mockMvc.perform(put("/v1/asset-category/1")
-                        .param("documentId", "TAX-001")
-                        .param("actionRequested", "update")
-                        .param("userPoid", "101")
                         .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success", is(true)))
@@ -154,13 +149,12 @@ class FixedAssetCategoryControllerTest {
                 .thenThrow(new RuntimeException("Update failed"));
 
         mockMvc.perform(put("/v1/asset-category/1")
-                        .param("documentId", "TAX-001")
-                        .param("actionRequested", "update")
                         .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.success", is(false)))
-                .andExpect(jsonPath("$.message", containsString("Failed to update Fixed Asset Category")));
+                .andExpect(jsonPath("$.message", containsString("Update failed")));
 
         verify(fixedAssetCategoryService, times(1)).updateFixedAssetCategory(eq(1L), any());
     }
@@ -171,9 +165,8 @@ class FixedAssetCategoryControllerTest {
                 .thenThrow(new ValidationException("Code already exists"));
 
         mockMvc.perform(put("/v1/asset-category/1")
-                        .param("documentId", "TAX-001")
-                        .param("actionRequested", "update")
                         .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success", is(false)))
@@ -187,8 +180,7 @@ class FixedAssetCategoryControllerTest {
         when(fixedAssetCategoryService.getFixedAssetCategory(1L)).thenReturn(responseDto);
 
         mockMvc.perform(get("/v1/asset-category/1")
-                        .param("documentId", "800-320")
-                        .param("actionRequested", "view"))
+                        .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success", is(true)))
                 .andExpect(jsonPath("$.message", is("Fixed Asset Category fetched successfully")))
@@ -202,8 +194,7 @@ class FixedAssetCategoryControllerTest {
         doNothing().when(fixedAssetCategoryService).softDeleteFixedAssetCategory(1L);
 
         mockMvc.perform(delete("/v1/asset-category/1")
-                        .param("documentId", "800-320")
-                        .param("actionRequested", "delete"))
+                        .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success", is(true)))
                 .andExpect(jsonPath("$.message", is("Fixed Asset Category has been soft deleted successfully")));
@@ -222,9 +213,8 @@ class FixedAssetCategoryControllerTest {
         when(fixedAssetCategoryService.createFixedAssetCategory(any())).thenReturn(responseDto);
 
         mockMvc.perform(post("/v1/asset-category")
-                        .param("documentId", "800-000")
-                        .param("actionRequested", "create")
                         .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success", is(true)));
@@ -240,9 +230,8 @@ class FixedAssetCategoryControllerTest {
         when(fixedAssetCategoryService.createFixedAssetCategory(any())).thenReturn(responseDto);
 
         mockMvc.perform(post("/v1/asset-category")
-                        .param("documentId", "800-000")
-                        .param("actionRequested", "create")
                         .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success", is(true)));
@@ -261,9 +250,8 @@ class FixedAssetCategoryControllerTest {
         when(fixedAssetCategoryService.createFixedAssetCategory(any())).thenReturn(responseDto);
 
         mockMvc.perform(post("/v1/asset-category")
-                        .param("documentId", "800-000")
-                        .param("actionRequested", "create")
                         .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success", is(true)));
@@ -280,9 +268,8 @@ class FixedAssetCategoryControllerTest {
         when(fixedAssetCategoryService.createFixedAssetCategory(any())).thenReturn(responseDto);
 
         mockMvc.perform(post("/v1/asset-category")
-                        .param("documentId", "800-000")
-                        .param("actionRequested", "create")
                         .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success", is(true)));
@@ -293,27 +280,30 @@ class FixedAssetCategoryControllerTest {
     @Test
     void createFixedAssetCategory_WithInvalidJSON_ShouldReturnBadRequest() throws Exception {
         mockMvc.perform(post("/v1/asset-category")
-                        .param("documentId", "800-000")
-                        .param("actionRequested", "create")
                         .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON)
                         .content("{invalid json}"))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void createFixedAssetCategory_WithMissingDocumentId_ShouldReturnOk() throws Exception {
+        when(fixedAssetCategoryService.createFixedAssetCategory(any())).thenReturn(responseDto);
+        
         mockMvc.perform(post("/v1/asset-category")
-                        .param("actionRequested", "create")
                         .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isOk());
     }
 
     @Test
     void createFixedAssetCategory_WithMissingActionRequested_ShouldReturnOk() throws Exception {
+        when(fixedAssetCategoryService.createFixedAssetCategory(any())).thenReturn(responseDto);
+        
         mockMvc.perform(post("/v1/asset-category")
-                        .param("documentId", "800-000")
                         .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isOk());
     }
@@ -323,9 +313,8 @@ class FixedAssetCategoryControllerTest {
         when(fixedAssetCategoryService.updateFixedAssetCategory(eq(-1L), any())).thenReturn(responseDto);
 
         mockMvc.perform(put("/v1/asset-category/-1")
-                        .param("documentId", "TAX-001")
-                        .param("actionRequested", "update")
                         .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isOk());
 
@@ -337,9 +326,8 @@ class FixedAssetCategoryControllerTest {
         when(fixedAssetCategoryService.updateFixedAssetCategory(eq(0L), any())).thenReturn(responseDto);
 
         mockMvc.perform(put("/v1/asset-category/0")
-                        .param("documentId", "TAX-001")
-                        .param("actionRequested", "update")
                         .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isOk());
 
@@ -351,8 +339,7 @@ class FixedAssetCategoryControllerTest {
         when(fixedAssetCategoryService.getFixedAssetCategory(-1L)).thenReturn(responseDto);
 
         mockMvc.perform(get("/v1/asset-category/-1")
-                        .param("documentId", "800-320")
-                        .param("actionRequested", "view"))
+                        .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk());
 
         verify(fixedAssetCategoryService, times(1)).getFixedAssetCategory(-1L);
@@ -363,8 +350,7 @@ class FixedAssetCategoryControllerTest {
         doNothing().when(fixedAssetCategoryService).softDeleteFixedAssetCategory(-1L);
 
         mockMvc.perform(delete("/v1/asset-category/-1")
-                        .param("documentId", "800-320")
-                        .param("actionRequested", "delete"))
+                        .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk());
 
         verify(fixedAssetCategoryService, times(1)).softDeleteFixedAssetCategory(-1L);
@@ -384,9 +370,8 @@ class FixedAssetCategoryControllerTest {
         when(fixedAssetCategoryService.createFixedAssetCategory(any())).thenReturn(responseDto);
 
         mockMvc.perform(post("/v1/asset-category")
-                        .param("documentId", "800-000")
-                        .param("actionRequested", "create")
                         .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success", is(true)))

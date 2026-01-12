@@ -43,8 +43,7 @@
 //        Mockito.when(service.fetchApPurchaseInvoiceHdr(eq(txPoid))).thenReturn(new ApPurchaseInvoiceHdrDto());
 //
 //        mockMvc.perform(get("/v1/ap-purchase-journal/{transactionPoid}", txPoid)
-//                        .param("documentId", "200-103")
-//                        .param("actionRequested", "VIEW"))
+//                   )
 //                .andExpect(status().isOk());
 //
 //        Mockito.verify(service).fetchApPurchaseInvoiceHdr(eq(txPoid));
@@ -54,16 +53,14 @@
 //    @DisplayName("POST /v1/ap-purchase-journal/{transactionPoid} returns 200")
 //    void createApPurchaseInvoice_success() throws Exception {
 //        ApPurchaseInvoiceHdrDto req = new ApPurchaseInvoiceHdrDto();
-//        Mockito.when(service.createApPurchaseInvoice(any(ApPurchaseInvoiceHdrDto.class))).thenReturn(new ApPurchaseInvoiceHdrDto());
+//        Mockito.when(service.createApPurchaseInvoice(any(ApPurchaseInvoiceHdrDto.class), anyString())).thenReturn(new ApPurchaseInvoiceHdrDto());
 //
 //        mockMvc.perform(post("/v1/ap-purchase-journal/{transactionPoid}", 0)
-//                        .param("documentId", "200-103")
-//                        .param("actionRequested", "CREATE")
 //                        .contentType(MediaType.APPLICATION_JSON)
 //                        .content(objectMapper.writeValueAsString(req)))
 //                .andExpect(status().isOk());
 //
-//        Mockito.verify(service).createApPurchaseInvoice(any(ApPurchaseInvoiceHdrDto.class));
+//        Mockito.verify(service).createApPurchaseInvoice(any(ApPurchaseInvoiceHdrDto.class), eq("200-103"));
 //    }
 //
 //    @Test
@@ -74,8 +71,6 @@
 //        Mockito.when(service.updateApPurchaseInvoice(eq(txPoid), any(ApPurchaseInvoiceHdrDto.class))).thenReturn(new ApPurchaseInvoiceHdrDto());
 //
 //        mockMvc.perform(put("/v1/ap-purchase-journal/{transactionPoid}", txPoid)
-//                        .param("documentId", "200-103")
-//                        .param("actionRequested", "EDIT")
 //                        .contentType(MediaType.APPLICATION_JSON)
 //                        .content(objectMapper.writeValueAsString(req)))
 //                .andExpect(status().isOk());
@@ -91,8 +86,7 @@
 //                .thenReturn(new ApPurchaseInvoiceHdrDto());
 //
 //        mockMvc.perform(delete("/v1/ap-purchase-journal/{transactionPoid}", txPoid)
-//                        .param("documentId", "200-103")
-//                        .param("actionRequested", "DELETE"))
+//                       )
 //                .andExpect(status().isOk());
 //
 //        Mockito.verify(service).softDeleteApPurchaseInvoice(eq(txPoid), eq("200-103"));
@@ -104,7 +98,7 @@
 //        Map<String, Object> pagePayload = new HashMap<>();
 //        pagePayload.put("content", java.util.List.of());
 //        pagePayload.put("totalElements", 0);
-//        Mockito.when(service.listOfRecordsAndGenericSearch(anyString(), any(), any())).thenReturn(pagePayload);
+//        Mockito.when(service.listOfRecordsAndGenericSearch(anyString(), any(), any(), any(), any())).thenReturn(pagePayload);
 //
 //        String body = "{\n" +
 //                "  \"operator\": \"AND\",\n" +
@@ -113,15 +107,13 @@
 //                "}";
 //
 //        mockMvc.perform(post("/v1/ap-purchase-journal/list")
-//                        .param("documentId", "200-103")
-//                        .param("actionRequested", "VIEW")
 //                        .param("page", "0")
 //                        .param("size", "10")
 //                        .contentType(MediaType.APPLICATION_JSON)
 //                        .content(body))
 //                .andExpect(status().isOk());
 //
-//        Mockito.verify(service).listOfRecordsAndGenericSearch(eq("200-103"), any(), any());
+//        Mockito.verify(service).listOfRecordsAndGenericSearch(eq("200-103"), any(), any(), any(), any());
 //    }
 //}
 //

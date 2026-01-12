@@ -16,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
 import org.springframework.http.MediaType;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -42,6 +43,7 @@ class GLMasterControllerTest {
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(glMasterController)
                 .setCustomArgumentResolvers(new PageableHandlerMethodArgumentResolver())
+                .setMessageConverters(new MappingJackson2HttpMessageConverter())
                 .build();
         objectMapper = new ObjectMapper();
     }
@@ -59,8 +61,6 @@ class GLMasterControllerTest {
         when(glMasterService.createGLMaster(any(GLMasterRequestDto.class))).thenReturn(response);
 
         mockMvc.perform(post("/v1/gl-master")
-                        .param("documentId", "800-GL")
-                        .param("actionRequested", "CREATE")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -78,8 +78,7 @@ class GLMasterControllerTest {
         when(glMasterService.getGLMaster(1L)).thenReturn(response);
 
         mockMvc.perform(get("/v1/gl-master/1")
-                        .param("documentId", "800-GL")
-                        .param("actionRequested", "VIEW"))
+                       )
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.result.data.glPoid").value(1L))
@@ -99,8 +98,6 @@ class GLMasterControllerTest {
         when(glMasterService.updateGLMaster(eq(1L), any(GLMasterRequestDto.class))).thenReturn(response);
 
         mockMvc.perform(put("/v1/gl-master/1")
-                        .param("documentId", "800-GL")
-                        .param("actionRequested", "EDIT")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -111,8 +108,7 @@ class GLMasterControllerTest {
     @Test
     void deleteGLMaster_WithValidId_ReturnsSuccess() throws Exception {
         mockMvc.perform(delete("/v1/gl-master/1")
-                        .param("documentId", "800-GL")
-                        .param("actionRequested", "DELETE"))
+                      )
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").value("GL Master has been soft deleted successfully"));
@@ -127,8 +123,6 @@ class GLMasterControllerTest {
         when(glMasterService.getGlMasterTree(anyString(), anyString(), any())).thenReturn(treeItems);
 
         mockMvc.perform(get("/v1/gl-master/tree")
-                        .param("documentId", "400-001")
-                        .param("actionRequested", "VIEW")
                         .param("filterValue", "1000"))
                 .andExpect(status().isInternalServerError());
     }
@@ -138,8 +132,6 @@ class GLMasterControllerTest {
         when(glMasterService.getGlMasterTree(anyString(), anyString(), any())).thenReturn(new ArrayList<GlMasterTreeNodeDto>());
 
         mockMvc.perform(get("/v1/gl-master/tree")
-                        .param("documentId", "400-001")
-                        .param("actionRequested", "VIEW")
                         .param("filterValue", "nonexistent"))
                 .andExpect(status().isInternalServerError());
     }
@@ -154,8 +146,6 @@ class GLMasterControllerTest {
         when(glMasterService.acquireLock(any(DocReleaseLockRequestDto.class))).thenReturn("SUCCESS");
 
         mockMvc.perform(post("/v1/gl-master/release-lock")
-                        .param("documentId", "400-001")
-                        .param("actionRequested", "EDIT")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -173,8 +163,6 @@ class GLMasterControllerTest {
         when(glMasterService.acquireLock(any(DocReleaseLockRequestDto.class))).thenReturn("LOCK_ACQUIRED");
 
         mockMvc.perform(post("/v1/gl-master/acquire-lock")
-                        .param("documentId", "400-001")
-                        .param("actionRequested", "EDIT")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -194,8 +182,6 @@ class GLMasterControllerTest {
                 .thenReturn(mockResponse);
 
         mockMvc.perform(post("/v1/gl-master/list")
-                        .param("documentId", "400-001")
-                        .param("actionRequested", "VIEW")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(filterDto)))
                 .andExpect(status().isOk())
@@ -212,8 +198,7 @@ class GLMasterControllerTest {
         when(glMasterService.getGlMasterList(anyString(), anyString(), isNull())).thenReturn(listItems);
 
         mockMvc.perform(get("/v1/gl-master/list")
-                        .param("documentId", "400-001")
-                        .param("actionRequested", "VIEW"))
+                  )
                 .andExpect(status().isInternalServerError());
     }
 
@@ -226,8 +211,6 @@ class GLMasterControllerTest {
         when(glMasterService.getGlMasterList(anyString(), anyString(), eq(1L))).thenReturn(listItems);
 
         mockMvc.perform(get("/v1/gl-master/list")
-                        .param("documentId", "400-001")
-                        .param("actionRequested", "VIEW")
                         .param("parentPoid", "1"))
                 .andExpect(status().isInternalServerError());
     }
@@ -237,8 +220,6 @@ class GLMasterControllerTest {
         when(glMasterService.getGlMasterList(anyString(), anyString(), any())).thenReturn(new ArrayList<GLMasterResponseDto>());
 
         mockMvc.perform(get("/v1/gl-master/list")
-                        .param("documentId", "400-001")
-                        .param("actionRequested", "VIEW")
                         .param("parentPoid", "999"))
                 .andExpect(status().isInternalServerError());
     }

@@ -6,6 +6,7 @@
 //import com.asg.common.lib.exception.ValidationException;
 //import com.asg.common.lib.security.util.UserContext;
 //import com.asg.common.lib.service.DocumentSearchService;
+//import com.asg.common.lib.service.LovDataService;
 //import com.asg.finance.dto.BankPaymentChargeDetailRequest;
 //import com.asg.finance.dto.BankPaymentVoucherRequest;
 //import com.asg.finance.dto.BankPaymentVoucherResponse;
@@ -63,7 +64,7 @@
 //    private DocumentSearchService documentService;
 //
 //    @Mock
-//    private LovService lovService;
+//    private LovDataService lovService;
 //
 //    @InjectMocks
 //    private BankPaymentVoucherServiceImpl voucherService;

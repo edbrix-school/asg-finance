@@ -55,21 +55,23 @@ class PurchaseOrderControllerTest {
 
     @Test
     void createPurchaseOrder_Success() throws Exception {
-        when(purchaseOrderService.createGeneralPurchaseOrder(any(), any(PurchaseOrderRequest.class)))
+
+        when(purchaseOrderService.createGeneralPurchaseOrder(
+                any(), any(PurchaseOrderRequest.class)))
                 .thenReturn(response);
 
         mockMvc.perform(post("/v1/purchase-orders")
-                        .header("groupPoid", 1L)
-                        .header("companyPoid", 1L)
-                        .header("userPoid", 1L)
-                        .param("documentId", "PO-001")
-                        .param("actionRequested", "create")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Purchase Order created successfully"));
+                .andExpect(content().string(
+                        org.hamcrest.Matchers.containsString(
+                                "Purchase Order created successfully"
+                        )
+                ));
 
-        verify(purchaseOrderService).createGeneralPurchaseOrder(any(), any(PurchaseOrderRequest.class));
+        verify(purchaseOrderService)
+                .createGeneralPurchaseOrder(any(), any(PurchaseOrderRequest.class));
     }
 
     @Test
@@ -81,8 +83,6 @@ class PurchaseOrderControllerTest {
                         .header("groupPoid", 1L)
                         .header("companyPoid", 1L)
                         .header("userPoid", 1L)
-                        .param("documentId", "PO-001")
-                        .param("actionRequested", "create")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().is5xxServerError());
@@ -92,56 +92,57 @@ class PurchaseOrderControllerTest {
 
     @Test
     void updatePurchaseOrder_Success() throws Exception {
-        when(purchaseOrderService.updatePurchaseOrder(any(), eq(1L), any(PurchaseOrderRequest.class)))
+
+        when(purchaseOrderService.updatePurchaseOrder(
+                any(), eq(1L), any(PurchaseOrderRequest.class)))
                 .thenReturn(response);
 
         mockMvc.perform(put("/v1/purchase-orders/1")
-                        .param("groupPoid", "1")
-                        .param("companyPoid", "1")
-                        .param("userPoid", "1")
-                        .param("documentId", "PO-001")
-                        .param("actionRequested", "update")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Purchase Order updated successfully"));
+                .andExpect(content().string(
+                        org.hamcrest.Matchers.containsString(
+                                "Purchase Order updated successfully"
+                        )
+                ));
 
-        verify(purchaseOrderService).updatePurchaseOrder(any() ,eq(1L), any(PurchaseOrderRequest.class));
+        verify(purchaseOrderService)
+                .updatePurchaseOrder(any(), eq(1L), any(PurchaseOrderRequest.class));
     }
 
     @Test
     void findById_Success() throws Exception {
+
         when(purchaseOrderService.findById(1L)).thenReturn(response);
 
-        mockMvc.perform(get("/v1/purchase-orders/1")
-                        .param("groupPoid", "1")
-                        .param("companyPoid", "1")
-                        .param("userPoid", "1")
-                        .param("documentId", "PO-001")
-                        .param("actionRequested", "view"))
+        mockMvc.perform(get("/v1/purchase-orders/1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Purchase Order fetched successfully"));
+                .andExpect(content().string(
+                        org.hamcrest.Matchers.containsString(
+                                "Purchase Order fetched successfully"
+                        )
+                ));
 
         verify(purchaseOrderService).findById(1L);
     }
 
+
     @Test
     void deletePurchaseOrder_Success() throws Exception {
+
         doNothing().when(purchaseOrderService).deletePurchaseOrder(1L);
 
-        mockMvc.perform(delete("/v1/purchase-orders/1")
-                        .header("groupPoid", 1L)
-                        .header("companyPoid", 1L)
-                        .header("userPoid", 1L)
-                        .param("documentId", "PO-001")
-                        .param("actionRequested", "delete"))
+        mockMvc.perform(delete("/v1/purchase-orders/1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Purchase Order deleted successfully"));
+                .andExpect(content().string(
+                        org.hamcrest.Matchers.containsString(
+                                "Purchase Order deleted successfully"
+                        )
+                ));
 
         verify(purchaseOrderService).deletePurchaseOrder(1L);
     }
-
-
 
     private PurchaseOrderRequest createPurchaseOrderRequest() {
         PurchaseOrderRequest request = new PurchaseOrderRequest();

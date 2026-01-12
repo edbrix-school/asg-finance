@@ -320,19 +320,19 @@
 //    @Test
 //    void testGetChequeDetails_Success() throws SQLException {
 //        com.asg.finance.dto.ImcoRefundLoadResponseDto expectedResult = new com.asg.finance.dto.ImcoRefundLoadResponseDto();
-//        when(repository.fetchChequeAndBillDetails(1L, 1L, "SYSTEM", 1L, "RCP001"))
+//        when(repository.fetchChequeAndBillDetails(1L, 1L, "SYSTEM", 1L, "DPI0000998"))
 //                .thenReturn(expectedResult);
 //
-//        com.asg.finance.dto.ImcoRefundLoadResponseDto result = refundService.getChequeDetails(1L, "RCP001");
+//        com.asg.finance.dto.ImcoRefundLoadResponseDto result = refundService.getChequeDetails(1L, "DPI0000998");
 //
 //        assertNotNull(result);
 //        assertEquals(expectedResult, result);
-//        verify(repository, times(1)).fetchChequeAndBillDetails(1L, 1L, "SYSTEM", 1L, "RCP001");
+//        verify(repository, times(1)).fetchChequeAndBillDetails(1L, 1L, "SYSTEM", 1L, "DPI0000998");
 //    }
 //
-//    @Test
+//    /*@Test
 //    void testGetGlPostingDetails_Success() {
-//        com.asg.dto.GlPostingViewResponseDto expectedResult = new com.asg.dto.GlPostingViewResponseDto();
+//        com.asg.common.lib.dto.GlPostingViewResponseDto expectedResult = new com.asg.dto.GlPostingViewResponseDto();
 //        when(depositRefundRepository.fetchGlPostingDetails(1L, 1L, "DOC001", 1L))
 //                .thenReturn(expectedResult);
 //
@@ -341,7 +341,7 @@
 //        assertNotNull(result);
 //        assertEquals(expectedResult, result);
 //        verify(depositRefundRepository, times(1)).fetchGlPostingDetails(1L, 1L, "DOC001", 1L);
-//    }
+//    }*/
 //
 //}
 //

@@ -68,8 +68,7 @@ class AdvancePettyCashHdrControllerTest {
                 .thenReturn(responseDTO);
 
         mockMvc.perform(post("/v1/advance-petty-cash")
-                        .param("documentId", "400-117")
-                        .param("actionRequested", "create")
+
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDTO)))
                 .andExpect(status().isOk())
@@ -84,8 +83,7 @@ class AdvancePettyCashHdrControllerTest {
         requestDTO.setPayingTo(""); // Invalid empty value
 
         mockMvc.perform(post("/v1/advance-petty-cash")
-                        .param("documentId", "400-117")
-                        .param("actionRequested", "create")
+
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDTO)))
                 .andExpect(status().isBadRequest());
@@ -97,8 +95,7 @@ class AdvancePettyCashHdrControllerTest {
                 .thenReturn(responseDTO);
 
         mockMvc.perform(put("/v1/advance-petty-cash/1")
-                        .param("documentId", "400-117")
-                        .param("actionRequested", "update")
+
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDTO)))
                 .andExpect(status().isOk())
@@ -111,8 +108,7 @@ class AdvancePettyCashHdrControllerTest {
         when(service.getAdvancePettyCashById(1L)).thenReturn(responseDTO);
 
         mockMvc.perform(get("/v1/advance-petty-cash/1")
-                        .param("documentId", "400-117")
-                        .param("actionRequested", "view"))
+                     )
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").value("Advance Petty Cash fetched successfully"))
@@ -122,8 +118,7 @@ class AdvancePettyCashHdrControllerTest {
     @Test
     void softDeleteAdvancePettyCash_Success() throws Exception {
         mockMvc.perform(delete("/v1/advance-petty-cash/1")
-                        .param("documentId", "400-117")
-                        .param("actionRequested", "delete"))
+                        )
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").value("Advance Petty Cash has been soft deleted successfully"));

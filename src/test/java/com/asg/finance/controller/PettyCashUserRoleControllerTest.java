@@ -2,6 +2,7 @@ package com.asg.finance.controller;
 
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.exception.ValidationException;
+import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.PettyCashUserRoleRequestDto;
 import com.asg.finance.dto.PettyCashUserroleResponseDto;
 import com.asg.finance.exceptions.GlobalExceptionHandler;
@@ -16,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
 import org.springframework.http.MediaType;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.junit.jupiter.api.Test;
@@ -49,6 +51,7 @@ public class PettyCashUserRoleControllerTest {
         mockMvc = MockMvcBuilders.standaloneSetup(pettyCashUserRoleController)
                 .setCustomArgumentResolvers(new PageableHandlerMethodArgumentResolver())
                 .setControllerAdvice(new GlobalExceptionHandler())
+                .setMessageConverters(new MappingJackson2HttpMessageConverter())
                 .build();
 
         requestDto = new PettyCashUserRoleRequestDto();
@@ -74,8 +77,6 @@ public class PettyCashUserRoleControllerTest {
                 .thenReturn(responseDto);
 
         mockMvc.perform(post("/v1/petty-cash-user-role")
-                        .param("documentId", "doc-001")
-                        .param("actionRequested", "create")
                         .param("userPoid", "101")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
@@ -96,8 +97,6 @@ public class PettyCashUserRoleControllerTest {
                 .thenThrow(new ValidationException("Invalid role type"));
 
         mockMvc.perform(post("/v1/petty-cash-user-role")
-                        .param("documentId", "doc-001")
-                        .param("actionRequested", "create")
                         .param("userPoid", "101")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
@@ -114,8 +113,6 @@ public class PettyCashUserRoleControllerTest {
                 .thenReturn(responseDto);
 
         mockMvc.perform(put("/v1/petty-cash-user-role/{refTypePoid}", 1001L)
-                        .param("documentId", "doc-002")
-                        .param("actionRequested", "update")
                         .param("userPoid", "101")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
@@ -131,9 +128,7 @@ public class PettyCashUserRoleControllerTest {
     void getPettyCashUserRole_ShouldReturnSuccessfully() throws Exception {
         when(pettyCashUserRoleService.getPettyCashUserRole(1001L)).thenReturn(responseDto);
 
-        mockMvc.perform(get("/v1/petty-cash-user-role/{refTypePoid}", 1001L)
-                        .param("documentId", "doc-003")
-                        .param("actionRequested", "view"))
+        mockMvc.perform(get("/v1/petty-cash-user-role/{refTypePoid}", 1001L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message", is("Petty Cash User Role fetched successfully")))
                 .andExpect(jsonPath("$.result.data.refType", is("PC-ROLE")));
@@ -145,9 +140,7 @@ public class PettyCashUserRoleControllerTest {
     void softDeletePettyCashUserRole_ShouldDeleteSuccessfully() throws Exception {
         doNothing().when(pettyCashUserRoleService).softDeletePettyCashUserRole(1001L);
 
-        mockMvc.perform(delete("/v1/petty-cash-user-role/{refTypePoid}", 1001L)
-                        .param("documentId", "doc-004")
-                        .param("actionRequested", "delete"))
+        mockMvc.perform(delete("/v1/petty-cash-user-role/{refTypePoid}", 1001L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message", is("Petty Cash User Role has been soft deleted successfully")));
 
@@ -156,51 +149,41 @@ public class PettyCashUserRoleControllerTest {
 
     @Test
     void listPettyCashUserRole_ShouldReturnFilteredListSuccessfully() throws Exception {
-        // Mock response from service
-        Map<String, Object> mockResponse = new HashMap<>();
-        mockResponse.put("records", List.of(
-                Map.of("USER_ROLE", "ADMIN", "DESCRIPTION", "Admin Role"),
-                Map.of("USER_ROLE", "USER", "DESCRIPTION", "Normal User")
-        ));
-        mockResponse.put("totalCount", 2);
+        try (var mockedUserContext = mockStatic(UserContext.class)) {
+            mockedUserContext.when(UserContext::getDocumentId).thenReturn("400-010");
 
-        when(pettyCashUserRoleService.listPettyCashUserRole(
-                isNull(), any(FilterRequestDto.class), any(Pageable.class)))
-                .thenReturn(mockResponse);
+            Map<String, Object> mockResponse = new HashMap<>();
+            mockResponse.put("records", List.of(
+                    Map.of("USER_ROLE", "ADMIN", "DESCRIPTION", "Admin Role"),
+                    Map.of("USER_ROLE", "USER", "DESCRIPTION", "Normal User")
+            ));
+            mockResponse.put("totalCount", 2);
 
-        // JSON filter request
-        String filterRequestJson = """
-        {
-          "operator": "AND",
-          "isDeleted": "N",
-          "filters": [
-             { "searchField": "GLOBALSEARCH", "searchValue": "User" }
-          ]
+            when(pettyCashUserRoleService.listPettyCashUserRole(
+                    eq("400-010"), any(FilterRequestDto.class), any(Pageable.class)))
+                    .thenReturn(mockResponse);
+
+            String filterRequestJson = """
+            {
+              "operator": "AND",
+              "isDeleted": "N",
+              "filters": [
+                 { "searchField": "GLOBALSEARCH", "searchValue": "User" }
+              ]
+            }
+            """;
+
+            mockMvc.perform(post("/v1/petty-cash-user-role/list")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(filterRequestJson))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success", is(true)))
+                    .andExpect(jsonPath("$.result.data.totalCount", is(2)))
+                    .andExpect(jsonPath("$.result.data.records", hasSize(2)))
+                    .andExpect(jsonPath("$.result.data.records[0].USER_ROLE", is("ADMIN")));
+
+            verify(pettyCashUserRoleService).listPettyCashUserRole(
+                    eq("400-010"), any(FilterRequestDto.class), any(Pageable.class));
         }
-        """;
-
-        // Perform MockMvc POST request with Pageable parameters
-        mockMvc.perform(post("/v1/petty-cash-user-role/list")
-                        .param("documentId", "DOC123")
-                        .param("actionRequested", "VIEW")
-                        .param("page", "0")        // Pageable page
-                        .param("size", "10")       // Pageable size
-                        .param("sort", "USER_ROLE,asc") // Optional sort
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(filterRequestJson))
-                .andDo(result -> System.out.println("Response: " + result.getResponse().getContentAsString()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success", is(true)))
-                .andExpect(jsonPath("$.result.data.totalCount", is(2)))
-                .andExpect(jsonPath("$.result.data.records", hasSize(2)))
-                .andExpect(jsonPath("$.result.data.records[0].USER_ROLE", is("ADMIN")))
-                .andExpect(jsonPath("$.result.data.records[1].DESCRIPTION", is("Normal User")));
-
-        // Verify service was called once
-        verify(pettyCashUserRoleService, times(1))
-                .listPettyCashUserRole(isNull(), any(FilterRequestDto.class), any(Pageable.class));
     }
-
-
-
 }

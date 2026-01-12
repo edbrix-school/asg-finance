@@ -18,6 +18,7 @@ import org.mockito.quality.Strictness;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
 import org.springframework.http.MediaType;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -54,6 +55,7 @@ public class FixedAssetControllerTest {
         mockMvc = MockMvcBuilders.standaloneSetup(fixedAssetController)
                 .setCustomArgumentResolvers(new PageableHandlerMethodArgumentResolver())
                 .setControllerAdvice(new GlobalExceptionHandler())
+                .setMessageConverters(new MappingJackson2HttpMessageConverter())
                 .build();
 
         requestDto = new FixedAssetRequestDto();
@@ -79,8 +81,6 @@ public class FixedAssetControllerTest {
                 .thenReturn(responseDto);
 
         mockMvc.perform(post("/v1/fixed-asset")
-                        .param("documentId", "FA-001")
-                        .param("actionRequested", "create")
                         .param("userPoid", "101")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
@@ -98,8 +98,6 @@ public class FixedAssetControllerTest {
                 .thenThrow(new ValidationException("FA Description must be unique"));
 
         mockMvc.perform(post("/v1/fixed-asset")
-                        .param("documentId", "FA-001")
-                        .param("actionRequested", "create")
                         .param("userPoid", "101")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
@@ -116,8 +114,6 @@ public class FixedAssetControllerTest {
                 .thenThrow(new RuntimeException("Database connection failed"));
 
         mockMvc.perform(post("/v1/fixed-asset")
-                        .param("documentId", "FA-001")
-                        .param("actionRequested", "create")
                         .param("userPoid", "101")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
@@ -133,8 +129,6 @@ public class FixedAssetControllerTest {
                 .thenReturn(responseDto);
 
         mockMvc.perform(put("/v1/fixed-asset/{faPoid}", 1L)
-                        .param("documentId", "FA-002")
-                        .param("actionRequested", "update")
                         .param("userPoid", "101")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
@@ -151,8 +145,6 @@ public class FixedAssetControllerTest {
                 .thenThrow(new ValidationException("FA Code must be unique"));
 
         mockMvc.perform(put("/v1/fixed-asset/{faPoid}", 1L)
-                        .param("documentId", "FA-002")
-                        .param("actionRequested", "update")
                         .param("userPoid", "101")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
@@ -167,9 +159,7 @@ public class FixedAssetControllerTest {
     void getFixedAssetById_ShouldReturnSuccessfully() throws Exception {
         when(fixedAssetService.getFixedAssetById(1L)).thenReturn(responseDto);
 
-        mockMvc.perform(get("/v1/fixed-asset/{faPoid}", 1L)
-                        .param("documentId", "FA-003")
-                        .param("actionRequested", "view"))
+        mockMvc.perform(get("/v1/fixed-asset/{faPoid}", 1L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message", is("Fixed Asset fetched successfully")))
                 .andExpect(jsonPath("$.result.data.faCode", is("FA001")));
@@ -181,9 +171,7 @@ public class FixedAssetControllerTest {
     void softDeleteFixedAsset_ShouldDeleteSuccessfully() throws Exception {
         doNothing().when(fixedAssetService).softDeleteFixedAsset(1L);
 
-        mockMvc.perform(delete("/v1/fixed-asset/{faPoid}", 1L)
-                        .param("documentId", "FA-004")
-                        .param("actionRequested", "delete"))
+        mockMvc.perform(delete("/v1/fixed-asset/{faPoid}", 1L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message", is("Fixed Asset has been soft deleted successfully")));
 
@@ -195,9 +183,7 @@ public class FixedAssetControllerTest {
         List<Long> newPoidList = List.of(2L, 3L, 4L);
         when(fixedAssetService.createMultipleCopies(1L, 3)).thenReturn(newPoidList);
 
-        mockMvc.perform(post("/v1/fixed-asset/{faPoid}/{noOfCopies}", 1L, 3)
-                        .param("documentId", "FA-005")
-                        .param("actionRequested", "create"))
+        mockMvc.perform(post("/v1/fixed-asset/{faPoid}/{noOfCopies}", 1L, 3))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message", is("Fixed Asset Copies created successfully")))
                 .andExpect(jsonPath("$.result.data[0]", is(2)));
@@ -210,9 +196,7 @@ public class FixedAssetControllerTest {
         when(fixedAssetService.createMultipleCopies(1L, 3))
                 .thenThrow(new ValidationException("Invalid number of copies"));
 
-        mockMvc.perform(post("/v1/fixed-asset/{faPoid}/{noOfCopies}", 1L, 3)
-                        .param("documentId", "FA-005")
-                        .param("actionRequested", "create"))
+        mockMvc.perform(post("/v1/fixed-asset/{faPoid}/{noOfCopies}", 1L, 3))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.success", is(false)))
                 .andExpect(jsonPath("$.message", is("Invalid number of copies")));
@@ -248,8 +232,6 @@ public class FixedAssetControllerTest {
 
         // Perform MockMvc POST request with Pageable params
         mockMvc.perform(post("/v1/fixed-asset/list")
-                        .param("documentId", "DOC123")
-                        .param("actionRequested", "VIEW")
                         .param("page", "0")        // Pageable page
                         .param("size", "10")       // Pageable size
                         .param("sort", "FA_CATG_CODE,asc") // Optional sort

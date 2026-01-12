@@ -71,7 +71,7 @@
 //    private JdbcTemplate jdbcTemplate;
 ////    @Mock
 ////    private CurrencyRepository currencyRepository;
-//    @Mock(lenient = true)
+//    @Mock
 //    private jakarta.persistence.EntityManager entityManager;
 //
 //    @InjectMocks
@@ -223,20 +223,20 @@
 //        });
 //    }
 //
-//    @Test
+//    /*@Test
 //    void createSupplierMaster_WithValidData_ReturnsSupplierMasterDto() {
 //        try (MockedStatic<ASGHelperUtils> mockedASGHelperUtils = mockStatic(ASGHelperUtils.class)) {
 //            mockedASGHelperUtils.when(ASGHelperUtils::getCurrentUser).thenReturn("testUser");
 //
 //            when(groupRepository.existsByGroupPoid(GROUP_POID)).thenReturn(true);
 //            when(supplierCategoryRepository.existsBySupplierCategoryPoid(1L)).thenReturn(true);
-//            //when(countryRepository.existsByCountryPoid(1L)).thenReturn(true);
+//            when(countryRepository.existsByCountryPoid(1L)).thenReturn(true);
 //            when(hrEmployeeMasterRepository.existsByEmployeePoid(1L)).thenReturn(true);
 //            when(salesCustomerMasterRepository.existsByCustomerPoid(1L)).thenReturn(true);
 //            when(supplierMasterRepository.existsBySupplierCodeAndGroupPoid(anyString(), anyLong())).thenReturn(false);
 //            when(supplierMasterRepository.existsBySupplierCodeAndGroupPoidAndCountryPoid(anyString(), anyLong(), anyLong())).thenReturn(false);
 //            when(supplierMasterRepository.existsBySupplierNameIgnoreCaseAndGroupPoid(anyString(), anyLong())).thenReturn(false);
-//            //lenient().when(addressMasterRepository.existsByAddressNameIgnoreCaseAndGroupPoid(anyString(), anyLong())).thenReturn(false);
+//            lenient().when(addressMasterRepository.existsByAddressNameIgnoreCaseAndGroupPoid(anyString(), anyLong())).thenReturn(false);
 //
 //            SupplierMasterEntity savedEntity = new SupplierMasterEntity();
 //            savedEntity.setSupplierPoid(SUPPLIER_POID);
@@ -260,9 +260,9 @@
 //            assertNotNull(result);
 //            verify(supplierMasterRepository).save(any(SupplierMasterEntity.class));
 //        }
-//    }
+//    }*/
 //
-//    @Test
+//    /*@Test
 //    void updateSupplierMaster_WithValidData_ReturnsUpdatedSupplierMasterDto() {
 //        try (MockedStatic<ASGHelperUtils> mockedASGHelperUtils = mockStatic(ASGHelperUtils.class)) {
 //            mockedASGHelperUtils.when(ASGHelperUtils::getCurrentUser).thenReturn("testUser");
@@ -270,7 +270,7 @@
 //            when(supplierMasterRepository.findBySupplierPoid(SUPPLIER_POID)).thenReturn(supplierMasterEntity);
 //            when(groupRepository.existsByGroupPoid(GROUP_POID)).thenReturn(true);
 //            when(supplierCategoryRepository.existsBySupplierCategoryPoid(1L)).thenReturn(true);
-//            //when(countryRepository.existsByCountryPoid(1L)).thenReturn(true);
+//            when(countryRepository.existsByCountryPoid(1L)).thenReturn(true);
 //            when(hrEmployeeMasterRepository.existsByEmployeePoid(1L)).thenReturn(true);
 //            when(salesCustomerMasterRepository.existsByCustomerPoid(1L)).thenReturn(true);
 //            when(supplierMasterRepository.existsBySupplierNameIgnoreCaseAndSupplierPoidNot(anyString(), anyLong())).thenReturn(false);
@@ -295,7 +295,7 @@
 //            assertNotNull(result);
 //            verify(supplierMasterRepository).save(supplierMasterEntity);
 //        }
-//    }
+//    }*/
 //
 //    @Test
 //    void createLedger_WithValidSupplierPoid_ReturnsGlPoid() {
@@ -324,7 +324,7 @@
 //        when(file.getInputStream()).thenThrow(new RuntimeException("Test exception"));
 //
 //        assertThrows(RuntimeException.class, () -> {
-//            supplierMasterService.importSuppliersFromExcel(file);
+//            supplierMasterService.importSuppliersFromExcel(file,SUPPLIER_POID);
 //        });
 //    }
 //

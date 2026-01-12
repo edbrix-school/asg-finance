@@ -89,7 +89,7 @@
 //        when(taxPeriodHdrService.createTaxPeriodHdr(any(TaxPeriodHdrRequestDto.class)))
 //                .thenReturn(responseDto);
 //
-//        mockMvc.perform(post("/api/v1/tax-perioad")
+//        mockMvc.perform(post("/v1/tax-perioad")
 //                        .param("documentId", "600-001")
 //                        .param("actionRequested", "create")
 //                        .param("userPoid", "101")
@@ -108,7 +108,7 @@
 //        when(taxPeriodHdrService.createTaxPeriodHdr(any()))
 //                .thenThrow(new ValidationException("Validation failed"));
 //
-//        mockMvc.perform(post("/api/v1/tax-perioad")
+//        mockMvc.perform(post("/v1/tax-perioad")
 //                        .param("documentId", "600-001")
 //                        .param("actionRequested", "create")
 //                        .param("userPoid", "101")
@@ -126,7 +126,7 @@
 //        when(taxPeriodHdrService.createTaxPeriodHdr(any()))
 //                .thenThrow(new RuntimeException("Database connection failed"));
 //
-//        mockMvc.perform(post("/api/v1/tax-perioad")
+//        mockMvc.perform(post("/v1/tax-perioad")
 //                        .param("documentId", "600-001")
 //                        .param("actionRequested", "create")
 //                        .param("userPoid", "101")
@@ -143,7 +143,7 @@
 //        when(taxPeriodHdrService.updateTaxPeriodHdr(eq(1L), any(TaxPeriodHdrRequestDto.class)))
 //                .thenReturn(responseDto);
 //
-//        mockMvc.perform(put("/api/v1/tax-perioad/{transactionPoid}", 1L)
+//        mockMvc.perform(put("/v1/tax-perioad/{transactionPoid}", 1L)
 //                        .param("documentId", "600-001")
 //                        .param("actionRequested", "update")
 //                        .param("userPoid", "101")
@@ -161,7 +161,7 @@
 //        when(taxPeriodHdrService.updateTaxPeriodHdr(eq(1L), any(TaxPeriodHdrRequestDto.class)))
 //                .thenThrow(new ValidationException("Period dates are invalid"));
 //
-//        mockMvc.perform(put("/api/v1/tax-perioad/{transactionPoid}", 1L)
+//        mockMvc.perform(put("/v1/tax-perioad/{transactionPoid}", 1L)
 //                        .param("documentId", "600-001")
 //                        .param("actionRequested", "update")
 //                        .param("userPoid", "101")
@@ -178,7 +178,7 @@
 //    void getTaxPeriodHdrById_ShouldReturnSuccessfully() throws Exception {
 //        when(taxPeriodHdrService.getTaxPeriodHdrById(1L)).thenReturn(responseDto);
 //
-//        mockMvc.perform(get("/api/v1/tax-perioad/{transactionPoid}", 1L)
+//        mockMvc.perform(get("/v1/tax-perioad/{transactionPoid}", 1L)
 //                        .param("documentId", "600-001")
 //                        .param("actionRequested", "view"))
 //                .andExpect(status().isOk())
@@ -192,7 +192,7 @@
 //    void softDeleteTaxPeriodHdr_ShouldDeleteSuccessfully() throws Exception {
 //        doNothing().when(taxPeriodHdrService).softDeleteTaxPeriodHdr(1L);
 //
-//        mockMvc.perform(delete("/api/v1/tax-perioad/{transactionPoid}", 1L)
+//        mockMvc.perform(delete("/v1/tax-perioad/{transactionPoid}", 1L)
 //                        .param("documentId", "600-001")
 //                        .param("actionRequested", "delete"))
 //                .andExpect(status().isOk())
@@ -206,7 +206,7 @@
 //    void copyTaxPeriod_ShouldCopySuccessfully() throws Exception {
 //        when(taxPeriodHdrService.copyTaxPeriod(1L, 1L, 1L)).thenReturn("SUCCESS");
 //
-//        mockMvc.perform(post("/api/v1/tax-perioad/{transactionPoid}/copy", 1L)
+//        mockMvc.perform(post("/v1/tax-perioad/{transactionPoid}/copy", 1L)
 //                        .param("companyPoid", "1")
 //                        .param("userPoid", "1")
 //                        .param("documentId", "600-001")
@@ -222,7 +222,7 @@
 //        when(taxPeriodHdrService.copyTaxPeriod(1L, 1L, 1L))
 //                .thenThrow(new RuntimeException("Copy operation failed"));
 //
-//        mockMvc.perform(post("/api/v1/tax-perioad/{transactionPoid}/copy", 1L)
+//        mockMvc.perform(post("/v1/tax-perioad/{transactionPoid}/copy", 1L)
 //                        .param("companyPoid", "1")
 //                        .param("userPoid", "1")
 //                        .param("documentId", "600-001")
@@ -251,7 +251,7 @@
 //                .thenReturn(pageResult);
 //
 //
-//        mockMvc.perform(get("/api/v1/tax-perioad/{transactionPoid}/charges", 1L)
+//        mockMvc.perform(get("/v1/tax-perioad/{transactionPoid}/charges", 1L)
 //                        .param("page", "0")
 //                        .param("size", "25")
 //                        .param("documentId", "600-001")
@@ -285,7 +285,7 @@
 //                .thenReturn(pageResult);
 //
 //
-//        mockMvc.perform(get("/api/v1/tax-perioad/{transactionPoid}/stocks", 1L)
+//        mockMvc.perform(get("/v1/tax-perioad/{transactionPoid}/stocks", 1L)
 //                        .param("page", "0")
 //                        .param("size", "25")
 //                        .param("documentId", "600-001")
@@ -320,7 +320,7 @@
 //                List.of()
 //        );
 //
-//        mockMvc.perform(post("/api/v1/tax-perioad/list")
+//        mockMvc.perform(post("/v1/tax-perioad/list")
 //                        .param("documentId", "400-011")
 //                        .param("actionRequested", "VIEW")
 //                        .param("page", "0")

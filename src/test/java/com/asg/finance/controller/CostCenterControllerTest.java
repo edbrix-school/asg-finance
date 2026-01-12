@@ -2,6 +2,8 @@ package com.asg.finance.controller;
 
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
+import com.asg.common.lib.security.util.UserContext;
+import com.asg.finance.dto.CostCenterListResponseDto;
 import com.asg.finance.dto.CostCenterRequestDTO;
 import com.asg.finance.exceptions.GlobalExceptionHandler;
 import com.asg.finance.service.CostCenterServiceImpl;
@@ -11,10 +13,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
 import org.springframework.http.MediaType;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -45,6 +49,7 @@ class CostCenterControllerTest {
         mockMvc = MockMvcBuilders.standaloneSetup(costCenterController)
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setCustomArgumentResolvers(new PageableHandlerMethodArgumentResolver())
+                .setMessageConverters(new MappingJackson2HttpMessageConverter())
                 .build();
         objectMapper = new ObjectMapper();
 
@@ -59,9 +64,6 @@ class CostCenterControllerTest {
     @Test
     void testCreateCostCenter_ValidationError() throws Exception {
         mockMvc.perform(post("/v1/cost-center")
-                        .param("documentId", "800-320")
-                        .param("actionRequested", "create")
-                        .param("userPoid", "101")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(costCenterDto)))
                 .andExpect(status().isBadRequest())
@@ -74,10 +76,9 @@ class CostCenterControllerTest {
     void testGetCostCenterById_Success() throws Exception {
         when(costCenterServiceImpl.getCostCenterById(12345L)).thenReturn(costCenterDto);
 
-        mockMvc.perform(get("/v1/cost-center/12345")
-                        .param("documentId", "800-320")
-                        .param("actionRequested", "VIEW"))
+        mockMvc.perform(get("/v1/cost-center/12345"))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.result.data.costCenterCode").value("CC1001"))
                 .andExpect(jsonPath("$.result.data.costCenterDescription").value("CC10012"));
 
@@ -89,9 +90,7 @@ class CostCenterControllerTest {
         when(costCenterServiceImpl.getCostCenterById(12345L))
                 .thenThrow(new RuntimeException("Service error"));
 
-        mockMvc.perform(get("/v1/cost-center/12345")
-                        .param("documentId", "800-320")
-                        .param("actionRequested", "VIEW"))
+        mockMvc.perform(get("/v1/cost-center/12345"))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.success").value(false));
 
@@ -101,8 +100,6 @@ class CostCenterControllerTest {
     @Test
     void testUpdateCostCenter_ValidationError() throws Exception {
         mockMvc.perform(put("/v1/cost-center/update/12345")
-                        .param("documentId", "800-321")
-                        .param("actionRequested", "update")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(costCenterDto)))
                 .andExpect(status().isBadRequest())
@@ -115,10 +112,9 @@ class CostCenterControllerTest {
     void testSoftDeleteCostCenter_Success() throws Exception {
         doNothing().when(costCenterServiceImpl).softDeleteCountry(12345L);
 
-        mockMvc.perform(delete("/v1/cost-center/12345")
-                        .param("documentId", "800-320")
-                        .param("actionRequested", "delete"))
+        mockMvc.perform(delete("/v1/cost-center/12345"))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").value("Cost Center has been soft deleted successfully"));
 
         verify(costCenterServiceImpl, times(1)).softDeleteCountry(12345L);
@@ -128,9 +124,7 @@ class CostCenterControllerTest {
     void testSoftDeleteCostCenter_ServiceException() throws Exception {
         doThrow(new RuntimeException("Delete failed")).when(costCenterServiceImpl).softDeleteCountry(12345L);
 
-        mockMvc.perform(delete("/v1/cost-center/12345")
-                        .param("documentId", "800-320")
-                        .param("actionRequested", "delete"))
+        mockMvc.perform(delete("/v1/cost-center/12345"))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.success").value(false));
 
@@ -139,51 +133,46 @@ class CostCenterControllerTest {
 
     @Test
     void testListCostCenter_Success() throws Exception {
-        Map<String, Object> data = new HashMap<>();
-        data.put("content", "test data");
-        data.put("totalElements", 1);
+        CostCenterListResponseDto testData = new CostCenterListResponseDto();
+        testData.setCostCenterCode("CC001");
+        testData.setCostCenterDescription("Test Cost Center");
+        
+        when(costCenterServiceImpl.getCostCenterList(eq("400-002"), eq("VIEW"), isNull()))
+                .thenReturn(List.of(testData));
 
-        when(costCenterServiceImpl.listCostCenter(anyString(), any(FilterRequestDto.class), any(Pageable.class)))
-                .thenReturn(data);
+        try (MockedStatic<UserContext> mockedUserContext = mockStatic(UserContext.class)) {
+            mockedUserContext.when(UserContext::getDocumentId).thenReturn("400-002");
+            mockedUserContext.when(UserContext::getActionRequested).thenReturn("VIEW");
 
-        FilterDto filter = new FilterDto("COST_CENTER_CODE", "CC1001");
-        FilterRequestDto filters = new FilterRequestDto("AND", "N", List.of(filter));
+            mockMvc.perform(get("/v1/cost-center/list"))
+                    .andDo(result -> System.out.println("Response: " + result.getResponse().getContentAsString()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success").value(true));
+        }
 
-        mockMvc.perform(post("/v1/cost-center/list")
-                        .param("documentId", "400-002")
-                        .param("actionRequested", "VIEW")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(filters)))
-                .andExpect(status().isInternalServerError());
-
-        verify(costCenterServiceImpl, times(1)).listCostCenter(anyString(), any(FilterRequestDto.class), any(Pageable.class));
+        verify(costCenterServiceImpl, times(1)).getCostCenterList(eq("400-002"), eq("VIEW"), isNull());
     }
 
     @Test
     void testListCostCenter_ServiceException() throws Exception {
-        when(costCenterServiceImpl.listCostCenter(anyString(), any(FilterRequestDto.class), any(Pageable.class)))
+        when(costCenterServiceImpl.getCostCenterList(eq("400-002"), eq("VIEW"), isNull()))
                 .thenThrow(new RuntimeException("Service error"));
 
-        FilterDto filter = new FilterDto("COST_CENTER_CODE", "CC1001");
-        FilterRequestDto filters = new FilterRequestDto("AND", "N", List.of(filter));
+        try (MockedStatic<UserContext> mockedUserContext = mockStatic(UserContext.class)) {
+            mockedUserContext.when(UserContext::getDocumentId).thenReturn("400-002");
+            mockedUserContext.when(UserContext::getActionRequested).thenReturn("VIEW");
 
-        mockMvc.perform(post("/v1/cost-center/list")
-                        .param("documentId", "400-002")
-                        .param("actionRequested", "VIEW")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(filters)))
-                .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.message").value("Request method 'POST' is not supported"));
+            mockMvc.perform(get("/v1/cost-center/list"))
+                    .andExpect(status().isInternalServerError())
+                    .andExpect(jsonPath("$.success").value(false));
+        }
 
-        verify(costCenterServiceImpl, times(1)).listCostCenter(anyString(), any(FilterRequestDto.class), any(Pageable.class));
+        verify(costCenterServiceImpl, times(1)).getCostCenterList(eq("400-002"), eq("VIEW"), isNull());
     }
 
     @Test
     void testCreateCostCenter_MissingDocumentId() throws Exception {
         mockMvc.perform(post("/v1/cost-center")
-                        .param("actionRequested", "create")
-                        .param("userPoid", "101")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(costCenterDto)))
                 .andExpect(status().isBadRequest())
@@ -193,9 +182,6 @@ class CostCenterControllerTest {
     @Test
     void testCreateCostCenter_InvalidJson() throws Exception {
         mockMvc.perform(post("/v1/cost-center")
-                        .param("documentId", "800-320")
-                        .param("actionRequested", "create")
-                        .param("userPoid", "101")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{invalid json}"))
                 .andExpect(status().isBadRequest());
@@ -203,17 +189,13 @@ class CostCenterControllerTest {
 
     @Test
     void testGetCostCenterById_InvalidId() throws Exception {
-        mockMvc.perform(get("/v1/cost-center/invalid")
-                        .param("documentId", "800-320")
-                        .param("actionRequested", "VIEW"))
+        mockMvc.perform(get("/v1/cost-center/invalid"))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void testCreateCostCenter_MissingActionRequested() throws Exception {
         mockMvc.perform(post("/v1/cost-center")
-                        .param("documentId", "800-320")
-                        .param("userPoid", "101")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(costCenterDto)))
                 .andExpect(status().isBadRequest());
@@ -222,9 +204,6 @@ class CostCenterControllerTest {
     @Test
     void testCreateCostCenter_EmptyRequestBody() throws Exception {
         mockMvc.perform(post("/v1/cost-center")
-                        .param("documentId", "800-320")
-                        .param("actionRequested", "create")
-                        .param("userPoid", "101")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(""))
                 .andExpect(status().isBadRequest());
@@ -233,8 +212,6 @@ class CostCenterControllerTest {
     @Test
     void testUpdateCostCenter_InvalidId() throws Exception {
         mockMvc.perform(put("/v1/cost-center/update/invalid")
-                        .param("documentId", "800-321")
-                        .param("actionRequested", "update")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(costCenterDto)))
                 .andExpect(status().isBadRequest());
@@ -242,37 +219,28 @@ class CostCenterControllerTest {
 
     @Test
     void testSoftDeleteCostCenter_InvalidId() throws Exception {
-        mockMvc.perform(delete("/v1/cost-center/invalid")
-                        .param("documentId", "800-320")
-                        .param("actionRequested", "delete"))
+        mockMvc.perform(delete("/v1/cost-center/invalid"))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void testListCostCenter_EmptyFilters() throws Exception {
-        Map<String, Object> data = new HashMap<>();
-        data.put("content", List.of());
-        data.put("totalElements", 0);
+        when(costCenterServiceImpl.getCostCenterList(eq("400-002"), eq("VIEW"), isNull()))
+                .thenReturn(List.of());
 
-        when(costCenterServiceImpl.listCostCenter(anyString(), any(FilterRequestDto.class), any(Pageable.class)))
-                .thenReturn(data);
+        try (MockedStatic<UserContext> mockedUserContext = mockStatic(UserContext.class)) {
+            mockedUserContext.when(UserContext::getDocumentId).thenReturn("400-002");
+            mockedUserContext.when(UserContext::getActionRequested).thenReturn("VIEW");
 
-        FilterRequestDto filters = new FilterRequestDto("AND", "N", List.of());
-
-        mockMvc.perform(post("/v1/cost-center/list")
-                        .param("documentId", "400-002")
-                        .param("actionRequested", "VIEW")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(filters)))
-                .andExpect(status().isInternalServerError());
+            mockMvc.perform(get("/v1/cost-center/list"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success").value(true));
+        }
     }
 
     @Test
     void testCreateCostCenter_UnsupportedMediaType() throws Exception {
         mockMvc.perform(post("/v1/cost-center")
-                        .param("documentId", "800-320")
-                        .param("actionRequested", "create")
-                        .param("userPoid", "101")
                         .contentType(MediaType.TEXT_PLAIN)
                         .content("plain text"))
                 .andExpect(status().isInternalServerError());

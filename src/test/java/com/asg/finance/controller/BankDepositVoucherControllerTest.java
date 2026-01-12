@@ -22,6 +22,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -31,12 +33,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.*;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -63,6 +67,7 @@ public class BankDepositVoucherControllerTest {
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setCustomArgumentResolvers(new PageableHandlerMethodArgumentResolver())
                 .setControllerAdvice(new GlobalExceptionHandler())
+                .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper))
                 .build();
 
         requestDto = BankDepositVoucherRequestDto.builder()
@@ -108,10 +113,9 @@ public class BankDepositVoucherControllerTest {
         when(service.createBankDepositVoucher(any(BankDepositVoucherRequestDto.class))).thenReturn(responseDto);
 
         mockMvc.perform(post("/v1/bank-deposit-voucher")
-                        .param("documentId", "400-109")
-                        .param("actionRequested", "create")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
+                .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success", is(true)))
                 .andExpect(jsonPath("$.message", is("Bank Deposit Voucher created successfully")))
@@ -126,8 +130,6 @@ public class BankDepositVoucherControllerTest {
         when(service.createBankDepositVoucher(any())).thenThrow(new ValidationException("Invalid bank deposit details"));
 
         mockMvc.perform(post("/v1/bank-deposit-voucher")
-                        .param("documentId", "400-109")
-                        .param("actionRequested", "create")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isInternalServerError())
@@ -141,9 +143,7 @@ public class BankDepositVoucherControllerTest {
     void getBankDepositVoucherById_ShouldReturnSuccessfully() throws Exception {
         when(service.getBankDepositVoucherById(69664L)).thenReturn(responseDto);
 
-        mockMvc.perform(get("/v1/bank-deposit-voucher/{transactionPoid}", 69664L)
-                        .param("documentId", "400-109")
-                        .param("actionRequested", "view"))
+        mockMvc.perform(get("/v1/bank-deposit-voucher/{transactionPoid}", 69664L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message", is("Bank Deposit Voucher fetched successfully")))
                 .andExpect(jsonPath("$.result.data.docRef", is("ASG23132")));
@@ -156,10 +156,9 @@ public class BankDepositVoucherControllerTest {
         when(service.updateBankDepositVoucher(eq(69664L), any(BankDepositVoucherRequestDto.class))).thenReturn(responseDto);
 
         mockMvc.perform(put("/v1/bank-deposit-voucher/{transactionPoid}", 69664L)
-                        .param("documentId", "400-109")
-                        .param("actionRequested", "update")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
+                .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success", is(true)))
                 .andExpect(jsonPath("$.message", is("Bank Deposit Voucher updated successfully")));
@@ -171,9 +170,7 @@ public class BankDepositVoucherControllerTest {
     void softDeleteBankDepositVoucher_ShouldDeleteSuccessfully() throws Exception {
         doNothing().when(service).softDeleteBankDepositVoucher(69664L);
 
-        mockMvc.perform(delete("/v1/bank-deposit-voucher/{transactionPoid}", 69664L)
-                        .param("documentId", "400-109")
-                        .param("actionRequested", "delete"))
+        mockMvc.perform(delete("/v1/bank-deposit-voucher/{transactionPoid}", 69664L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message", is("Bank Deposit Voucher has been soft deleted successfully")));
 
@@ -203,14 +200,12 @@ public class BankDepositVoucherControllerTest {
         """;
 
         mockMvc.perform(post("/v1/bank-deposit-voucher/list")
-                        .param("documentId", "400-109")
-                        .param("actionRequested", "view")
-                        .param("page", "0")
-                        .param("size", "10")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(filterRequestJson))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success", is(true)));
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.message", is("Bank Deposit Vouchers fetched successfully")))
+                .andExpect(jsonPath("$.result.data.content", hasSize(2)));
 
         verify(service).listBankDepositVouchers(isNull(), any(FilterRequestDto.class), isNull(), isNull(), any(Pageable.class));
     }

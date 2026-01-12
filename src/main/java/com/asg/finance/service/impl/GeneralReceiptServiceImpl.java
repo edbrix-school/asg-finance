@@ -4,11 +4,7 @@ import com.asg.common.lib.client.ParameterServiceClient;
 import com.asg.common.lib.dto.*;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
-import com.asg.common.lib.service.DocumentDeleteService;
-import com.asg.common.lib.service.DocumentSearchService;
-import com.asg.common.lib.service.LoggingService;
-import com.asg.common.lib.service.LovDataService;
-import com.asg.common.lib.service.PrintService;
+import com.asg.common.lib.service.*;
 import com.asg.common.lib.utility.ASGHelperUtils;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.dto.*;
@@ -66,8 +62,9 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
     private final DataSource dataSource;
     private final LoggingService loggingService;
     
-    @Autowired
-    private DocumentDeleteService documentDeleteService;
+    private final DocumentDeleteService documentDeleteService;
+    private final ApprovalService approvalService;
+
     
     @Autowired
     private ApplicationContext applicationContext;
@@ -352,91 +349,6 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
     }
 
     /**
-     * Build WHERE clause from filter parameters
-     */
-    private String buildWhereClause(String type, String status, LocalDate fromDate, 
-                                   LocalDate toDate, Long companyId) {
-        List<String> conditions = new ArrayList<>();
-
-        // Base condition: not deleted (unless status explicitly requests deleted)
-        if (status == null || !"Deleted".equalsIgnoreCase(status)) {
-            conditions.add("(DELETED IS NULL OR DELETED = 'N')");
-        } else if ("Deleted".equalsIgnoreCase(status)) {
-            conditions.add("DELETED = 'Y'");
-        }
-
-        // Type filter (REF_TYPE)
-        if (type != null && !type.trim().isEmpty()) {
-            conditions.add("REF_TYPE = '" + type.replace("'", "''") + "'");
-        }
-
-        // Status filter (VERIFIED)
-        if (status != null && !status.trim().isEmpty() && !"Deleted".equalsIgnoreCase(status)) {
-            if ("Posted".equalsIgnoreCase(status)) {
-                conditions.add("VERIFIED = 'Y'");
-            } else if ("Pending".equalsIgnoreCase(status)) {
-                conditions.add("(VERIFIED IS NULL OR VERIFIED = 'N')");
-            }
-        }
-
-        // Date range filter
-        if (fromDate != null) {
-            conditions.add("TRANSACTION_DATE >= DATE '" + fromDate + "'");
-        }
-        if (toDate != null) {
-            conditions.add("TRANSACTION_DATE <= DATE '" + toDate + "'");
-        }
-
-        // Company filter
-        if (companyId != null) {
-            conditions.add("COMPANY_POID = " + companyId);
-        }
-
-        // Join conditions
-        if (conditions.isEmpty()) {
-            return "1=1"; // No filters
-        } else {
-            return String.join(" AND ", conditions);
-        }
-    }
-
-    /**
-     * Map procedure result row to GeneralReceiptResponse
-     * Column names match AR_GEN_RECEIPT_HDR table structure
-     */
-    private GeneralReceiptResponse mapRowToResponse(Map<String, Object> row) {
-        try {
-            if (row == null || row.isEmpty()) {
-                return null;
-            }
-
-            // Map columns from AR_GEN_RECEIPT_HDR table structure
-            GeneralReceiptResponse response = GeneralReceiptResponse.builder()
-                    .receiptNo(getStringValue(row, "DOC_REF"))
-                    .transactionPoid(getLongValue(row, "TRANSACTION_POID"))
-                    .transactionDate(getLocalDateValue(row, "TRANSACTION_DATE"))
-                    .companyPoid(getLongValue(row, "COMPANY_POID"))
-                    .receiptAmount(getBigDecimalValue(row, "RCPT_AMOUNT"))
-                    .currencyCode(getStringValue(row, "CURRENCY_CODE"))
-                    .currencyRate(getBigDecimalValue(row, "CURRENCY_RATE"))
-                    .receivedFrom(getStringValue(row, "RCVD_FROM_DTL_PRINT"))
-                    .refType(getStringValue(row, "REF_TYPE"))
-                    .narration(getStringValue(row, "REMARKS"))
-                    .verified(getStringValue(row, "VERIFIED"))
-                    .multicompany(getStringValue(row, "MULTICOMPANY"))
-                    .createdBy(getStringValue(row, "CREATED_BY"))
-                    .createdDate(getLocalDateTimeValue(row, "CREATED_DATE"))
-                    .build();
-
-            return response;
-
-        } catch (Exception e) {
-            log.warn("Error mapping row to response: {}", e.getMessage());
-            return null;
-        }
-    }
-
-    /**
      * Helper methods to extract values from row Map
      */
     private String getStringValue(Map<String, Object> row, String columnName) {
@@ -521,8 +433,13 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
             throw new ValidationException("Cannot update receipt that has been verified/posted to GL");
         }
 
-        validateGeneralReceiptRequest(request);
+        final String approvalStatus = approvalService.getApprovalStatus(UserContext.getDocumentId(), header.getTransactionPoid());
 
+        if ("APPROVED".equals(approvalStatus)) {
+            throw new ValidationException("Cannot update receipt that has been approved");
+        }
+
+        validateGeneralReceiptRequest(request);
         String currentUser = getCurrentUser();
         LocalDateTime now = LocalDateTime.now();
         updateHeaderEntity(header, request.getHeader(), currentUser, now);
@@ -1293,7 +1210,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         }
 
         // Fetch approval status from GLOBAL_APPROVAL_STATUS table
-        String approvalStatus = fetchApprovalStatus(header.getTransactionPoid());
+        final String approvalStatus = approvalService.getApprovalStatus(UserContext.getDocumentId(), header.getTransactionPoid());
 
         // Fetch Credit GL details
         CreditGlDto creditGL = null;
@@ -1347,41 +1264,6 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                 .extraCharges(convertChargeDetailsToDto(header.getChargesDetails()))
                 .advances(convertAdvanceDetailsToDto(header.getAdvanceDetails()))
                 .build();
-    }
-
-    /**
-     * Fetch approval status from GLOBAL_APPROVAL_STATUS table
-     * Returns the latest ACTION_STATUS ordered by ACTIONED_DATETIME DESC
-     * @param transactionPoid Transaction POID
-     * @return Approval status string (ACTION_STATUS) or null if not found
-     */
-    private String fetchApprovalStatus(Long transactionPoid) {
-        try {
-            // Get the latest ACTION_STATUS for this document
-            // There can be multiple approval records (one per approval level)
-            // We get the most recent one based on ACTIONED_DATETIME
-            String sql = "SELECT ACTION_STATUS FROM GLOBAL_APPROVAL_STATUS " +
-                        "WHERE DOC_ID = :docId AND DOC_KEY_POID = :transactionPoid " +
-                        "AND (DELETED IS NULL OR DELETED = 'N') " +
-                        "ORDER BY ACTIONED_DATETIME DESC NULLS LAST, APPROVAL_POID DESC " +
-                        "FETCH FIRST 1 ROW ONLY";
-            
-            @SuppressWarnings("unchecked")
-            List<Object> results = entityManager.createNativeQuery(sql)
-                    .setParameter("docId", DOC_ID)
-                    .setParameter("transactionPoid", transactionPoid)
-                    .getResultList();
-            
-            if (results != null && !results.isEmpty()) {
-                Object result = results.get(0);
-                return result != null ? result.toString() : null;
-            }
-            return null;
-        } catch (Exception e) {
-            // If no approval status found or error, return null (not all receipts may have approval)
-            log.debug("No approval status found for receipt {}: {}", transactionPoid, e.getMessage());
-            return null;
-        }
     }
 
     private List<GeneralReceiptPaymentDto> convertPaymentDetailsToDto(List<ArGenReceiptPymtDetails> details) {

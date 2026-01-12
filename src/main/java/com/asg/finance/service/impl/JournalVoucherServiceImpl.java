@@ -336,6 +336,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                     }
                 }
                 case ACTION_ISCREATED -> {
+                   validateGLPoid(dto.getGlPoid());
                     Long detRowId = dto.getDetRowId() != null ? dto.getDetRowId() : getNextDetRowIdForGl(transactionPoid);
                     GlJournalVoucherDtl detail = GlJournalVoucherDtl.builder()
                             .transactionPoid(transactionPoid)
@@ -806,11 +807,13 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
             JournalVoucherDetailResponse.JournalVoucherDetailResponseBuilder response,
             Long transactionPoid) {
 
-        List<GlJournalVoucherDtl> dtls = glJournalVoucherDtlRepository.findAll(
-                (root, query, cb) -> cb.equal(root.get("transactionPoid"), transactionPoid));
+        List<GlJournalVoucherDtl> dtls = glJournalVoucherDtlRepository.findByTransactionPoid(transactionPoid);
+
+        GlVoucherCostCenterBreakupResponseDto costCenterResponse = loadAllCostCenterData(transactionPoid);
+        GlVoucherLoadBillwiseBreakupResponseDto billwiseResponse = loadAllBillwiseData(transactionPoid);
 
         List<JournalVoucherDetailResponse.GlDetailResponse> glDetails = dtls.stream()
-                .map(this::mapGeneralDetail)
+                .map(dtl -> mapGeneralDetailWithBreakups(dtl, costCenterResponse, billwiseResponse))
                 .collect(Collectors.toList());
 
         response.glDetails(glDetails);
@@ -818,7 +821,31 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         response.crTotal(sumAmounts(dtls, GlJournalVoucherDtl::getCrAmt));
     }
 
-    private JournalVoucherDetailResponse.GlDetailResponse mapGeneralDetail(GlJournalVoucherDtl dtl) {
+    private GlVoucherCostCenterBreakupResponseDto loadAllCostCenterData(Long transactionPoid) {
+        try {
+            return costCenterBreakupService.loadCostCenterData(
+                    "400-100", transactionPoid, getGroupId(), getCompanyId(), getUserPoid());
+        } catch (Exception e) {
+            log.warn("Failed to load cost center breakup for transaction: {}", transactionPoid, e);
+            return null;
+        }
+    }
+
+    private GlVoucherLoadBillwiseBreakupResponseDto loadAllBillwiseData(Long transactionPoid) {
+        try {
+            return billwiseBreakupService.loadBillwiseBreakup(
+                    getGroupId(), getCompanyId(), "400-100", transactionPoid);
+        } catch (Exception e) {
+            log.warn("Failed to load billwise breakup for transaction: {}", transactionPoid, e);
+            return null;
+        }
+    }
+
+    private JournalVoucherDetailResponse.GlDetailResponse mapGeneralDetailWithBreakups(
+            GlJournalVoucherDtl dtl, 
+            GlVoucherCostCenterBreakupResponseDto costCenterResponse,
+            GlVoucherLoadBillwiseBreakupResponseDto billwiseResponse) {
+        
         return JournalVoucherDetailResponse.GlDetailResponse.builder()
                 .sn(dtl.getDetRowId())
                 .type(dtl.getType())
@@ -829,60 +856,52 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                 .drAmt(dtl.getDrAmt())
                 .crAmt(dtl.getCrAmt())
                 .remarks(dtl.getRemarks())
-                .costCenterBreakup(loadCostCenterBreakup(dtl.getTransactionPoid(), dtl.getDetRowId()))
-                .billWiseBreakup(loadBillwiseBreakup(dtl.getTransactionPoid(), dtl.getDetRowId()))
+                .costCenterBreakup(filterCostCenterBreakup(costCenterResponse, dtl.getDetRowId()))
+                .billWiseBreakup(filterBillwiseBreakup(billwiseResponse, dtl.getDetRowId()))
                 .build();
     }
 
-    private List<CostCenterBreakupPopupRequestDto> loadCostCenterBreakup(Long transactionPoid, Long detRowId) {
-        try {
-            GlVoucherCostCenterBreakupResponseDto response = costCenterBreakupService.loadCostCenterData(
-                    "400-100", transactionPoid, getGroupId(), getCompanyId(), getUserPoid());
-            
-            if (response != null && response.getCostBreakupList() != null) {
-                return response.getCostBreakupList().stream()
-                        .filter(cc -> cc.getMainDetRowId().equals(detRowId))
-                        .map(cc -> {
-                            CostCenterBreakupPopupRequestDto dto = new CostCenterBreakupPopupRequestDto();
-                            dto.setCostDetRowId(cc.getCostDetRowId());
-                            dto.setCostGroup(cc.getCostGroup());
-                            dto.setCostPoid(cc.getCostPoid());
-                            dto.setAmount(BigDecimal.valueOf(cc.getAmount()));
-                            return dto;
-                        })
-                        .collect(Collectors.toList());
-            }
-        } catch (Exception e) {
-            log.warn("Failed to load cost center breakup for transaction: {}, detRowId: {}", transactionPoid, detRowId, e);
+    private List<CostCenterBreakupPopupRequestDto> filterCostCenterBreakup(
+            GlVoucherCostCenterBreakupResponseDto response, Long detRowId) {
+        
+        if (response == null || response.getCostBreakupList() == null) {
+            return List.of();
         }
-        return List.of();
+        
+        return response.getCostBreakupList().stream()
+                .filter(cc -> cc.getMainDetRowId().equals(detRowId))
+                .map(cc -> {
+                    CostCenterBreakupPopupRequestDto dto = new CostCenterBreakupPopupRequestDto();
+                    dto.setCostDetRowId(cc.getCostDetRowId());
+                    dto.setCostGroup(cc.getCostGroup());
+                    dto.setCostPoid(cc.getCostPoid());
+                    dto.setAmount(BigDecimal.valueOf(cc.getAmount()));
+                    return dto;
+                })
+                .collect(Collectors.toList());
     }
 
-    private List<BillwiseBreakupPopupRequestDto> loadBillwiseBreakup(Long transactionPoid, Long detRowId) {
-        try {
-            GlVoucherLoadBillwiseBreakupResponseDto response = billwiseBreakupService.loadBillwiseBreakup(
-                    getGroupId(), getCompanyId(), "400-100", transactionPoid);
-            
-            if (response != null && response.getLoadBillwiseBreakupResponseDtoList() != null) {
-                return response.getLoadBillwiseBreakupResponseDtoList().stream()
-                        .filter(bw -> bw.getMainDetRowId().equals(detRowId))
-                        .map(bw -> {
-                            BillwiseBreakupPopupRequestDto dto = new BillwiseBreakupPopupRequestDto();
-                            dto.setBillDetRowId(bw.getBillDetRowId());
-                            dto.setBillRefType(bw.getBillRefType());
-                            dto.setBillRef(bw.getBillRef());
-                            dto.setBillDueDate(bw.getBillDueDate());
-                            dto.setAmount(bw.getDrAmt() != null ? bw.getDrAmt() : bw.getCrAmt());
-                            dto.setType(bw.getDrAmt() != null && bw.getDrAmt().compareTo(BigDecimal.ZERO) > 0 ? "Dr" : "Cr");
-                            dto.setBillRemarks(bw.getBillRemarks());
-                            return dto;
-                        })
-                        .collect(Collectors.toList());
-            }
-        } catch (Exception e) {
-            log.warn("Failed to load billwise breakup for transaction: {}, detRowId: {}", transactionPoid, detRowId, e);
+    private List<BillwiseBreakupPopupRequestDto> filterBillwiseBreakup(
+            GlVoucherLoadBillwiseBreakupResponseDto response, Long detRowId) {
+        
+        if (response == null || response.getLoadBillwiseBreakupResponseDtoList() == null) {
+            return List.of();
         }
-        return List.of();
+        
+        return response.getLoadBillwiseBreakupResponseDtoList().stream()
+                .filter(bw -> bw.getMainDetRowId().equals(detRowId))
+                .map(bw -> {
+                    BillwiseBreakupPopupRequestDto dto = new BillwiseBreakupPopupRequestDto();
+                    dto.setBillDetRowId(bw.getBillDetRowId());
+                    dto.setBillRefType(bw.getBillRefType());
+                    dto.setBillRef(bw.getBillRef());
+                    dto.setBillDueDate(bw.getBillDueDate());
+                    dto.setAmount(bw.getDrAmt() != null ? bw.getDrAmt() : bw.getCrAmt());
+                    dto.setType(bw.getDrAmt() != null && bw.getDrAmt().compareTo(BigDecimal.ZERO) > 0 ? "Dr" : "Cr");
+                    dto.setBillRemarks(bw.getBillRemarks());
+                    return dto;
+                })
+                .collect(Collectors.toList());
     }
 
 
@@ -966,5 +985,10 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         return printService.fillReportToPdf(mainReport, params, dataSource);
     }
 
+    private void validateGLPoid(Long glPoid){
+        if (!glMasterRepository.existsByGlPoid(glPoid)) {
+            throw new ResourceNotFoundException("Gl Master", "glPoid", glPoid);
+        }
+    }
 
 }

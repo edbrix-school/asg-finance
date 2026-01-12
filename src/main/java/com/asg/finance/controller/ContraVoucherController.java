@@ -301,7 +301,6 @@ public class ContraVoucherController {
                 creditGlId, UserContext.getGroupPoid());
         
         String result = contraVoucherService.checkGlNature(creditGlId);
-        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), creditGlId.toString());
         log.info("checkGlNature completed for creditGlId={}", creditGlId);
         
         return success("GL nature checked successfully", result);

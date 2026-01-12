@@ -330,7 +330,6 @@ public class BankDebitVoucherController {
             @Parameter(description = "FF reference POID", required = true)
             @RequestParam @NotNull @Min(1) Long ffRefPoid) {
         Object response = bankDebitVoucherService.loadFFCharges(ffRefPoid);
-        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), ffRefPoid.toString());
         return success("FF charges retrieved successfully", response);
     }
 
@@ -341,7 +340,6 @@ public class BankDebitVoucherController {
             @Parameter(description = "FDA reference POID", required = true)
             @RequestParam @NotNull @Min(1) Long fdaRefPoid) {
         Object response = bankDebitVoucherService.loadFDACharges(fdaRefPoid);
-        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), fdaRefPoid.toString());
         return success("FDA charges retrieved successfully", response);
     }
 
@@ -354,7 +352,6 @@ public class BankDebitVoucherController {
             @Parameter(description = "Document Date", required = true)
             @RequestParam @NotNull Date docDate) {
         Object response = bankDebitVoucherService.getBankBalance(bankPoid, UserContext.getDocumentId(), docDate);
-        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), bankPoid.toString());
         return success("Bank balance retrieved successfully", response);
     }
 
@@ -365,7 +362,6 @@ public class BankDebitVoucherController {
             @Parameter(description = "Beneficiary Id", required = true)
             @RequestParam @NotNull @Min(1) Long beneficiaryId) {
         Object response = bankDebitVoucherService.getBeneficiaryName(beneficiaryId, UserContext.getDocumentId());
-        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), beneficiaryId.toString());
         return success("Beneficiary name retrieved successfully", response);
     }
 

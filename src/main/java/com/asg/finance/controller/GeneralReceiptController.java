@@ -256,7 +256,6 @@ public class GeneralReceiptController {
             @PathVariable String docRef) {
         try {
             GeneralReceiptResponse response = generalReceiptService.getGeneralReceiptByDocRef(docRef);
-            loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), docRef);
             return success("General Receipt fetched successfully", response);
         } catch (ResourceNotFoundException ex) {
             return notFound(ex.getMessage());
@@ -417,7 +416,6 @@ public class GeneralReceiptController {
             @RequestParam(required = false) java.time.LocalDate asOnDate) {
         try {
             Map<String, Object> result = generalReceiptService.getPendingBills(glPoid, asOnDate);
-            loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), glPoid.toString());
             return success("Pending bills fetched successfully", result);
         } catch (Exception ex) {
             return internalServerError("Failed to fetch pending bills: " + ex.getMessage());
@@ -435,7 +433,6 @@ public class GeneralReceiptController {
             @RequestParam String chargeType) {
         try {
             String glPoid = generalReceiptService.getChargeGLAccount(chargeType);
-        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), glPoid);
             return success("Charge GL account fetched successfully", glPoid);
         } catch (Exception ex) {
             return internalServerError("Failed to fetch charge GL account: " + ex.getMessage());

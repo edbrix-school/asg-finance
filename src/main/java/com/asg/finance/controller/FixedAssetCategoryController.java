@@ -3,6 +3,8 @@ package com.asg.finance.controller;
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.LoggingService;
 
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.FixedAssetCategoryRequestDto;
@@ -37,6 +39,9 @@ public class FixedAssetCategoryController {
 
     @Autowired
     private FixedAssetCategoryService fixedAssetCategoryService;
+    
+    @Autowired
+    private LoggingService loggingService;
 
     @Operation(
             summary = "Create a new Fixed Asset Category",
@@ -186,8 +191,8 @@ public class FixedAssetCategoryController {
             @Parameter(description = "faCategoryPoid reference identifier", required = true)
             @PathVariable Long faCategoryPoid
     ) {
-
         FixedAssetCategoryResponseDto responseDto = fixedAssetCategoryService.getFixedAssetCategory(faCategoryPoid);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), faCategoryPoid.toString());
         return success("Fixed Asset Category fetched successfully", responseDto);
     }
 
@@ -307,6 +312,7 @@ public class FixedAssetCategoryController {
                                                      @RequestBody(required = false) FilterRequestDto filters) {
         try {
             Map<String, Object> data = fixedAssetCategoryService.listFixedAssetCategories(UserContext.getDocumentId(), filters, pageable);
+
             return success("Fixed Asset Categories fetched successfully", data);
         } catch (Exception ex) {
             return internalServerError("Unable to fetch Fixed Asset Category list: " + ex.getMessage());

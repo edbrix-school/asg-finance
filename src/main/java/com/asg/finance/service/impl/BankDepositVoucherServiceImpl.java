@@ -11,6 +11,8 @@ import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.common.lib.service.LovDataService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.dto.BankDepositVoucherDtlDto;
 import com.asg.finance.dto.BankDepositVoucherRequestDto;
@@ -25,6 +27,7 @@ import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import net.sf.jasperreports.engine.JasperReport;
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -50,6 +53,7 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
     private final PrintService printService;
     private final DataSource dataSource;
     private final LovDataService lovService;
+    private final LoggingService loggingService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -58,6 +62,15 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
     public BankDepositVoucherResponseDto createBankDepositVoucher(BankDepositVoucherRequestDto request) {
         Long transactionPoid = createHeaderAndDetails(request);
         callUpdatePaymentProcedure(transactionPoid, request.getGroupPoid(), request.getCompanyPoid(), request.getType());
+        
+        // Get the saved entity for logging
+        GlBankDepositVoucherHdr savedEntity = hdrRepository.findByTransactionPoid(transactionPoid)
+                .orElseThrow(() -> new ResourceNotFoundException("Bank Deposit Voucher", "transactionPoid", transactionPoid));
+        
+        // Log the creation
+        String key = transactionPoid.toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), key);
+        
         return getBankDepositVoucherById(transactionPoid);
     }
 
@@ -116,6 +129,10 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
         GlBankDepositVoucherHdr hdr = hdrRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Bank Deposit Voucher", "transactionPoid", transactionPoid));
 
+        // Create a copy of the existing entity for logging
+        GlBankDepositVoucherHdr oldEntity = new GlBankDepositVoucherHdr();
+        BeanUtils.copyProperties(hdr, oldEntity);
+
         List<GlBankDepositVoucherDtl> existingDetails = dtlRepository.findByTransactionPoid(transactionPoid);
         for (GlBankDepositVoucherDtl detail : existingDetails) {
             hdrRepository.callChequeStatusValidation(detail.getRefDocRef(), detail.getRefDocPoid());
@@ -150,6 +167,10 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
         }
         callMarkPaymentsCompleted(transactionPoid, hdr.getGroupPoid(), hdr.getCompanyPoid(), request.getType());
 
+        // Log the update
+        String key = transactionPoid.toString();
+        loggingService.logChanges(oldEntity, hdr, GlBankDepositVoucherHdr.class, 
+                UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
         return getBankDepositVoucherById(transactionPoid);
     }
 

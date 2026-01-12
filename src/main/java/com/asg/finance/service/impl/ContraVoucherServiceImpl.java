@@ -9,6 +9,8 @@ import com.asg.common.lib.entity.Company;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.finance.entity.GLMaster;
 import com.asg.finance.repository.GLMasterRepository;
 import com.asg.common.lib.service.DocumentSearchService;
@@ -30,6 +32,7 @@ import com.asg.finance.service.ContraVoucherService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -61,6 +64,7 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
     private final DocumentDeleteService documentDeleteService;
     private final LovDataService lovService;
     private final PrintService printService;
+    private final LoggingService loggingService;
 
     @Override
     public Map<String, Object> listContraVouchers(String docId, FilterRequestDto request, Pageable pageable, LocalDate periodFrom, LocalDate periodTo) {
@@ -225,6 +229,10 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
 
         GlContraVoucherHdr savedHeader = hdrRepository.save(header);
 
+        // Log the creation
+        String key = savedHeader.getTransactionPoid().toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, "400-103", key);
+
         // Process details from request
         if (request.getDetails() != null && !request.getDetails().isEmpty()) {
             Long nextDetRowId = 1L;
@@ -263,6 +271,10 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
         GlContraVoucherHdr header = hdrRepository.findByTransactionPoid(request.getTransactionPoid())
                 .orElseThrow(() -> new RuntimeException("Contra voucher not found with transactionPoid: " + request.getTransactionPoid()));
 
+        // Create a copy of the existing entity for logging
+        GlContraVoucherHdr oldEntity = new GlContraVoucherHdr();
+        BeanUtils.copyProperties(header, oldEntity);
+
         header.setCreditGl(request.getCreditGl());
         header.setDebitGl(request.getDebitGl());
         header.setCurrencyCode(request.getCurrencyCode());
@@ -288,6 +300,11 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
         header.setCrTotal(request.getCrTotal());
 
         GlContraVoucherHdr savedHeader = hdrRepository.save(header);
+
+        // Log the update
+        String key = savedHeader.getTransactionPoid().toString();
+        loggingService.logChanges(oldEntity, savedHeader, GlContraVoucherHdr.class, 
+                UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
         // Process details based on actionType
         if (request.getDetails() != null && !request.getDetails().isEmpty()) {

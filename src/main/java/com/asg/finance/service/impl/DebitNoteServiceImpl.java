@@ -2,9 +2,11 @@ package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.*;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.common.lib.utility.ASGHelperUtils;
@@ -69,6 +71,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
     private final PrintService printService;
     private final DataSource dataSource;
     private final DocumentDeleteService documentDeleteService;
+    private final LoggingService loggingService;
 
     @Value("${app.doc-id.debit-note:300-110}")
     private String debitNoteDocId;
@@ -99,6 +102,9 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         // Load breakups into response
         loadBreakups(result, savedEntity.getTransactionPoid());
 
+        // Log the creation
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), savedEntity.getTransactionPoid().toString());
+
         return result;
     }
 
@@ -107,6 +113,10 @@ public class DebitNoteServiceImpl implements DebitNoteService {
     public DebitNoteHeaderDto updateDebitNote(Long transactionPoid, DebitNoteHeaderDto debitNoteDto) {
         ArDebitNoteHdr existingEntity = debitNoteHdrRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("DebitNote", "transactionPoid", transactionPoid));
+
+        // Create a copy of the old entity for logging
+        ArDebitNoteHdr oldEntity = new ArDebitNoteHdr();
+        BeanUtils.copyProperties(existingEntity, oldEntity);
 
         validateDebitNoteInput(debitNoteDto);
         // Validate using stored procedure for Edit
@@ -142,6 +152,9 @@ public class DebitNoteServiceImpl implements DebitNoteService {
 
         // Load breakups into response
        // loadBreakups(result, transactionPoid);
+
+        // Log the update
+        loggingService.logChanges(oldEntity, existingEntity, ArDebitNoteHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
         return result;
     }

@@ -5,6 +5,8 @@ import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.finance.client.RoleServiceClient;
 import com.asg.finance.entity.GLMaster;
 import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.utility.ASGHelperUtils;
 import com.asg.finance.dto.PettyCashUserRoleRequestDto;
@@ -17,6 +19,7 @@ import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.PettyCashUserRoleService;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -38,11 +41,17 @@ public class PettyCashUserRoleServiceImpl implements PettyCashUserRoleService {
     private final RoleServiceClient roleServiceClient;
     private final GLMasterRepository glMasterRepository;
     private final DocumentSearchService documentService;
+    private final LoggingService loggingService;
     private final DocumentDeleteService documentDeleteService;
 
     public PettyCashUserroleResponseDto createPettyCashUserRole(PettyCashUserRoleRequestDto request) {
         PettyCashUserroleMaster entity = covertFromGlPettyDtoToGlPettyEntity(request);
         PettyCashUserroleMaster pettyCashUserroleMaster = repository.save(entity);
+        
+        // Log the creation
+        String key = pettyCashUserroleMaster.getRefTypePoid().toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), key);
+        
         return covertFromGlPettyEntityToGlPettyDto(pettyCashUserroleMaster);
     }
 
@@ -130,6 +139,10 @@ public class PettyCashUserRoleServiceImpl implements PettyCashUserRoleService {
         PettyCashUserroleMaster existingEntity = repository.findById(refTypePoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Petty cash user role not found with ID: ", "refTypePoid",refTypePoid));
 
+        // Create a copy of the existing entity for logging
+        PettyCashUserroleMaster oldEntity = new PettyCashUserroleMaster();
+        BeanUtils.copyProperties(existingEntity, oldEntity);
+
         existingEntity.setRefType(requestDto.getRefType());
         existingEntity.setDescription(requestDto.getDescription());
         existingEntity.setUserRolePoid(ASGHelperUtils.convertListToString(requestDto.getUserRolePoid()));
@@ -140,6 +153,12 @@ public class PettyCashUserRoleServiceImpl implements PettyCashUserRoleService {
         existingEntity.setLastModifiedBy(getCurrentUser());
         existingEntity.setLastModifiedDate(LocalDateTime.now());
         PettyCashUserroleMaster updatedEntity = repository.save(existingEntity);
+        
+        // Log the update
+        String key = updatedEntity.getRefTypePoid().toString();
+        loggingService.logChanges(oldEntity, updatedEntity, PettyCashUserroleMaster.class, 
+                UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "REF_TYPE_POID");
+        
         return covertFromGlPettyEntityToGlPettyDto(updatedEntity);
     }
 

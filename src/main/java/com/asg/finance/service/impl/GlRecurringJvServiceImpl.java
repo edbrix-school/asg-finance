@@ -9,6 +9,8 @@ import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.PrintService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.finance.repository.GLMasterRepository;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
@@ -28,6 +30,7 @@ import com.asg.finance.service.GlRecurringJvService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -65,6 +68,7 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
     private final LovDataService lovService;
     private final PrintService printService;
     private final DataSource dataSource;
+    private final LoggingService loggingService;
     private final DocumentDeleteService documentDeleteService;
 
     @Override
@@ -306,6 +310,10 @@ GlRecurringJvHdr header = GlRecurringJvHdr.builder()
         Long transactionPoid = header.getTransactionPoid();
         saveDetails(transactionPoid, request.getDetails(),header,docId);
         
+        // Log the creation
+        String key = transactionPoid.toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, key);
+        
         return new RecurringJvCreateResponse(transactionPoid, "Recurring JV created successfully");
     }
     
@@ -435,6 +443,10 @@ GlRecurringJvHdr header = GlRecurringJvHdr.builder()
         GlRecurringJvHdr header = hdrRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Recurring JV", "transactionPoid", transactionPoid));
         
+        // Create a copy of the existing entity for logging
+        GlRecurringJvHdr oldEntity = new GlRecurringJvHdr();
+        BeanUtils.copyProperties(header, oldEntity);
+
         Long createdScheduleCount = monthDtlRepository.countCreatedSchedulesByTransactionPoid(transactionPoid);
         if (createdScheduleCount > 0) {
             throw new IllegalStateException("Cannot update recurring JV with created JVs in schedule");
@@ -463,6 +475,11 @@ GlRecurringJvHdr header = GlRecurringJvHdr.builder()
         
         dtlRepository.deleteByTransactionPoid(transactionPoid);
         saveDetails(transactionPoid, request.getDetails(), header,docId);
+        
+        // Log the update
+        String key = transactionPoid.toString();
+        loggingService.logChanges(oldEntity, header, GlRecurringJvHdr.class, 
+                docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
         
         return new RecurringJvCreateResponse(transactionPoid, "Recurring JV updated successfully");
     }

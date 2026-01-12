@@ -9,6 +9,8 @@ import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.LoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.ShowPendingBillwiseBreakupResponseDto;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.finance.entity.GLMaster;
@@ -78,6 +80,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
     private final PrintService printService;
     private final DataSource dataSource;
+    private final LoggingService loggingService;
 
     @Override
     @Transactional
@@ -304,6 +307,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                 }
             }
 
+            // Logging for create operation
+            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), savedHeader.getTransactionPoid().toString());
             return mapToResponseDto(savedHeader, paymentDtls, chargeDtls, itemDtls);
 
         } catch (Exception e) {
@@ -753,6 +758,10 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             GlPettyCashPaymentHdr existingHdr = glPettyCashPaymentHdrRepository.findByTransactionPoid(transactionPoid)
                     .orElseThrow(() -> new RuntimeException("Petty cash not found with ID: " + transactionPoid));
 
+            // Create copy of old entity for logging
+            GlPettyCashPaymentHdr oldEntity = new GlPettyCashPaymentHdr();
+            BeanUtils.copyProperties(existingHdr, oldEntity);
+
             StringBuilder oldRefType = new StringBuilder();
             StringBuilder oldRefPoid = new StringBuilder();
             Long userGroupPoid = UserContext.getGroupPoid();
@@ -1002,6 +1011,10 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             }
 
             //  Step 8: Return the final response DTO
+            
+            // Logging for update operation
+            loggingService.logChanges(oldEntity, updatedHdr, GlPettyCashPaymentHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+            
             return mapToResponseDto(updatedHdr, paymentDtls, chargeDtls, itemDtls);
 
         } catch (Exception e) {

@@ -5,8 +5,10 @@ import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.exception.ResourceNotFoundException;
-import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.DocumentDeleteService;
+import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.finance.dto.*;
 import com.asg.finance.entity.PdcBatchExcelUploadTemp;
 import com.asg.finance.entity.PdcChqBatchDtlEntity;
@@ -24,6 +26,7 @@ import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -46,6 +49,7 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
     private final DocumentDeleteService documentDeleteService;
     private final PdcBatchCreationRepository pdcBatchCreationRepository;
     private final PdcBatchExcelUploadTempRepository tempRepo;
+    private final LoggingService loggingService;
 
     @Transactional
     public PdcChqBatchHdrResponseDto createBatch(PdcChqBatchHdrRequestDto dto) {
@@ -60,6 +64,10 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
         List<PdcChqBatchDtlResponseDto> dtlResponses =
                 saveDetailRows(dto.getChequeDetails(), transactionPoid);
 
+        // Log the creation
+        String key = transactionPoid.toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, "400-113", key);
+
         return mapHeaderEntityToResponseDto(hdr, dtlResponses);
     }
 
@@ -71,6 +79,10 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
 
         PdcChqBatchHdrEntity hdr = hdrRepo.findById(transactionPoid)
                 .orElseThrow(() -> new RuntimeException("PDC Batch not found: " + transactionPoid));
+
+        // Create a copy of the existing entity for logging
+        PdcChqBatchHdrEntity oldEntity = new PdcChqBatchHdrEntity();
+        BeanUtils.copyProperties(hdr, oldEntity);
 
         hdr.setTransactionDate(dto.getTransactionDate());
         hdr.setGroupPoid(dto.getGroupPoid());
@@ -99,6 +111,11 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
         dtlRepo.deleteByTransactionPoid(transactionPoid);
         List<PdcChqBatchDtlResponseDto> dtls =
                 saveDetailRows(dto.getChequeDetails(), transactionPoid);
+
+        // Log the update
+        String key = transactionPoid.toString();
+        loggingService.logChanges(oldEntity, hdr, PdcChqBatchHdrEntity.class, 
+                "400-113", key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
         return mapHeaderEntityToResponseDto(hdr, dtls);
     }

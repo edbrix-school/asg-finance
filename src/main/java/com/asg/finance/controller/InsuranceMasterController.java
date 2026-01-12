@@ -3,6 +3,8 @@ package com.asg.finance.controller;
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.LoggingService;
 
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.security.util.UserContext;
@@ -37,6 +39,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.success;
 public class InsuranceMasterController {
 
     private final InsuranceMasterService insuranceMasterService;
+    private final LoggingService loggingService;
 
     @Operation(
             summary = "Create a new Insurance Master",
@@ -153,6 +156,7 @@ public class InsuranceMasterController {
             @PathVariable Long insuranceId) {
 
         InsuranceMasterResponseDto responseDto = insuranceMasterService.getInsuranceMasterById(insuranceId);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), insuranceId.toString());
         return success("Insurance Master fetched successfully", responseDto);
     }
 
@@ -281,6 +285,7 @@ public class InsuranceMasterController {
             java.time.LocalDate startDateValue = startDate != null ? java.time.LocalDate.parse(startDate) : null;
             java.time.LocalDate endDateValue = endDate != null ? java.time.LocalDate.parse(endDate) : null;
             Map<String, Object> data = insuranceMasterService.listInsuranceMasters(UserContext.getDocumentId(), filters, startDateValue, endDateValue, pageable);
+
             return success("Insurance Masters fetched successfully", data);
         } catch (Exception ex) {
             return internalServerError("Unable to fetch Insurance Master list: " + ex.getMessage());

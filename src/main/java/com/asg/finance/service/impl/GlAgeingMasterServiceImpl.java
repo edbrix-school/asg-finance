@@ -4,10 +4,12 @@ import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.finance.dto.GlAgeingMasterDtlDto;
 import com.asg.finance.dto.GlAgeingMasterDto;
 import com.asg.finance.dto.GlAgeingMasterResponseDto;
@@ -42,6 +44,7 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
 
     private final GlAgeingMasterRepository ageingMasterRepository;
     private final GlAgeingMasterDtlRepository ageingMasterDtlRepository;
+    private final LoggingService loggingService;
 
 
     @Autowired
@@ -73,6 +76,9 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
 
         // Save detail records
         saveAgeingDetails(ageingMasterDto.getAgeingDetails(), masterEntity);
+
+        // Log the creation
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), masterEntity.getAgeingPoid().toString());
 
         return GlAgeingMasterResponseDto.builder()
                 .status("success")
@@ -110,6 +116,10 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
             throw new ResourceNotFoundException("Ageing Master", "ageingPoid", ageingPoid);
         }
 
+        // Create a copy of the old entity for logging
+        GlAgeingMasterEntity oldEntity = new GlAgeingMasterEntity();
+        BeanUtils.copyProperties(existingEntity, oldEntity);
+
         // Validate unique description (excluding current record)
         if (ageingMasterRepository.existsByDescriptionAndAgeingPoidNot(
                 ageingMasterDto.getDescription(), ageingPoid)) {
@@ -128,6 +138,9 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
         // Update detail records (use entity relationship)
         //updateAgeingDetails(ageingMasterDto.getAgeingDetails(), existingEntity);
         updateAgeingMastersChildDetails(ageingMasterDto.getAgeingDetails(), ageingPoid);
+
+        // Log the update
+        loggingService.logChanges(oldEntity, existingEntity, GlAgeingMasterEntity.class, UserContext.getDocumentId(), ageingPoid.toString(), LogDetailsEnum.MODIFIED, "AGEING_POID");
 
         return fetchAgeingMaster(ageingPoid);
     }

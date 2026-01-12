@@ -80,25 +80,8 @@ public class TaxMasterServiceImpl implements TaxMasterService {
                 .orElseThrow(() -> new ValidationException("Tax Master not found with id: " + taxPoid));
 
         // Create a copy of the existing entity for logging
-        TaxMaster oldEntity = TaxMaster.builder()
-                .taxPoid(existing.getTaxPoid())
-                .taxCode(existing.getTaxCode())
-                .taxName(existing.getTaxName())
-                .taxName2(existing.getTaxName2())
-                .percentage(existing.getPercentage())
-                .taxType(existing.getTaxType())
-                .glType(existing.getGlType())
-                .glLedgerPoid(existing.getGlLedgerPoid())
-                .taxCategory(existing.getTaxCategory())
-                .active(existing.getActive())
-                .seqNo(existing.getSeqNo())
-                .createdBy(existing.getCreatedBy())
-                .createdDate(existing.getCreatedDate())
-                .lastModifiedBy(existing.getLastModifiedBy())
-                .lastModifiedDate(existing.getLastModifiedDate())
-                .deleted(existing.getDeleted())
-                .groupPoid(existing.getGroupPoid())
-                .build();
+        TaxMaster oldEntity = new TaxMaster();
+        BeanUtils.copyProperties(existing, oldEntity);
 
         if (!existing.getTaxCode().equals(request.getTaxCode()) &&
                 repository.existsByTaxCodeAndTaxPoidNot(request.getTaxCode(),taxPoid )) {

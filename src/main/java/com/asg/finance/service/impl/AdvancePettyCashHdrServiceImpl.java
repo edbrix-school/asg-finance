@@ -27,6 +27,7 @@ import com.asg.finance.entity.AdvancePettyCashDtl;
 
 import com.asg.finance.service.AdvancePettyCashHdrService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -84,30 +85,8 @@ public class AdvancePettyCashHdrServiceImpl implements AdvancePettyCashHdrServic
         validateTransactionDate(request.getTransactionDate());
         validateClosedStatus(request.getStatus(), request.getClosedReason());
 
-        // Create a copy of the existing entity for logging
-        AdvancePettyCashHdr oldEntity = AdvancePettyCashHdr.builder()
-                .transactionPoid(existing.getTransactionPoid())
-                .transactionDate(existing.getTransactionDate())
-                .groupPoid(existing.getGroupPoid())
-                .companyPoid(existing.getCompanyPoid())
-                .docRef(existing.getDocRef())
-                .currencyCode(existing.getCurrencyCode())
-                .currencyRate(existing.getCurrencyRate())
-                .pettyCashGlPoid(existing.getPettyCashGlPoid())
-                .payingTo(existing.getPayingTo())
-                .iouAmount(existing.getIouAmount())
-                .settledAmount(existing.getSettledAmount())
-                .balanceAmount(existing.getBalanceAmount())
-                .narration(existing.getNarration())
-                .status(existing.getStatus())
-                .closedReason(existing.getClosedReason())
-                .remarks(existing.getRemarks())
-                .deleted(existing.getDeleted())
-                .createdBy(existing.getCreatedBy())
-                .createdDate(existing.getCreatedDate())
-                .lastModifiedBy(existing.getLastModifiedBy())
-                .lastModifiedDate(existing.getLastModifiedDate())
-                .build();
+        AdvancePettyCashHdr oldEntity = new AdvancePettyCashHdr();
+        BeanUtils.copyProperties(existing, oldEntity);
 
         existing.setTransactionDate(request.getTransactionDate());
         existing.setPettyCashGlPoid(request.getPettyCashGlPoid());

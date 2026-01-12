@@ -197,20 +197,8 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
         Timestamp now = new Timestamp(System.currentTimeMillis());
 
         // Create copy of old entity for logging
-        GlFavAcMaster oldEntity = GlFavAcMaster.builder()
-                .favAcPoid(existing.getFavAcPoid())
-                .groupPoid(existing.getGroupPoid())
-                .favAcCode(existing.getFavAcCode())
-                .description(existing.getDescription())
-                .description2(existing.getDescription2())
-                .active(existing.getActive())
-                .seqNo(existing.getSeqNo())
-                .createdBy(existing.getCreatedBy())
-                .createdDate(existing.getCreatedDate())
-                .lastModifiedBy(existing.getLastModifiedBy())
-                .lastModifiedDate(existing.getLastModifiedDate())
-                .deleted(existing.getDeleted())
-                .build();
+        GlFavAcMaster oldEntity = new GlFavAcMaster();
+        BeanUtils.copyProperties(existing, oldEntity);
 
         // Update master record
         existing.setFavAcCode(request.getFavAcCode());

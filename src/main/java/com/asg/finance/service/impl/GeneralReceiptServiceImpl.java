@@ -25,6 +25,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.BeanUtils;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -513,25 +514,8 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                 .orElseThrow(() -> new ResourceNotFoundException("General Receipt", "transactionPoid", transactionPoid));
 
         // Create a copy of the old entity for logging
-        ArGenReceiptHdr oldEntity = ArGenReceiptHdr.builder()
-                .transactionPoid(header.getTransactionPoid())
-                .transactionDate(header.getTransactionDate())
-                .docRef(header.getDocRef())
-                .groupPoid(header.getGroupPoid())
-                .companyPoid(header.getCompanyPoid())
-                .rcvdOthPoid(header.getRcvdOthPoid())
-                .rcptAmount(header.getRcptAmount())
-                .remarks(header.getRemarks())
-                .rcvdFromDtlPrint(header.getRcvdFromDtlPrint())
-                .refType(header.getRefType())
-                .currencyCode(header.getCurrencyCode())
-                .currencyRate(header.getCurrencyRate())
-                .multicompany(header.getMulticompany())
-                .ttBankPoid(header.getTtBankPoid())
-                .costCenterPoid(header.getCostCenterPoid())
-                .verified(header.getVerified())
-                .deleted(header.getDeleted())
-                .build();
+        ArGenReceiptHdr oldEntity = new ArGenReceiptHdr();
+        BeanUtils.copyProperties(header, oldEntity);
 
         if ("Y".equals(header.getVerified())) {
             throw new ValidationException("Cannot update receipt that has been verified/posted to GL");

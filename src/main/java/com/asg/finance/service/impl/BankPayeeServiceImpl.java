@@ -18,6 +18,7 @@ import com.asg.finance.entity.BankPayee;
 import com.asg.finance.repository.BankPayeeRepository;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.IBankPayeeService;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import org.springframework.data.domain.Page;
@@ -114,18 +115,7 @@ public class BankPayeeServiceImpl implements IBankPayeeService {
 
         // Create a copy of the existing entity for logging
         BankPayee oldEntity = new BankPayee();
-        oldEntity.setPayingPoid(entity.getPayingPoid());
-        oldEntity.setPayingName(entity.getPayingName());
-        oldEntity.setPayingName2(entity.getPayingName2());
-        oldEntity.setPayGlPoid(entity.getPayGlPoid());
-        oldEntity.setRemarks(entity.getRemarks());
-        oldEntity.setActive(entity.getActive());
-        oldEntity.setDeleted(entity.getDeleted());
-        oldEntity.setSeqNo(entity.getSeqNo());
-        oldEntity.setCreatedBy(entity.getCreatedBy());
-        oldEntity.setCreatedDate(entity.getCreatedDate());
-        oldEntity.setLastModifiedBy(entity.getLastModifiedBy());
-        oldEntity.setLastModifiedDate(entity.getLastModifiedDate());
+        BeanUtils.copyProperties(entity, oldEntity);
 
         if (request.getPayingName() != null &&
                 !request.getPayingName().equalsIgnoreCase(entity.getPayingName())) {

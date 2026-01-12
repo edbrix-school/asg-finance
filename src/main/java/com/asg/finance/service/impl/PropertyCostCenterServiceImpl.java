@@ -20,6 +20,7 @@ import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.security.util.UserContext;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -163,22 +164,7 @@ public class PropertyCostCenterServiceImpl implements IPropertyCostCenterService
 
         // Create a copy of the existing entity for logging
         PropertyCostCenter oldEntity = new PropertyCostCenter();
-        oldEntity.setPropertyCostCenterPoid(entity.getPropertyCostCenterPoid());
-        oldEntity.setPropertyCostCenterCode(entity.getPropertyCostCenterCode());
-        oldEntity.setPropertyCostCenterName(entity.getPropertyCostCenterName());
-        oldEntity.setPropertyType(entity.getPropertyType());
-        oldEntity.setPropertyDescription(entity.getPropertyDescription());
-        oldEntity.setCostCenterPoid(entity.getCostCenterPoid());
-        oldEntity.setCompanyPoid(entity.getCompanyPoid());
-        oldEntity.setParentPropertyPoid(entity.getParentPropertyPoid());
-        oldEntity.setRemarks(entity.getRemarks());
-        oldEntity.setSeqNo(entity.getSeqNo());
-        oldEntity.setActive(entity.getActive());
-        oldEntity.setDeleted(entity.getDeleted());
-        oldEntity.setCreatedBy(entity.getCreatedBy());
-        oldEntity.setCreatedDate(entity.getCreatedDate());
-        oldEntity.setLastModifiedBy(entity.getLastModifiedBy());
-        oldEntity.setLastModifiedDate(entity.getLastModifiedDate());
+        BeanUtils.copyProperties(entity, oldEntity);
 
         validatePropertyType(request);
 

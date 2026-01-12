@@ -27,6 +27,7 @@ import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -118,21 +119,7 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
                     .orElseThrow(() -> new ResourceNotFoundException("Telex File", "transactionPoid", transactionPoid));
             
             GlBankFileHdr oldHdr = new GlBankFileHdr();
-            oldHdr.setTransactionPoid(hdr.getTransactionPoid());
-            oldHdr.setTransactionDate(hdr.getTransactionDate());
-            oldHdr.setBankPoid(hdr.getBankPoid());
-            oldHdr.setBankList(hdr.getBankList());
-            oldHdr.setLongNarration(hdr.getLongNarration());
-            oldHdr.setOnlyApproval(hdr.getOnlyApproval());
-            oldHdr.setTtSuppressBalanceCheck(hdr.getTtSuppressBalanceCheck());
-            oldHdr.setGroupPoid(hdr.getGroupPoid());
-            oldHdr.setCompanyPoid(hdr.getCompanyPoid());
-            oldHdr.setCreatedBy(hdr.getCreatedBy());
-            oldHdr.setCreatedDate(hdr.getCreatedDate());
-            oldHdr.setLastModifiedBy(hdr.getLastModifiedBy());
-            oldHdr.setLastModifiedDate(hdr.getLastModifiedDate());
-            oldHdr.setDeleted(hdr.getDeleted());
-
+            BeanUtils.copyProperties(hdr, oldHdr);
             hdr.setTransactionDate(request.getTransactionDate());
             hdr.setBankPoid(request.getBankPoid());
             hdr.setBankList(request.getBankList() != null ? request.getBankList() : "Y");

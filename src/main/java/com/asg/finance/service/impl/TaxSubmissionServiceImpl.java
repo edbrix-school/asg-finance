@@ -168,21 +168,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
 
         // Create a copy of the existing entity for logging
         GlobalTaxSubmissionHdr oldEntity = new GlobalTaxSubmissionHdr();
-        oldEntity.setTransactionPoid(header.getTransactionPoid());
-        oldEntity.setCompanyPoid(header.getCompanyPoid());
-        oldEntity.setPeriodFrom(header.getPeriodFrom());
-        oldEntity.setPeriodTo(header.getPeriodTo());
-        oldEntity.setRemarks(header.getRemarks());
-        oldEntity.setDocRef(header.getDocRef());
-        oldEntity.setTransactionDate(header.getTransactionDate());
-        oldEntity.setGroupPoid(header.getGroupPoid());
-        oldEntity.setCreatedBy(header.getCreatedBy());
-        oldEntity.setStatus(header.getStatus());
-        oldEntity.setApprovalStatus(header.getApprovalStatus());
-        oldEntity.setDeleted(header.getDeleted());
-        oldEntity.setPeriodClosedDate(header.getPeriodClosedDate());
-        oldEntity.setPeriodClosedBy(header.getPeriodClosedBy());
-        oldEntity.setLastmodifiedBy(header.getLastmodifiedBy());
+        BeanUtils.copyProperties(header ,oldEntity);
 
         // Check if can be updated (not closed/approved/posted)
         if (header.getPeriodClosedDate() != null) {

@@ -25,6 +25,7 @@ import jakarta.persistence.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -119,22 +120,8 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
                 .orElseThrow(() -> new EntityNotFoundException("Cheque Return not found: " + transactionPoid));
 
         // Create a copy of the existing entity for logging
-        ChequeReturn oldEntity = ChequeReturn.builder()
-                .transactionPoid(header.getTransactionPoid())
-                .transactionDate(header.getTransactionDate())
-                .groupPoid(header.getGroupPoid())
-                .companyPoid(header.getCompanyPoid())
-                .docRef(header.getDocRef())
-                .chequeNumber(header.getChequeNumber())
-                .status(header.getStatus())
-                .remarks(header.getRemarks())
-                .deleted(header.getDeleted())
-                .createdBy(header.getCreatedBy())
-                .createdDate(header.getCreatedDate())
-                .lastModifiedBy(header.getLastModifiedBy())
-                .lastModifiedDate(header.getLastModifiedDate())
-                .closeDetail(header.getCloseDetail())
-                .build();
+        ChequeReturn oldEntity = new ChequeReturn();
+        BeanUtils.copyProperties(header, oldEntity);
 
         // 🔹 2. Check if already closed
         if ("CLOSED".equalsIgnoreCase(header.getStatus())) {
@@ -169,22 +156,9 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
                 .orElseThrow(() -> new EntityNotFoundException("Cheque Return not found: " + transactionPoid));
 
         // Create a copy of the existing entity for logging
-        ChequeReturn oldEntity = ChequeReturn.builder()
-                .transactionPoid(header.getTransactionPoid())
-                .transactionDate(header.getTransactionDate())
-                .groupPoid(header.getGroupPoid())
-                .companyPoid(header.getCompanyPoid())
-                .docRef(header.getDocRef())
-                .chequeNumber(header.getChequeNumber())
-                .status(header.getStatus())
-                .remarks(header.getRemarks())
-                .deleted(header.getDeleted())
-                .createdBy(header.getCreatedBy())
-                .createdDate(header.getCreatedDate())
-                .lastModifiedBy(header.getLastModifiedBy())
-                .lastModifiedDate(header.getLastModifiedDate())
-                .closeDetail(header.getCloseDetail())
-                .build();
+
+        ChequeReturn oldEntity = new ChequeReturn();
+        BeanUtils.copyProperties(header, oldEntity);
 
         // Check if already closed
         if ("CLOSED".equalsIgnoreCase(header.getStatus())) {

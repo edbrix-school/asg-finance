@@ -30,6 +30,7 @@ import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -815,58 +816,9 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                 .orElseThrow(() -> new ResourceNotFoundException("ApPurchaseJournal", "transactionPoid", transactionPoid));
 
         // Create a copy of the existing entity for logging
-        ApPurchaseInvoiceHdrEntity oldEntity = new ApPurchaseInvoiceHdrEntity();
-        oldEntity.setTransactionPoid(apPurchaseInvoiceHdrEntity.getTransactionPoid());
-        oldEntity.setTransactionDate(apPurchaseInvoiceHdrEntity.getTransactionDate());
-        oldEntity.setGroupPoid(apPurchaseInvoiceHdrEntity.getGroupPoid());
-        oldEntity.setDocRef(apPurchaseInvoiceHdrEntity.getDocRef());
-        oldEntity.setPoRef(apPurchaseInvoiceHdrEntity.getPoRef());
-        oldEntity.setFdaRef(apPurchaseInvoiceHdrEntity.getFdaRef());
-        oldEntity.setFfRef(apPurchaseInvoiceHdrEntity.getFfRef());
-        oldEntity.setShipRef(apPurchaseInvoiceHdrEntity.getShipRef());
-        oldEntity.setCompanyPoid(apPurchaseInvoiceHdrEntity.getCompanyPoid());
-        oldEntity.setCurrencyCode(apPurchaseInvoiceHdrEntity.getCurrencyCode());
-        oldEntity.setCurrencyRate(apPurchaseInvoiceHdrEntity.getCurrencyRate());
-        oldEntity.setSupplierPoid(apPurchaseInvoiceHdrEntity.getSupplierPoid());
-        oldEntity.setLocationPoid(apPurchaseInvoiceHdrEntity.getLocationPoid());
-        oldEntity.setSubTotal(apPurchaseInvoiceHdrEntity.getSubTotal());
-        oldEntity.setDiscount(apPurchaseInvoiceHdrEntity.getDiscount());
-        oldEntity.setExpenseBySupplier(apPurchaseInvoiceHdrEntity.getExpenseBySupplier());
-        oldEntity.setGrandTotal(apPurchaseInvoiceHdrEntity.getGrandTotal());
-        oldEntity.setRemarks(apPurchaseInvoiceHdrEntity.getRemarks());
-        oldEntity.setCreatedBy(apPurchaseInvoiceHdrEntity.getCreatedBy());
-        oldEntity.setCreatedDate(apPurchaseInvoiceHdrEntity.getCreatedDate());
-        oldEntity.setLastModifiedBy(apPurchaseInvoiceHdrEntity.getLastModifiedBy());
-        oldEntity.setLastModifiedDate(apPurchaseInvoiceHdrEntity.getLastModifiedDate());
-        oldEntity.setDeleted(apPurchaseInvoiceHdrEntity.getDeleted());
-        oldEntity.setItemTotal(apPurchaseInvoiceHdrEntity.getItemTotal());
-        oldEntity.setChargeTotal(apPurchaseInvoiceHdrEntity.getChargeTotal());
-        oldEntity.setGlTotal(apPurchaseInvoiceHdrEntity.getGlTotal());
-        oldEntity.setType(apPurchaseInvoiceHdrEntity.getType());
-        oldEntity.setDescription(apPurchaseInvoiceHdrEntity.getDescription());
-        oldEntity.setCreditPeriod(apPurchaseInvoiceHdrEntity.getCreditPeriod());
-        oldEntity.setDueDate(apPurchaseInvoiceHdrEntity.getDueDate());
-        oldEntity.setInvnoOld(apPurchaseInvoiceHdrEntity.getInvnoOld());
-        oldEntity.setModcodeOld(apPurchaseInvoiceHdrEntity.getModcodeOld());
-        oldEntity.setRefType(apPurchaseInvoiceHdrEntity.getRefType());
-        oldEntity.setSalesQtnPoid(apPurchaseInvoiceHdrEntity.getSalesQtnPoid());
-        oldEntity.setNarration(apPurchaseInvoiceHdrEntity.getNarration());
-        oldEntity.setSupplierInvDate(apPurchaseInvoiceHdrEntity.getSupplierInvDate());
-        oldEntity.setSupplierInvNo(apPurchaseInvoiceHdrEntity.getSupplierInvNo());
-        oldEntity.setSupplierInvRemark(apPurchaseInvoiceHdrEntity.getSupplierInvRemark());
-        oldEntity.setMtaRef(apPurchaseInvoiceHdrEntity.getMtaRef());
-        oldEntity.setMultiCompany(apPurchaseInvoiceHdrEntity.getMultiCompany());
-        oldEntity.setBhdAmount(apPurchaseInvoiceHdrEntity.getBhdAmount());
-        oldEntity.setSupplierInvAmount(apPurchaseInvoiceHdrEntity.getSupplierInvAmount());
-        oldEntity.setRoundingAmount(apPurchaseInvoiceHdrEntity.getRoundingAmount());
-        oldEntity.setBillType(apPurchaseInvoiceHdrEntity.getBillType());
-        oldEntity.setProvisionalInvoice(apPurchaseInvoiceHdrEntity.getProvisionalInvoice());
-        oldEntity.setPartyType(apPurchaseInvoiceHdrEntity.getPartyType());
-        oldEntity.setGrnSupplierPoid(apPurchaseInvoiceHdrEntity.getGrnSupplierPoid());
-        oldEntity.setPartyTinNumber(apPurchaseInvoiceHdrEntity.getPartyTinNumber());
-        oldEntity.setPaidAgainst(apPurchaseInvoiceHdrEntity.getPaidAgainst());
-        oldEntity.setFdaCoveringRef(apPurchaseInvoiceHdrEntity.getFdaCoveringRef());
 
+        ApPurchaseInvoiceHdrEntity oldEntity = new ApPurchaseInvoiceHdrEntity();
+        BeanUtils.copyProperties(apPurchaseInvoiceHdrEntity, oldEntity);
 
         if (apPurchaseInvoiceHdrDto.getTransactionDate() != null)
             apPurchaseInvoiceHdrEntity.setTransactionDate(apPurchaseInvoiceHdrDto.getTransactionDate());

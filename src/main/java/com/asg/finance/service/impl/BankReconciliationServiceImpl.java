@@ -100,21 +100,8 @@ public class BankReconciliationServiceImpl implements BankReconciliationService 
 	@Override
 	public String revertReconciliation(String docId, String transactionPoid, Long loginUserPoid, Long loginGroupPoid,
 			Long loginCompanyPoid, String mailAlert) {
-		String result = repository.revertReconciliation(docId, transactionPoid, loginUserPoid, loginGroupPoid, loginCompanyPoid,
+		return repository.revertReconciliation(docId, transactionPoid, loginUserPoid, loginGroupPoid, loginCompanyPoid,
 				mailAlert);
-		
-		// Log the modification if successful
-		if (result != null && !result.toLowerCase().startsWith("error")) {
-			loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), transactionPoid);
-			
-			// Create objects for detailed logging
-			Map<String, Object> oldData = Map.of("transactionPoid", transactionPoid, "status", "reconciled");
-			Map<String, Object> newData = Map.of("transactionPoid", transactionPoid, "status", "reverted", "docId", docId, "loginUserPoid", loginUserPoid, "mailAlert", mailAlert);
-			loggingService.logChanges(oldData, newData, Map.class, 
-					UserContext.getDocumentId(), transactionPoid, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
-		}
-		
-		return result;
 	}
 
 	@Override

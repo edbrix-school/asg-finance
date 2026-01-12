@@ -22,6 +22,7 @@ import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.FixedAssetCategoryService;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
 import org.springframework.data.domain.Page;
@@ -66,19 +67,7 @@ public class FixedAssetCategoryServiceImpl implements FixedAssetCategoryService 
         
         // Create a copy of the old entity for logging
         FixedAssetCategory oldEntity = new FixedAssetCategory();
-        oldEntity.setFaCategoryPoid(fixedAssetCategory.getFaCategoryPoid());
-        oldEntity.setFaCategoryCode(fixedAssetCategory.getFaCategoryCode());
-        oldEntity.setFaCategoryDescription(fixedAssetCategory.getFaCategoryDescription());
-        oldEntity.setFaCategoryDescription2(fixedAssetCategory.getFaCategoryDescription2());
-        oldEntity.setAssetType(fixedAssetCategory.getAssetType());
-        oldEntity.setFaGlAccount(fixedAssetCategory.getFaGlAccount());
-        oldEntity.setFaAccumulationAccount(fixedAssetCategory.getFaAccumulationAccount());
-        oldEntity.setFaDepreciationAccount(fixedAssetCategory.getFaDepreciationAccount());
-        oldEntity.setCostCenter(fixedAssetCategory.getCostCenter());
-        oldEntity.setUserRolePoid(fixedAssetCategory.getUserRolePoid());
-        oldEntity.setActive(fixedAssetCategory.getActive());
-        oldEntity.setSeqNo(fixedAssetCategory.getSeqNo());
-        
+        BeanUtils.copyProperties(fixedAssetCategory, oldEntity);
         if (fixedAssetCategoryRepository.existsByFaCategoryDescriptionIgnoreCaseAndFaCategoryPoidNot(
                 requestDto.getFaCategoryDescription(), faCategoryPoid)) {
             throw new ValidationException("FA Category Description already exists: " + requestDto.getFaCategoryDescription());

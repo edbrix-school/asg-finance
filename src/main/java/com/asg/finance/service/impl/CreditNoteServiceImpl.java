@@ -30,6 +30,7 @@ import com.asg.finance.service.CostCenterBreakupService;
 import com.asg.finance.service.CreditNoteService;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -236,34 +237,8 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             calculateDueDateFromCreditPeriod(creditNoteDto);
 
             // Create a copy of the old entity for logging
-            ArCreditNoteHdr oldEntity = ArCreditNoteHdr.builder()
-                    .transactionPoid(existing.getTransactionPoid())
-                    .transactionDate(existing.getTransactionDate())
-                    .docRef(existing.getDocRef())
-                    .companyPoid(existing.getCompanyPoid())
-                    .currencyCode(existing.getCurrencyCode())
-                    .currencyRate(existing.getCurrencyRate())
-                    .partyType(existing.getPartyType())
-                    .partyPoid(existing.getPartyPoid())
-                    .refType(existing.getRefType())
-                    .postingNarration(existing.getPostingNarration())
-                    .remarks(existing.getRemarks())
-                    .grandTotal(existing.getGrandTotal())
-                    .shInvoicePoid(existing.getShInvoicePoid())
-                    .dnInvoicePoid(existing.getDnInvoicePoid())
-                    .ffInvoicePoid(existing.getFfInvoicePoid())
-                    .fdaRefPoid(existing.getFdaRefPoid())
-                    .dueDate(existing.getDueDate())
-                    .creditPeriod(existing.getCreditPeriod())
-                    .tinNumber(existing.getTinNumber())
-                    .bhdAmount(existing.getBhdAmount())
-                    .bankPoid(existing.getBankPoid())
-                    .billRefType(existing.getBillRefType())
-                    .remarksPrintable(existing.getRemarksPrintable())
-                    .multiCompany(existing.getMultiCompany())
-                    .fdaDirect(existing.getFdaDirect())
-                    .otherCurrAmount(existing.getOtherCurrAmount())
-                    .build();
+            ArCreditNoteHdr oldEntity = new ArCreditNoteHdr();
+            BeanUtils.copyProperties(existing, oldEntity);
 
             updateHeaderFromDto(existing, creditNoteDto);
             existing.setLastModifiedBy(ASGHelperUtils.getCurrentUser());

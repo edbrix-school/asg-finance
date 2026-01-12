@@ -30,6 +30,7 @@ import com.asg.finance.service.GlRecurringJvService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -371,29 +372,9 @@ GlRecurringJvHdr header = GlRecurringJvHdr.builder()
                 .orElseThrow(() -> new ResourceNotFoundException("Recurring JV", "transactionPoid", transactionPoid));
         
         // Create a copy of the existing entity for logging
-        GlRecurringJvHdr oldEntity = GlRecurringJvHdr.builder()
-                .transactionPoid(header.getTransactionPoid())
-                .transactionDate(header.getTransactionDate())
-                .groupPoid(header.getGroupPoid())
-                .companyPoid(header.getCompanyPoid())
-                .narration(header.getNarration())
-                .startDate(header.getStartDate())
-                .totalAmount(header.getTotalAmount())
-                .noOfMonths(header.getNoOfMonths())
-                .monthWiseAmt(header.getMonthWiseAmt())
-                .refType(header.getRefType())
-                .employeePoid(header.getEmployeePoid())
-                .faPoid(header.getFaPoid())
-                .policyNumber(header.getPolicyNumber())
-                .remarks(header.getRemarks())
-                .docRef(header.getDocRef())
-                .deleted(header.getDeleted())
-                .createdBy(header.getCreatedBy())
-                .createdDate(header.getCreatedDate())
-                .lastModifiedBy(header.getLastModifiedBy())
-                .lastModifiedDate(header.getLastModifiedDate())
-                .build();
-        
+        GlRecurringJvHdr oldEntity = new GlRecurringJvHdr();
+        BeanUtils.copyProperties(header, oldEntity);
+
         Long createdScheduleCount = monthDtlRepository.countCreatedSchedulesByTransactionPoid(transactionPoid);
         if (createdScheduleCount > 0) {
             throw new IllegalStateException("Cannot update recurring JV with created JVs in schedule");

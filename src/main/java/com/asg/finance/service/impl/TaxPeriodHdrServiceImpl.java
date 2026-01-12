@@ -20,6 +20,8 @@ import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.TaxPeriodHdrService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.enums.LogDetailsEnum;
+import net.minidev.json.writer.BeansMapper;
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -128,19 +130,7 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
 
         // Create a copy of the existing entity for logging
         TaxPeriodHdr oldEntity = new TaxPeriodHdr();
-        oldEntity.setTransactionPoid(existingEntity.getTransactionPoid());
-        oldEntity.setGroupPoid(existingEntity.getGroupPoid());
-        oldEntity.setCompanyPoid(existingEntity.getCompanyPoid());
-        oldEntity.setTransactionDate(existingEntity.getTransactionDate());
-        oldEntity.setDocRef(existingEntity.getDocRef());
-        oldEntity.setDescription(existingEntity.getDescription());
-        oldEntity.setPeriodFrom(existingEntity.getPeriodFrom());
-        oldEntity.setPeriodTo(existingEntity.getPeriodTo());
-        oldEntity.setDeleted(existingEntity.getDeleted());
-        oldEntity.setCreatedBy(existingEntity.getCreatedBy());
-        oldEntity.setCreatedDate(existingEntity.getCreatedDate());
-        oldEntity.setLastModifiedBy(existingEntity.getLastModifiedBy());
-        oldEntity.setLastModifiedDate(existingEntity.getLastModifiedDate());
+        BeanUtils.copyProperties(existingEntity, oldEntity);
 
         TaxPeriodHdr updatedEntity = convertFromTaxPeriodHdrDtoToTaxPeriodHdrEntity(request);
 

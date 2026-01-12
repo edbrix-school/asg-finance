@@ -22,6 +22,7 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -97,17 +98,7 @@ public class SupplierCategoryServiceImpl implements SupplierCategoryService {
 
         // Create a copy of the existing entity for logging
         SupplierCategoryEntity oldEntity = new SupplierCategoryEntity();
-        oldEntity.setSupplierCategoryPoid(entity.getSupplierCategoryPoid());
-        oldEntity.setGroupPoid(entity.getGroupPoid());
-        oldEntity.setSupplierCategoryCode(entity.getSupplierCategoryCode());
-        oldEntity.setSupplierCategoryName(entity.getSupplierCategoryName());
-        oldEntity.setSupplierCategoryName2(entity.getSupplierCategoryName2());
-        oldEntity.setSequenceNumber(entity.getSequenceNumber());
-        oldEntity.setActive(entity.getActive());
-        oldEntity.setDeleted(entity.getDeleted());
-        oldEntity.setGeneralRemarks(entity.getGeneralRemarks());
-        oldEntity.setCreatedDate(entity.getCreatedDate());
-        oldEntity.setLastModifiedDate(entity.getLastModifiedDate());
+        BeanUtils.copyProperties(entity, oldEntity);
 
         if (StringUtils.isNotBlank(supplierCategoryDto.getSupplierCategoryName()) && !supplierCategoryDto.getSupplierCategoryName().equals(entity.getSupplierCategoryName())) {
             if (supplierCategoriesRepository.existsBySupplierCategoryNameAndSupplierCategoryPoidNot(supplierCategoryDto.getSupplierCategoryName(), supplierCategoryPoid)) {

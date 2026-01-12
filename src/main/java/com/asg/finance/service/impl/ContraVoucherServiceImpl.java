@@ -32,6 +32,7 @@ import com.asg.finance.service.ContraVoucherService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -272,31 +273,7 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
 
         // Create a copy of the existing entity for logging
         GlContraVoucherHdr oldEntity = new GlContraVoucherHdr();
-        oldEntity.setTransactionPoid(header.getTransactionPoid());
-        oldEntity.setCreditGl(header.getCreditGl());
-        oldEntity.setDebitGl(header.getDebitGl());
-        oldEntity.setCurrencyCode(header.getCurrencyCode());
-        oldEntity.setCurrencyRate(header.getCurrencyRate());
-        oldEntity.setAmount(header.getAmount());
-        oldEntity.setBhdAmount(header.getBhdAmount());
-        oldEntity.setPostingNarration(header.getPostingNarration());
-        oldEntity.setChequeNo(header.getChequeNo());
-        oldEntity.setManual(header.getManual());
-        oldEntity.setChequeDate(header.getChequeDate());
-        oldEntity.setMultiCompany(header.getMultiCompany());
-        oldEntity.setDocRef(header.getDocRef());
-        oldEntity.setTransactionDate(header.getTransactionDate());
-        oldEntity.setDeleted(header.getDeleted());
-        oldEntity.setOldJvno(header.getOldJvno());
-        oldEntity.setRemarks(header.getRemarks());
-        oldEntity.setCompanyPoid(header.getCompanyPoid());
-        oldEntity.setDrTotal(header.getDrTotal());
-        oldEntity.setCrTotal(header.getCrTotal());
-        oldEntity.setGroupPoid(header.getGroupPoid());
-        oldEntity.setCreatedBy(header.getCreatedBy());
-        oldEntity.setCreatedDate(header.getCreatedDate());
-        oldEntity.setLastmodifiedBy(header.getLastmodifiedBy());
-        oldEntity.setLastmodifiedDate(header.getLastmodifiedDate());
+        BeanUtils.copyProperties(header, oldEntity);
 
         header.setCreditGl(request.getCreditGl());
         header.setDebitGl(request.getDebitGl());

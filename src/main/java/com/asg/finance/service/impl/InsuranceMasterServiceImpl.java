@@ -16,6 +16,7 @@ import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.InsuranceMasterService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -196,30 +197,8 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                 .orElseThrow(() -> new ResourceNotFoundException("Insurance Master", "ID", insuranceId));
 
         // Create copy of old entity for logging
-        InsuranceMaster oldEntity = InsuranceMaster.builder()
-                .transactionPoid(existing.getTransactionPoid())
-                .groupPoid(existing.getGroupPoid())
-                .companyPoid(existing.getCompanyPoid())
-                .insuranceType(existing.getInsuranceType())
-                .insuranceCategory(existing.getInsuranceCategory())
-                .policyNo(existing.getPolicyNo())
-                .insuranceProvider(existing.getInsuranceProvider())
-                .fromDate(existing.getFromDate())
-                .expiryDate(existing.getExpiryDate())
-                .currencyPoid(existing.getCurrencyPoid())
-                .exchangeRate(existing.getExchangeRate())
-                .insuranceAmount(existing.getInsuranceAmount())
-                .premiumAmount(existing.getPremiumAmount())
-                .paymentFrequency(existing.getPaymentFrequency())
-                .oneTime(existing.getOneTime())
-                .description(existing.getDescription())
-                .pjRefPoid(existing.getPjRefPoid())
-                .deleted(existing.getDeleted())
-                .createdBy(existing.getCreatedBy())
-                .createdDate(existing.getCreatedDate())
-                .lastModifiedBy(existing.getLastModifiedBy())
-                .lastModifiedDate(existing.getLastModifiedDate())
-                .build();
+        InsuranceMaster oldEntity = new InsuranceMaster();
+        BeanUtils.copyProperties(existing, oldEntity);
 
         // Validate unique policy number per company (excluding current record)
 

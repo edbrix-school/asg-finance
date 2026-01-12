@@ -117,16 +117,8 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
         }
 
         // Create a copy of the old entity for logging
-        GlAgeingMasterEntity oldEntity = GlAgeingMasterEntity.builder()
-                .ageingPoid(existingEntity.getAgeingPoid())
-                .groupPoid(existingEntity.getGroupPoid())
-                .description(existingEntity.getDescription())
-                .description2(existingEntity.getDescription2())
-                .ageingBreakupType(existingEntity.getAgeingBreakupType())
-                .seqno(existingEntity.getSeqno())
-                .active(existingEntity.getActive())
-                .deleted(existingEntity.getDeleted())
-                .build();
+        GlAgeingMasterEntity oldEntity = new GlAgeingMasterEntity();
+        BeanUtils.copyProperties(existingEntity, oldEntity);
 
         // Validate unique description (excluding current record)
         if (ageingMasterRepository.existsByDescriptionAndAgeingPoidNot(

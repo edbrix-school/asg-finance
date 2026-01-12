@@ -27,6 +27,7 @@ import com.asg.finance.service.GLMasterService;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Example;
 import org.springframework.data.domain.Page;
@@ -257,28 +258,8 @@ public class GLMasterServiceImpl implements GLMasterService {
 
         // Create a copy of the existing entity for logging
         GLMasterEntity oldEntity = new GLMasterEntity();
-        oldEntity.setGlPoid(entity.getGlPoid());
-        oldEntity.setGlCode(entity.getGlCode());
-        oldEntity.setDescription(entity.getDescription());
-        oldEntity.setDescription2(entity.getDescription2());
-        oldEntity.setType(entity.getType());
-        oldEntity.setGroupGlPoid(entity.getGroupGlPoid());
-        oldEntity.setAccountType(entity.getAccountType());
-        oldEntity.setControlAcType(entity.getControlAcType());
-        oldEntity.setCostGroup(entity.getCostGroup());
-        oldEntity.setInterCompanyFlag(entity.getInterCompanyFlag());
-        oldEntity.setInterCompanyId(entity.getInterCompanyId());
-        oldEntity.setRemarks(entity.getRemarks());
-        oldEntity.setSeqNo(entity.getSeqNo());
-        oldEntity.setActiveFlag(entity.getActiveFlag());
-        oldEntity.setBillWiseFlag(entity.getBillWiseFlag());
-        oldEntity.setPrepaymentLedgerFlag(entity.getPrepaymentLedgerFlag());
-        oldEntity.setGroupPoid(entity.getGroupPoid());
-        oldEntity.setCreatedBy(entity.getCreatedBy());
-        oldEntity.setCreatedDate(entity.getCreatedDate());
-        oldEntity.setLastModifiedBy(entity.getLastModifiedBy());
-        oldEntity.setLastModifiedDate(entity.getLastModifiedDate());
-        oldEntity.setDeletedFlag(entity.getDeletedFlag());
+
+        BeanUtils.copyProperties(oldEntity, entity);
 
         if (glMasterRepo.existsByGlCodeAndGlPoidNot(req.getGlCode(), glPoid)) {
             throw new RuntimeException("GL Code already in use by another: " + req.getGlCode());

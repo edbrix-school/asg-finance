@@ -19,6 +19,7 @@ import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.PettyCashUserRoleService;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -140,19 +141,7 @@ public class PettyCashUserRoleServiceImpl implements PettyCashUserRoleService {
 
         // Create a copy of the existing entity for logging
         PettyCashUserroleMaster oldEntity = new PettyCashUserroleMaster();
-        oldEntity.setRefTypePoid(existingEntity.getRefTypePoid());
-        oldEntity.setRefType(existingEntity.getRefType());
-        oldEntity.setDescription(existingEntity.getDescription());
-        oldEntity.setUserRolePoid(existingEntity.getUserRolePoid());
-        oldEntity.setGlPoid(existingEntity.getGlPoid());
-        oldEntity.setValidUntil(existingEntity.getValidUntil());
-        oldEntity.setActive(existingEntity.getActive());
-        oldEntity.setDeleted(existingEntity.getDeleted());
-        oldEntity.setSeqNo(existingEntity.getSeqNo());
-        oldEntity.setCreatedDate(existingEntity.getCreatedDate());
-        oldEntity.setCreatedBy(existingEntity.getCreatedBy());
-        oldEntity.setLastModifiedBy(existingEntity.getLastModifiedBy());
-        oldEntity.setLastModifiedDate(existingEntity.getLastModifiedDate());
+        BeanUtils.copyProperties(existingEntity, oldEntity);
 
         existingEntity.setRefType(requestDto.getRefType());
         existingEntity.setDescription(requestDto.getDescription());

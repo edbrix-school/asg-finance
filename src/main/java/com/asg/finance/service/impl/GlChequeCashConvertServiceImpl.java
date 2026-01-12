@@ -34,6 +34,7 @@ import com.asg.common.lib.exception.ValidationException;
 
 
 import net.sf.jasperreports.engine.JasperReport;
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -321,19 +322,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
 
         // Create a copy of the old entity for logging
         GlChequeCashConvertHdrEntity oldEntity = new GlChequeCashConvertHdrEntity();
-        oldEntity.setTransactionPoid(existingHdr.getTransactionPoid());
-        oldEntity.setTransactionDate(existingHdr.getTransactionDate());
-        oldEntity.setGroupPoid(existingHdr.getGroupPoid());
-        oldEntity.setCompanyPoid(existingHdr.getCompanyPoid());
-        oldEntity.setDocRef(existingHdr.getDocRef());
-        oldEntity.setType(existingHdr.getType());
-        oldEntity.setPostingNarration(existingHdr.getPostingNarration());
-        oldEntity.setCash(existingHdr.getCash());
-        oldEntity.setRemarks(existingHdr.getRemarks());
-        oldEntity.setChqAcNo(existingHdr.getChqAcNo());
-        oldEntity.setChqCardNo(existingHdr.getChqCardNo());
-        oldEntity.setRoundingAmt(existingHdr.getRoundingAmt());
-        oldEntity.setDeleted(existingHdr.getDeleted());
+        BeanUtils.copyProperties(existingHdr, oldEntity);
 
         validateTransactionDate(dto.getTransactionDate());
         existingHdr.setPostingNarration(dto.getPostingNarration());

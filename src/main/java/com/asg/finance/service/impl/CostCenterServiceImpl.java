@@ -24,6 +24,7 @@ import com.asg.finance.service.CostCenterService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -117,25 +118,9 @@ public class CostCenterServiceImpl implements CostCenterService {
                 .orElseThrow(() -> new ResourceNotFoundException("Cost Center not found with POID: ", "poid", poid));
         
         // Create a copy of the existing entity for logging
-        CostCenter oldEntity = CostCenter.builder()
-                .costCenterPoid(existing.getCostCenterPoid())
-                .costCenterCode(existing.getCostCenterCode())
-                .costCenterDescription(existing.getCostCenterDescription())
-                .costCenterDescription2(existing.getCostCenterDescription2())
-                .groupPoid(existing.getGroupPoid())
-                .remarks(existing.getRemarks())
-                .active(existing.getActive())
-                .seqNo(existing.getSeqNo())
-                .costCenterType(existing.getCostCenterType())
-                .parentCostCenterPoid(existing.getParentCostCenterPoid())
-                .costCenterChild(existing.getCostCenterChild())
-                .createdBy(existing.getCreatedBy())
-                .createdDate(existing.getCreatedDate())
-                .lastModifiedBy(existing.getLastModifiedBy())
-                .lastModifiedDate(existing.getLastModifiedDate())
-                .deleted(existing.getDeleted())
-                .build();
-        
+        CostCenter oldEntity = new CostCenter();
+        BeanUtils.copyProperties(existing, oldEntity);
+
         // Only check uniqueness if the code is actually changing
         if (!existing.getCostCenterCode().equals(dto.getCostCenterCode()) && 
             repository.existsByCostCenterCodeAndCostCenterPoidNot(dto.getCostCenterCode(), poid)) {

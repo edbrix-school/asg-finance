@@ -26,6 +26,7 @@ import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -80,35 +81,8 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
                 .orElseThrow(() -> new RuntimeException("PDC Batch not found: " + transactionPoid));
 
         // Create a copy of the existing entity for logging
-        PdcChqBatchHdrEntity oldEntity = PdcChqBatchHdrEntity.builder()
-                .transactionPoid(hdr.getTransactionPoid())
-                .transactionDate(hdr.getTransactionDate())
-                .docRef(hdr.getDocRef())
-                .groupPoid(hdr.getGroupPoid())
-                .companyPoid(hdr.getCompanyPoid())
-                .payGlPoid(hdr.getPayGlPoid())
-                .payingTo(hdr.getPayingTo())
-                .payingType(hdr.getPayingType())
-                .divisionCode(hdr.getDivisionCode())
-                .bankPoid(hdr.getBankPoid())
-                .chqStartNo(hdr.getChqStartNo())
-                .chqStartDate(hdr.getChqStartDate())
-                .chqAmount(hdr.getChqAmount())
-                .noOfChqs(hdr.getNoOfChqs())
-                .totalAmount(hdr.getTotalAmount())
-                .narration(hdr.getNarration())
-                .billType(hdr.getBillType())
-                .billRef(hdr.getBillRef())
-                .costGroup(hdr.getCostGroup())
-                .costPoid(hdr.getCostPoid())
-                .prePrinted(hdr.getPrePrinted())
-                .accountPayee(hdr.getAccountPayee())
-                .deleted(hdr.getDeleted())
-                .createdBy(hdr.getCreatedBy())
-                .createdDate(hdr.getCreatedDate())
-                .lastModifiedBy(hdr.getLastModifiedBy())
-                .lastModifiedDate(hdr.getLastModifiedDate())
-                .build();
+        PdcChqBatchHdrEntity oldEntity = new PdcChqBatchHdrEntity();
+        BeanUtils.copyProperties(hdr, oldEntity);
 
         hdr.setTransactionDate(dto.getTransactionDate());
         hdr.setGroupPoid(dto.getGroupPoid());

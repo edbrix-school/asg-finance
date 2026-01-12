@@ -309,8 +309,6 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
             // Logging for create operation
             loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), savedHeader.getTransactionPoid().toString());
-            loggingService.logChanges(null, savedHeader, GlPettyCashPaymentHdr.class, UserContext.getDocumentId(), savedHeader.getTransactionPoid().toString(), LogDetailsEnum.CREATED, "transactionPoid");
-
             return mapToResponseDto(savedHeader, paymentDtls, chargeDtls, itemDtls);
 
         } catch (Exception e) {
@@ -761,48 +759,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     .orElseThrow(() -> new RuntimeException("Petty cash not found with ID: " + transactionPoid));
 
             // Create copy of old entity for logging
-            GlPettyCashPaymentHdr oldEntity = GlPettyCashPaymentHdr.builder()
-                    .transactionPoid(existingHdr.getTransactionPoid())
-                    .docRef(existingHdr.getDocRef())
-                    .transactionDate(existingHdr.getTransactionDate())
-                    .groupPoid(existingHdr.getGroupPoid())
-                    .companyPoid(existingHdr.getCompanyPoid())
-                    .currencyCode(existingHdr.getCurrencyCode())
-                    .currencyRate(existingHdr.getCurrencyRate())
-                    .pettyCashGlPoid(existingHdr.getPettyCashGlPoid())
-                    .balance(existingHdr.getBalance())
-                    .amount(existingHdr.getAmount())
-                    .payingTo(existingHdr.getPayingTo())
-                    .narration(existingHdr.getNarration())
-                    .advance(existingHdr.getAdvance())
-                    .refType(existingHdr.getRefType())
-                    .fdaRef(existingHdr.getFdaRef())
-                    .ffRef(existingHdr.getFfRef())
-                    .settledDate(existingHdr.getSettledDate())
-                    .remarks(existingHdr.getRemarks())
-                    .settledTotal(existingHdr.getSettledTotal())
-                    .status(existingHdr.getStatus())
-                    .grandTotal(existingHdr.getGrandTotal())
-                    .mtaRef(existingHdr.getMtaRef())
-                    .multiCompany(existingHdr.getMultiCompany())
-                    .poRef(existingHdr.getPoRef())
-                    .salesQtnRef(existingHdr.getSalesQtnRef())
-                    .crTotal(existingHdr.getCrTotal())
-                    .drTotal(existingHdr.getDrTotal())
-                    .roundingAmount(existingHdr.getRoundingAmount())
-                    .grnSupplierPoid(existingHdr.getGrnSupplierPoid())
-                    .supplierGlPoid(existingHdr.getSupplierGlPoid())
-                    .customerGlPoid(existingHdr.getCustomerGlPoid())
-                    .advancePettyCashPoid(existingHdr.getAdvancePettyCashPoid())
-                    .advanceStatus(existingHdr.getAdvanceStatus())
-                    .advanceAmount(existingHdr.getAdvanceAmount())
-                    .companyDivPoid(existingHdr.getCompanyDivPoid())
-                    .deleted(existingHdr.getDeleted())
-                    .createdBy(existingHdr.getCreatedBy())
-                    .createdDate(existingHdr.getCreatedDate())
-                    .lastModifiedBy(existingHdr.getLastModifiedBy())
-                    .lastModifiedDate(existingHdr.getLastModifiedDate())
-                    .build();
+            GlPettyCashPaymentHdr oldEntity = new GlPettyCashPaymentHdr();
+            BeanUtils.copyProperties(existingHdr, oldEntity);
 
             StringBuilder oldRefType = new StringBuilder();
             StringBuilder oldRefPoid = new StringBuilder();

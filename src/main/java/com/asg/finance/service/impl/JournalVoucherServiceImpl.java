@@ -33,6 +33,7 @@ import com.asg.finance.service.CostCenterBreakupService;
 import com.asg.finance.service.JournalVoucherService;
 import lombok.RequiredArgsConstructor;
 import net.sf.jasperreports.engine.JasperReport;
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
@@ -493,29 +494,8 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                 .orElseThrow(() -> new ResourceNotFoundException("Journal Voucher", "POID", transactionPoid));
         
         // Create a copy of the existing entity for logging
-        GlJournalVoucherHdr oldEntity = GlJournalVoucherHdr.builder()
-                .transactionPoid(existing.getTransactionPoid())
-                .transactionDate(existing.getTransactionDate())
-                .groupPoid(existing.getGroupPoid())
-                .companyPoid(existing.getCompanyPoid())
-                .docRef(existing.getDocRef())
-                .refType(existing.getRefType())
-                .currencyCode(existing.getCurrencyCode())
-                .currencyRate(existing.getCurrencyRate())
-                .amount(existing.getAmount())
-                .bhdAmount(existing.getBhdAmount())
-                .postingNarration(existing.getPostingNarration())
-                .wdvAccountGl(existing.getWdvAccountGl())
-                .multiCompany(existing.getMultiCompany())
-                .remarks(existing.getRemarks())
-                .confidentialRemarks(existing.getConfidentialRemarks())
-                .deleted(existing.getDeleted())
-                .createdBy(existing.getCreatedBy())
-                .createdDate(existing.getCreatedDate())
-                .lastModifiedBy(existing.getLastModifiedBy())
-                .lastModifiedDate(existing.getLastModifiedDate())
-                .build();
-        
+        GlJournalVoucherHdr oldEntity = new GlJournalVoucherHdr();
+        BeanUtils.copyProperties(existing, oldEntity);
 
         if (!existing.getRefType().equals(request.getRefType())) {
             throw new IllegalArgumentException("RefType cannot be changed after creation");

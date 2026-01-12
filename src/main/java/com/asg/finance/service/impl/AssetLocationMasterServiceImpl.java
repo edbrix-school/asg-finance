@@ -95,19 +95,9 @@ public class AssetLocationMasterServiceImpl implements AssetLocationMasterServic
                 .orElseThrow(() -> new ResourceNotFoundException("Asset Location not found for Location POID: ", "locationPoid", locationPoid));
 
         // Create a copy of the existing entity for logging
-        AssetLocation oldEntity = AssetLocation.builder()
-                .locationPoid(entity.getLocationPoid())
-                .locationCode(entity.getLocationCode())
-                .description(entity.getDescription())
-                .seqNo(entity.getSeqNo())
-                .groupPoid(entity.getGroupPoid())
-                .createdBy(entity.getCreatedBy())
-                .createdDate(entity.getCreatedDate())
-                .lastModifiedBy(entity.getLastModifiedBy())
-                .lastModifiedDate(entity.getLastModifiedDate())
-                .deleted(entity.getDeleted())
-                .active(entity.getActive())
-                .build();
+
+        AssetLocation oldEntity = new AssetLocation();
+        BeanUtils.copyProperties(entity, oldEntity);
 
         // Uniqueness checks (excluding current record)
         if (repository.existsByLocationCodeAndLocationPoidNot(dto.getLocationCode(), locationPoid)) {

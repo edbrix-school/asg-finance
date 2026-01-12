@@ -20,6 +20,7 @@ import com.asg.finance.utility.DatabaseErrorHandler;
 import com.asg.common.lib.utility.PaginationUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -115,35 +116,8 @@ public class AssetInformationServiceImpl implements AssetInformationService {
                 .orElseThrow(() -> new ResourceNotFoundException("Information Asset Master", "iaPoid", iaPoid));
 
         // Create a copy of the existing entity for logging
-        AssetInformationMasterEntity oldEntity = AssetInformationMasterEntity.builder()
-                .iaPoid(existing.getIaPoid())
-                .groupPoid(existing.getGroupPoid())
-                .companyPoid(existing.getCompanyPoid())
-                .iaCode(existing.getIaCode())
-                .iaName(existing.getIaName())
-                .iaDescription(existing.getIaDescription())
-                .operatingUnit(existing.getOperatingUnit())
-                .typeOfInformationAsset(existing.getTypeOfInformationAsset())
-                .assetCustodian(existing.getAssetCustodian())
-                .assetClassification(existing.getAssetClassification())
-                .integrity(existing.getIntegrity())
-                .availability(existing.getAvailability())
-                .dataRetentionPeriod(existing.getDataRetentionPeriod())
-                .personalData(existing.getPersonalData())
-                .personalSensitiveData(existing.getPersonalSensitiveData())
-                .sensitiveCustomerData(existing.getSensitiveCustomerData())
-                .active(existing.getActive())
-                .deleted(existing.getDeleted())
-                .seqNo(existing.getSeqNo())
-                .processName(existing.getProcessName())
-                .processOwner(existing.getProcessOwner())
-                .protectionLevelOrigin(existing.getProtectionLevelOrigin())
-                .protectionLevelMoved(existing.getProtectionLevelMoved())
-                .createdBy(existing.getCreatedBy())
-                .createdDate(existing.getCreatedDate())
-                .lastModifiedBy(existing.getLastModifiedBy())
-                .lastModifiedDate(existing.getLastModifiedDate())
-                .build();
+        AssetInformationMasterEntity oldEntity = new AssetInformationMasterEntity();
+        BeanUtils.copyProperties(existing, oldEntity);
 
         // Only validate uniqueness if the values have changed
         if (request.getIaCode() != null && !request.getIaCode().equals(existing.getIaCode()) &&

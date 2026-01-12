@@ -27,6 +27,7 @@ import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import net.sf.jasperreports.engine.JasperReport;
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -129,25 +130,8 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
                 .orElseThrow(() -> new ResourceNotFoundException("Bank Deposit Voucher", "transactionPoid", transactionPoid));
 
         // Create a copy of the existing entity for logging
-        GlBankDepositVoucherHdr oldEntity = GlBankDepositVoucherHdr.builder()
-                .transactionPoid(hdr.getTransactionPoid())
-                .transactionDate(hdr.getTransactionDate())
-                .groupPoid(hdr.getGroupPoid())
-                .companyPoid(hdr.getCompanyPoid())
-                .docRef(hdr.getDocRef())
-                .bankPoid(hdr.getBankPoid())
-                .postingNarration(hdr.getPostingNarration())
-                .remarks(hdr.getRemarks())
-                .grandTotal(hdr.getGrandTotal())
-                .refType(hdr.getRefType())
-                .bankFilter(hdr.getBankFilter())
-                .groupPosting(hdr.getGroupPosting())
-                .createdBy(hdr.getCreatedBy())
-                .createdDate(hdr.getCreatedDate())
-                .lastModifiedBy(hdr.getLastModifiedBy())
-                .lastModifiedDate(hdr.getLastModifiedDate())
-                .deleted(hdr.getDeleted())
-                .build();
+        GlBankDepositVoucherHdr oldEntity = new GlBankDepositVoucherHdr();
+        BeanUtils.copyProperties(hdr, oldEntity);
 
         List<GlBankDepositVoucherDtl> existingDetails = dtlRepository.findByTransactionPoid(transactionPoid);
         for (GlBankDepositVoucherDtl detail : existingDetails) {

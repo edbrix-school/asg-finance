@@ -1,8 +1,9 @@
-package com.asg.finance.service;
+package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.*;
 
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.finance.dto.masters.*;
@@ -21,6 +22,7 @@ import com.asg.finance.repository.master.HrEmployeeMasterRepository;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
+import com.asg.finance.service.FixedAssetService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
@@ -38,9 +40,11 @@ import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
-public class FixedAssetServiceImpl implements FixedAssetService{
+public class FixedAssetServiceImpl implements FixedAssetService {
 
     private final FixedAssetRepository repository;
+    @Autowired
+    DocumentDeleteService documentDeleteService;
     @Autowired
     AssetLocationMasterRepository locationMasterRepository;
 
@@ -390,14 +394,17 @@ public class FixedAssetServiceImpl implements FixedAssetService{
     }
 
     @Transactional
-    public void softDeleteFixedAsset(Long faPoid) {
-        FixedAsset existingEntity = repository.findByFaPoid(faPoid)
-                .orElseThrow(() -> new ResourceNotFoundException("Fixed Asset not found with ID: ", "faPoid",faPoid));
-        existingEntity.setDeleted("Y");
-        existingEntity.setActive("N");
-        existingEntity.setLastModifiedDate(LocalDateTime.now());
-        existingEntity.setLastModifiedBy(getCurrentUser());
-        repository.save(existingEntity);
+    public void softDeleteFixedAsset(Long faPoid, DeleteReasonDto deleteReasonDto) {
+        FixedAsset existing = repository.findByFaPoid(faPoid)
+                .orElseThrow(() -> new ResourceNotFoundException("Fixed Asset not found with ID: ", "faPoid", faPoid));
+        
+        documentDeleteService.deleteDocument(
+                faPoid,
+                "FIXED_ASSET_MASTER",
+                "FA_POID",
+                deleteReasonDto,
+                null
+        );
     }
 
     @Transactional

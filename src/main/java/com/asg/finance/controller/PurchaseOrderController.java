@@ -1,6 +1,7 @@
 package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.finance.dto.PurchaseOrderRequest;
 
@@ -189,18 +190,14 @@ public class PurchaseOrderController {
             security = @SecurityRequirement(name = "bearerAuth")
     )
     @AllowedAction(UserRolesRightsEnum.DELETE)
-
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> deletePurchaseOrder(
-
             @Parameter(description = "Transaction POID of the Purchase Order", required = true, example = "1001")
-            @PathVariable Long transactionPoid
+            @PathVariable Long transactionPoid,
+            @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto
     ) {
-
-        service.deletePurchaseOrder(transactionPoid);
+        service.deletePurchaseOrder(transactionPoid, deleteReasonDto);
         return success("Purchase Order deleted successfully");
-
-
     }
 
     @Operation(
@@ -275,9 +272,7 @@ public class PurchaseOrderController {
             )
     )
 
-    @AllowedAction(UserRolesRightsEnum.CREATE)
-
-
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/list")
     public ResponseEntity<?> getListPurchaseOrder(@ParameterObject Pageable pageable,
                                                   @RequestBody(required = false) FilterRequestDto filters,

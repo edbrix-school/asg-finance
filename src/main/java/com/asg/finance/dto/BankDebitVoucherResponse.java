@@ -75,5 +75,10 @@ public class BankDebitVoucherResponse {
     private Long fileUniqueId;
     private String fileGeneratedBy;
 
+    private String createdBy;
+    private LocalDateTime createdDate;
+    private String lastModifiedBy;
+    private LocalDateTime lastModifiedDate;
+
     private ReconcileResultDto reconcileInfo;
 }

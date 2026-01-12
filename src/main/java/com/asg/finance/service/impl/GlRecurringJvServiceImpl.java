@@ -1,11 +1,13 @@
-package com.asg.finance.service;
+package com.asg.finance.service.impl;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.finance.repository.GLMasterRepository;
 import com.asg.common.lib.service.DocumentSearchService;
@@ -20,6 +22,9 @@ import com.asg.finance.repository.GlRecurringJvHdrRepository;
 import com.asg.finance.repository.GlRecurringJvMonthDtlRepository;
 import com.asg.finance.repository.GlRecurringJvProcRepository;
 import com.asg.common.lib.utility.PaginationUtil;
+import com.asg.finance.service.BillwiseBreakupService;
+import com.asg.finance.service.CostCenterBreakupService;
+import com.asg.finance.service.GlRecurringJvService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;
@@ -60,6 +65,7 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
     private final LovDataService lovService;
     private final PrintService printService;
     private final DataSource dataSource;
+    private final DocumentDeleteService documentDeleteService;
 
     @Override
     public Map<String, Object> listRecurringJvs(String documentId, FilterRequestDto filters, LocalDate startDate, LocalDate endDate, Pageable pageable) {
@@ -391,7 +397,7 @@ GlRecurringJvHdr header = GlRecurringJvHdr.builder()
 
     @Override
     @Transactional
-    public void deleteRecurringJv(Long transactionPoid) {
+    public void deleteRecurringJv(Long transactionPoid, DeleteReasonDto deleteReasonDto) {
         GlRecurringJvHdr header = hdrRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Recurring JV", "transactionPoid", transactionPoid));
         
@@ -399,14 +405,14 @@ GlRecurringJvHdr header = GlRecurringJvHdr.builder()
         if (createdScheduleCount > 0) {
             throw new IllegalStateException("Cannot delete recurring JV with created JVs in schedule");
         }
-        
-        monthDtlRepository.deleteByTransactionPoid(transactionPoid);
-        dtlRepository.deleteByTransactionPoid(transactionPoid);
-        
-        header.setDeleted(FLAG_YES);
-        header.setLastModifiedBy(getCurrentUser());
-        header.setLastModifiedDate(LocalDateTime.now());
-        hdrRepository.save(header);
+
+        documentDeleteService.deleteDocument(
+                transactionPoid,
+                "GL_RECURRING_JV_HDR",
+                "TRANSACTION_POID",
+                deleteReasonDto,
+                header.getTransactionDate()
+        );
     }
 
     @Override

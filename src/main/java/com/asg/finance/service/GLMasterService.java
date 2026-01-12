@@ -1,5 +1,6 @@
 package com.asg.finance.service;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.GLMasterDto;
 import com.asg.common.lib.dto.request.DocReleaseLockRequestDto;
@@ -25,7 +26,7 @@ public interface GLMasterService {
 
     GLMasterResponseDto updateGLMaster(Long glPoid, GLMasterRequestDto req);
 
-    void deleteGLMaster(Long glPoid);
+    void deleteGLMaster(Long glPoid, DeleteReasonDto deleteReasonDto);
 
     // Tree functionality
     List<GlMasterTreeNodeDto> getGlMasterTree(String documentId, String actionRequested, GlMasterTreeRequest request);

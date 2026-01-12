@@ -1,5 +1,6 @@
 package com.asg.finance.service;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.finance.dto.GlobalLedgerDto;
 import com.asg.finance.dto.SupplierMasterDto;
 import com.asg.finance.dto.SupplierImportRequestDto;
@@ -13,7 +14,7 @@ import java.util.Map;
 public interface SupplierMasterService {
     SupplierMasterDto getSupplierMaster(Long supplierPoid);
 
-    void deleteSupplierMaster(Long supplierPoid);
+    void deleteSupplierMaster(Long supplierPoid, DeleteReasonDto deleteReasonDto);
 
     SupplierMasterDto updateSupplierMaster(Long supplierPoid, SupplierMasterDto supplierMasterDto);
 

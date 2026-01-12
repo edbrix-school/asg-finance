@@ -1,12 +1,14 @@
-package com.asg.finance.service;
+package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.FilterDto;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.PrintService;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.finance.projection.CurrencyRateProjection;
 import com.asg.finance.repository.GLMasterRepository;
 import com.asg.common.lib.service.DocumentSearchService;
@@ -24,6 +26,9 @@ import com.asg.finance.repository.GlJournalVoucherDtlRepository;
 import com.asg.finance.repository.GlJournalVoucherHdrRepository;
 import com.asg.finance.repository.master.FixedAssetRepository;
 import com.asg.common.lib.utility.PaginationUtil;
+import com.asg.finance.service.BillwiseBreakupService;
+import com.asg.finance.service.CostCenterBreakupService;
+import com.asg.finance.service.JournalVoucherService;
 import lombok.RequiredArgsConstructor;
 import net.sf.jasperreports.engine.JasperReport;
 import org.springframework.data.domain.PageImpl;
@@ -52,7 +57,7 @@ import javax.sql.DataSource;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class JournalVoucherServiceImpl implements JournalVoucherService{
+public class JournalVoucherServiceImpl implements JournalVoucherService {
 
 
     public static final String REF_TYPE_GENERAL = "GENERAL";
@@ -77,6 +82,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService{
     private final CostCenterBreakupService costCenterBreakupService;
     private final BillwiseBreakupService billwiseBreakupService;
     private final DocumentSearchService documentService;
+    private final DocumentDeleteService documentDeleteService;
     private final PrintService printService;
     private final DataSource dataSource;
 
@@ -559,7 +565,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService{
 
     @Override
     @Transactional
-    public void deleteJournalVoucher(Long transactionPoid) {
+    public void deleteJournalVoucher(Long transactionPoid, DeleteReasonDto deleteReasonDto) {
         GlJournalVoucherHdr entity = glJournalVoucherHdrRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Journal Voucher", "POID", transactionPoid));
         
@@ -567,22 +573,14 @@ public class JournalVoucherServiceImpl implements JournalVoucherService{
             log.error("Cannot delete: Journal Voucher has been posted to GL");
             throw new IllegalStateException("Cannot delete: Journal Voucher has been posted to GL");
         }
-        
-        if (REF_TYPE_GENERAL.equals(entity.getRefType())) {
-            glJournalVoucherDtlRepository.deleteAll(glJournalVoucherDtlRepository.findAll((root, query, cb) -> 
-                    cb.equal(root.get("transactionPoid"), transactionPoid)));
-        } else if (REF_TYPE_ASSET_DISPOSAL.equals(entity.getRefType())) {
-            glJournalVoucherAssetDtlRepository.deleteAll(glJournalVoucherAssetDtlRepository.findAll((root, query, cb) -> 
-                    cb.equal(root.get("transactionPoid"), transactionPoid)));
-        } else if (REF_TYPE_ASSET_CAPITALIZATION.equals(entity.getRefType())) {
-            glJournalFaCapitalizationRepository.deleteAll(glJournalFaCapitalizationRepository.findAll((root, query, cb) -> 
-                    cb.equal(root.get("transactionPoid"), transactionPoid)));
-        }
-        
-        entity.setDeleted(FLAG_YES);
-        entity.setLastModifiedBy(getCurrentUser());
-        entity.setLastModifiedDate(LocalDateTime.now());
-        glJournalVoucherHdrRepository.save(entity);
+
+        documentDeleteService.deleteDocument(
+                transactionPoid,
+                "GL_JOURNAL_VOUCHER_HDR",
+                "TRANSACTION_POID",
+                deleteReasonDto,
+                entity.getTransactionDate()
+        );
     }
 
     @Override

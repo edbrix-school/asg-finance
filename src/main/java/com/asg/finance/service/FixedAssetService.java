@@ -1,6 +1,7 @@
 package com.asg.finance.service;
 
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.finance.dto.masters.FixedAssetRequestDto;
 import com.asg.finance.dto.masters.FixedAssetResponseDto;
@@ -13,7 +14,7 @@ public interface FixedAssetService {
     FixedAssetResponseDto createFixedAsset(FixedAssetRequestDto request);
     FixedAssetResponseDto updateFixedAsset(Long faPoid, FixedAssetRequestDto request);
     FixedAssetResponseDto getFixedAssetById(Long faPoid);
-    void softDeleteFixedAsset(Long faPoid);
+    void softDeleteFixedAsset(Long faPoid, DeleteReasonDto deleteReasonDto);
     List<Long> createMultipleCopies(Long faPoid, int noOfCopies);
     Map<String, Object> listFixedAssetCategories(String documentId, FilterRequestDto filters, Pageable pageable);
 }

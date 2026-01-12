@@ -1,6 +1,7 @@
 package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 
 import com.asg.common.lib.security.util.UserContext;
@@ -8,7 +9,6 @@ import com.asg.finance.dto.AssetLocationMasterRequestDto;
 import com.asg.finance.dto.AssetLocationMasterResponseDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.finance.service.AssetLocationMasterService;
-import com.asg.finance.service.AssetLocationMasterServiceImpl;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -38,7 +38,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 public class AssetLocationMasterController {
 
     @Autowired
-    private AssetLocationMasterServiceImpl service;
+    private AssetLocationMasterService service;
 
     @Autowired
     AssetLocationMasterService assetLocationService;
@@ -181,9 +181,10 @@ public class AssetLocationMasterController {
     @DeleteMapping("/{locationPoid}")
     public ResponseEntity<?> softDeleteAssetMaster(
             @Parameter(description = "locationPoid reference identifier", required = true)
-            @PathVariable Long locationPoid) {
+            @PathVariable Long locationPoid,
+            @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto) {
 
-        service.softDeleteAssetLocationMaster(locationPoid);
+        service.softDeleteAssetLocationMaster(locationPoid, deleteReasonDto);
         return success("Asset Location Master has been soft deleted successfully");
     }
 

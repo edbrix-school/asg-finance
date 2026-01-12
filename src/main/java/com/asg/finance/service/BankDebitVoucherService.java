@@ -1,5 +1,6 @@
 package com.asg.finance.service;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.finance.dto.*;
 import org.springframework.data.domain.Pageable;
@@ -19,7 +20,7 @@ public interface BankDebitVoucherService {
 
     BankDebitVoucherResponse updateBankDebitVoucher(Long transactionPoid, BankDebitVoucherRequest request, String documentId);
 
-    void softDeleteBankDebitVoucher(Long transactionPoid);
+    void softDeleteBankDebitVoucher(Long transactionPoid, DeleteReasonDto deleteReasonDto);
 
     Map<String, Object> listBankDebitVouchers(String documentId, FilterRequestDto filters, LocalDate startDateValue, LocalDate endDateValue, Pageable pageable);
 

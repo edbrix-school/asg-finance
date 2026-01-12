@@ -1,4 +1,4 @@
-package com.asg.finance.service;
+package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.*;
 import com.asg.common.lib.entity.Company;
@@ -6,6 +6,7 @@ import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.finance.client.RoleServiceClient;
 import com.asg.finance.entity.GLMaster;
 import com.asg.finance.repository.GLMasterRepository;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.finance.dto.*;
@@ -18,6 +19,7 @@ import com.asg.finance.repository.GlFavAcMasterUserRoleDtlRepository;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
+import com.asg.finance.service.GlFavAcMasterService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
@@ -47,6 +49,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
     private final DocumentSearchService documentService;
     private final GLMasterRepository glMasterRepository;
     private final LovDataService lovService;
+    private final DocumentDeleteService documentDeleteService;
 
     @Override
     public GlFavAcMasterResponse createFavoriteAccount(GlFavAcMasterRequest request) {
@@ -399,19 +402,18 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
 
     @Override
     @Transactional
-    public void softDeleteFavoriteAccount(Long favAcPoid) {
+    public void softDeleteFavoriteAccount(Long favAcPoid, DeleteReasonDto deleteReasonDto) {
         GlFavAcMaster existing = masterRepository.findByFavAcPoid(favAcPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Favorite Account Master", "favAcPoid", favAcPoid));
-        existing.setActive("N");
-        existing.setDeleted("Y");
-        existing.setLastModifiedBy(getCurrentUser());
-        existing.setLastModifiedDate(Timestamp.valueOf(LocalDateTime.now()));
-        masterRepository.save(existing);
 
-        glAcDtlRepository.deleteByFavAcPoid(favAcPoid);
-        userRoleDtlRepository.deleteByFavAcPoid(favAcPoid);
-
-
+        // Use DocumentDeleteService for consistent soft delete handling
+        documentDeleteService.deleteDocument(
+                favAcPoid,
+                "GL_FAV_AC_MASTER",
+                "FAV_AC_POID",
+                deleteReasonDto,
+                null
+        );
     }
 
     public Map<String, Object> listOfRecordsAndGenericSearch(String docId, FilterRequestDto request, Pageable pageable) {

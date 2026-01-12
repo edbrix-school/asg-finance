@@ -1,11 +1,9 @@
-package com.asg.finance.service;
+package com.asg.finance.service.impl;
 
 import com.asg.common.lib.client.ParameterServiceClient;
-import com.asg.common.lib.dto.FilterDto;
-import com.asg.common.lib.dto.FilterRequestDto;
-import com.asg.common.lib.dto.LovGetListDto;
-import com.asg.common.lib.dto.RawSearchResult;
+import com.asg.common.lib.dto.*;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
@@ -16,6 +14,7 @@ import com.asg.finance.entity.*;
 import com.asg.finance.repository.*;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.finance.service.GeneralReceiptService;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -62,6 +61,9 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
     private final LovDataService lovService;
     private final PrintService printService;
     private final DataSource dataSource;
+    
+    @Autowired
+    private DocumentDeleteService documentDeleteService;
     
     @Autowired
     private ApplicationContext applicationContext;
@@ -145,7 +147,8 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         if (request.getBills() != null && !request.getBills().isEmpty()) {
             saveBillDetails(header, request.getBills(), currentUser, now, true);
         }
-        if (request.getExtraCharges() != null && !request.getExtraCharges().isEmpty()) {
+        if ("Y".equals(request.getHeader().getExtraCharges()) && 
+            request.getExtraCharges() != null && !request.getExtraCharges().isEmpty()) {
             saveChargeDetails(header, request.getExtraCharges(), currentUser, now, true);
         }
         if (request.getAdvances() != null && !request.getAdvances().isEmpty()) {
@@ -170,6 +173,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
      */
     public GeneralReceiptResponse completeReceiptCreation(ArGenReceiptHdr header) {
         GeneralReceiptResponse response = getGeneralReceiptByTransactionPoid(header.getTransactionPoid());
+        response.setMessage("General Receipt created successfully");
         try {
             log.info("Receipt data committed. Now calling GL posting procedure...");
             // Process GL posting or approval - called OUTSIDE any transaction
@@ -572,7 +576,8 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
             entityManager.flush();
             callBillwiseCheckProcedure(transactionPoid, header.getCompanyPoid());
         }
-        if (request.getExtraCharges() != null && !request.getExtraCharges().isEmpty()) {
+        if ("Y".equals(request.getHeader().getExtraCharges()) && 
+            request.getExtraCharges() != null && !request.getExtraCharges().isEmpty()) {
             List<ArGenReceiptChargesDtl> details = new ArrayList<>();
             for (int i = 0; i < request.getExtraCharges().size(); i++) {
                 GeneralReceiptChargeDto charge = request.getExtraCharges().get(i);
@@ -625,44 +630,23 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
 
     @Override
     @Transactional
-    public void deleteGeneralReceipt(Long transactionPoid) {
+    public void deleteGeneralReceipt(Long transactionPoid, DeleteReasonDto deleteReasonDto) {
         log.info("Deleting general receipt: {}", transactionPoid);
-
-        // 1. Find receipt
         ArGenReceiptHdr header = receiptHdrRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("General Receipt", "transactionPoid", transactionPoid));
-
-        // 2. Check if already deleted
         if ("Y".equalsIgnoreCase(header.getDeleted())) {
             throw new ValidationException("Receipt is already deleted");
         }
-
-        // 3. Check if verified/posted - cannot delete posted receipts
         if ("Y".equalsIgnoreCase(header.getVerified())) {
             throw new ValidationException("Cannot delete receipt that has been verified/posted to GL");
         }
-
-        // 4. Check for downstream linkages (GL_LEDGER records)
-        Long glLedgerCount = checkDownstreamLinkages(transactionPoid);
-        if (glLedgerCount != null && glLedgerCount > 0) {
-            throw new ValidationException("Cannot delete receipt - it has downstream linkages in GL Ledger (" + glLedgerCount + " records)");
-        }
-
-        // 5. Hard delete child tables (cascade delete)
-        log.debug("Deleting child records for receipt: {}", transactionPoid);
-        advanceDtlRepository.deleteByReceiptHdr_TransactionPoid(transactionPoid);
-        pymtDetailsRepository.deleteByTransactionPoid(transactionPoid);
-        billDtlRepository.deleteByTransactionPoid(transactionPoid);
-        chargesDtlRepository.deleteByTransactionPoid(transactionPoid);
-
-        // 6. Soft delete parent table
-        String currentUser = getCurrentUser();
-        LocalDateTime now = LocalDateTime.now();
-        header.setDeleted("Y");
-        header.setLastModifiedBy(currentUser);
-        header.setLastModifiedDate(now);
-        receiptHdrRepository.save(header);
-
+        documentDeleteService.deleteDocument(
+                transactionPoid,
+                "AR_GEN_RECEIPT_HDR",
+                "TRANSACTION_POID",
+                deleteReasonDto,
+                header.getTransactionDate()
+        );
         log.info("Successfully deleted general receipt: {}", header.getDocRef());
     }
 
@@ -703,15 +687,31 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         }
         GLMasterEntity creditGL = creditGLList.get(0);
 
-        // 3. Validate amount matching
-        BigDecimal paymentTotal = request.getPayments().stream()
-                .map(GeneralReceiptPaymentDto::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // 3. Validate amount matching - exclude deleted payments
+        if (request.getPayments() != null && !request.getPayments().isEmpty()) {
+            BigDecimal paymentTotal = request.getPayments().stream()
+                    .filter(payment -> {
+                        String actionType = payment.getActionType();
+                        // Exclude payments marked as deleted
+                        return actionType == null || 
+                               !"isDeleted".equalsIgnoreCase(actionType.trim());
+                    })
+                    .map(GeneralReceiptPaymentDto::getAmount)
+                    .filter(amount -> amount != null)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        if (header.getReceiptAmount().compareTo(paymentTotal) != 0) {
-            throw new ValidationException(String.format(
-                    "Receipt amount (%.3f) does not match sum of payment amounts (%.3f)",
-                    header.getReceiptAmount(), paymentTotal));
+            log.debug("Amount validation - Receipt amount: {}, Payment total: {}, Active payments count: {}", 
+                    header.getReceiptAmount(), paymentTotal, 
+                    request.getPayments().stream().filter(p -> {
+                        String actionType = p.getActionType();
+                        return actionType == null || !"isDeleted".equalsIgnoreCase(actionType.trim());
+                    }).count());
+
+            if (header.getReceiptAmount().compareTo(paymentTotal) != 0) {
+                throw new ValidationException(String.format(
+                        "Receipt amount (%.2f) does not match sum of active payment amounts (%.2f). Please update the receipt amount to match the total payments.",
+                        header.getReceiptAmount(), paymentTotal));
+            }
         }
 
         // 4. Validate cheque dates if applicable
@@ -851,7 +851,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                 .deleted("N")
                 .verified("N")
                 .dataLoaded("N")
-                .extraCharges("N")
+                .extraCharges(dto.getExtraCharges() != null ? dto.getExtraCharges() : "N")
                 .lineType("GENERAL")  // Set line type
                 .rcvdType("GENERAL")  // Set received type
                 .createdBy(currentUser)
@@ -877,6 +877,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         header.setCurrencyCode(dto.getCurrency());
         header.setCurrencyRate(dto.getRate());
         header.setMulticompany(dto.getMulticompany() != null ? dto.getMulticompany() : "N");
+        header.setExtraCharges(dto.getExtraCharges() != null ? dto.getExtraCharges() : "N");
         header.setTtBankPoid(dto.getTtBankPoid());
         header.setCostCenterPoid(dto.getCostCenterPoid());
         header.setLastModifiedBy(currentUser);
@@ -1324,6 +1325,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                 .approvalStatus(approvalStatus)
                 .verified(header.getVerified())
                 .multicompany(header.getMulticompany())
+                .extraChargesFlag(header.getExtraCharges())
                 .createdBy(header.getCreatedBy())
                 .createdDate(header.getCreatedDate())
                 .payments(convertPaymentDetailsToDto(header.getPaymentDetails()))

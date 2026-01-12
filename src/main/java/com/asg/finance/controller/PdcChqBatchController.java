@@ -1,6 +1,7 @@
 package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 
 import com.asg.common.lib.dto.FilterRequestDto;
@@ -186,10 +187,11 @@ public class PdcChqBatchController {
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> deletePdcBatch(
             @Parameter(description = "Transaction POID to delete", required = true)
-            @PathVariable Long transactionPoid
+            @PathVariable Long transactionPoid,
+            @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto
     ) {
         try {
-            service.deletePdcBatch(transactionPoid);
+            service.deletePdcBatch(transactionPoid, deleteReasonDto);
             return success("PDC Batch deleted successfully", null);
 
         } catch (Exception ex) {

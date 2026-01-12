@@ -1,10 +1,10 @@
-package com.asg.finance.service;
-
+package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.*;
 
 import com.asg.common.lib.dto.request.DocReleaseLockRequestDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.utility.ASGHelperUtils;
@@ -20,6 +20,8 @@ import com.asg.finance.repository.GLPaymentDetailsRepository;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
+import com.asg.finance.service.GLMasterCustomService;
+import com.asg.finance.service.GLMasterService;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,6 +32,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -60,6 +63,9 @@ public class GLMasterServiceImpl implements GLMasterService {
 
     @Autowired
     private LovDataService lovService;
+
+    @Autowired
+    private DocumentDeleteService documentDeleteService;
 
     private String getCurrentUser() {
         return ASGHelperUtils.getCurrentUser(); // dynamically fetch current user
@@ -368,7 +374,7 @@ public class GLMasterServiceImpl implements GLMasterService {
 
 
     @Override
-    public void deleteGLMaster(Long glPoid) {
+    public void deleteGLMaster(Long glPoid, DeleteReasonDto deleteReasonDto) {
         GLMasterEntity entity = glMasterRepo.findById(glPoid)
                 .orElseThrow(() -> new RuntimeException("GL Master not found: " + glPoid));
 
@@ -377,12 +383,14 @@ public class GLMasterServiceImpl implements GLMasterService {
             throw new ValidationException("This GL Master cannot be deleted as it has related child records.");
         }
 
-        entity.setActiveFlag("N");   // mark inactive
-        entity.setDeletedFlag("Y");  // mark deleted (you need to add this field if not present)
-        entity.setLastModifiedBy(getCurrentUser());
-        entity.setLastModifiedDate(LocalDateTime.now());
-
-        glMasterRepo.save(entity);
+        // Use DocumentDeleteService for consistent soft delete handling
+        documentDeleteService.deleteDocument(
+                glPoid,
+                "GL_MASTER",
+                "GL_POID",
+                deleteReasonDto,
+                null
+        );
     }
 
     private boolean hasActiveChildren(Long parentPoid) {
@@ -435,6 +443,8 @@ public class GLMasterServiceImpl implements GLMasterService {
         dto.setActive("Y".equals(entity.getActiveFlag()));
         dto.setBillWise("Y".equals(entity.getBillWiseFlag()));
         dto.setPrepaymentLedger("Y".equals(entity.getPrepaymentLedgerFlag()));
+        dto.setCreatedBy(entity.getCreatedBy());
+        dto.setCreatedDate(entity.getCreatedDate());
 
         List<GLPaymentDetailsEntity> paymentDetails = payDtlRepo.findAllByGlMaster_GlPoid(entity.getGlPoid());
         if (!paymentDetails.isEmpty()) {

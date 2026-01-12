@@ -1,8 +1,9 @@
-package com.asg.finance.service;
+package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.StockInfoDto;
 import com.asg.finance.entity.StockMasterEntity;
 import com.asg.finance.repository.StockMasterRepository;
+import com.asg.finance.service.StockMasterService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

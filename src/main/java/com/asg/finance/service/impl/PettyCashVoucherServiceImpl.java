@@ -1,6 +1,7 @@
-package com.asg.finance.service;
+package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.DetailsDto;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
@@ -9,6 +10,7 @@ import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.LoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.ShowPendingBillwiseBreakupResponseDto;
 import com.asg.common.lib.service.PrintService;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.finance.entity.GLMaster;
 import com.asg.finance.entity.StockMasterEntity;
 import com.asg.finance.repository.GLMasterRepository;
@@ -25,6 +27,9 @@ import com.asg.finance.repository.*;
 import com.asg.finance.repository.master.ShipChargeRepository;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
+import com.asg.finance.service.BillwiseBreakupService;
+import com.asg.finance.service.CostCenterBreakupService;
+import com.asg.finance.service.PettyCashVoucherService;
 import com.nimbusds.oauth2.sdk.util.CollectionUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +46,7 @@ import javax.sql.DataSource;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -65,6 +71,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
     private final CostCenterBreakupService costCenterBreakupService;
     private final BillwiseBreakupService billwiseBreakupService;
+    private final DocumentDeleteService documentDeleteService;
 
     private final PettyCashLoadByRefTypeRepository pettyCashLoadByRefTypeRepository;
     private final PettyCashPaymentVoucherCustomRepository pettyCashPaymentVoucherCustomRepository;
@@ -1454,9 +1461,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
     @Override
     @Transactional
-    public void deletePettyCashVoucher(Long transactionPoid,
-                                       String docId, String refType) {
-
+    public void deletePettyCashVoucher(Long transactionPoid, String docId, String refType, DeleteReasonDto deleteReasonDto) {
         GlPettyCashPaymentHdr header = glPettyCashPaymentHdrRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() -> new EntityNotFoundException("Header not found for TransactionPoid: " + transactionPoid));
 
@@ -1464,15 +1469,19 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
         Long userCompanyPoid = UserContext.getCompanyPoid();
         Long userPoid = UserContext.getUserPoid();
 
-        header.setDeleted("Y");
-        header.setLastModifiedDate(new Date());
-        header.setLastModifiedBy(getCurrentUser());
-        glPettyCashPaymentHdrRepository.save(header);
-
         pettyCashPaymentVoucherCustomRepository.validateVoucherBeforeDelete(
                 userGroupPoid, userPoid, userCompanyPoid, docId, refType, refType);
-
-
+        
+        documentDeleteService.deleteDocument(
+                transactionPoid,
+                "GL_PETTY_CASH_PAYMENT_HDR",
+                "TRANSACTION_POID",
+                deleteReasonDto,
+                header.getTransactionDate()
+                        .toInstant()
+                        .atZone(ZoneId.systemDefault())
+                        .toLocalDate()
+        );
     }
 
     @Override

@@ -1,6 +1,7 @@
 package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 
 import com.asg.common.lib.dto.FilterRequestDto;
@@ -108,9 +109,10 @@ public class InsuranceMasterController {
     @DeleteMapping("/{insuranceId}")
     public ResponseEntity<?> softDeleteInsuranceMaster(
             @Parameter(description = "insuranceId reference identifier", required = true)
-            @PathVariable Long insuranceId) {
+            @PathVariable Long insuranceId,
+            @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto) {
 
-        insuranceMasterService.softDeleteInsuranceMaster(insuranceId);
+        insuranceMasterService.softDeleteInsuranceMaster(insuranceId, deleteReasonDto);
         return success("Insurance Master has been soft deleted successfully");
     }
 

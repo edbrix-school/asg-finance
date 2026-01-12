@@ -1,10 +1,12 @@
-package com.asg.finance.service;
+package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.FilterDto;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.finance.dto.*;
 import com.asg.finance.entity.PdcBatchExcelUploadTemp;
 import com.asg.finance.entity.PdcChqBatchDtlEntity;
@@ -15,6 +17,7 @@ import com.asg.finance.repository.PdcChqBatchDtlRepository;
 import com.asg.finance.repository.PdcChqBatchHdrRepository;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
+import com.asg.finance.service.PdcChqBatchService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.Cell;
@@ -28,6 +31,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -39,6 +43,7 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
     private final PdcChqBatchHdrRepository hdrRepo;
     private final PdcChqBatchDtlRepository dtlRepo;
     private final DocumentSearchService documentService;
+    private final DocumentDeleteService documentDeleteService;
     private final PdcBatchCreationRepository pdcBatchCreationRepository;
     private final PdcBatchExcelUploadTempRepository tempRepo;
 
@@ -117,17 +122,17 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
 
     @Override
     @Transactional
-    public void deletePdcBatch(Long transactionPoid) {
-
+    public void deletePdcBatch(Long transactionPoid, DeleteReasonDto deleteReasonDto) {
         PdcChqBatchHdrEntity hdr = hdrRepo.findById(transactionPoid)
                 .orElseThrow(() -> new RuntimeException("PDC Batch not found: " + transactionPoid));
-
-
-        hdr.setDeleted("Y");
-        hdr.setLastModifiedDate(LocalDateTime.now());
-        hdr.setLastModifiedBy(getCurrentUser());
-        hdrRepo.save(hdr);
-
+        
+        documentDeleteService.deleteDocument(
+                transactionPoid,
+                "GL_PDC_CHQ_BATCH_HDR",
+                "TRANSACTION_POID",
+                deleteReasonDto,
+                hdr.getTransactionDate().toLocalDate()
+        );
     }
 
     private void validateSrsBusinessRules(PdcChqBatchHdrRequestDto dto) {

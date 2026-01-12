@@ -8,6 +8,7 @@ import com.asg.finance.dto.PropertyCostCenterRequest;
 import com.asg.finance.dto.PropertyCostCenterResponse;
 import com.asg.finance.dto.PropertyCostCenterTreeRequest;
 import com.asg.finance.service.IPropertyCostCenterService;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -115,9 +116,10 @@ public class PropertyCostCenterController {
 
     @DeleteMapping("/{costCenterPoid}")
     public ResponseEntity<?> softDeletePropertyCostCenter(
-            @PathVariable Long costCenterPoid) {
+            @PathVariable Long costCenterPoid,
+            @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto) {
 
-        propertyCostCenterService.softDeleteByPoid(costCenterPoid);
+        propertyCostCenterService.softDeleteByPoid(costCenterPoid, deleteReasonDto);
         return success("Property Cost Center with ID " + costCenterPoid + " has been soft deleted successfully", null);
     }
 

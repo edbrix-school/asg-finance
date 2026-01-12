@@ -1,9 +1,7 @@
-package com.asg.finance.service;
+package com.asg.finance.service.impl;
 
-import com.asg.common.lib.dto.FilterDto;
-import com.asg.common.lib.dto.FilterRequestDto;
-import com.asg.common.lib.dto.LovGetListDto;
-import com.asg.common.lib.dto.RawSearchResult;
+import com.asg.common.lib.dto.*;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
@@ -18,6 +16,7 @@ import com.asg.finance.repository.PurchaseOrderItemRepository;
 import com.asg.finance.repository.PurchaseOrderRepository;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
+import com.asg.finance.service.PurchaseOrderService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import net.sf.jasperreports.engine.JasperReport;
@@ -52,6 +51,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     private final JdbcTemplate jdbcTemplate;
     private final PrintService printService;
     private final DataSource dataSource;
+    private final DocumentDeleteService documentDeleteService;
 
     @Override
     @Transactional
@@ -150,17 +150,20 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
 
     @Override
     @Transactional
-    public void deletePurchaseOrder(Long transactionPoid) {
+    public void deletePurchaseOrder(Long transactionPoid, DeleteReasonDto deleteReasonDto) {
 
         PurchaseOrder header = purchaseOrderRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() ->
                         new EntityNotFoundException("Purchase Order not found for TransactionPoid: " + transactionPoid)
                 );
-        header.setDeleted("Y");
-        header.setLastModifiedDate(LocalDateTime.now());
-        header.setLastModifiedBy(getCurrentUser());
 
-        purchaseOrderRepository.save(header);
+        documentDeleteService.deleteDocument(
+                transactionPoid,
+                "AP_PURCHASE_ORDER_HDR",
+                "TRANSACTION_POID",
+                deleteReasonDto,
+                header.getTransactionDate()
+        );
 
         log.info("Purchase Order deleted successfully: {}", transactionPoid);
     }
@@ -218,9 +221,9 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
 
         return PurchaseOrder.builder()
                 .transactionDate(request.getTransactionDate() != null ? request.getTransactionDate() : LocalDate.now())
-                .groupPoid(request.getGroupPoid())
+                .groupPoid(UserContext.getGroupPoid())
                 .docRef(request.getDocRef())
-                .companyPoid(request.getCompanyPoid())
+                .companyPoid(UserContext.getCompanyPoid())
                 .currencyCode(request.getCurrencyCode())
                 .currencyRate(request.getCurrencyRate())
                 .expectedDate(request.getExpectedDate())

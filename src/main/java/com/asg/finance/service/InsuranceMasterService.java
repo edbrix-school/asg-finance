@@ -1,5 +1,6 @@
 package com.asg.finance.service;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.finance.dto.masters.InsuranceMasterRequestDto;
 import com.asg.finance.dto.masters.InsuranceMasterResponseDto;
@@ -11,7 +12,7 @@ import java.util.Map;
 public interface InsuranceMasterService {
     InsuranceMasterResponseDto createInsuranceMaster(InsuranceMasterRequestDto request);
     InsuranceMasterResponseDto updateInsuranceMaster(Long insuranceId, InsuranceMasterRequestDto request);
-    void softDeleteInsuranceMaster(Long insuranceId);
+    void softDeleteInsuranceMaster(Long insuranceId, DeleteReasonDto deleteReasonDto);
     InsuranceMasterResponseDto getInsuranceMasterById(Long insuranceId);
     Map<String, Object> listInsuranceMasters(String documentId, FilterRequestDto filters, LocalDate startDate, LocalDate endDate, Pageable pageable);
     InsuranceMasterResponseDto renewInsurance(Long insuranceId, InsuranceMasterRequestDto request);

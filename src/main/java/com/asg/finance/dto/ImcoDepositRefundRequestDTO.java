@@ -21,9 +21,7 @@ public class ImcoDepositRefundRequestDTO {
     
     @NotNull(message = "Transaction date is mandatory")
     private LocalDate transactionDate;
-    
-    private Long groupPoid;
-    private Long companyPoid;
+
     private String docRef;
     private String remarks;
     private BigDecimal grandTotal;

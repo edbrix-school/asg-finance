@@ -1,5 +1,6 @@
 package com.asg.finance.service;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.finance.dto.CreditNoteHeaderDto;
 import com.asg.finance.dto.DefaultCreditValuesDto;
 import com.asg.finance.dto.UniversalChargeDetailDto;
@@ -20,7 +21,7 @@ public interface CreditNoteService {
     
     CreditNoteHeaderDto updateCreditNote(Long transactionPoid, CreditNoteHeaderDto creditNoteDto);
     
-    void deleteCreditNote(Long transactionPoid);
+    void deleteCreditNote(Long transactionPoid, DeleteReasonDto deleteReasonDto);
     
     List<UniversalChargeDetailDto> getFFInvoiceCharges(Long refNo, Long partyPoid);
     

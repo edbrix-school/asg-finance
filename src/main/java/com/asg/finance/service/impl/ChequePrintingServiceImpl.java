@@ -1,7 +1,8 @@
-package com.asg.finance.service;
+package com.asg.finance.service.impl;
 
 import java.util.List;
 
+import com.asg.finance.service.ChequePrintingService;
 import org.springframework.stereotype.Service;
 
 import com.asg.finance.dto.ChequeStockResponse;

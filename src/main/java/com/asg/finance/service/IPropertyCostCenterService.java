@@ -1,5 +1,6 @@
 package com.asg.finance.service;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.finance.dto.PropertyCostCenterRequest;
 import com.asg.finance.dto.PropertyCostCenterResponse;
 import com.asg.finance.dto.PropertyCostCenterTreeNodeDto;
@@ -15,7 +16,7 @@ public interface IPropertyCostCenterService {
 
     PropertyCostCenterResponse updatePropertyCostCenter(Long costCenterPoid, PropertyCostCenterRequest request);
 
-    void softDeleteByPoid(Long costCenterPoid);
+    void softDeleteByPoid(Long costCenterPoid, DeleteReasonDto deleteReasonDto);
     
     /**
      * Get Property Cost Center tree view (hierarchical structure)

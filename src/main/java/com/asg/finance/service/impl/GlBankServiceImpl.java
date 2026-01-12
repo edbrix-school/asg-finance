@@ -1,5 +1,6 @@
-package com.asg.finance.service;
+package com.asg.finance.service.impl;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
@@ -8,6 +9,7 @@ import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.finance.entity.GlBankEntity;
 import com.asg.finance.entity.TaxMaster;
 import com.asg.finance.repository.*;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.finance.dto.GlBankChequeDtlDto;
@@ -17,6 +19,7 @@ import com.asg.finance.entity.GlBankChequeDtlEntity;
 import com.asg.finance.entity.GlBankCommissionDtlEntity;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
+import com.asg.finance.service.GlBankService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -53,6 +56,8 @@ public class GlBankServiceImpl implements GlBankService {
 
     private final LovDataService lovService;
 
+    private final DocumentDeleteService documentDeleteService;
+
 
     @Override
     public GlBankDto fetchGlBank(Long bankPoid) {
@@ -63,6 +68,8 @@ public class GlBankServiceImpl implements GlBankService {
         GlBankDto bankDto = new GlBankDto();
         BeanUtils.copyProperties(bankEntity, bankDto);
         bankDto.setCompanyPoid(Long.valueOf(bankEntity.getCompanyPoid()));
+        bankDto.setCreatedBy(bankEntity.getCreatedBy());
+        bankDto.setCreatedDate(bankEntity.getCreatedDate());
         if (StringUtils.isNotBlank(bankEntity.getCompanyPoid())) {
             bankDto.setCompanyDet(lovService.getDetailsByPoidAndLovName(Long.valueOf(bankEntity.getCompanyPoid()), "COMPANY"));
         }
@@ -125,7 +132,7 @@ public class GlBankServiceImpl implements GlBankService {
 
     @Override
     @Transactional
-    public GlBankEntity createEntry(GlBankDto bankMasterDto) {
+    public GlBankDto createEntry(GlBankDto bankMasterDto) {
         //Bank Code Bank Description and Bank Account No are required and unique fields
         boolean bankCodeExists = bankRepository.existsByBankCodeIgnoreCase(bankMasterDto.getBankCode());
         if (bankCodeExists) {
@@ -157,7 +164,7 @@ public class GlBankServiceImpl implements GlBankService {
 
         saveBankChequeDetails(bankMasterDto, bankMasterData);
         saveBankCommisionDetails(bankMasterDto, bankMasterData);
-        return bankMasterData;
+        return fetchGlBank(bankMasterData.getBankPoid());
     }
 
     private void saveBankCommisionDetails(GlBankDto bankMasterDto, GlBankEntity bankMasterData) {
@@ -181,6 +188,8 @@ public class GlBankServiceImpl implements GlBankService {
         BeanUtils.copyProperties(bankMasterDto, bankMaster);
         bankMaster.setGroupPoid(UserContext.getGroupPoid());
         bankMaster.setCompanyPoid(String.valueOf(UserContext.getCompanyPoid()));
+        bankMaster.setCreatedBy(getCurrentUser());
+        bankMaster.setCreatedDate(Timestamp.valueOf(LocalDateTime.now()));
         return bankRepository.save(bankMaster);
     }
 
@@ -448,6 +457,8 @@ public class GlBankServiceImpl implements GlBankService {
         dto.setCorrespondantSwiftCode(entity.getCorrespondantSwiftCode());
         dto.setCorrespondantBank(entity.getCorrespondantBank());
         dto.setEdiBankAccountNo(entity.getEdiBankAccountNo());
+        dto.setCreatedBy(entity.getCreatedBy());
+        dto.setCreatedDate(entity.getCreatedDate());
 
         dto.setChequeDetails(convertGlBankChequeDtlEntityListToGlBankChequeDtlDtoList(glBankChequeDtlEntityList));
         dto.setCommissionDetails(convertGlBankCommissionDtlEntityListToGlBankCommissionDtlDtoList(glBankCommissionDtlEntityList));
@@ -525,21 +536,20 @@ public class GlBankServiceImpl implements GlBankService {
 
     @Override
     @Transactional
-    public void deleteBankMaster(Long bankPoid) {
+    public void deleteBankMaster(Long bankPoid, DeleteReasonDto deleteReasonDto) {
         GlBankEntity bankEntity = bankRepository.findByBankPoid(bankPoid);
         if (bankEntity == null) {
             throw new ResourceNotFoundException("Bank", "bankPoid", bankPoid);
-
         }
 
-        bankEntity.setDeleted("Y");
-        bankEntity.setActive("N");
-        bankEntity.setLastModifiedBy(getCurrentUser());
-        bankEntity.setLastModifiedDate(Timestamp.valueOf(LocalDateTime.now()));
-        bankRepository.save(bankEntity);
-        chequeDtlRepository.deleteByBankPoid(bankPoid);
-        commissionDtlRepository.deleteByBankPoid(bankPoid);
-
+        // Use DocumentDeleteService for consistent soft delete handling
+        documentDeleteService.deleteDocument(
+                bankPoid,
+                "GL_BANK_MASTER",
+                "BANK_POID",
+                deleteReasonDto,
+                null
+        );
     }
 
     public Map<String, Object> listOfRecordsAndGenericSearch(String docId, FilterRequestDto request, Pageable pageable) {

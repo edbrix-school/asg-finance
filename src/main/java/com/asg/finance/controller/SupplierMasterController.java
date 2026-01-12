@@ -1,6 +1,7 @@
 package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.dto.AddressDetailsDTO;
 import com.asg.common.lib.dto.AddressTypeMapDTO;
@@ -150,9 +151,10 @@ public class SupplierMasterController {
     @DeleteMapping("/{supplierPoid}")
     public ResponseEntity<?> deleteSupplierMaster(
             @Parameter(description = "ID of the supplier to be deleted", required = true, example = "149")
-            @PathVariable Long supplierPoid) {
+            @PathVariable Long supplierPoid,
+            @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto) {
 
-        supplierMasterService.deleteSupplierMaster(supplierPoid);
+        supplierMasterService.deleteSupplierMaster(supplierPoid, deleteReasonDto);
         return success("Supplier Master Record deleted successfully");
     }
 

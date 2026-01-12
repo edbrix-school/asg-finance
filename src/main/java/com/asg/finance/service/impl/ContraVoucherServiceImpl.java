@@ -1,10 +1,12 @@
-package com.asg.finance.service;
+package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.LovGetListDto;
 import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.dto.FilterRequestDto;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.entity.Company;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.finance.entity.GLMaster;
@@ -24,6 +26,7 @@ import com.asg.finance.repository.GlContraVoucherDtlRepository;
 import com.asg.finance.repository.GlContraVoucherHdrRepository;
 import com.asg.common.lib.security.util.UserContext;
 
+import com.asg.finance.service.ContraVoucherService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;
@@ -55,6 +58,7 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
     private final GLMasterRepository glMasterRepository;
     private final DataSource dataSource;
     private final DocumentSearchService documentService;
+    private final DocumentDeleteService documentDeleteService;
     private final LovDataService lovService;
     private final PrintService printService;
 
@@ -370,18 +374,19 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
 
     @Override
     @Transactional
-    public void deleteContraVoucher(Long transactionPoid) {
+    public void deleteContraVoucher(Long transactionPoid, DeleteReasonDto deleteReasonDto) {
         log.info("deleteContraVoucher started for transactionPoid={}", transactionPoid);
 
-        GlContraVoucherHdr header = hdrRepository.findByTransactionPoid(transactionPoid)
+        GlContraVoucherHdr existing = hdrRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() -> new RuntimeException("Contra voucher not found with transactionPoid: " + transactionPoid));
 
-        // Soft delete - set deleted flag
-        header.setDeleted("Y");
-        hdrRepository.save(header);
-
-        // Optionally delete details or mark them as deleted
-        // For now, we'll keep details but you can add logic to delete them if needed
+        documentDeleteService.deleteDocument(
+                transactionPoid,
+                "GL_CONTRA_VOUCHER_HDR",
+                "TRANSACTION_POID",
+                deleteReasonDto,
+                existing.getTransactionDate()
+        );
 
         log.info("deleteContraVoucher completed for transactionPoid={}", transactionPoid);
     }

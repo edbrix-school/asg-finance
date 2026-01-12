@@ -1,10 +1,11 @@
-package com.asg.finance.service;
+package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.*;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.finance.client.RoleServiceClient;
 import com.asg.finance.entity.GLMaster;
 import com.asg.finance.repository.GLMasterRepository;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.utility.ASGHelperUtils;
 import com.asg.finance.dto.FixedAssetCategoryRequestDto;
@@ -16,6 +17,7 @@ import com.asg.finance.repository.FixedAssetCategoryRepository;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
+import com.asg.finance.service.FixedAssetCategoryService;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
@@ -34,6 +36,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class FixedAssetCategoryServiceImpl implements FixedAssetCategoryService {
     private final DocumentSearchService documentService;
+    private final DocumentDeleteService documentDeleteService;
     private final FixedAssetCategoryRepository fixedAssetCategoryRepository;
     private final RoleServiceClient roleServiceClient;
     private final GLMasterRepository glMasterRepository;
@@ -81,14 +84,17 @@ public class FixedAssetCategoryServiceImpl implements FixedAssetCategoryService 
     }
 
     @Override
-    public void softDeleteFixedAssetCategory(Long faCategoryPoid) {
-        FixedAssetCategory existingEntity = fixedAssetCategoryRepository.findById(faCategoryPoid)
-                .orElseThrow(() -> new ResourceNotFoundException("Fixed Asset Category not found with ID: ", "faCategoryPoid",faCategoryPoid));
-        existingEntity.setDeleted("Y");
-        existingEntity.setActive("N");
-        existingEntity.setLastModifiedDate(LocalDateTime.now());
-        existingEntity.setLastModifiedBy(getCurrentUser());
-        fixedAssetCategoryRepository.save(existingEntity);
+    public void softDeleteFixedAssetCategory(Long faCategoryPoid, DeleteReasonDto deleteReasonDto) {
+        FixedAssetCategory existing = fixedAssetCategoryRepository.findById(faCategoryPoid)
+                .orElseThrow(() -> new ResourceNotFoundException("Fixed Asset Category not found with ID: ", "faCategoryPoid", faCategoryPoid));
+        
+        documentDeleteService.deleteDocument(
+                faCategoryPoid,
+                "FIXED_ASSET_CATEGORY_MASTER",
+                "FA_CATEGORY_POID",
+                deleteReasonDto,
+                null
+        );
     }
 
     private String getCurrentUser() {

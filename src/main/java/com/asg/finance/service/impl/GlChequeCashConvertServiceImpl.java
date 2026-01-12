@@ -1,11 +1,12 @@
-package com.asg.finance.service;
+package com.asg.finance.service.impl;
 
-
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
@@ -23,6 +24,7 @@ import com.asg.finance.repository.GlChequeCashConvertInDtlRepository;
 import com.asg.finance.repository.GlChequeCashConvertOutDtlRepository;
 import com.asg.finance.repository.GlChequeCashConvertRepository;
 import com.asg.common.lib.utility.PaginationUtil;
+import com.asg.finance.service.GlChequeCashConvertService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,7 +49,6 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import static com.asg.common.lib.utility.ASGHelperUtils.getCurrentUser;
 
-
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -61,6 +62,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
     private final LovDataService lovService;
     private final PrintService printService;
     private final DataSource dataSource;
+    private final DocumentDeleteService documentDeleteService;
 
     @Override
     public GlChequeCashConvertHdrDto getGlChequeCashConvert(Long transactionPoid) {
@@ -161,14 +163,18 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
 
     @Transactional
     @Override
-    public void softDeleteByTransactionPoid(Long transactionPoid) {
+    public void softDeleteByTransactionPoid(Long transactionPoid, DeleteReasonDto deleteReasonDto) {
+        GlChequeCashConvertHdrEntity entity = glChequeCashConvertHdrRepository.findById(transactionPoid)
+                .orElseThrow(() -> new ResourceNotFoundException("ChequeAndCashConvert", "transactionPoid", transactionPoid));
 
-        GlChequeCashConvertHdrEntity entity = glChequeCashConvertHdrRepository.findById(transactionPoid).orElseThrow(() -> new ResourceNotFoundException("ChequeAndCashConvert", "transactionPoid", transactionPoid));
-        entity.setDeleted("Y");
-        entity.setLastModifiedDate(LocalDateTime.now());
-        entity.setLastModifiedBy(getCurrentUser());
-        glChequeCashConvertHdrRepository.save(entity);
-
+        // Use DocumentDeleteService for consistent soft delete handling
+        documentDeleteService.deleteDocument(
+                transactionPoid,
+                "GL_CHEQUE_CASH_CONVERT_HDR",
+                "TRANSACTION_POID",
+                deleteReasonDto,
+                null
+        );
     }
 
     public Map<String, Object> listOfRecordsAndGenericSearch(String documentId, FilterRequestDto filters, LocalDate startDate, LocalDate endDate, Pageable pageable) {
@@ -200,8 +206,8 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         validateTransactionDate(dto.getTransactionDate());
         hdrEntity.setTransactionDate(dto.getTransactionDate());
 
-        hdrEntity.setGroupPoid(dto.getGroupPoid());
-        hdrEntity.setCompanyPoid(dto.getCompanyPoid());
+        hdrEntity.setGroupPoid(UserContext.getGroupPoid());
+        hdrEntity.setCompanyPoid(UserContext.getCompanyPoid());
         hdrEntity.setDocRef(dto.getDocRef());
         hdrEntity.setType(dto.getType());
         hdrEntity.setPostingNarration(dto.getPostingNarration());

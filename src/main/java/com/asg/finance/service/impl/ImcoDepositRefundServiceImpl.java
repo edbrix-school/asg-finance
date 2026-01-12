@@ -1,12 +1,14 @@
-package com.asg.finance.service;
+package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.DetailsDto;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.dto.response.GlPostingViewResponseDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.finance.dto.ImcoDepositRefundRequestDTO;
@@ -19,6 +21,7 @@ import com.asg.finance.repository.*;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
+import com.asg.finance.service.ImcoDepositRefundService;
 import lombok.RequiredArgsConstructor;
 import net.sf.jasperreports.engine.JasperReport;
 import org.springframework.data.domain.Page;
@@ -46,6 +49,7 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
     private final GlImcoChequeRefundDtlRepository dtlRepository;
     private final GlImcoChequeBillDtlRepository billDtlRepository;
     private final DocumentSearchService documentService;
+    private final DocumentDeleteService documentDeleteService;
     private final ImcoChequeDetailsRepository repository;
     private final ImcoDepositRefundRepository depositRefundRepository;
     private final ImcoSaveRefundRepository imcoSaveRefundRepository;
@@ -62,8 +66,8 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
         try {
             GlImcoChequeRefundHdr header = GlImcoChequeRefundHdr.builder()
                     .transactionDate(request.getTransactionDate())
-                    .groupPoid(request.getGroupPoid() != null ? request.getGroupPoid() : 1L)
-                    .companyPoid(request.getCompanyPoid() != null ? request.getCompanyPoid() : 1L)
+                    .groupPoid(UserContext.getGroupPoid())
+                    .companyPoid(UserContext.getCompanyPoid())
                     .docRef(request.getDocRef())
                     .remarks(request.getRemarks())
                     .grandTotal(request.getGrandTotal())
@@ -239,19 +243,18 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
     }
 
     @Override
-    public void softDeleteImcoDepositRefund(Long transactionPoid) {
-        try {
-
-            GlImcoChequeRefundHdr savedEntity = hdrRepository.findByTransactionPoid(transactionPoid)
-                    .orElseThrow(() -> new ResourceNotFoundException("Refund header not found for ID: ", "transactionPoid", transactionPoid));
-            savedEntity.setDeleted("Y");
-            savedEntity.setLastModifiedBy(getCurrentUser());
-            savedEntity.setLastModifiedDate(LocalDateTime.now());
-            hdrRepository.save(savedEntity);
-        } catch (Exception ex){
-            String errorMessage = extractTriggerErrorMessage(ex);
-            throw new ValidationException(errorMessage);
-        }
+    @Transactional
+    public void softDeleteImcoDepositRefund(Long transactionPoid, DeleteReasonDto deleteReasonDto) {
+        GlImcoChequeRefundHdr existing = hdrRepository.findByTransactionPoid(transactionPoid)
+                .orElseThrow(() -> new ResourceNotFoundException("Refund header not found for ID: ", "transactionPoid", transactionPoid));
+        
+        documentDeleteService.deleteDocument(
+                transactionPoid,
+                "GL_IMCO_CHEQUE_REFUND_HDR",
+                "TRANSACTION_POID",
+                deleteReasonDto,
+                existing.getTransactionDate()
+        );
     }
 
     @Override

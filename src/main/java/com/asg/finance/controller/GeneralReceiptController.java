@@ -1,6 +1,7 @@
 package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.finance.dto.GeneralReceiptRequest;
@@ -332,9 +333,10 @@ public class GeneralReceiptController {
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> deleteGeneralReceipt(
             @Parameter(description = "Transaction POID", required = true, example = "12345")
-            @PathVariable Long transactionPoid) {
+            @PathVariable Long transactionPoid,
+            @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto) {
         try {
-            generalReceiptService.deleteGeneralReceipt(transactionPoid);
+            generalReceiptService.deleteGeneralReceipt(transactionPoid, deleteReasonDto);
             return success("General Receipt deleted successfully", null);
         } catch (ValidationException ex) {
             return badRequest(ex.getMessage());

@@ -1,4 +1,4 @@
-package com.asg.finance.service;
+package com.asg.finance.service.impl;
 
 import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
@@ -8,6 +8,7 @@ import java.util.Map;
 
 import com.asg.common.lib.service.PrintService;
 import com.asg.finance.entity.BankReconciliation;
+import com.asg.finance.service.BankReconciliationService;
 import net.sf.jasperreports.engine.JasperReport;
 import org.springframework.stereotype.Service;
 

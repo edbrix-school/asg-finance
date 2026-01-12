@@ -1,9 +1,6 @@
-package com.asg.finance.service;
+package com.asg.finance.service.impl;
 
-import com.asg.common.lib.dto.FilterDto;
-import com.asg.common.lib.dto.FilterRequestDto;
-import com.asg.common.lib.dto.LovGetListDto;
-import com.asg.common.lib.dto.RawSearchResult;
+import com.asg.common.lib.dto.*;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.LoadBillwiseBreakupResponseDto;
@@ -11,6 +8,7 @@ import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.PrintService;
 import com.asg.finance.repository.GLMasterRepository;
 import com.asg.finance.repository.TaxMasterRepository;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.utility.ASGHelperUtils;
@@ -24,6 +22,10 @@ import com.asg.finance.repository.ArCreditNoteHdrRepository;
 import com.asg.finance.repository.BankPaymentVoucherSpRepository;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
+import com.asg.finance.service.BillwiseBreakupService;
+import com.asg.finance.service.ChargeLovService;
+import com.asg.finance.service.CostCenterBreakupService;
+import com.asg.finance.service.CreditNoteService;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -84,6 +86,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
     @Autowired
     private DocumentSearchService documentService;
+
+    @Autowired
+    private DocumentDeleteService documentDeleteService;
 
     @Autowired
     private LovDataService lovService;
@@ -264,12 +269,21 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
     @Override
     @Transactional
-    public void deleteCreditNote(Long transactionPoid) {
+    public void deleteCreditNote(Long transactionPoid, DeleteReasonDto deleteReasonDto) {
         try {
-            executeSoftDeleteSP(transactionPoid);
-        } catch (SQLException e) {
-            log.error("Database error deleting credit note", e);
-            throw new RuntimeException("Database error occurred while deleting credit note");
+            ArCreditNoteHdr existing = creditNoteHdrRepository.findById(transactionPoid)
+                    .orElseThrow(() -> new ResourceNotFoundException("Credit Note", "transactionPoid", transactionPoid));
+            
+            documentDeleteService.deleteDocument(
+                    transactionPoid,
+                    "AR_CREDIT_NOTE_HDR",
+                    "TRANSACTION_POID",
+                    deleteReasonDto,
+                    existing.getTransactionDate()
+            );
+        } catch (Exception e) {
+            log.error("Error deleting credit note", e);
+            throw new RuntimeException("Failed to delete credit note: " + e.getMessage());
         }
     }
 

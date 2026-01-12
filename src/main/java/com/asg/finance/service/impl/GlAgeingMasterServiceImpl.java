@@ -1,10 +1,12 @@
-package com.asg.finance.service;
+package com.asg.finance.service.impl;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.finance.dto.GlAgeingMasterDtlDto;
 import com.asg.finance.dto.GlAgeingMasterDto;
@@ -14,6 +16,7 @@ import com.asg.finance.entity.GlAgeingMasterDtlEntity;
 import com.asg.finance.repository.GlAgeingMasterRepository;
 import com.asg.finance.repository.GlAgeingMasterDtlRepository;
 import com.asg.common.lib.utility.PaginationUtil;
+import com.asg.finance.service.GlAgeingMasterService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,9 +49,11 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
 
     private static final String LOV_NAME = "GL_AGEING_TYPES";
 
-
     @Autowired
-    DocumentSearchService documentService;
+    private DocumentDeleteService documentDeleteService;
+    @Autowired
+    private DocumentSearchService documentService;
+
     @PersistenceContext
     private EntityManager entityManager;
 
@@ -293,23 +298,19 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
 
     @Override
     @Transactional
-    public void softDeleteAgeingMaster(Long ageingPoid) {
-        // Fetch the AgeingMaster entity
+    public void softDeleteAgeingMaster(Long ageingPoid, DeleteReasonDto deleteReasonDto) {
+        // Fetch the AgeingMaster entity to validate existence and get transaction date
         GlAgeingMasterEntity ageing = ageingMasterRepository.findById(ageingPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("AgeingMaster", "ageingPoid", ageingPoid));
 
-        // Set inactive and deleted flags and Set modification details
-        ageing.setActive("N");
-        ageing.setDeleted("Y");
-        ageing.setLastModifiedBy(getCurrentUser());
-        ageing.setLastModifiedDate(Timestamp.valueOf(LocalDateTime.now()));
-
-        // Save the updated AgeingMaster entity
-        ageingMasterRepository.save(ageing);
-
-        // Soft delete associated entities by updating their flags
-        ageingMasterDtlRepository.deleteByAgeingMaster_AgeingPoid(ageingPoid);
-
+        // Use DocumentDeleteService for consistent soft delete handling
+        documentDeleteService.deleteDocument(
+                ageingPoid,
+                "GL_AGEING_MASTER",
+                "AGEING_POID",
+                deleteReasonDto,
+                null
+        );
     }
     @Override
     public Map<String, Object> listAgeingMasters(String documentId, FilterRequestDto request, Pageable pageable) {

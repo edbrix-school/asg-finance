@@ -1,9 +1,11 @@
-package com.asg.finance.service;
+package com.asg.finance.service.impl;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.finance.entity.GLMaster;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.finance.repository.GLMasterRepository;
@@ -21,6 +23,7 @@ import com.asg.finance.repository.AdvancePettyCashDtlRepository;
 
 import com.asg.finance.entity.AdvancePettyCashDtl;
 
+import com.asg.finance.service.AdvancePettyCashHdrService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -42,9 +45,8 @@ public class AdvancePettyCashHdrServiceImpl implements AdvancePettyCashHdrServic
     private final AdvancePettyCashHdrRepository repository;
     private final AdvancePettyCashDtlRepository detailRepository;
     private final GLMasterRepository glMasterRepository;
-    
-    @Autowired
-    private DocumentSearchService documentService;
+    private final DocumentSearchService documentService;
+    private final DocumentDeleteService documentDeleteService;
 
     @Override
     public AdvancePettyCashHdrResponseDTO createAdvancePettyCash(AdvancePettyCashHdrRequestDTO request) {
@@ -107,19 +109,17 @@ public class AdvancePettyCashHdrServiceImpl implements AdvancePettyCashHdrServic
 
     @Override
     @Transactional
-    public void softDeleteAdvancePettyCash(Long transactionPoid) {
-        try {
-            AdvancePettyCashHdr existing = repository.findByTransactionPoid(transactionPoid)
-                    .orElseThrow(() -> new ResourceNotFoundException("Advance Petty Cash not found with ID: ", "transactionPoid", transactionPoid));
+    public void softDeleteAdvancePettyCash(Long transactionPoid, DeleteReasonDto deleteReasonDto) {
+        AdvancePettyCashHdr existing = repository.findByTransactionPoid(transactionPoid)
+                .orElseThrow(() -> new ResourceNotFoundException("Advance Petty Cash not found with ID: ", "transactionPoid", transactionPoid));
 
-            existing.setDeleted("Y");
-            existing.setLastModifiedDate(LocalDateTime.now());
-            existing.setLastModifiedBy(getCurrentUser());
-            repository.save(existing);
-        }catch (Exception ex){
-            String errorMessage = extractTriggerErrorMessage(ex);
-            throw new ValidationException(errorMessage);
-        }
+        documentDeleteService.deleteDocument(
+                transactionPoid,
+                "GL_ADVANCE_PETTY_CASH_HDR",
+                "TRANSACTION_POID",
+                deleteReasonDto,
+                existing.getTransactionDate()
+        );
     }
 
     @Override

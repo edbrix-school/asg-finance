@@ -1,11 +1,9 @@
-package com.asg.finance.service;
+package com.asg.finance.service.impl;
 
-import com.asg.common.lib.dto.FilterDto;
-import com.asg.common.lib.dto.FilterRequestDto;
-import com.asg.common.lib.dto.LovGetListDto;
-import com.asg.common.lib.dto.RawSearchResult;
+import com.asg.common.lib.dto.*;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
@@ -19,6 +17,9 @@ import com.asg.finance.repository.*;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
+import com.asg.finance.service.BillwiseBreakupService;
+import com.asg.finance.service.CostCenterBreakupService;
+import com.asg.finance.service.DebitNoteService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;
@@ -67,6 +68,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
     private final LovDataService lovService;
     private final PrintService printService;
     private final DataSource dataSource;
+    private final DocumentDeleteService documentDeleteService;
 
     @Value("${app.doc-id.debit-note:300-110}")
     private String debitNoteDocId;
@@ -146,17 +148,16 @@ public class DebitNoteServiceImpl implements DebitNoteService {
 
     @Override
     @Transactional
-    public void deleteDebitNote(Long transactionPoid) {
+    public void deleteDebitNote(Long transactionPoid, DeleteReasonDto deleteReasonDto) {
         ArDebitNoteHdr entity = debitNoteHdrRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("DebitNote", "transactionPoid", transactionPoid));
-
-        String refPoid = getOldJobPoid(entity, entity.getRefType());
-        entity.setDeleted("Y");
-        entity.setLastModifiedDate(LocalDateTime.now());
-        entity.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
-        debitNoteHdrRepository.save(entity);
-
-        // Optional: also delete breakup rows if business expects; currently we keep DB cleanup to service if needed.
+        documentDeleteService.deleteDocument(
+                transactionPoid,
+                "AR_DEBIT_NOTE_HDR",
+                "TRANSACTION_POID",
+                deleteReasonDto,
+                entity.getTransactionDate()
+        );
     }
 
     private String getOldJobPoid(ArDebitNoteHdr entity, String refType) {

@@ -1,6 +1,8 @@
-package com.asg.finance.service;
+package com.asg.finance.service.impl;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.finance.dto.TelexFileDtlDto;
@@ -19,6 +21,8 @@ import com.asg.finance.repository.GlBankFileDtlRepository;
 import com.asg.finance.repository.GlBankFileHdrRepository;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
+import com.asg.finance.service.BankFileBatchService;
+import com.asg.finance.service.TelexFileGenerateService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -47,6 +51,7 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
     private final LovDataService lovService;
     private final GlBankDebitHdrRepository glBankDebitHdrRepository;
     private final BankFileBatchService bankFileBatchService;
+    private final DocumentDeleteService documentDeleteService;
 
     @Override
     @Transactional
@@ -158,10 +163,18 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
 
     @Override
     @Transactional
-    public void softDeleteTelexFile(Long transactionPoid) {
+    public void softDeleteTelexFile(Long transactionPoid, DeleteReasonDto deleteReasonDto) {
         try {
             GlBankFileHdr hdr = hdrRepository.findByTransactionPoid(transactionPoid)
                     .orElseThrow(() -> new ResourceNotFoundException("Telex File", "transactionPoid", transactionPoid));
+
+            documentDeleteService.deleteDocument(
+                    transactionPoid,
+                    "GL_BANK_DEBIT_HDR",
+                    "TRANSACTION_POID",
+                    deleteReasonDto,
+                    hdr.getTransactionDate()
+            );
 
             hdr.setDeleted("Y");
             hdr.setLastModifiedBy(getCurrentUser());

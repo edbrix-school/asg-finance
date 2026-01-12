@@ -1,16 +1,19 @@
-package com.asg.finance.service;
+package com.asg.finance.service.impl;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.exception.ResourceAlreadyExistsException;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.finance.dto.SupplierCategoryDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.finance.entity.SupplierCategoryEntity;
 import com.asg.finance.repository.SupplierCategoryRepository;
 import com.asg.common.lib.utility.PaginationUtil;
+import com.asg.finance.service.SupplierCategoryService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
@@ -33,6 +36,7 @@ public class SupplierCategoryServiceImpl implements SupplierCategoryService {
 
     private final SupplierCategoryRepository supplierCategoriesRepository;
     private final DocumentSearchService documentService;
+    private final DocumentDeleteService documentDeleteService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -40,17 +44,17 @@ public class SupplierCategoryServiceImpl implements SupplierCategoryService {
 
     @Transactional
     @Override
-    public SupplierCategoryDto softDeleteSupplierCategory(Long supplierCategoryPoid) {
+    public void softDeleteSupplierCategory(Long supplierCategoryPoid, DeleteReasonDto deleteReasonDto) {
         SupplierCategoryEntity category = supplierCategoriesRepository.findById(supplierCategoryPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Supplier Category", "supplierCategoryPoid", supplierCategoryPoid));
 
-        category.setActive("N");
-        category.setDeleted("Y");
-        category.setLastModifiedDate(LocalDateTime.now());
-
-        SupplierCategoryEntity entity = supplierCategoriesRepository.save(category);
-
-        return mapToDto(entity);
+        documentDeleteService.deleteDocument(
+                supplierCategoryPoid,
+                "AP_SUPPLIER_CATEGORY",
+                "SUPPLIER_CATEGORY_POID",
+                deleteReasonDto,
+                null
+        );
     }
 
     private SupplierCategoryDto mapToDto(SupplierCategoryEntity entity) {

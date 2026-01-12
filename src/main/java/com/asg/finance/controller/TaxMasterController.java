@@ -2,13 +2,14 @@ package com.asg.finance.controller;
 
 
 import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.TaxMasterRequestDTO;
 import com.asg.finance.dto.TaxMasterResponseDTO;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.exception.ValidationException;
-import com.asg.finance.service.TaxMasterServiceImpl;
+import com.asg.finance.service.TaxMasterService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -33,7 +34,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.success;
 @RequestMapping("/v1/tax-master")
 @RequiredArgsConstructor
 public class TaxMasterController {
-    private final TaxMasterServiceImpl service;
+    private final TaxMasterService service;
 
     @Operation(
             summary = "Create a new Tax Master",
@@ -240,9 +241,10 @@ public class TaxMasterController {
     @DeleteMapping("/{taxPoid}")
     public ResponseEntity<?> softDeleteTaxMaster(
             @Parameter(description = "taxPoid reference identifier", required = true)
-            @PathVariable Long taxPoid) {
+            @PathVariable Long taxPoid,
+            @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto) {
 
-        service.softDeleteTaxMaster(taxPoid);
+        service.softDeleteTaxMaster(taxPoid, deleteReasonDto);
         return success("Tax Master has been soft deleted successfully");
     }
 

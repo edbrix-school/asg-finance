@@ -203,7 +203,6 @@ public class TaxMasterController {
     @GetMapping("/simple/{taxPoid}")
     public ResponseEntity<?> getTaxMasterSimple(@PathVariable Long taxPoid) {
         com.asg.common.lib.dto.TaxMasterDto taxMasterDto = service.getTaxMasterDtoById(taxPoid);
-        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), taxPoid.toString());
         return success("Tax Master fetched successfully", taxMasterDto);
     }
 

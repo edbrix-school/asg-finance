@@ -306,7 +306,6 @@ public class ImcoDepositRefundController {
             @RequestParam(required = false) String receiptNumber
     ) throws SQLException {
         ImcoRefundLoadResponseDto responseDto = service.getChequeDetails(receiptPoid, receiptNumber);
-        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), receiptPoid.toString());
         return success("IMCO Cheque and Bill details fetched successfully", responseDto);
     }
 
@@ -347,7 +346,6 @@ public class ImcoDepositRefundController {
             @RequestParam Long transactionPoid
     ) {
         GlPostingViewResponseDto responseDto = service.getGlPostingDetails(UserContext.getUserId(), transactionPoid);
-        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
         return success("IMCO GL Posting details fetched successfully", responseDto);
     }
 

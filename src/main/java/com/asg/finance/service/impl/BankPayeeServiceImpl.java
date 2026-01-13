@@ -100,7 +100,7 @@ public class BankPayeeServiceImpl implements IBankPayeeService {
         
         documentDeleteService.deleteDocument(
                 payingPoid,
-                "BANK_PAYEE_MASTER",
+                "GL_PAYING_TO_MASTER",
                 "PAYING_POID",
                 deleteReasonDto,
                 null

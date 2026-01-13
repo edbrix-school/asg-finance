@@ -294,7 +294,6 @@ public class TaxSubmissionController {
         log.info("loadVatDetails started for transactionPoid={}", transactionPoid);
         
         LoadVatDetailsResponse response = taxSubmissionService.loadVatDetails(transactionPoid);
-        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
         
         log.info("loadVatDetails completed for transactionPoid={} loadedCount={}", 
                 transactionPoid, response.getDetails() != null ? response.getDetails().size() : 0);

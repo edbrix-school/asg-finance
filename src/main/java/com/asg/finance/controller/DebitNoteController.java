@@ -297,7 +297,6 @@ public class DebitNoteController {
     @GetMapping("/fda/{fdaPoid}/charges")
     public ResponseEntity<?> loadFdaCharges(@PathVariable Long fdaPoid) {
         Map<String, Object> result = debitNoteService.loadFdaCharges(fdaPoid);
-        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), fdaPoid.toString());
         return success("FDA charges loaded successfully", result);
     }
 
@@ -310,7 +309,6 @@ public class DebitNoteController {
                                           @Parameter(description = "Party Poid", required = true, example = "SUPPLIER")
                                           @RequestParam Long partyPoid) {
         Map<String, Object> result = debitNoteService.getChargeTax(chargeId, partyType, partyPoid);
-        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), chargeId.toString());
         return success("Tax details fetched successfully", result);
     }
 

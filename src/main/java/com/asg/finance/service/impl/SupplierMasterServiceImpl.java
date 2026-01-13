@@ -760,6 +760,20 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
         supplierMasterPaymentDtlDto.setSupplierPoid(supplierMasterPaymentDtlEntity.getId().getSupplierPoid());
         supplierMasterPaymentDtlDto.setDetRowId(supplierMasterPaymentDtlEntity.getId().getDetRowId());
         BeanUtils.copyProperties(supplierMasterPaymentDtlEntity, supplierMasterPaymentDtlDto);
+
+        if (supplierMasterPaymentDtlEntity.getIntermediaryCountryPoid() != null) {
+            LovGetListDto lovGetListDto = lovDataService.getDetailsByPoidAndLovName(supplierMasterPaymentDtlEntity.getIntermediaryCountryPoid(), "COUNTRY");
+            if (lovGetListDto != null && lovGetListDto.getCode() != null) {
+                supplierMasterPaymentDtlDto.setIntermediaryCountryDetail(lovGetListDto);
+            }
+        }
+        if (supplierMasterPaymentDtlEntity.getBeneficiaryCountry() != null) {
+            LovGetListDto lovGetListDto = lovDataService.getDetailsByPoidAndLovName(supplierMasterPaymentDtlEntity.getBeneficiaryCountry(), "COUNTRY");
+            if (lovGetListDto != null && lovGetListDto.getCode() != null) {
+                supplierMasterPaymentDtlDto.setBeneficiaryCountryDetail(lovGetListDto);
+            }
+        }
+
         return supplierMasterPaymentDtlDto;
     }
 

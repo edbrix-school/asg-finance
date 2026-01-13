@@ -27,7 +27,7 @@ public interface CostCenterRepository extends JpaRepository<CostCenter, Long>, J
      * These are the top-level cost centers
      */
     @Query("SELECT c FROM CostCenter c WHERE c.parentCostCenterPoid IS NULL " +
-           "AND (:includeDeleted = true OR c.deleted != 'Y') " +
+           "AND (:includeDeleted = true OR c.deleted != 'Y' OR c.deleted IS NULL) " +
            "AND (:groupPoid IS NULL OR c.groupPoid = :groupPoid) " +
            "ORDER BY COALESCE(c.seqNo, 999999), c.costCenterCode")
     List<CostCenter> findMainGroups(
@@ -39,7 +39,7 @@ public interface CostCenterRepository extends JpaRepository<CostCenter, Long>, J
      * Returns only immediate children, not the complete hierarchy
      */
     @Query("SELECT c FROM CostCenter c WHERE c.parentCostCenterPoid = :parentPoid " +
-           "AND (:includeDeleted = true OR c.deleted != 'Y') " +
+           "AND (:includeDeleted = true OR c.deleted != 'Y' OR c.deleted IS NULL) " +
            "AND (:groupPoid IS NULL OR c.groupPoid = :groupPoid) " +
            "ORDER BY COALESCE(c.seqNo, 999999), c.costCenterCode")
     List<CostCenter> findDirectChildren(

@@ -3,6 +3,8 @@ package com.asg.finance.controller;
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.LoggingService;
 
 import com.asg.finance.dto.*;
 import com.asg.common.lib.security.util.UserContext;
@@ -36,6 +38,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 public class TaxSubmissionController {
 
     private final TaxSubmissionService taxSubmissionService;
+    private final LoggingService loggingService;
 
     @Operation(
             summary = "Create tax submission",
@@ -103,6 +106,7 @@ public class TaxSubmissionController {
                 transactionPoid, UserContext.getGroupPoid());
         
         TaxSubmissionResponse response = taxSubmissionService.getTaxSubmissionById(transactionPoid);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
         
         log.info("getTaxSubmissionById completed for transactionPoid={}", transactionPoid);
         return success("Tax submission fetched successfully", response);
@@ -255,6 +259,7 @@ public class TaxSubmissionController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate periodTo) {
         try {
             Map<String, Object> data = taxSubmissionService.listTaxSubmission(filters, pageable, periodFrom, periodTo);
+            
             return success("Tax submissions fetched successfully", data);
         } catch (Exception ex) {
             return internalServerError("Unable to fetch Tax Submission list: " + ex.getMessage());
@@ -289,6 +294,7 @@ public class TaxSubmissionController {
         log.info("loadVatDetails started for transactionPoid={}", transactionPoid);
         
         LoadVatDetailsResponse response = taxSubmissionService.loadVatDetails(transactionPoid);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
         
         log.info("loadVatDetails completed for transactionPoid={} loadedCount={}", 
                 transactionPoid, response.getDetails() != null ? response.getDetails().size() : 0);

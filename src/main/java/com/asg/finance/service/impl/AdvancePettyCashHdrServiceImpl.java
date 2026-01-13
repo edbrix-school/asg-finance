@@ -12,6 +12,8 @@ import com.asg.finance.repository.GLMasterRepository;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.finance.dto.AdvancePettyCashDtlResponseDTO;
 import com.asg.finance.dto.AdvancePettyCashHdrRequestDTO;
 import com.asg.finance.dto.AdvancePettyCashHdrResponseDTO;
@@ -25,6 +27,7 @@ import com.asg.finance.entity.AdvancePettyCashDtl;
 
 import com.asg.finance.service.AdvancePettyCashHdrService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -45,6 +48,9 @@ public class AdvancePettyCashHdrServiceImpl implements AdvancePettyCashHdrServic
     private final AdvancePettyCashHdrRepository repository;
     private final AdvancePettyCashDtlRepository detailRepository;
     private final GLMasterRepository glMasterRepository;
+    private final LoggingService loggingService;
+    
+    @Autowired
     private final DocumentSearchService documentService;
     private final DocumentDeleteService documentDeleteService;
 
@@ -55,6 +61,11 @@ public class AdvancePettyCashHdrServiceImpl implements AdvancePettyCashHdrServic
         try {
             AdvancePettyCashHdr entity = convertFromDtoToEntity(request);
             AdvancePettyCashHdr saved = repository.save(entity);
+            String key = saved.getTransactionPoid().toString();
+            
+            // Log the creation
+            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), key);
+            
             return convertFromEntityToDto(saved);
         } catch (Exception ex) {
             String errorMessage = extractTriggerErrorMessage(ex);
@@ -73,6 +84,9 @@ public class AdvancePettyCashHdrServiceImpl implements AdvancePettyCashHdrServic
         
         validateTransactionDate(request.getTransactionDate());
         validateClosedStatus(request.getStatus(), request.getClosedReason());
+
+        AdvancePettyCashHdr oldEntity = new AdvancePettyCashHdr();
+        BeanUtils.copyProperties(existing, oldEntity);
 
         existing.setTransactionDate(request.getTransactionDate());
         existing.setPettyCashGlPoid(request.getPettyCashGlPoid());
@@ -93,6 +107,12 @@ public class AdvancePettyCashHdrServiceImpl implements AdvancePettyCashHdrServic
             existing.setLastModifiedBy(getCurrentUser());
             existing.setLastModifiedDate(LocalDateTime.now());
             AdvancePettyCashHdr updated = repository.save(existing);
+            String key = updated.getTransactionPoid().toString();
+            
+            // Log the update
+            loggingService.logChanges(oldEntity, updated, AdvancePettyCashHdr.class,
+                    UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+            
             return convertFromEntityToDto(updated);
         } catch (Exception ex) {
             String errorMessage = extractTriggerErrorMessage(ex);

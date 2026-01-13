@@ -3,6 +3,8 @@ package com.asg.finance.controller;
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.LoggingService;
 
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.security.util.UserContext;
@@ -38,6 +40,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 public class GlFavAcMasterController {
 
     private final GlFavAcMasterService service;
+    private final LoggingService loggingService;
 
     @Operation(
             summary = "Create Key Favorite Account Master",
@@ -225,6 +228,7 @@ public class GlFavAcMasterController {
     @GetMapping("/{favAcPoid}")
     public ResponseEntity<?> getGlFavAc(@PathVariable Long favAcPoid) {
         GlFavAcMasterResponse result = service.getFavoriteAccountById(favAcPoid);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), favAcPoid.toString());
         return success("Favorite Account Records fetched successfully", result);
     }
 
@@ -362,7 +366,7 @@ public class GlFavAcMasterController {
 
         Map<String, Object> favAcMaster = service.listOfRecordsAndGenericSearch(UserContext.getDocumentId(), filters, pageable);
 
-        return success("Favorite Account list fetched successfully", favAcMaster);
+            return success("Favorite Account list fetched successfully", favAcMaster);
 
     }
 

@@ -4,8 +4,10 @@ import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.request.DocReleaseLockRequestDto;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.finance.dto.GLMasterRequestDto;
 import com.asg.finance.dto.GLMasterResponseDto;
 import com.asg.finance.dto.GlMasterTreeRequest;
@@ -39,6 +41,9 @@ public class GLMasterController {
 
     @Autowired
     private GLMasterService glMasterService;
+    
+    @Autowired
+    private LoggingService loggingService;
 
     @Operation(
             summary = "Create GL Master",
@@ -80,6 +85,7 @@ public class GLMasterController {
             @Parameter(description = "GL Master POID", required = true) @PathVariable Long glPoid) {
 
         GLMasterResponseDto resp = glMasterService.getGLMaster(glPoid);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), glPoid.toString());
         return success("GL Master found", resp);
 
     }
@@ -92,6 +98,7 @@ public class GLMasterController {
     @GetMapping("/simple/{glPoid}")
     public ResponseEntity<?> getSimple(@PathVariable Long glPoid) {
         com.asg.common.lib.dto.GLMasterDto glMasterDto = glMasterService.getGLMasterDto(glPoid);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), glPoid.toString());
         return success("GL Master found", glMasterDto);
     }
 
@@ -203,6 +210,7 @@ public class GLMasterController {
             }
 
             // Return the tree structure directly as an array
+            loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), "TREE");
             return success("GL Master tree structure retrieved successfully", treeItems);
 
         } catch (Exception e) {

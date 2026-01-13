@@ -15,6 +15,8 @@ import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.TaxMasterService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +36,7 @@ import java.util.Map;
 public class TaxMasterServiceImpl implements TaxMasterService {
     private final TaxMasterRepository repository;
     private final GLMasterRepository glMasterRepository;
+    private final LoggingService loggingService;
     private final DocumentSearchService documentService;
     private final DocumentDeleteService documentDeleteService;
 
@@ -64,13 +67,21 @@ public class TaxMasterServiceImpl implements TaxMasterService {
                 .build();
 
         TaxMaster saved = repository.save(entity);
-
+        
+        // Log the creation
+        String key = saved.getTaxPoid().toString();
+        String docId = UserContext.getDocumentId();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, key);
         return getTaxMasterResponseDTO(saved);
     }
 
     public TaxMasterResponseDTO updateTaxMaster(Long taxPoid, TaxMasterRequestDTO request) {
         TaxMaster existing = repository.findByTaxPoid(taxPoid)
                 .orElseThrow(() -> new ValidationException("Tax Master not found with id: " + taxPoid));
+
+        // Create a copy of the existing entity for logging
+        TaxMaster oldEntity = new TaxMaster();
+        BeanUtils.copyProperties(existing, oldEntity);
 
         if (!existing.getTaxCode().equals(request.getTaxCode()) &&
                 repository.existsByTaxCodeAndTaxPoidNot(request.getTaxCode(),taxPoid )) {
@@ -93,6 +104,12 @@ public class TaxMasterServiceImpl implements TaxMasterService {
         existing.setLastModifiedBy(currentUser);
 
         TaxMaster updated = repository.save(existing);
+        
+        // Log the update
+        String key = updated.getTaxPoid().toString();
+        String docId = UserContext.getDocumentId();
+        loggingService.logChanges(oldEntity, updated, TaxMaster.class,
+                docId, key, LogDetailsEnum.MODIFIED, "TAX_POID");
 
         return getTaxMasterResponseDTO(updated);
     }

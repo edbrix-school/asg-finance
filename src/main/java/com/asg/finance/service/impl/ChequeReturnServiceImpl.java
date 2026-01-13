@@ -7,6 +7,8 @@ import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.finance.dto.ChequeReturnEditRequest;
 import com.asg.finance.dto.ChequeReturnLoadResponseDto;
 import com.asg.finance.dto.ChequeReturnRequest;
@@ -23,6 +25,7 @@ import jakarta.persistence.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -46,6 +49,7 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
     private final DocumentDeleteService documentDeleteService;
     private final ChequeReturnLoadRepository chequeReturnLoadRepository;
     private final LovDataService lovService;
+    private final LoggingService loggingService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -99,6 +103,10 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
         // Schedule after save procedure to run after transaction commit
         scheduleAfterSave(header.getTransactionPoid(), header.getDocRef());
         
+        // Log the creation
+        String key = header.getTransactionPoid().toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, DOC_ID_CHEQUE_RETURN, key);
+        
         return toResponse(header, request, "Cheque Return created successfully.");
     }
 
@@ -111,6 +119,10 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
         ChequeReturn header = headerRepo.findById(transactionPoid)
                 .orElseThrow(() -> new EntityNotFoundException("Cheque Return not found: " + transactionPoid));
 
+        // Create a copy of the existing entity for logging
+        ChequeReturn oldEntity = new ChequeReturn();
+        BeanUtils.copyProperties(header, oldEntity);
+
         // 🔹 2. Check if already closed
         if ("CLOSED".equalsIgnoreCase(header.getStatus())) {
             throw new IllegalArgumentException("Cannot edit Cheque Return - already in CLOSED status");
@@ -122,6 +134,11 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
         header.setLastModifiedDate(getCurrentDbDate());
         header.setLastModifiedBy(UserContext.getUserId());
         headerRepo.save(header);
+        
+        // Log the update
+        String key = transactionPoid.toString();
+        loggingService.logChanges(oldEntity, header, ChequeReturn.class, 
+                DOC_ID_CHEQUE_RETURN, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
         return getChequeReturn(transactionPoid);
     }
 
@@ -137,6 +154,11 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
         // Validate header exists
         ChequeReturn header = headerRepo.findById(transactionPoid)
                 .orElseThrow(() -> new EntityNotFoundException("Cheque Return not found: " + transactionPoid));
+
+        // Create a copy of the existing entity for logging
+
+        ChequeReturn oldEntity = new ChequeReturn();
+        BeanUtils.copyProperties(header, oldEntity);
 
         // Check if already closed
         if ("CLOSED".equalsIgnoreCase(header.getStatus())) {
@@ -170,6 +192,11 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
         headerRepo.save(header);
         // Schedule after save procedure to run after transaction commit
         scheduleAfterSave(header.getTransactionPoid(), header.getDocRef());
+        
+        // Log the update
+        String key = transactionPoid.toString();
+        loggingService.logChanges(oldEntity, header, ChequeReturn.class, 
+                DOC_ID_CHEQUE_RETURN, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
         return toResponse(header, request, "Cheque Return updated successfully.");
     }
 

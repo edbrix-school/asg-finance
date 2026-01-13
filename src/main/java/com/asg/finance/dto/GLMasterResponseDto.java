@@ -4,6 +4,7 @@ import com.asg.common.lib.dto.LovGetListDto;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -28,6 +29,8 @@ public class GLMasterResponseDto {
     private Boolean isKeyFavorite;
     private Boolean billWise;
     private Boolean prepaymentLedger;
+    private String createdBy;
+    private LocalDateTime createdDate;
     private List<PaymentDetailsDto> paymentDetails;
     private List<CompanyDetailsDto> companyDetails;
 

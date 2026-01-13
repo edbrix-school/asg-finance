@@ -3,6 +3,8 @@ package com.asg.finance.controller;
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.LoggingService;
 
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.BankPayeeRequest;
@@ -40,10 +42,12 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 public class BankPayeeController {
 
     private final IBankPayeeService bankPayeeService;
+    private final LoggingService loggingService;
 
     @Autowired
-    public BankPayeeController(IBankPayeeService bankPayeeService) {
+    public BankPayeeController(IBankPayeeService bankPayeeService, LoggingService loggingService) {
         this.bankPayeeService = bankPayeeService;
+        this.loggingService = loggingService;
     }
 
     @Operation(
@@ -118,6 +122,7 @@ public class BankPayeeController {
     public ResponseEntity<?> getPayee(@PathVariable Long payeePoid) {
 
         BankPayeeResponse response = bankPayeeService.getPayeeById(payeePoid);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), payeePoid.toString());
         return success("Bank Payee found", response);
     }
 
@@ -255,6 +260,7 @@ public class BankPayeeController {
                                            @RequestBody(required = false) FilterRequestDto filters) {
         try {
             Map<String, Object> data = bankPayeeService.listPayees(UserContext.getDocumentId(), filters, pageable);
+
             return success("Bank payees fetched successfully", data);
         } catch (Exception ex) {
             return internalServerError("Unable to fetch bank payee list: " + ex.getMessage());

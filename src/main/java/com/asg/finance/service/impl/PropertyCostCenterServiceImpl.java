@@ -16,7 +16,11 @@ import com.asg.finance.repository.PropertyCostCenterRepository;
 import com.asg.finance.repository.PropertyCostCenterTreeViewRepository;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.finance.service.IPropertyCostCenterService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.security.util.UserContext;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +46,9 @@ public class PropertyCostCenterServiceImpl implements IPropertyCostCenterService
 
     @Autowired
     private LovDataService lovService;
+
+    @Autowired
+    private LoggingService loggingService;
 
     @Autowired
     private DocumentDeleteService documentDeleteService;
@@ -89,6 +96,10 @@ public class PropertyCostCenterServiceImpl implements IPropertyCostCenterService
         costCenter.setLastModifiedDate(LocalDateTime.now());
 
         PropertyCostCenter saved = repository.save(costCenter);
+        
+        // Logging for create operation
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), saved.getPropertyCostCenterPoid().toString());
+        
         return convertEntityToResponseDTO(saved);
     }
 
@@ -151,6 +162,10 @@ public class PropertyCostCenterServiceImpl implements IPropertyCostCenterService
         PropertyCostCenter entity = repository.findByPropertyCostCenterPoidAndDeleted(costCenterPoid, "N")
                 .orElseThrow(() -> new ResourceNotFoundException("Property Cost Center", "POID", costCenterPoid));
 
+        // Create a copy of the existing entity for logging
+        PropertyCostCenter oldEntity = new PropertyCostCenter();
+        BeanUtils.copyProperties(entity, oldEntity);
+
         validatePropertyType(request);
 
         if (request.getPropertyCostCenterName() != null) {
@@ -174,6 +189,9 @@ public class PropertyCostCenterServiceImpl implements IPropertyCostCenterService
         entity.setLastModifiedBy(getCurrentUser());
         entity.setLastModifiedDate(LocalDateTime.now());
         entity = repository.save(entity);
+
+        // Logging for update operation
+        loggingService.logChanges(oldEntity, entity, PropertyCostCenter.class, UserContext.getDocumentId(), entity.getPropertyCostCenterPoid().toString(), LogDetailsEnum.MODIFIED, "PROPERTY_COST_CENTER_POID");
 
         return convertEntityToResponseDTO(entity);
     }

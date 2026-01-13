@@ -8,6 +8,8 @@ import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.finance.dto.CostCenterListResponseDto;
 import com.asg.finance.dto.CostCenterRequestDTO;
 import com.asg.finance.dto.CostCenterTreeRequest;
@@ -22,6 +24,7 @@ import com.asg.finance.service.CostCenterService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -39,6 +42,7 @@ public class CostCenterServiceImpl implements CostCenterService {
     private final DocumentSearchService documentService;
     private final DocumentDeleteService documentDeleteService;
     private final CostCenterTreeViewRepository costCenterTreeViewRepository;
+    private final LoggingService loggingService;
     
     private static final Logger log = LoggerFactory.getLogger(CostCenterServiceImpl.class);
 
@@ -55,7 +59,7 @@ public class CostCenterServiceImpl implements CostCenterService {
         validateCostCenterType(dto);
 
         String currentUser = getCurrentUser();
-               return repository.save(CostCenter.builder()
+        CostCenter savedEntity = repository.save(CostCenter.builder()
                        .costCenterCode(dto.getCostCenterCode())
                        .costCenterDescription(dto.getCostCenterDescription())
                        .costCenterDescription2(dto.getCostCenterDescription2())
@@ -71,8 +75,13 @@ public class CostCenterServiceImpl implements CostCenterService {
                        .lastModifiedBy(currentUser)
                        .lastModifiedDate(LocalDateTime.now())
                        .deleted("N")
-                       .build())
-                       .getCostCenterPoid();
+                       .build());
+        
+        // Log the creation
+        String key = savedEntity.getCostCenterPoid().toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), key);
+        
+        return savedEntity.getCostCenterPoid();
 
     }
 
@@ -108,6 +117,10 @@ public class CostCenterServiceImpl implements CostCenterService {
         CostCenter existing = repository.findById(poid)
                 .orElseThrow(() -> new ResourceNotFoundException("Cost Center not found with POID: ", "poid", poid));
         
+        // Create a copy of the existing entity for logging
+        CostCenter oldEntity = new CostCenter();
+        BeanUtils.copyProperties(existing, oldEntity);
+
         // Only check uniqueness if the code is actually changing
         if (!existing.getCostCenterCode().equals(dto.getCostCenterCode()) && 
             repository.existsByCostCenterCodeAndCostCenterPoidNot(dto.getCostCenterCode(), poid)) {
@@ -134,7 +147,14 @@ public class CostCenterServiceImpl implements CostCenterService {
         existing.setCostCenterChild(Objects.equals(dto.getCostCenterType(), "MAIN_GROUP") ? "N" : "Y");
         existing.setLastModifiedBy(currentUser);
         existing.setLastModifiedDate(LocalDateTime.now());
-        return repository.save(existing).getCostCenterPoid();
+        CostCenter savedEntity = repository.save(existing);
+        
+        // Log the update
+        String key = savedEntity.getCostCenterPoid().toString();
+        loggingService.logChanges(oldEntity, savedEntity, CostCenter.class, 
+                UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "COST_CENTER_POID");
+        
+        return savedEntity.getCostCenterPoid();
     }
 
     /*

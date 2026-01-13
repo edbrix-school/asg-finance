@@ -7,6 +7,8 @@ import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.utility.ASGHelperUtils;
 import com.asg.finance.dto.*;
 
@@ -25,6 +27,7 @@ import com.asg.finance.service.GLMasterService;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Example;
 import org.springframework.data.domain.Page;
@@ -32,6 +35,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -62,6 +66,9 @@ public class GLMasterServiceImpl implements GLMasterService {
 
     @Autowired
     private LovDataService lovService;
+
+    @Autowired
+    private LoggingService loggingService;
 
     @Autowired
     private DocumentDeleteService documentDeleteService;
@@ -193,6 +200,10 @@ public class GLMasterServiceImpl implements GLMasterService {
 
         propagateToChildren(entity);
 
+        // Log the creation
+        String key = entity.getGlPoid().toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), key);
+
         return toResponseDto(entity);
     }
 
@@ -244,6 +255,11 @@ public class GLMasterServiceImpl implements GLMasterService {
     public GLMasterResponseDto updateGLMaster(Long glPoid, GLMasterRequestDto req) {
         GLMasterEntity entity = glMasterRepo.findById(glPoid)
                 .orElseThrow(() -> new RuntimeException("GL Master not found: " + glPoid));
+
+        // Create a copy of the existing entity for logging
+        GLMasterEntity oldEntity = new GLMasterEntity();
+
+        BeanUtils.copyProperties(oldEntity, entity);
 
         if (glMasterRepo.existsByGlCodeAndGlPoidNot(req.getGlCode(), glPoid)) {
             throw new RuntimeException("GL Code already in use by another: " + req.getGlCode());
@@ -297,6 +313,11 @@ public class GLMasterServiceImpl implements GLMasterService {
             updateGlCompanyDetails(req.getCompanyDetails(), glPoid);
         }
         propagateToChildren(entity);
+
+        // Log the update
+        String key = entity.getGlPoid().toString();
+        loggingService.logChanges(oldEntity, entity, GLMasterEntity.class, 
+                UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "GL_POID");
 
         return toResponseDto(entity);
     }
@@ -442,6 +463,8 @@ public class GLMasterServiceImpl implements GLMasterService {
         dto.setActive("Y".equals(entity.getActiveFlag()));
         dto.setBillWise("Y".equals(entity.getBillWiseFlag()));
         dto.setPrepaymentLedger("Y".equals(entity.getPrepaymentLedgerFlag()));
+        dto.setCreatedBy(entity.getCreatedBy());
+        dto.setCreatedDate(entity.getCreatedDate());
 
         List<GLPaymentDetailsEntity> paymentDetails = payDtlRepo.findAllByGlMaster_GlPoid(entity.getGlPoid());
         if (!paymentDetails.isEmpty()) {

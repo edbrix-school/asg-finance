@@ -4,10 +4,12 @@ import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.finance.dto.GlChequeCashConvertHdrDto;
@@ -32,6 +34,7 @@ import com.asg.common.lib.exception.ValidationException;
 
 
 import net.sf.jasperreports.engine.JasperReport;
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -63,6 +66,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
     private final PrintService printService;
     private final DataSource dataSource;
     private final DocumentDeleteService documentDeleteService;
+    private final LoggingService loggingService;
 
     @Override
     public GlChequeCashConvertHdrDto getGlChequeCashConvert(Long transactionPoid) {
@@ -298,6 +302,9 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
             glChequeCashConvertOutDtlRepository.saveAll(outDtlEntities);
         }
 
+        // Log the creation
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), savedHdr.getTransactionPoid().toString());
+
         return getGlChequeCashConvert(savedHdr.getTransactionPoid());
         } catch (Exception ex) {
             throw new ValidationException(extractTriggerErrorMessage(ex));
@@ -312,6 +319,10 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         try {
         GlChequeCashConvertHdrEntity existingHdr = glChequeCashConvertHdrRepository.findById(transactionPoid)
                 .orElseThrow(() -> new RuntimeException("Record not found for transactionPoid: " + transactionPoid));
+
+        // Create a copy of the old entity for logging
+        GlChequeCashConvertHdrEntity oldEntity = new GlChequeCashConvertHdrEntity();
+        BeanUtils.copyProperties(existingHdr, oldEntity);
 
         validateTransactionDate(dto.getTransactionDate());
         existingHdr.setPostingNarration(dto.getPostingNarration());
@@ -396,6 +407,9 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
 
             glChequeCashConvertOutDtlRepository.saveAll(outDtlEntities);
         }
+
+        // Log the update
+        loggingService.logChanges(oldEntity, savedHdr, GlChequeCashConvertHdrEntity.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
         return getGlChequeCashConvert(savedHdr.getTransactionPoid());
         } catch (Exception ex) {

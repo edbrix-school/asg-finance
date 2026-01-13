@@ -10,6 +10,8 @@ import com.asg.common.lib.exception.ResourceAlreadyExistsException;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.PrintService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.finance.client.GlobalTermsServiceClient;
 import com.asg.finance.repository.GLMasterRepository;
 import com.asg.finance.repository.TaxMasterRepository;
@@ -34,6 +36,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -82,6 +85,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
     private final GlobalTermsCustomChangesRepository globalTermsCustomChangesRepository;
     private final PrintService printService;
     private final DataSource dataSource;
+    private final LoggingService loggingService;
     private final DocumentDeleteService documentDeleteService;
 
     @Override
@@ -148,7 +152,10 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
         persistChildCollections(request, savedHeader.getTransactionPoid(), true,documentId);
 
-        // Load breakup data in response
+        // Log the creation
+        String key = savedHeader.getTransactionPoid().toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, documentId, key);
+
         BankDebitVoucherResponse response = mapEntityToResponse(savedHeader);
         loadBreakupsIntoResponse(response, savedHeader.getTransactionPoid(), documentId, savedHeader.getGroupPoid(), savedHeader.getCompanyPoid());
         return response;
@@ -192,6 +199,10 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
         GlBankDebitHdr header = headerRepository.findByTransactionPoidAndNotDeleted(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Bank Debit Voucher", "transactionPoid", transactionPoid));
+
+        // Create a copy of the existing entity for logging
+        GlBankDebitHdr oldEntity = new GlBankDebitHdr();
+        BeanUtils.copyProperties(header, oldEntity);
 
         validator.validate(request, false);
 
@@ -256,7 +267,11 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
         persistChildCollections(request, header.getTransactionPoid(), false,documentId);
 
-        // Load breakup data in response (like CreditNote, DebitNote, ApPurchaseJournal)
+        // Log the update
+        String key = header.getTransactionPoid().toString();
+        loggingService.logChanges(oldEntity, header, GlBankDebitHdr.class,
+                documentId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+
         BankDebitVoucherResponse response = mapEntityToResponse(header);
         loadBreakupsIntoResponse(response, header.getTransactionPoid(), documentId, header.getGroupPoid(), header.getCompanyPoid());
         return response;

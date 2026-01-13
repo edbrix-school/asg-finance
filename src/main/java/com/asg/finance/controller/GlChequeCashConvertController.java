@@ -3,6 +3,8 @@ package com.asg.finance.controller;
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.GlChequeCashConvertHdrDto;
 import com.asg.finance.dto.GlChequeConversionLoadResponseDto;
@@ -37,6 +39,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.success;
 public class GlChequeCashConvertController {
 
     private final GlChequeCashConvertService service;
+    private final LoggingService loggingService;
 
     @Operation(
             summary = "Fetch GL Cheque Cash Convert Record by Transaction POID",
@@ -62,6 +65,7 @@ public class GlChequeCashConvertController {
             )
             @PathVariable Long transactionPoid) {
         GlChequeCashConvertHdrDto result = service.getGlChequeCashConvert(transactionPoid);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
         return success("GL Cheque Cash Convert Records fetched successfully", result);
     }
 
@@ -172,7 +176,8 @@ public class GlChequeCashConvertController {
         java.time.LocalDate startDateValue = startDate != null ? java.time.LocalDate.parse(startDate) : null;
         java.time.LocalDate endDateValue = endDate != null ? java.time.LocalDate.parse(endDate) : null;
         Map<String, Object> result = service.listOfRecordsAndGenericSearch(UserContext.getDocumentId(), filters, startDateValue, endDateValue, pageable);
-        return success("GL Cheque Cash Convert list fetched successfully", result);
+
+            return success("GL Cheque Cash Convert list fetched successfully", result);
     }
 
 

@@ -20,4 +20,13 @@ public interface ApPaymentRequestService {
     void delete(Long transactionPoid);
 
     Map<String, Object> listPaymentRequest(String documentId, FilterRequestDto filters, Pageable pageable, LocalDate periodFrom, LocalDate periodTo);
+
+    Map<String, Object> createFromPo(String poPoid);
+
+    Map<String, Object> createFromFf(String ffPoid);
+
+
+    Map<String, Object> createFromFda(String fdaPoid);
+
+    Map<String, Object> createFromMta(String poPoid);
 }

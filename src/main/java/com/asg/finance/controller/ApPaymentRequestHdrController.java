@@ -200,4 +200,81 @@ public class ApPaymentRequestHdrController {
         }
     }
 
+    @Operation(
+            summary = "Create AP Payment Request from PO",
+            description = "Creates AP Payment Request based on Purchase Order (PO)",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Successfully processed"),
+                    @ApiResponse(responseCode = "400", description = "Invalid input"),
+                    @ApiResponse(responseCode = "401", description = "Unauthorized")
+            }
+    )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
+    @GetMapping("/po")
+    public ResponseEntity<?> createFromPo(
+            @Parameter(description = "PO POID", required = true)
+            @RequestParam String poPoid
+    ) {
+        Map<String, Object> response = service.createFromPo(poPoid);
+        return success("AP Payment Request processed from PO", response);
+    }
+
+    @Operation(
+            summary = "Create AP Payment Request from FF",
+            description = "Creates AP Payment Request based on Freight Forwarder (FF)",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Successfully processed"),
+                    @ApiResponse(responseCode = "400", description = "Invalid input"),
+                    @ApiResponse(responseCode = "401", description = "Unauthorized")
+            }
+    )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
+    @GetMapping("/ff")
+    public ResponseEntity<?> createFromFf(
+            @Parameter(description = "FF POID", required = true)
+            @RequestParam String ffPoid
+    ) {
+        Map<String, Object> response = service.createFromFf(ffPoid);
+        return success("AP Payment Request processed from FF", response);
+    }
+
+
+    @Operation(
+            summary = "Create AP Payment Request from FDA",
+            description = "Creates AP Payment Request based on FDA",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Successfully processed"),
+                    @ApiResponse(responseCode = "400", description = "Invalid input"),
+                    @ApiResponse(responseCode = "401", description = "Unauthorized")
+            }
+    )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
+    @GetMapping("/fda")
+    public ResponseEntity<?> createFromFda(
+            @Parameter(description = "FDA POID", required = true)
+            @RequestParam String fdaPoid
+    ) {
+        Map<String, Object> response = service.createFromFda(fdaPoid);
+        return success("AP Payment Request processed from FDA", response);
+    }
+
+    @Operation(
+            summary = "Create AP Payment Request from MTA",
+            description = "Creates AP Payment Request based on MTA Purchase Orders",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Successfully processed"),
+                    @ApiResponse(responseCode = "400", description = "Invalid input"),
+                    @ApiResponse(responseCode = "401", description = "Unauthorized")
+            }
+    )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
+    @GetMapping("/mta")
+    public ResponseEntity<?> createFromMta(
+            @Parameter(description = "PO POID", required = true)
+            @RequestParam String poPoid
+    ) {
+        Map<String, Object> response = service.createFromMta(poPoid);
+        return success("AP Payment Request processed from MTA", response);
+    }
+
 }

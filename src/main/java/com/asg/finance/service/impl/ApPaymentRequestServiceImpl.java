@@ -4,6 +4,7 @@ import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.dto.ApPaymentRequestHdrRequestDto;
@@ -11,6 +12,7 @@ import com.asg.finance.dto.ApPaymentRequestHdrResponseDto;
 import com.asg.finance.dto.ApPaymentRequestMapper;
 import com.asg.finance.entity.ApPaymentRequestDtl;
 import com.asg.finance.entity.ApPaymentRequestHdr;
+import com.asg.finance.repository.ApPaymentRequestCustomRepository;
 import com.asg.finance.repository.ApPaymentRequestDtlRepository;
 import com.asg.finance.repository.ApPaymentRequestHdrRepository;
 import com.asg.finance.service.ApPaymentRequestService;
@@ -38,6 +40,7 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
     private final ApPaymentRequestHdrRepository hdrRepository;
     private final ApPaymentRequestDtlRepository dtlRepository;
     private final DocumentSearchService documentService;
+    private final ApPaymentRequestCustomRepository aapPaymentRequestCustomRepository;
 
     @Override
     public ApPaymentRequestHdrResponseDto create(ApPaymentRequestHdrRequestDto requestDto) {
@@ -145,4 +148,51 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
 
         return PaginationUtil.wrapPage(page, raw.displayFields());
     }
+
+    @Override
+    public Map<String, Object> createFromPo(String poPoid) {
+
+        return aapPaymentRequestCustomRepository.createFromPo(
+                UserContext.getGroupPoid(),
+                UserContext.getCompanyPoid(),
+                UserContext.getUserPoid(),
+                poPoid
+        );
+    }
+
+    @Override
+    public Map<String, Object> createFromFf(String ffPoid) {
+
+        return aapPaymentRequestCustomRepository.createFromFf(
+                UserContext.getGroupPoid(),
+                UserContext.getCompanyPoid(),
+                UserContext.getUserPoid(),
+                ffPoid
+        );
+    }
+
+    @Override
+    public Map<String, Object> createFromFda(String fdaPoid) {
+
+        return aapPaymentRequestCustomRepository.createFromFda(
+                UserContext.getGroupPoid(),
+                UserContext.getCompanyPoid(),
+                UserContext.getUserPoid(),
+                fdaPoid
+        );
+    }
+
+    @Override
+    public Map<String, Object> createFromMta(String poPoid) {
+
+        return aapPaymentRequestCustomRepository.createFromMta(
+                UserContext.getGroupPoid(),
+                UserContext.getCompanyPoid(),
+                UserContext.getUserPoid(),
+                poPoid
+        );
+
+    }
+
+
 }

@@ -28,7 +28,7 @@ public class PettyCashCreateRequestDto implements PettyCashRequestBase {
 
     private BigDecimal balance;
 
-    @NotNull(message = "Amount is required")
+    // @NotNull(message = "Amount is required")
     @DecimalMin(value = "0.01", message = "Amount must be greater than zero")
     private BigDecimal amount;
 
@@ -54,7 +54,7 @@ public class PettyCashCreateRequestDto implements PettyCashRequestBase {
 
     private BigDecimal settledTotal;
 
-    @NotNull(message = "Voucher Type is required")
+    // @NotNull(message = "Voucher Type is required")
     private String status;
 
     private BigDecimal grandTotal;

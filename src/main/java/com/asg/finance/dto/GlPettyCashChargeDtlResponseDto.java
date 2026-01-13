@@ -41,4 +41,5 @@ public class GlPettyCashChargeDtlResponseDto {
     private String partyInvNumber;
     private Date partyInvDate;
     private Long taxPoid;
+    private DetailsDto taxPoidDtl;
 }

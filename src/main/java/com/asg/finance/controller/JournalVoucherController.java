@@ -514,33 +514,6 @@ public class JournalVoucherController {
             return internalServerError("Failed to update asset detail: " + e.getMessage());
         }
     }
-
-    @Operation(
-            summary = "Calculate Currency Conversion",
-            description = "Calculate BHD amount based on currency code, amount, and transaction date"
-    )
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Currency conversion calculated successfully"),
-            @ApiResponse(responseCode = "400", description = "Invalid currency code"),
-            @ApiResponse(responseCode = "401", description = "Unauthorized"),
-            @ApiResponse(responseCode = "404", description = "Currency rate not found"),
-            @ApiResponse(responseCode = "500", description = "Database error")
-    })
-    @AllowedAction(UserRolesRightsEnum.VIEW)
-    @PostMapping("/calculate-currency")
-    public ResponseEntity<?> calculateCurrencyConversion(
-            @Valid @RequestBody CurrencyConversionRequest request
-    ) {
-        try {
-            CurrencyConversionResponse response = journalVoucherService.calculateCurrencyConversion(request);
-            return success("Currency conversion calculated successfully", response);
-        } catch (IllegalArgumentException e) {
-            return badRequest(e.getMessage());
-        } catch (Exception e) {
-            return internalServerError("Failed to calculate currency conversion: " + e.getMessage());
-        }
-    }
-
     @AllowedAction(UserRolesRightsEnum.PRINT)
     @Operation(
             summary = "Generate PDF for Journal Voucher",

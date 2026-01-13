@@ -4,6 +4,8 @@ import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.*;
@@ -35,6 +37,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 public class JournalVoucherController {
 
     private final JournalVoucherService journalVoucherService;
+    private final LoggingService loggingService;
 
     @Operation(
             summary = "Create Journal Voucher",
@@ -215,7 +218,8 @@ public class JournalVoucherController {
             return badRequest("Both startDate and endDate should be specified or both dates should be empty.");
         }
         Map<String, Object> response = journalVoucherService.listJournalVouchers(UserContext.getDocumentId(), filters, startDate, endDate, pageable);
-        return success("Journal Vouchers list retrieved successfully", response);
+
+            return success("Journal Vouchers list retrieved successfully", response);
     }
 
     @Operation(

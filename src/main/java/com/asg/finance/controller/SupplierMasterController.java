@@ -2,11 +2,13 @@ package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.dto.AddressDetailsDTO;
 import com.asg.common.lib.dto.AddressTypeMapDTO;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.finance.dto.GlobalLedgerDto;
 import com.asg.finance.dto.SupplierImportRequestDto;
 import com.asg.finance.dto.SupplierImportResponseDto;
@@ -43,6 +45,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 public class SupplierMasterController {
 
     private final SupplierMasterService supplierMasterService;
+    private final LoggingService loggingService;
 
     private final Validator validator;
 
@@ -119,6 +122,7 @@ public class SupplierMasterController {
     @GetMapping("/{supplierPoid}")
     public ResponseEntity<?> getSupplierMaster(@PathVariable Long supplierPoid) {
         SupplierMasterDto result = supplierMasterService.getSupplierMaster(supplierPoid);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), supplierPoid.toString());
         return success("Supplier Master Records fetched successfully", result);
     }
 

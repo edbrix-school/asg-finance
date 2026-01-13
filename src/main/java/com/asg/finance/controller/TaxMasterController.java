@@ -3,8 +3,10 @@ package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.finance.dto.TaxMasterRequestDTO;
 import com.asg.finance.dto.TaxMasterResponseDTO;
 import com.asg.common.lib.dto.FilterRequestDto;
@@ -35,6 +37,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.success;
 @RequiredArgsConstructor
 public class TaxMasterController {
     private final TaxMasterService service;
+    private final LoggingService loggingService;
 
     @Operation(
             summary = "Create a new Tax Master",
@@ -189,6 +192,7 @@ public class TaxMasterController {
             @PathVariable Long taxPoid) {
 
         TaxMasterResponseDTO taxMasterResponseDTO = service.getTaxMasterById(taxPoid);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), taxPoid.toString());
         return success("Tax Master fetched successfully", taxMasterResponseDTO);
     }
 

@@ -6,9 +6,11 @@ import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.dto.response.GlPostingViewResponseDto;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.DocumentDeleteService;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.finance.dto.ImcoDepositRefundRequestDTO;
@@ -56,6 +58,7 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
     private final LovDataService lovService;
     private final PrintService printService;
     private final DataSource dataSource;
+    private final LoggingService loggingService;
 
     
     @Override
@@ -133,6 +136,9 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
             billDtlRepository.saveAll(billDetails);
 
             callAfterSaveProcedure(savedHeader);
+
+            // Logging for create operation
+            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), savedHeader.getTransactionPoid().toString());
 
             return buildResponse(savedHeader, refundDetails, billDetails);
         }catch (Exception ex) {

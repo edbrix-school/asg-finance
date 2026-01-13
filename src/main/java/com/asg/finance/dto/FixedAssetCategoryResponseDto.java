@@ -2,10 +2,14 @@ package com.asg.finance.dto;
 
 import com.asg.common.lib.dto.DetailsDto;
 import com.asg.common.lib.dto.UserRoleDto;
+
+import jakarta.persistence.Column;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -31,4 +35,8 @@ public class FixedAssetCategoryResponseDto {
     private List<UserRoleDto> userRolesPoidDet;
     private Integer seqNo;
     private String active;
+    private String createdBy;
+    private LocalDateTime createdDate;
+    private String lastModifiedBy;
+    private LocalDateTime lastModifiedDate;
 }

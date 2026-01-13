@@ -3,6 +3,9 @@ package com.asg.finance.controller;
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.finance.dto.DebitNoteHeaderDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.finance.service.DebitNoteService;
@@ -39,6 +42,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 public class DebitNoteController {
 
     private final DebitNoteService debitNoteService;
+    private final LoggingService loggingService;
 
     // -------------------------------------------------------
     // CREATE
@@ -229,8 +233,9 @@ public class DebitNoteController {
     @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{transactionPoid}")
     public ResponseEntity<?> getDebitNote(@PathVariable Long transactionPoid) {
-        return success("Debit Note details fetched successfully",
-                debitNoteService.getDebitNote(transactionPoid));
+        DebitNoteHeaderDto result = debitNoteService.getDebitNote(transactionPoid);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
+        return success("Debit Note details fetched successfully", result);
     }
 
     // -------------------------------------------------------
@@ -280,6 +285,7 @@ public class DebitNoteController {
                 return badRequest("Both startDate and endDate should be specified or both dates should be empty.");
             }
             Map<String, Object> result = debitNoteService.listDebitNotes(filterRequest, startDate, endDate, pageable);
+
             return success("Debit Notes fetched successfully", result);
         } catch (Exception e) {
             return internalServerError("Unable to fetch Debit Notes: " + e.getMessage());
@@ -290,7 +296,8 @@ public class DebitNoteController {
     @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/fda/{fdaPoid}/charges")
     public ResponseEntity<?> loadFdaCharges(@PathVariable Long fdaPoid) {
-        return success("FDA charges loaded successfully", debitNoteService.loadFdaCharges(fdaPoid));
+        Map<String, Object> result = debitNoteService.loadFdaCharges(fdaPoid);
+        return success("FDA charges loaded successfully", result);
     }
 
     @Operation(summary = "Get Tax Percentage for Charge", description = "Returns tax percentage for the given charge ID.")
@@ -301,7 +308,8 @@ public class DebitNoteController {
                                           @RequestParam String partyType,
                                           @Parameter(description = "Party Poid", required = true, example = "SUPPLIER")
                                           @RequestParam Long partyPoid) {
-        return success("Tax details fetched successfully", debitNoteService.getChargeTax(chargeId, partyType, partyPoid));
+        Map<String, Object> result = debitNoteService.getChargeTax(chargeId, partyType, partyPoid);
+        return success("Tax details fetched successfully", result);
     }
 
     @Operation(summary = "Update Cost Amount", description = "Recalculates cost amounts for FDA/Other Charges.")

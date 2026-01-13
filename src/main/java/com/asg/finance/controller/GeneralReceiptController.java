@@ -3,6 +3,9 @@ package com.asg.finance.controller;
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.finance.dto.GeneralReceiptRequest;
 import com.asg.finance.dto.GeneralReceiptResponse;
@@ -39,6 +42,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 public class GeneralReceiptController {
 
     private final GeneralReceiptService generalReceiptService;
+    private final LoggingService loggingService;
 
     @Operation(
             summary = "Create General Receipt",
@@ -202,6 +206,7 @@ public class GeneralReceiptController {
             @PathVariable Long transactionPoid) {
         try {
             GeneralReceiptResponse response = generalReceiptService.getGeneralReceiptByTransactionPoid(transactionPoid);
+            loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
             return success("General Receipt fetched successfully", response);
         } catch (ResourceNotFoundException ex) {
             return notFound(ex.getMessage());
@@ -393,7 +398,8 @@ public class GeneralReceiptController {
             String actionRequested
     ) {
         Map<String, Object> result = generalReceiptService.listOfRecordsAndGenericSearch(documentId, filters, pageable);
-        return success("General Receipts fetched successfully", result);
+
+            return success("General Receipts fetched successfully", result);
     }
 
 

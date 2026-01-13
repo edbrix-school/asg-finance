@@ -3,6 +3,8 @@ package com.asg.finance.controller;
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.LoggingService;
 
 
 import com.asg.common.lib.dto.FilterDto;
@@ -34,6 +36,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 public class SupplierCategoryController {
 
     private final SupplierCategoryService supplierCategoriesService;
+    private final LoggingService loggingService;
 
     @Operation(
             summary = "Soft delete a supplier category",
@@ -96,6 +99,7 @@ public class SupplierCategoryController {
             @PathVariable("supplierCategoryPoid") Long supplierCategoryPoid) {
 
         SupplierCategoryDto supplierCategoryDto = supplierCategoriesService.getSupplierCategoryById(supplierCategoryPoid);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), supplierCategoryPoid.toString());
         return success("Supplier Category retrieved successfully", supplierCategoryDto);
     }
 

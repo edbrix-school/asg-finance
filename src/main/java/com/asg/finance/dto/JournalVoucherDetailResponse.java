@@ -53,7 +53,7 @@ public class JournalVoucherDetailResponse {
         private BigDecimal drAmt;
         private BigDecimal crAmt;
         private String remarks;
-        private List<CostCenterBreakupPopupRequestDto> costCenterBreakup;
-        private List<BillwiseBreakupPopupRequestDto> billWiseBreakup;
+        private List<CostCenterBreakupResponseDto> costCenterBreakup;
+        private List<BillWiseBreakupResponseDto> billWiseBreakup;
     }
 }

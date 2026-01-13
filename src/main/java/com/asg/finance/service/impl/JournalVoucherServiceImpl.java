@@ -862,7 +862,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                 .collect(Collectors.toList());
     }
 
-    private List<BillWiseBreakupResponseDto> filterBillwiseBreakup(
+    private List<LoadBillwiseBreakupResponseDto> filterBillwiseBreakup(
             GlVoucherLoadBillwiseBreakupResponseDto response, Long detRowId) {
         
         if (response == null || response.getLoadBillwiseBreakupResponseDtoList() == null) {
@@ -872,7 +872,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         return response.getLoadBillwiseBreakupResponseDtoList().stream()
                 .filter(bw -> bw.getMainDetRowId().equals(detRowId))
                 .map(bw -> {
-                    BillWiseBreakupResponseDto dto = new BillWiseBreakupResponseDto();
+                    LoadBillwiseBreakupResponseDto dto = new LoadBillwiseBreakupResponseDto();
                     dto.setMainDetRowId(bw.getMainDetRowId());
                     dto.setBillDetRowId(bw.getBillDetRowId());
                     dto.setGlPoid(bw.getGlPoid());
@@ -882,7 +882,6 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                     dto.setDrAmt(bw.getDrAmt());
                     dto.setCrAmt(bw.getCrAmt());
                     dto.setBillRemarks(bw.getBillRemarks());
-                    dto.setType(bw.getDrAmt() != null && bw.getDrAmt().compareTo(BigDecimal.ZERO) > 0 ? "Dr" : "Cr");
                     return dto;
                 })
                 .collect(Collectors.toList());

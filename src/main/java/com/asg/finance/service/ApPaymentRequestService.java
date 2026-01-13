@@ -1,5 +1,6 @@
 package com.asg.finance.service;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.finance.dto.ApPaymentRequestHdrRequestDto;
 import com.asg.finance.dto.ApPaymentRequestHdrResponseDto;
@@ -17,7 +18,7 @@ public interface ApPaymentRequestService {
 
     ApPaymentRequestHdrResponseDto findById(Long transactionPoid);
 
-    void delete(Long transactionPoid);
+    void delete(Long transactionPoid, DeleteReasonDto deleteReasonDto);
 
     Map<String, Object> listPaymentRequest(String documentId, FilterRequestDto filters, Pageable pageable, LocalDate periodFrom, LocalDate periodTo);
 

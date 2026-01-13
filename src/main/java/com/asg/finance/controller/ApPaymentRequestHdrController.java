@@ -1,9 +1,12 @@
 package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.finance.dto.ApPaymentRequestHdrRequestDto;
 import com.asg.finance.dto.ApPaymentRequestHdrResponseDto;
 import com.asg.finance.service.ApPaymentRequestService;
@@ -31,6 +34,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.success;
 public class ApPaymentRequestHdrController {
 
     private final ApPaymentRequestService service;
+    private final LoggingService loggingService;
 
     /* ================= CREATE ================= */
 
@@ -130,7 +134,7 @@ public class ApPaymentRequestHdrController {
     ) {
         ApPaymentRequestHdrResponseDto response =
                 service.findById(transactionPoid);
-
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
         return success("AP Payment Request fetched successfully", response);
     }
 
@@ -156,9 +160,10 @@ public class ApPaymentRequestHdrController {
     @DeleteMapping("/{transactionPoid}")
     public ResponseEntity<?> softDeleteApPaymentRequest(
             @Parameter(description = "Transaction POID", required = true)
-            @PathVariable Long transactionPoid
+            @PathVariable Long transactionPoid,
+            @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto
     ) {
-        service.delete(transactionPoid);
+        service.delete(transactionPoid, deleteReasonDto);
         return success("AP Payment Request has been soft deleted successfully");
     }
 

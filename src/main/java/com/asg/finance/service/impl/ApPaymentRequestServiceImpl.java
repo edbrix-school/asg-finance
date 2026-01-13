@@ -1,10 +1,13 @@
 package com.asg.finance.service.impl;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.utility.PaginationUtil;
@@ -13,12 +16,14 @@ import com.asg.finance.dto.ApPaymentRequestHdrResponseDto;
 import com.asg.finance.dto.ApPaymentRequestMapper;
 import com.asg.finance.entity.ApPaymentRequestDtl;
 import com.asg.finance.entity.ApPaymentRequestHdr;
+import com.asg.finance.entity.ApPurchaseInvoiceHdrEntity;
 import com.asg.finance.repository.ApPaymentRequestCustomRepository;
 import com.asg.finance.repository.ApPaymentRequestDtlRepository;
 import com.asg.finance.repository.ApPaymentRequestHdrRepository;
 import com.asg.finance.service.ApPaymentRequestService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -43,6 +48,7 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
     private final DocumentSearchService documentService;
     private final ApPaymentRequestCustomRepository aapPaymentRequestCustomRepository;
     private final LoggingService loggingService;
+    private final DocumentDeleteService documentDeleteService;
 
     @Override
     public ApPaymentRequestHdrResponseDto create(ApPaymentRequestHdrRequestDto requestDto) {
@@ -65,6 +71,11 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
 
         dtlRepository.saveAll(details);
 
+        // Log the creation
+        String key = transactionPoid.toString();
+        String docId = UserContext.getDocumentId();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, key);
+
         return ApPaymentRequestMapper.toResponse(hdr, details);
     }
 
@@ -78,6 +89,11 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Payment request not found","transactionPoid",transactionPoid));
 
+        // Create a copy of the existing entity for logging
+
+        ApPaymentRequestHdr oldEntity = new ApPaymentRequestHdr();
+        BeanUtils.copyProperties(hdr, oldEntity);
+
         hdr.setDocRef(requestDto.getDocRef());
         hdr.setRefType(requestDto.getRefType());
         hdr.setCurrencyCode(requestDto.getCurrencyCode());
@@ -90,7 +106,7 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
         hdr.setLastModifiedDate(LocalDateTime.now());
 
 
-        hdrRepository.save(hdr);
+        ApPaymentRequestHdr savedEntity = hdrRepository.save(hdr);
 
         /* Replace details */
         dtlRepository.deleteByIdTransactionPoid(transactionPoid);
@@ -102,6 +118,11 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
                         .toList();
 
         dtlRepository.saveAll(details);
+
+        // Log the update
+        String key = savedEntity.getTransactionPoid().toString();
+        loggingService.logChanges(oldEntity, savedEntity, ApPaymentRequestHdr.class,
+                UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
         return ApPaymentRequestMapper.toResponse(hdr, details);
     }
@@ -121,20 +142,28 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
     }
 
     @Override
-    public void delete(Long transactionPoid) {
+    public void delete(Long transactionPoid, DeleteReasonDto deleteReasonDto) {
 
         ApPaymentRequestHdr hdr = hdrRepository
                 .findById(transactionPoid)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Payment request not found","transactionPoid",transactionPoid));
 
-        hdr.setDeleted("Y");
+        documentDeleteService.deleteDocument(
+                transactionPoid,
+                "AP_PAYMENT_REQUEST_HDR",
+                "TRANSACTION_POID",
+                deleteReasonDto,
+                hdr.getTransactionDate()
+        );
+
+      /*  hdr.setDeleted("Y");
         hdr.setCreatedBy(getCurrentUser());
         hdr.setCreatedDate(LocalDateTime.now());
         hdr.setLastModifiedBy(getCurrentUser());
         hdr.setLastModifiedDate(LocalDateTime.now());
 
-        hdrRepository.save(hdr);
+        hdrRepository.save(hdr);*/
     }
 
     @Override

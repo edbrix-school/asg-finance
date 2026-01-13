@@ -1190,4 +1190,16 @@ public class GLMasterServiceImpl implements GLMasterService {
             companyDtlRepo.deleteByGlPoidAndIdIn(glPoid, toDelete);
         }
     }
+
+    @Override
+    public String getAccountTypeBySubOf(Long subOf) {
+        if (subOf == null) {
+            throw new RuntimeException("subOf (GROUP_GL_POID) cannot be null");
+        }
+        
+        GLMasterEntity parentGl = glMasterRepo.findById(subOf)
+                .orElseThrow(() -> new RuntimeException("GL Master not found with POID: " + subOf));
+        
+        return parentGl.getAccountType();
+    }
 }

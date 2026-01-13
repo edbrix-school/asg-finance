@@ -49,29 +49,33 @@ public class ApPaymentRequestCustomRepositoryImpl implements ApPaymentRequestCus
         // ===== Read OUT params =====
         String resultMessage = (String) sp.getOutputParameterValue("P_RESULT");
 
-        @SuppressWarnings("unchecked")
-        List<Object[]> rows = sp.getResultList();
-
         List<Map<String, Object>> data = new ArrayList<>();
 
-        for (Object[] row : rows) {
-            Map<String, Object> map = new LinkedHashMap<>();
-            map.put("STOCK_POID", row[0]);
-            map.put("STOCK_UNIT_POID", row[1]);
-            map.put("PO_QTY", row[2]);
-            map.put("PRICE", row[3]);
-            map.put("DISCOUNT", row[4]);
-            map.put("BASE_AMOUNT", row[5]);
-            map.put("TAX_POID", row[6]);
-            map.put("TAX_PERCENTAGE", row[7]);
-            map.put("TAX_AMOUNT", row[8]);
-            map.put("AMOUNT", row[9]);
-            map.put("REMARKS", row[10]);
-            map.put("REF_DOC_ID", row[11]);
-            map.put("REF_DOC_POID", row[12]);
-            map.put("REF_DET_ROW_ID", row[13]);
+        // ✅ IMPORTANT: Fetch cursor ONLY when procedure opened it
+        if (resultMessage != null && resultMessage.startsWith("Successfully")) {
 
-            data.add(map);
+            @SuppressWarnings("unchecked")
+            List<Object[]> rows = sp.getResultList();
+
+            for (Object[] row : rows) {
+                Map<String, Object> map = new LinkedHashMap<>();
+                map.put("STOCK_POID", row[0]);
+                map.put("STOCK_UNIT_POID", row[1]);
+                map.put("PO_QTY", row[2]);
+                map.put("PRICE", row[3]);
+                map.put("DISCOUNT", row[4]);
+                map.put("BASE_AMOUNT", row[5]);
+                map.put("TAX_POID", row[6]);
+                map.put("TAX_PERCENTAGE", row[7]);
+                map.put("TAX_AMOUNT", row[8]);
+                map.put("AMOUNT", row[9]);
+                map.put("REMARKS", row[10]);
+                map.put("REF_DOC_ID", row[11]);
+                map.put("REF_DOC_POID", row[12]);
+                map.put("REF_DET_ROW_ID", row[13]);
+
+                data.add(map);
+            }
         }
 
         Map<String, Object> response = new HashMap<>();
@@ -171,19 +175,7 @@ public class ApPaymentRequestCustomRepositoryImpl implements ApPaymentRequestCus
         return buildResponse(sp);
     }
 
-    // ================= COMMON RESPONSE BUILDER =================
-    private Map<String, Object> buildResponse(StoredProcedureQuery sp) {
 
-        Map<String, Object> response = new HashMap<>();
-
-        String message = (String) sp.getOutputParameterValue("P_RESULT");
-        List<Object[]> records = sp.getResultList();
-
-        response.put("message", message);
-        response.put("records", records == null ? Collections.emptyList() : records);
-
-        return response;
-    }
 
     @Override
     public Map<String, Object> createFromMta(
@@ -210,5 +202,27 @@ public class ApPaymentRequestCustomRepositoryImpl implements ApPaymentRequestCus
         sp.execute();
 
         return buildResponse(sp);
+    }
+
+    // ================= COMMON RESPONSE BUILDER =================
+    private Map<String, Object> buildResponse(StoredProcedureQuery sp) {
+
+        Map<String, Object> response = new HashMap<>();
+
+        String message = (String) sp.getOutputParameterValue("P_RESULT");
+
+        List<Object[]> records = Collections.emptyList();
+
+        // ✅ Only fetch cursor when procedure succeeded
+        if (message != null && message.startsWith("Successfully")) {
+            @SuppressWarnings("unchecked")
+            List<Object[]> resultList = sp.getResultList();
+            records = resultList != null ? resultList : Collections.emptyList();
+        }
+
+        response.put("message", message);
+        response.put("records", records);
+
+        return response;
     }
 }

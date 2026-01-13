@@ -6,6 +6,7 @@ import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.dto.ApPaymentRequestHdrRequestDto;
 import com.asg.finance.dto.ApPaymentRequestHdrResponseDto;
@@ -41,6 +42,7 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
     private final ApPaymentRequestDtlRepository dtlRepository;
     private final DocumentSearchService documentService;
     private final ApPaymentRequestCustomRepository aapPaymentRequestCustomRepository;
+    private final LoggingService loggingService;
 
     @Override
     public ApPaymentRequestHdrResponseDto create(ApPaymentRequestHdrRequestDto requestDto) {

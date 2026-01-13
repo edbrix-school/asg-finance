@@ -298,7 +298,7 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
                 .confidentialRemarks(hdr.getConfidentialRemarks())
                 .lastModifiedBy(hdr.getLastModifiedBy())
                 .lastModifiedDate(hdr.getLastModifiedDate())
-                .deleted("N")
+                .deleted(hdr.getDeleted())
                 .billRef(hdr.getBillRef())
                 .chequeDetails(dtlList)
                 .createdDate(hdr.getCreatedDate())

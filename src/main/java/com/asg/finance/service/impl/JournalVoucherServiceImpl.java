@@ -1,19 +1,18 @@
 package com.asg.finance.service.impl;
 
-import com.asg.common.lib.dto.FilterDto;
-import com.asg.common.lib.dto.DeleteReasonDto;
-import com.asg.common.lib.dto.FilterRequestDto;
-import com.asg.common.lib.dto.RawSearchResult;
+import com.asg.common.lib.dto.*;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.LoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
-import com.asg.common.lib.service.PrintService;
-import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.exception.ValidationException;
+import com.asg.common.lib.service.*;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.finance.repository.GLMasterRepository;
 import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.finance.projection.CurrencyRateProjection;
+import com.asg.finance.repository.*;
 import com.asg.finance.dto.*;
 import com.asg.finance.entity.GlJournalFaCapitalization;
 import com.asg.finance.entity.GlJournalVoucherAssetDtl;
@@ -22,10 +21,6 @@ import com.asg.finance.entity.GlJournalVoucherHdr;
 
 import com.asg.finance.entity.key.TransactionDetailKey;
 import com.asg.finance.entity.master.FixedAsset;
-import com.asg.finance.repository.GlJournalFaCapitalizationRepository;
-import com.asg.finance.repository.GlJournalVoucherAssetDtlRepository;
-import com.asg.finance.repository.GlJournalVoucherDtlRepository;
-import com.asg.finance.repository.GlJournalVoucherHdrRepository;
 import com.asg.finance.repository.master.FixedAssetRepository;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.BillwiseBreakupService;
@@ -66,8 +61,6 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
     public static final String REF_TYPE_GENERAL = "GENERAL";
     public static final String REF_TYPE_ASSET_DISPOSAL = "ASSET_DISPOSAL";
     public static final String REF_TYPE_ASSET_CAPITALIZATION = "ASSET_CAPITALIZATION";
-
-    public static final String STATUS_DELETED = "DELETED";
     public static final String STATUS_POSTED = "POSTED";
 
 
@@ -84,6 +77,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
     private final GLMasterRepository glMasterRepository;
     private final CostCenterBreakupService costCenterBreakupService;
     private final BillwiseBreakupService billwiseBreakupService;
+    private final LovDataService lovDataService;
     private final DocumentSearchService documentService;
     private final DocumentDeleteService documentDeleteService;
     private final PrintService printService;
@@ -191,6 +185,14 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
             if (request.getCurrencyRate() == null || request.getCurrencyRate().compareTo(BigDecimal.ZERO) <= 0) {
                 throw new IllegalArgumentException("Currency rate must be greater than 0 for foreign currency");
             }
+        }
+
+        try {
+            if (request.getCurrencyCode() != null && !request.getCurrencyCode().isBlank()) {
+                lovDataService.getDetailsByCodeAndLovName(request.getCurrencyCode(), "CURRENCY");
+            }
+        } catch (ResourceNotFoundException e) {
+            throw new ResourceNotFoundException("Currency","Code",request.getCurrencyCode());
         }
 
         switch (refType) {

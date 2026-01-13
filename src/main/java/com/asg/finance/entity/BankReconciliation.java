@@ -16,8 +16,6 @@ import lombok.Data;
 @Data
 public class BankReconciliation {
 
-	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Column(name = "TRANSACTION_GROUP_POID")
 	private Long transactionGroupPoid;
 
@@ -30,6 +28,8 @@ public class BankReconciliation {
 	@Column(name = "DOC_ID")
 	private String docId;
 
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Column(name = "TRANSACTION_POID")
 	private Long transactionPoid;
 

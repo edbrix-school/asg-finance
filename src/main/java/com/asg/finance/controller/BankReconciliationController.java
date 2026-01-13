@@ -40,6 +40,7 @@ import com.asg.finance.dto.BankRenconciliationBankInfoDTO;
 import com.asg.finance.service.BankReconciliationService;
 
 import io.swagger.v3.oas.annotations.Parameter;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -93,7 +94,7 @@ public class BankReconciliationController {
 	@AllowedAction(UserRolesRightsEnum.CREATE)
 	@PostMapping("/save")
 	public ResponseEntity<?> saveReconciliation(
-			@Parameter(description = "Bank Reconciliation request payload", required = true) @RequestBody List<BankReconciliationRequest> dto) {
+			@Parameter(description = "Bank Reconciliation request payload", required = true) @RequestBody @Valid List<BankReconciliationRequest> dto) {
 		String response = service.saveReconciliation(dto);
 		if (response.toLowerCase().startsWith("error"))
 			return error(response, 500);
@@ -105,7 +106,7 @@ public class BankReconciliationController {
 	@AllowedAction(UserRolesRightsEnum.EDIT)
 	@PostMapping("/hold")
 	public ResponseEntity<?> holdCheque(
-			@Parameter(description = "Bank Reconciliation request payload", required = true) @RequestBody List<BankReconcHoldAndUholdRequest> req) {
+			@Parameter(description = "Bank Reconciliation request payload", required = true) @RequestBody @Valid List<BankReconcHoldAndUholdRequest> req) {
 		String response = service.holdCheque(req);
 		if (response.toLowerCase().startsWith("error"))
 			return error(response, 500);
@@ -117,7 +118,7 @@ public class BankReconciliationController {
 	@AllowedAction(UserRolesRightsEnum.EDIT)
 	@PostMapping("/unhold")
 	public ResponseEntity<?> unholdCheque(
-			@Parameter(description = "Bank Reconciliation request payload", required = true) @RequestBody List<BankReconcHoldAndUholdRequest> req) {
+			@Parameter(description = "Bank Reconciliation request payload", required = true) @RequestBody @Valid List<BankReconcHoldAndUholdRequest> req) {
 		String response = service.unholdCheque(req);
 		if (response.toLowerCase().startsWith("error"))
 			return error(response, 500);

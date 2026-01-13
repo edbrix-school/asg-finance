@@ -294,7 +294,7 @@ public class AssetInformationServiceImpl implements AssetInformationService {
 
             documentDeleteService.deleteDocument(
                     iaPoid,
-                    "ASSET_INFORMATION_MASTER",
+                    "INFORMATION_ASSET_MASTER",
                     "IA_POID",
                     deleteReasonDto,
                     null

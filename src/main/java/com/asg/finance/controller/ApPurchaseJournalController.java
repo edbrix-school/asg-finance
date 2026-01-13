@@ -429,7 +429,6 @@ public class ApPurchaseJournalController {
             @RequestParam String faPoid
     ) {
         List<ApPiFaDefaultDetailsDto> response = service.getFaDefaultDetails(faPoid);
-        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), faPoid);
         return success("FA default details fetched successfully", response);
     }
 
@@ -475,7 +474,6 @@ public class ApPurchaseJournalController {
             return success("Default supplier values fetched successfully", result);
         } catch (Exception e) {
             log.error("Error fetching default supplier values for partyPoid: {}, partyType: {}", partyPoid, partyType, e);
-            loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), partyPoid.toString());
             return internalServerError("Failed to fetch default credit values: " + e.getMessage());
         }
     }

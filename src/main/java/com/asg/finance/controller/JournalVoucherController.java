@@ -334,7 +334,6 @@ public class JournalVoucherController {
     ) {
         try {
             JournalVoucherDetailResponse response = journalVoucherService.getJournalVoucherById(transactionPoid);
-            loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
             return success("Journal Voucher retrieved successfully", response);
         } catch (ResourceNotFoundException e) {
             return notFound(e.getMessage());
@@ -421,7 +420,6 @@ public class JournalVoucherController {
     ) {
         try {
             JournalVoucherTotalsResponse response = journalVoucherService.getGlDetailTotals(transactionPoid);
-            loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
             return success("Totals calculated successfully", response);
         } catch (ResourceNotFoundException e) {
             return notFound(e.getMessage());
@@ -474,7 +472,6 @@ public class JournalVoucherController {
     ) {
         try {
             JournalVoucherCapitalizationDto response = journalVoucherService.getAssetCapitalizationDetails(request.getFaPoid());
-            loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), request.getFaPoid().toString());
             return success("Asset capitalization details retrieved successfully", response);
         } catch (ResourceNotFoundException e) {
             return notFound(e.getMessage());

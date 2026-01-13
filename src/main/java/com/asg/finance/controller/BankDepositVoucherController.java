@@ -267,7 +267,6 @@ public class BankDepositVoucherController {
             @RequestParam(required = false) String bankFilter
     ) {
         List<BankDepositVoucherDtlDto> pendingPayments = service.loadPendingPayments(bankPoid, type, bankFilter);
-        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), bankPoid.toString());
         return success("Pending payments loaded successfully", pendingPayments);
     }
 

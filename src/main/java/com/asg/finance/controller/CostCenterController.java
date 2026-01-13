@@ -304,8 +304,6 @@ public class CostCenterController {
                 return success("No Cost Center records found", new ArrayList<>());
             }
 
-            // Return the tree structure directly as an array
-            loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), "TREE");
             return success("Cost Center tree structure retrieved successfully", treeNodes);
 
         } catch (Exception e) {

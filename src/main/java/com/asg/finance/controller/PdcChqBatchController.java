@@ -313,7 +313,6 @@ public class PdcChqBatchController {
     ) {
         try {
             PayGlBreakupCheckResponseDto resp = service.validatePayGl(payGlPoid);
-        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), payGlPoid.toString());
             return success("Pay GL breakup check completed", resp);
 
         } catch (Exception ex) {

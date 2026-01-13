@@ -271,7 +271,6 @@ public class TaxPeriodHdrController {
 
         Pageable pageable = PageRequest.of(page, size);
         Page<TaxPeriodChargeDtlResponseDto> charges = taxPeriodHdrService.getTaxPeriodCharges(transactionPoid, pageable);
-        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
         return success("Transaction Poid charges fetched successfully", charges);
     }
 
@@ -319,7 +318,6 @@ public class TaxPeriodHdrController {
 
         Pageable pageable = PageRequest.of(page, size);
         Page<TaxPeriodStockDtlResponseDto> stocks = taxPeriodHdrService.getTaxPeriodStocks(transactionPoid, pageable);
-        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
         return success("Transaction Poid stocks fetched successfully", stocks);
     }
 

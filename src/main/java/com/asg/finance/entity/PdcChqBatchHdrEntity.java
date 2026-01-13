@@ -113,4 +113,6 @@ public class PdcChqBatchHdrEntity {
     @Column(name = "ACCOUNT_PAYEE", length = 1)
     private String accountPayee;
 
+    @Column(name = "CONFIDENTIAL_REMARKS", length = 1000)
+    private String confidentialRemarks;
 }

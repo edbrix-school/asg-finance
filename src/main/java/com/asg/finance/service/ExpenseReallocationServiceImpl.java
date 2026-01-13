@@ -3,8 +3,10 @@ package com.asg.finance.service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
@@ -43,6 +45,7 @@ import com.asg.finance.repository.GlExpenseReallocationDtlRepository;
 import com.asg.finance.repository.GlExpenseReallocationHdrRepository;
 import com.asg.finance.repository.GlExpenseReallocationXlDtlRepository;
 
+import jakarta.persistence.Column;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -215,21 +218,21 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 
 	@Override
 	@Transactional(readOnly = true)
-	public Map<String, Object> listOfRecordsAndGenericSearch(String docId, FilterRequestDto request,
-			Pageable pageable) {
+	public Map<String, Object> listOfRecordsAndGenericSearch(String documentId, FilterRequestDto filters,
+			LocalDate startDate, LocalDate endDate, Pageable pageable) {
 
-		log.info("getExpenseReallocations started for docId={}", docId);
+		log.info("getExpenseReallocations started for docId={}", documentId);
 
-		String operator = documentService.resolveOperator(request);
-		String isDeleted = documentService.resolveIsDeleted(request);
-		List<FilterDto> filters = documentService.resolveFilters(request);
+		String operator = documentService.resolveOperator(filters);
+		String isDeleted = documentService.resolveIsDeleted(filters);
+		List<FilterDto> filterList = documentService.resolveDateFilters(filters, "TRANSACTION_DATE", startDate,
+				endDate);
 
-		RawSearchResult raw = documentService.search(docId, filters, operator, pageable, isDeleted, "SUPPLIER_CODE",
-				"SUPPLIER_POID");
+		RawSearchResult raw = documentService.search(documentId, filterList, operator, pageable, isDeleted, "NARRATION",
+				"TRANSACTION_POID");
 
 		Page<Map<String, Object>> page = new PageImpl<>(raw.records(), pageable, raw.totalRecords());
-
-		log.info("getExpenseReallocations completed for docId={} count={}", docId, page.getNumber());
+		log.info("getExpenseReallocations completed for docId={} count={}", documentId, page.getNumber());
 		return PaginationUtil.wrapPage(page, raw.displayFields());
 	}
 
@@ -391,23 +394,19 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 		log.info("getConfig started");
 
 		ExpenseReallocationConfigResponse response = new ExpenseReallocationConfigResponse();
-		response.setReportName("ExpenseReallocationReport.jrxml"); // To be confirmed from SRS
 		response.setGlPosting(false);
-
-		List<String> allocationColumns = new ArrayList<>();
-		allocationColumns.add("SH");
-		allocationColumns.add("FF");
-		allocationColumns.add("FFS");
-		allocationColumns.add("FFP");
-		allocationColumns.add("PROPERTIES");
-		allocationColumns.add("MTA");
-		allocationColumns.add("PDA");
-		allocationColumns.add("ADMIN");
-		response.setAllocationColumns(allocationColumns);
-
 		response.setAllowEditAfterJvCreation(false);
 		response.setAllowDeleteAfterJvCreation(false);
 		response.setScale(3);
+
+		List<String> allocationColumns = Arrays.stream(GlExpenseReallocationDtl.class.getDeclaredFields())
+				.filter(field -> field.isAnnotationPresent(Column.class))
+				.map(field -> field.getAnnotation(Column.class)).map(Column::name)
+				.filter(name -> !List.of("TRANSACTION_POID", "DET_ROW_ID", "COMPANY", "COMPANY_NAME", "TOTAL",
+						"REMARKS", "CREATED_BY", "CREATED_DATE", "LASTMODIFIED_BY", "LASTMODIFIED_DATE").contains(name))
+				.toList();
+
+		response.setAllocationColumns(allocationColumns);
 
 		log.info("getConfig completed");
 		return response;

@@ -11,7 +11,6 @@ import java.util.List;
 @AllArgsConstructor
 public class ExpenseReallocationConfigResponse {
 
-    private String reportName; // To be confirmed from SRS
     private Boolean glPosting; // false
     private List<String> allocationColumns; // ["SH", "FF", "FFS", "FFP", "PROPERTIES", "MTA", "PDA", "ADMIN"]
     private Boolean allowEditAfterJvCreation; // false

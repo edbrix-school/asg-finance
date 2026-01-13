@@ -1,7 +1,9 @@
 package com.asg.finance.controller;
 
+import static com.asg.common.lib.dto.response.ApiResponse.badRequest;
 import static com.asg.common.lib.dto.response.ApiResponse.success;
 
+import java.time.LocalDate;
 import java.util.Map;
 
 import org.springdoc.core.annotations.ParameterObject;
@@ -34,7 +36,6 @@ import com.asg.finance.service.ExpenseReallocationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -133,31 +134,20 @@ public class ExpenseReallocationController {
 			@ApiResponse(responseCode = "200", description = "Successfully retrieved expense reallocations", content = @Content(mediaType = "application/json")) }, security = @SecurityRequirement(name = "bearerAuth"))
 	@PostMapping("/search")
 	@AllowedAction(UserRolesRightsEnum.VIEW)
-	public ResponseEntity<?> getExpenseReallocations(
-			@ParameterObject @Parameter(description = "Pagination and sorting configuration", example = "page=0&size=10&sort=supplierName,asc") Pageable pageable,
+	public ResponseEntity<?> getExpenseReallocations(@ParameterObject Pageable pageable,
+			@RequestBody(required = false) FilterRequestDto filters,
+			@RequestParam(required = false) LocalDate startDate, @RequestParam(required = false) LocalDate endDate) {
+		log.info("getExpenseReallocations started for filters={} startDate={} endDate={} page={}", filters.toString(),
+				startDate, endDate, pageable.toString());
 
-			@RequestBody(required = false) @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Filter criteria for Expense Reallocation records", required = false, content = @Content(examples = @ExampleObject(name = "Search by Doc Ref", value = """
-					{
-					     "operator":"AND",
-					     "isDeleted":"Y",
-					     "filters":[
-					    {
-					    "searchField":"Doc_Ref",
-					    "searchValue":"T**88"
-					    }
-					     ]
-					}"""))) FilterRequestDto filters,
+		if ((startDate == null && endDate != null) || (startDate != null && endDate == null)) {
+			return badRequest("Both startDate and endDate should be specified or both dates should be empty.");
+		}
 
-			@RequestParam @Parameter(description = "Document identifier for tracking", required = true, example = "200-001") String documentId,
+		Map<String, Object> response = expenseReallocationService
+				.listOfRecordsAndGenericSearch(UserContext.getDocumentId(), filters, startDate, endDate, pageable);
 
-			@RequestParam @Parameter(description = "Type of action to perform (e.g., VIEW)", required = true, example = "VIEW") String actionRequested) {
-
-		log.info("getExpenseReallocations started for groupPoid={}", UserContext.getGroupPoid());
-
-		Map<String, Object> response = expenseReallocationService.listOfRecordsAndGenericSearch(documentId, filters,
-				pageable);
-
-		log.info("getExpenseReallocations completed for docId={} count={}", documentId);
+		log.info("getExpenseReallocations completed for docId={} count={}", UserContext.getDocumentId());
 
 		return success("Expense reallocations retrieved successfully", response);
 	}

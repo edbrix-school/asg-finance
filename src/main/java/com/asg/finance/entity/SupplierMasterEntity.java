@@ -3,6 +3,7 @@ package com.asg.finance.entity;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Entity
@@ -83,7 +84,7 @@ public class SupplierMasterEntity {
     private String currencyCode;
 
     @Column(name = "CURRENCY_RATE")
-    private Long currencyRate;
+    private BigDecimal currencyRate;
 
     @Column(name = "RATE_EXPIRY_DATE")
     private LocalDate rateExpiryDate;

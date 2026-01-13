@@ -76,7 +76,6 @@ public class BillwiseBreakupController {
 
         GlVoucherPendingBillwiseBreakupResponseDto response =
                 service.showPendingBillwiseBreakup(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), glPoid, asOnDate);
-        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), glPoid.toString());
 
         return success("Pending Billwise breakup details fetched successfully", response);
     }
@@ -122,7 +121,6 @@ public class BillwiseBreakupController {
 
         GlVoucherPendingBillwiseBreakupResponseDto response =
                 service.showAllPendingBillwiseBreakup(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), glPoid, asOnDate);
-        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), glPoid.toString());
 
         return success("Pending All Billwise breakup details fetched successfully", response);
     }

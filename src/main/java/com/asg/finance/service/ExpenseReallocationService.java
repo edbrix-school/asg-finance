@@ -1,5 +1,6 @@
 package com.asg.finance.service;
 
+import java.time.LocalDate;
 import java.util.Map;
 
 import org.springframework.data.domain.Pageable;
@@ -25,7 +26,8 @@ public interface ExpenseReallocationService {
 
 	void deleteExpenseReallocation(Long transactionPoid, Long groupPoid);
 
-	Map<String, Object> listOfRecordsAndGenericSearch(String docId, FilterRequestDto request, Pageable pageable);
+	Map<String, Object> listOfRecordsAndGenericSearch(String documentId,
+			FilterRequestDto filters, LocalDate startDate, LocalDate endDate, Pageable pageable);
 
 	Map<String, String> createJv(Long transactionPoid, Long groupPoid, Long companyPoid, Long userId);
 

@@ -41,5 +41,12 @@ public interface GLMasterService {
     String acquireLock(DocReleaseLockRequestDto request);
 
     Map<String, Object> listOfRecordsAndGenericSearch(String docId, FilterRequestDto request, Pageable pageable);
+
+    /**
+     * Get GL Account Type (GL_AC_TYPE) based on subOf (GROUP_GL_POID)
+     * @param subOf The GROUP_GL_POID (parent GL POID)
+     * @return The GL_AC_TYPE value from the parent GL Master record
+     */
+    String getAccountTypeBySubOf(Long subOf);
 }
 

@@ -54,7 +54,7 @@ public class SupplierCategoryServiceImpl implements SupplierCategoryService {
 
         documentDeleteService.deleteDocument(
                 supplierCategoryPoid,
-                "AP_SUPPLIER_CATEGORY",
+                "AP_SUPPLIER_CATEGORY_MASTER",
                 "SUPPLIER_CATEGORY_POID",
                 deleteReasonDto,
                 null

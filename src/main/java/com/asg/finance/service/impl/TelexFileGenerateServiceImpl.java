@@ -185,7 +185,7 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
 
             documentDeleteService.deleteDocument(
                     transactionPoid,
-                    "GL_BANK_DEBIT_HDR",
+                    "GL_BANK_FILE_HDR",
                     "TRANSACTION_POID",
                     deleteReasonDto,
                     hdr.getTransactionDate()

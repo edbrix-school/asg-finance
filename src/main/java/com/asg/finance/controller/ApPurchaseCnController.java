@@ -3,8 +3,10 @@ package com.asg.finance.controller;
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.finance.dto.ApPurchaseCnHdrDto;
 import com.asg.finance.service.ApPurchaseCnService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,6 +21,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -30,11 +34,12 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 @Validated
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/v1/ap-purchase-credit-note")
-@Tag(name = "ap-purchase-credit-note-controller", description = "Manage AP Purchase Credit Note (Supplier Credit Note)")
+@RequestMapping("/v1/supplier-credit-note")
+@Tag(name = "supplier-credit-note", description = "Manage Purchase Credit Note (Supplier Credit Note)")
 public class ApPurchaseCnController {
 
     private final ApPurchaseCnService service;
+    private final LoggingService loggingService;
 
     @Operation(
             summary = "Create Supplier Credit Note",
@@ -135,6 +140,7 @@ public class ApPurchaseCnController {
             @Parameter(description = "Transaction POID", required = true, example = "12345")
             @PathVariable Long transactionPoid) {
         ApPurchaseCnHdrDto result = service.getById(transactionPoid);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
         return success("Supplier credit note fetched successfully", result);
     }
 
@@ -245,7 +251,7 @@ public class ApPurchaseCnController {
             @Parameter(description = "Transaction POID", required = true, example = "12345")
             @PathVariable Long transactionPoid,
             @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto) {
-        service.delete(transactionPoid);
+        service.delete(transactionPoid, deleteReasonDto);
         return success("Supplier credit note deleted successfully", null);
     }
 
@@ -299,5 +305,33 @@ public class ApPurchaseCnController {
             @PathVariable Long partyPoid) {
         Map<String, Object> result = service.getPartyDetails(partyType, partyPoid);
         return success("Party details fetched successfully", result);
+    }
+
+    @AllowedAction(UserRolesRightsEnum.PRINT)
+    @Operation(
+            summary = "Generate PDF for Purchase Journal",
+            description = "Generate PDF report for a specific Purchase Journal transaction",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "PDF generated successfully",
+                            content = @Content(mediaType = "application/pdf")),
+                    @ApiResponse(responseCode = "404", description = "Purchase Journal not found"),
+                    @ApiResponse(responseCode = "500", description = "Failed to generate PDF")
+            }
+    )
+    @GetMapping("/print/{transactionPoid}")
+    public ResponseEntity<?> print(
+            @Parameter(description = "Transaction POID", example = "71031")
+            @PathVariable Long transactionPoid) {
+        try {
+            byte[] pdf = service.print(transactionPoid);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=purchase-journal-" + transactionPoid + ".pdf")
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .body(pdf);
+        } catch (Exception e) {
+            log.error("Failed to generate PDF for Purchase Journal: {}", transactionPoid, e);
+            return internalServerError("Failed to generate PDF: " + e.getMessage());
+        }
     }
 }

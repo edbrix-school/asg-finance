@@ -1,8 +1,18 @@
 package com.asg.finance.service.impl;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
+import com.asg.common.lib.dto.FilterDto;
+import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
+import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.DocumentDeleteService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.service.PrintService;
+import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.dto.*;
 import com.asg.finance.entity.*;
 import com.asg.finance.repository.*;
@@ -12,11 +22,16 @@ import com.asg.finance.service.BillwiseBreakupService;
 import com.asg.finance.service.CostCenterBreakupService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
+import net.sf.jasperreports.engine.JasperReport;
+import org.apache.commons.collections4.CollectionUtils;
+import org.springframework.beans.BeanUtils;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.sql.DataSource;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.LocalDate;
@@ -38,6 +53,11 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
     private final CostCenterBreakupService costCenterBreakupService;
     private final GLMasterRepository glMasterRepository;
     private final TaxMasterRepository taxMasterRepository;
+    private final PrintService printService;
+    private final DataSource dataSource;
+    private final DocumentSearchService documentSearchService;
+    private final LoggingService loggingService;
+    private final DocumentDeleteService documentDeleteService;
 
     @Override
     @Transactional
@@ -83,7 +103,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
             dto.setChargeDetails(chargeDtlRepository.findByTransactionPoid(transactionPoid).stream()
                     .map(this::mapChargeToDto).collect(Collectors.toList()));
             dto.setGlDetails(glDtlRepository.findByTransactionPoid(transactionPoid).stream()
-                    .map(this::mapGlToDto).collect(Collectors.toList()));
+                    .map(dtl -> mapGlToDto(dtl, dto)).collect(Collectors.toList()));
             
             log.info("Successfully fetched supplier credit note with {} items, {} charges, {} GL entries", 
                     dto.getItemDetails().size(), dto.getChargeDetails().size(), dto.getGlDetails().size());
@@ -103,7 +123,9 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         try {
             ApPurchaseCnHdr existing = hdrRepository.findById(transactionPoid)
                     .orElseThrow(() -> new ResourceNotFoundException("Supplier Credit Note", "transactionPoid", transactionPoid));
-            
+
+            ApPurchaseCnHdr oldEntity = new ApPurchaseCnHdr();
+            BeanUtils.copyProperties(existing, oldEntity);
             updateEntityFromDto(existing, dto);
             existing.setLastModifiedBy(UserContext.getUserId());
             existing.setLastModifiedDate(Timestamp.valueOf(LocalDateTime.now()));
@@ -113,8 +135,10 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
             
             updateDetailsByActionType(transactionPoid, dto);
             log.info("Supplier credit note updated successfully with transactionPoid: {}", transactionPoid);
-            
+            loggingService.logChanges(oldEntity, existing, ApPurchaseCnHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
             return getById(transactionPoid);
+
+
         } catch (Exception e) {
             log.error("Error updating supplier credit note with transactionPoid {}: {}", transactionPoid, e.getMessage(), e);
             throw new RuntimeException("Failed to update supplier credit note: " + e.getMessage(), e);
@@ -123,18 +147,21 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
 
     @Override
     @Transactional
-    public void delete(Long transactionPoid) {
+    public void delete(Long transactionPoid, DeleteReasonDto deleteReasonDto) {
         log.info("Deleting supplier credit note with transactionPoid: {}", transactionPoid);
         
         try {
             ApPurchaseCnHdr hdr = hdrRepository.findById(transactionPoid)
                     .orElseThrow(() -> new ResourceNotFoundException("Supplier Credit Note", "transactionPoid", transactionPoid));
-            
-            hdr.setDeleted("Y");
-            hdr.setLastModifiedBy(UserContext.getUserId());
-            hdr.setLastModifiedDate(Timestamp.valueOf(LocalDateTime.now()));
-            hdrRepository.save(hdr);
-            
+
+            documentDeleteService.deleteDocument(
+                    transactionPoid,
+                    "AP_PURCHASE_CN_HDR",
+                    "TRANSACTION_POID",
+                    deleteReasonDto,
+                    hdr.getTransactionDate()
+            );
+
             log.info("Supplier credit note deleted successfully with transactionPoid: {}", transactionPoid);
         } catch (Exception e) {
             log.error("Error deleting supplier credit note with transactionPoid {}: {}", transactionPoid, e.getMessage(), e);
@@ -145,7 +172,16 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
     @Override
     public Map<String, Object> list(String documentId, FilterRequestDto filters, 
                                      LocalDate startDate, LocalDate endDate, Pageable pageable) {
-        return new HashMap<>();
+        String operator = documentSearchService.resolveOperator(filters);
+        String isDeleted = documentSearchService.resolveIsDeleted(filters);
+        List<FilterDto> filterList = documentSearchService.resolveDateFilters(filters, "TRANSACTION_DATE", startDate, endDate);
+
+        RawSearchResult raw = documentSearchService.search(documentId, filterList, operator, pageable, isDeleted,
+                "LONG_NARRATION",
+                "TRANSACTION_POID");
+
+        Page<Map<String, Object>> page = new PageImpl<>(raw.records(), pageable, raw.totalRecords());
+        return PaginationUtil.wrapPage(page, raw.displayFields());
     }
 
     @Override
@@ -154,7 +190,11 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         
         try {
             Map<String, Object> result = procRepository.getPjRefDetails(pjPoid);
+            GlVoucherLoadBillwiseBreakupResponseDto blResponse = billwiseBreakupService.loadBillwiseBreakup(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), "200-103", pjPoid);
+            GlVoucherCostCenterBreakupResponseDto cCResponse = costCenterBreakupService.loadCostCenterData("200-103", pjPoid, UserContext.getGroupPoid(), UserContext.getCompanyPoid(), UserContext.getUserPoid());
+            mapBillwiseAndCostCenterBreakup(result, blResponse, cCResponse);
             log.info("Successfully fetched PJ reference details for pjPoid: {}", pjPoid);
+
             return result;
         } catch (Exception e) {
             log.error("Error fetching PJ reference details for pjPoid {}: {}", pjPoid, e.getMessage(), e);
@@ -235,6 +275,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         if (dto.getGlDetails() != null) {
             for (ApPurchaseCnGlDtlDto glDto : dto.getGlDetails()) {
                 String actionType = normalizeActionType(glDto.getActionType());
+                Long dtRowId = null;
                 if ("isdeleted".equals(actionType) && glDto.getDetRowId() != null) {
                     glDtlRepository.deleteById(new com.asg.finance.entity.key.ApPurchaseCnGlDtlKey(transactionPoid, glDto.getDetRowId()));
                 } else if ("isupdated".equals(actionType) && glDto.getDetRowId() != null) {
@@ -244,6 +285,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                     gl.setLastModifiedBy(UserContext.getUserId());
                     gl.setLastModifiedDate(Timestamp.valueOf(LocalDateTime.now()));
                     glDtlRepository.save(gl);
+                    glDto.setDetRowId(gl.getDetRowId());
                 } else if ("iscreated".equals(actionType)) {
                     ApPurchaseCnGlDtl gl = mapGlToEntity(glDto);
                     gl.setTransactionPoid(transactionPoid);
@@ -251,6 +293,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                     gl.setCreatedBy(UserContext.getUserId());
                     gl.setCreatedDate(Timestamp.valueOf(LocalDateTime.now()));
                     glDtlRepository.save(gl);
+                    glDto.setDetRowId(gl.getDetRowId());
                 }
             }
             saveBillwiseForGl(transactionPoid, dto.getGlDetails().stream()
@@ -315,6 +358,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                 gl.setCreatedBy(UserContext.getUserId());
                 gl.setCreatedDate(Timestamp.valueOf(LocalDateTime.now()));
                 glDtlRepository.save(gl);
+                glDto.setDetRowId(gl.getDetRowId());
             }
             log.info("Saved {} GL details for transactionPoid: {}", dto.getGlDetails().size(), transactionPoid);
             
@@ -331,7 +375,6 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         
         switch (refType.toUpperCase()) {
             case "GENERAL":
-            case "GENERAL_PO":
                 if (dto.getGlDetails() == null || dto.getGlDetails().isEmpty()) {
                     throw new RuntimeException("At least one GL detail is required for reference type: " + refType);
                 }
@@ -352,9 +395,13 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                 
             case "PJ_REVERSAL":
                 // Check PJ Reversal Ref Type for FF Jobs
-                if ("FF".equalsIgnoreCase(dto.getPjReversalRefType())) {
+                if ("FF".equalsIgnoreCase(dto.getPjReversalRefType()) || "FDA".equalsIgnoreCase(dto.getPjReversalRefType())) {
                     if (dto.getChargeDetails() == null || dto.getChargeDetails().isEmpty()) {
-                        throw new RuntimeException("At least one charge detail is required for PJ Type 'FF Jobs'");
+                        throw new RuntimeException("At least one charge detail is required for PJ Type 'FF Jobs or FDA jobs'");
+                    }
+                } else if ("GENERAL_PO".equalsIgnoreCase(dto.getPjReversalRefType())) {
+                    if (dto.getGlDetails() == null || dto.getGlDetails().isEmpty()) {
+                        throw new RuntimeException("At least one charge detail is required for PJ Type 'GENERAL PO Jobs'");
                     }
                 } else {
                     // For other PJ types, require item details
@@ -388,7 +435,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
             if (!glMasterRepository.existsByGlPoid(glDto.getGlPoid())) {
                 throw new ResourceNotFoundException("Gl Master", "glPoid", glDto.getGlPoid());
             }
-            if (!taxMasterRepository.existsByTaxPoid(glDto.getTaxPoid())) {
+            if (glDto.getTaxPoid() != null && !taxMasterRepository.existsByTaxPoid(glDto.getTaxPoid())) {
                 throw new ResourceNotFoundException("Tax", "taxPoid", glDto.getTaxPoid());
             }
 
@@ -464,6 +511,16 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
             costCenterBreakupService.saveCostCenterBreakups(costCenterList);
             log.info("Saved {} cost center breakup entries for transactionPoid: {}", costCenterList.size(), transactionPoid);
         }
+    }
+
+    @Override
+    public byte[] print(Long transactionPoid) throws Exception {
+        // To be updated
+        Map<String, Object> params = printService.buildBaseParams(transactionPoid, "200-103");
+        params.put("SUBREPORT_GL", printService.load("Finance/AP/PurchaseInvoiceReportGlSubreport1.jrxml"));
+        params.put("SUBREPORT_CHARGE", printService.load("Finance/AP/PurchaseInvoiceChargeSubReport.jrxml"));
+        JasperReport mainReport = printService.load("Finance/AP/PurchaseInvoiceReport_2.jrxml");
+        return printService.fillReportToPdf(mainReport, params, dataSource);
     }
 
     private ApPurchaseCnHdr mapToEntity(ApPurchaseCnHdrDto dto) {
@@ -616,7 +673,6 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         dto.setCreatedDate(entity.getCreatedDate());
         dto.setLastModifiedBy(entity.getLastModifiedBy());
         dto.setLastModifiedDate(entity.getLastModifiedDate());
-        dto.setActionType("isCreated"); // Set default action type for response
         return dto;
     }
 
@@ -699,7 +755,6 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         dto.setChargeBaseAmount(entity.getChargeBaseAmount());
         dto.setChargeFrom(entity.getChargeFrom());
         dto.setSupplierPoidFf(entity.getSupplierPoidFf());
-        dto.setActionType("isCreated"); // Set default action type for response
         return dto;
     }
 
@@ -721,7 +776,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                 .build();
     }
 
-    private ApPurchaseCnGlDtlDto mapGlToDto(ApPurchaseCnGlDtl entity) {
+    private ApPurchaseCnGlDtlDto mapGlToDto(ApPurchaseCnGlDtl entity, ApPurchaseCnHdrDto headerDto) {
         ApPurchaseCnGlDtlDto dto = new ApPurchaseCnGlDtlDto();
         dto.setDetRowId(entity.getDetRowId());
         dto.setType(entity.getType());
@@ -737,22 +792,21 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         dto.setTaxPercentage(entity.getTaxPercentage());
         dto.setTaxAmount(entity.getTaxAmount());
         dto.setTotalAmount(entity.getTotalAmount());
-        dto.setActionType("isCreated"); // Set default action type for response
         
         // Load breakup lists
-        loadBreakupLists(entity.getTransactionPoid(), entity.getDetRowId(), dto);
+        loadBreakupLists(entity.getTransactionPoid(), entity.getDetRowId(), dto, headerDto);
         
         return dto;
     }
     
-    private void loadBreakupLists(Long transactionPoid, Long detRowId, ApPurchaseCnGlDtlDto dto) {
+    private void loadBreakupLists(Long transactionPoid, Long detRowId, ApPurchaseCnGlDtlDto dto, ApPurchaseCnHdrDto hdrDto) {
         try {
             // Load billwise breakup
-            var billwiseResponse = billwiseBreakupService.loadBillwiseBreakup(
-                UserContext.getGroupPoid() != null ? UserContext.getGroupPoid() : 1L,
-                UserContext.getCompanyPoid() != null ? UserContext.getCompanyPoid() : 1L,
-                UserContext.getDocumentId(),
-                transactionPoid
+            GlVoucherLoadBillwiseBreakupResponseDto billwiseResponse = billwiseBreakupService.loadBillwiseBreakup(
+                    UserContext.getGroupPoid() != null ? UserContext.getGroupPoid() : 1L,
+                    UserContext.getCompanyPoid() != null ? UserContext.getCompanyPoid() : 1L,
+                    "200-107",
+                    hdrDto.getTransactionPoid()
             );
             
             if (billwiseResponse != null && billwiseResponse.getLoadBillwiseBreakupResponseDtoList() != null) {
@@ -767,7 +821,6 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                         popup.setType(b.getDrAmt().compareTo(BigDecimal.ZERO) > 0 ? "DR" : "CR");
                         popup.setAmount(b.getDrAmt().compareTo(BigDecimal.ZERO) > 0 ? b.getDrAmt() : b.getCrAmt());
                         popup.setBillRemarks(b.getBillRemarks());
-                        popup.setActionType("isCreated");
                         return popup;
                     })
                     .collect(Collectors.toList());
@@ -777,12 +830,12 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
             }
             
             // Load cost center breakup
-            var costCenterResponse = costCenterBreakupService.loadCostCenterData(
-                UserContext.getDocumentId(),
-                transactionPoid,
-                UserContext.getGroupPoid() != null ? UserContext.getGroupPoid() : 1L,
-                UserContext.getCompanyPoid() != null ? UserContext.getCompanyPoid() : 1L,
-                UserContext.getUserPoid() != null ? UserContext.getUserPoid() : 1L
+            GlVoucherCostCenterBreakupResponseDto costCenterResponse = costCenterBreakupService.loadCostCenterData(
+                    "200-107",
+                    hdrDto.getTransactionPoid(),
+                    UserContext.getGroupPoid() != null ? UserContext.getGroupPoid() : 1L,
+                    UserContext.getCompanyPoid() != null ? UserContext.getCompanyPoid() : 1L,
+                    UserContext.getUserPoid() != null ? UserContext.getUserPoid() : 1L
             );
             
             if (costCenterResponse != null && costCenterResponse.getCostBreakupList() != null) {
@@ -794,7 +847,6 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                         popup.setCostGroup(c.getCostGroup());
                         popup.setCostPoid(c.getCostPoid());
                         popup.setAmount(BigDecimal.valueOf(c.getAmount()));
-                        popup.setActionType("isCreated");
                         return popup;
                     })
                     .collect(Collectors.toList());
@@ -810,5 +862,69 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
             dto.setBreakupList(new ArrayList<>());
             dto.setCostCenterList(new ArrayList<>());
         }
+    }
+
+    private void mapBillwiseAndCostCenterBreakup(
+            Map<String, Object> params,
+            GlVoucherLoadBillwiseBreakupResponseDto billResponse,
+            GlVoucherCostCenterBreakupResponseDto costResponse
+    ) {
+        String refTye = (String) params.getOrDefault("pjRefType", null);
+
+        if ("GENERAL".equals(refTye)) {
+            List<Map<String, Object>> lineItems = (List<Map<String, Object>>) params.getOrDefault("lineItems", null);
+            if (CollectionUtils.isNotEmpty(lineItems)) {
+                for (Map<String, Object> lineItem : lineItems) {
+                    Long detRowId = ((Number) lineItem.getOrDefault("GL_POID", null)).longValue();
+                    List<BillwiseBreakupPopupRequestDto> billwiseList = filterBillwiseBreakup(billResponse, detRowId);
+                    List<CostCenterBreakupPopupRequestDto> costCenterList = filterCostCenterBreakup(costResponse, detRowId);
+                    lineItem.put("BILL_WISE_BREAK_UP_LIST", billwiseList);
+                    lineItem.put("COST_CENTER_BREAK_UP_LIST", costCenterList);
+                }
+            }
+        }
+    }
+
+    private List<CostCenterBreakupPopupRequestDto> filterCostCenterBreakup(
+            GlVoucherCostCenterBreakupResponseDto response, Long detRowId) {
+
+        if (response == null || response.getCostBreakupList() == null) {
+            return Collections.emptyList();
+        }
+
+        return response.getCostBreakupList().stream()
+                .filter(cc -> cc.getGlPoid().equals(detRowId))
+                .map(cc -> {
+                    CostCenterBreakupPopupRequestDto dto = new CostCenterBreakupPopupRequestDto();
+                    dto.setCostDetRowId(cc.getCostDetRowId());
+                    dto.setCostGroup(cc.getCostGroup());
+                    dto.setCostPoid(cc.getCostPoid());
+                    dto.setAmount(BigDecimal.valueOf(cc.getAmount()));
+                    return dto;
+                })
+                .collect(Collectors.toList());
+    }
+
+    private List<BillwiseBreakupPopupRequestDto> filterBillwiseBreakup(
+            GlVoucherLoadBillwiseBreakupResponseDto response, Long detRowId) {
+
+        if (response == null || response.getLoadBillwiseBreakupResponseDtoList() == null) {
+            return Collections.emptyList();
+        }
+
+        return response.getLoadBillwiseBreakupResponseDtoList().stream()
+                .filter(bw -> bw.getGlPoid().equals(detRowId))
+                .map(bw -> {
+                    BillwiseBreakupPopupRequestDto dto = new BillwiseBreakupPopupRequestDto();
+                    dto.setBillDetRowId(bw.getBillDetRowId());
+                    dto.setBillRefType(bw.getBillRefType());
+                    dto.setBillRef(bw.getBillRef());
+                    dto.setBillDueDate(bw.getBillDueDate());
+                    dto.setAmount(bw.getDrAmt() != null ? bw.getDrAmt() : bw.getCrAmt());
+                    dto.setType(bw.getDrAmt() != null && bw.getDrAmt().compareTo(BigDecimal.ZERO) > 0 ? "Dr" : "Cr");
+                    dto.setBillRemarks(bw.getBillRemarks());
+                    return dto;
+                })
+                .collect(Collectors.toList());
     }
 }

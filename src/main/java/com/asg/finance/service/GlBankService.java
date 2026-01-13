@@ -12,7 +12,7 @@ import java.util.Map;
 public interface GlBankService {
     GlBankDto updateGlBank(Long bankPoid, GlBankDto request);
 
-    GlBankEntity createEntry(GlBankDto bankMasterDto);
+    GlBankDto createEntry(GlBankDto bankMasterDto);
 
      GlBankDto fetchGlBank(Long bankPoid);
 

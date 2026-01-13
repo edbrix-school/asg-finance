@@ -2,6 +2,8 @@ package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.LoggingService;
 
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.dto.response.GlVoucherPendingBillwiseBreakupResponseDto;
@@ -31,6 +33,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.success;
 public class BillwiseBreakupController {
 
     private final BillwiseBreakupService service;
+    private final LoggingService loggingService;
 
     @Operation(
             summary = "Get Pending Billwise Breakup Details",
@@ -73,6 +76,7 @@ public class BillwiseBreakupController {
 
         GlVoucherPendingBillwiseBreakupResponseDto response =
                 service.showPendingBillwiseBreakup(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), glPoid, asOnDate);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), glPoid.toString());
 
         return success("Pending Billwise breakup details fetched successfully", response);
     }
@@ -118,6 +122,7 @@ public class BillwiseBreakupController {
 
         GlVoucherPendingBillwiseBreakupResponseDto response =
                 service.showAllPendingBillwiseBreakup(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), glPoid, asOnDate);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), glPoid.toString());
 
         return success("Pending All Billwise breakup details fetched successfully", response);
     }

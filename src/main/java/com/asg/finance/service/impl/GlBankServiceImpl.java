@@ -4,6 +4,7 @@ import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceAlreadyExistsException;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.finance.entity.GlBankEntity;
@@ -11,6 +12,7 @@ import com.asg.finance.entity.TaxMaster;
 import com.asg.finance.repository.*;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.finance.dto.GlBankChequeDtlDto;
 import com.asg.finance.dto.GlBankCommissionDtlDto;
@@ -57,6 +59,8 @@ public class GlBankServiceImpl implements GlBankService {
     private final LovDataService lovService;
 
     private final DocumentDeleteService documentDeleteService;
+    
+    private final LoggingService loggingService;
 
 
     @Override
@@ -68,6 +72,8 @@ public class GlBankServiceImpl implements GlBankService {
         GlBankDto bankDto = new GlBankDto();
         BeanUtils.copyProperties(bankEntity, bankDto);
         bankDto.setCompanyPoid(Long.valueOf(bankEntity.getCompanyPoid()));
+        bankDto.setCreatedBy(bankEntity.getCreatedBy());
+        bankDto.setCreatedDate(bankEntity.getCreatedDate());
         if (StringUtils.isNotBlank(bankEntity.getCompanyPoid())) {
             bankDto.setCompanyDet(lovService.getDetailsByPoidAndLovName(Long.valueOf(bankEntity.getCompanyPoid()), "COMPANY"));
         }
@@ -87,6 +93,10 @@ public class GlBankServiceImpl implements GlBankService {
         if (bankEntity == null) {
             throw new ResourceNotFoundException("Bank", "bankPoid", bankPoid);
         }
+
+        // Create a copy of the old entity for logging
+        GlBankEntity oldEntity = new GlBankEntity();
+        BeanUtils.copyProperties(bankEntity, oldEntity);
 
         boolean existsByBankCode = bankRepository.existsByBankCodeIgnoreCaseAndBankPoidNot(glBankDto.getBankCode(), bankPoid);
 
@@ -125,12 +135,15 @@ public class GlBankServiceImpl implements GlBankService {
 
         List<GlBankCommissionDtlEntity> updatedCommissionDtlEntities = glBankDto.getCommissionDetails() != null && !glBankDto.getCommissionDetails().isEmpty() ? processCommissionDetails(bankPoid, glBankDto.getCommissionDetails()) : new ArrayList<>();
 
+        // Log the update
+        loggingService.logChanges(oldEntity, updatedGlBankEntity, GlBankEntity.class, UserContext.getDocumentId(), bankPoid.toString(), LogDetailsEnum.MODIFIED, "BANK_POID");
+
         return convertGlBankEntityToGlBankDto(updatedGlBankEntity, updatedChequeDtlEntities, updatedCommissionDtlEntities);
     }
 
     @Override
     @Transactional
-    public GlBankEntity createEntry(GlBankDto bankMasterDto) {
+    public GlBankDto createEntry(GlBankDto bankMasterDto) {
         //Bank Code Bank Description and Bank Account No are required and unique fields
         boolean bankCodeExists = bankRepository.existsByBankCodeIgnoreCase(bankMasterDto.getBankCode());
         if (bankCodeExists) {
@@ -161,8 +174,9 @@ public class GlBankServiceImpl implements GlBankService {
         GlBankEntity bankMasterData = saveBankDetails(bankMasterDto);
 
         saveBankChequeDetails(bankMasterDto, bankMasterData);
-        saveBankCommisionDetails(bankMasterDto, bankMasterData);
-        return bankMasterData;
+        saveBankCommisionDetails(bankMasterDto, bankMasterData);        
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), bankMasterData.getBankPoid().toString());
+        return fetchGlBank(bankMasterData.getBankPoid());
     }
 
     private void saveBankCommisionDetails(GlBankDto bankMasterDto, GlBankEntity bankMasterData) {
@@ -186,6 +200,8 @@ public class GlBankServiceImpl implements GlBankService {
         BeanUtils.copyProperties(bankMasterDto, bankMaster);
         bankMaster.setGroupPoid(UserContext.getGroupPoid());
         bankMaster.setCompanyPoid(String.valueOf(UserContext.getCompanyPoid()));
+        bankMaster.setCreatedBy(getCurrentUser());
+        bankMaster.setCreatedDate(Timestamp.valueOf(LocalDateTime.now()));
         return bankRepository.save(bankMaster);
     }
 
@@ -453,6 +469,8 @@ public class GlBankServiceImpl implements GlBankService {
         dto.setCorrespondantSwiftCode(entity.getCorrespondantSwiftCode());
         dto.setCorrespondantBank(entity.getCorrespondantBank());
         dto.setEdiBankAccountNo(entity.getEdiBankAccountNo());
+        dto.setCreatedBy(entity.getCreatedBy());
+        dto.setCreatedDate(entity.getCreatedDate());
 
         dto.setChequeDetails(convertGlBankChequeDtlEntityListToGlBankChequeDtlDtoList(glBankChequeDtlEntityList));
         dto.setCommissionDetails(convertGlBankCommissionDtlEntityListToGlBankCommissionDtlDtoList(glBankCommissionDtlEntityList));

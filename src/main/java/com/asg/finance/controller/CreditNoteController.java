@@ -3,6 +3,8 @@ package com.asg.finance.controller;
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.CreditNoteHeaderDto;
 import com.asg.finance.dto.DefaultCreditValuesDto;
@@ -46,6 +48,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 
 public class CreditNoteController {
     private final CreditNoteService creditNoteService;
+    private final LoggingService loggingService;
 
     @Operation(
             summary = "Create Credit Note",
@@ -195,6 +198,7 @@ public class CreditNoteController {
     public ResponseEntity<?> getCreditNoteById(
             @PathVariable Long transactionPoid) {
         CreditNoteHeaderDto result = creditNoteService.getCreditNoteById(transactionPoid);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
         return success("Credit note fetched successfully", result);
     }
 
@@ -457,6 +461,7 @@ public class CreditNoteController {
             @PathVariable Long refNo,
             @RequestParam Long partyPoid) {
         var result = creditNoteService.getFFInvoiceCharges(refNo, partyPoid);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), refNo.toString());
         return success("FF Invoice charges fetched successfully", result);
     }
 
@@ -482,6 +487,7 @@ public class CreditNoteController {
             @PathVariable Long refNo,
             @RequestParam Long partyPoid) {
         var result = creditNoteService.getSHInvoiceCharges(refNo, partyPoid);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), refNo.toString());
         return success("Shipping invoice charges fetched successfully", result);
     }
 
@@ -498,6 +504,7 @@ public class CreditNoteController {
             @PathVariable Long refNo,
             @RequestParam Long partyPoid) {
         var result = creditNoteService.getDNInvoiceCharges(refNo, partyPoid);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), refNo.toString());
         return success("DN invoice charges fetched successfully", result);
     }
 
@@ -517,6 +524,7 @@ public class CreditNoteController {
             @PathVariable Long fdaRef,
             @RequestParam Long partyPoid) {
         var result = creditNoteService.getFDADetails(fdaRef, partyPoid);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), fdaRef.toString());
         return success("FDA details fetched successfully", result);
     }
 
@@ -544,6 +552,7 @@ public class CreditNoteController {
             @RequestParam String partyType) {
         try {
             DefaultCreditValuesDto result = creditNoteService.getDefaultCreditValues(partyPoid, partyType);
+            loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), partyPoid.toString());
             return success("Default credit values fetched successfully", result);
         } catch (Exception e) {
             log.error("Error fetching default credit values for partyPoid: {}, partyType: {}", partyPoid, partyType, e);
@@ -573,6 +582,7 @@ public class CreditNoteController {
             @RequestParam String partyType) {
         try {
             Long result = creditNoteService.getPartyGLPoid(partyPoid, partyType);
+            loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), partyPoid.toString());
             return success("Party GL POID fetched successfully", result);
         } catch (Exception e) {
             log.error("Error fetching party GL POID for partyPoid: {}, partyType: {}", partyPoid, partyType, e);

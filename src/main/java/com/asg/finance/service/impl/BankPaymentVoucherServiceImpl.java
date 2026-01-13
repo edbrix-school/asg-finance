@@ -11,6 +11,8 @@ import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.finance.dto.*;
 import com.asg.finance.entity.GLPaymentVoucherDtlGLEntity;
 import com.asg.finance.entity.GLPaymentVoucherHDREntity;
@@ -85,14 +87,10 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     @Autowired
     private CostCenterBreakupService costCenterBreakupService;
 
-    @Autowired
-    private PrintService printService;
-
-    @Autowired
-    private DataSource dataSource;
-
-    @Autowired
-    private DocumentDeleteService documentDeleteService;
+    @Autowired private PrintService printService;
+    @Autowired private DataSource dataSource;
+    @Autowired private LoggingService loggingService;
+    @Autowired private DocumentDeleteService documentDeleteService;
 
     @Override
     @Transactional
@@ -203,6 +201,10 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         // Flush to ensure all changes are persisted
         paymentVoucherRepository.flush();
 
+        // Log the creation
+        String key = savedHeader.getTransactionPoid().toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, documentId, key);
+
         return getVoucherById(savedHeader.getTransactionPoid(),documentId);
     }
 
@@ -212,6 +214,10 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         GLPaymentVoucherHDREntity existing = paymentVoucherRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ValidationException("Bank Payment Voucher not found for ID: " + transactionPoid));
+
+        // Create a copy of the existing entity for logging
+        GLPaymentVoucherHDREntity oldEntity = new GLPaymentVoucherHDREntity();
+        BeanUtils.copyProperties(existing, oldEntity);
 
         String oldRefType = existing.getRefType();
 
@@ -237,6 +243,11 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         // Post-update job costs
         updateJobCostsInNewTransaction(updatedHeader, req.getRefType());
+
+        // Log the update
+        String key = transactionPoid.toString();
+        loggingService.logChanges(oldEntity, updatedHeader, GLPaymentVoucherHDREntity.class, 
+                documentId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
         return getVoucherById(transactionPoid, documentId);
     }
@@ -667,6 +678,15 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     public void markChequePrinted(Long transactionPoid) {
         GLPaymentVoucherHDREntity header = paymentVoucherRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ValidationException("Voucher not found"));
+        
+        // Create a copy of the existing entity for logging
+        GLPaymentVoucherHDREntity oldEntity = GLPaymentVoucherHDREntity.builder()
+                .transactionPoid(header.getTransactionPoid())
+                .chqPrinted(header.getChqPrinted())
+                .chqPrintedUserCode(header.getChqPrintedUserCode())
+                .chqPrintedDate(header.getChqPrintedDate())
+                .build();
+        
         spRepository.afterChequePrint(
                 UserContext.getGroupPoid(),
                 getCurrentUser(),
@@ -676,6 +696,16 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                 header.getChqSignType(),
                 UserContext.getUserPoid()
         );
+        
+        // Reload entity to get updated values
+        GLPaymentVoucherHDREntity updatedHeader = paymentVoucherRepository.findById(transactionPoid)
+                .orElse(header);
+        
+        // Log the update
+        String key = transactionPoid.toString();
+        String docId = UserContext.getDocumentId();
+        loggingService.logChanges(oldEntity, updatedHeader, GLPaymentVoucherHDREntity.class, 
+                docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
     }
 
     @Override
@@ -683,6 +713,17 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     public void releaseCheque(Long transactionPoid, String releasedTo, String contact) {
         GLPaymentVoucherHDREntity header = paymentVoucherRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ValidationException("Voucher not found"));
+        
+        // Create a copy of the existing entity for logging
+        GLPaymentVoucherHDREntity oldEntity = GLPaymentVoucherHDREntity.builder()
+                .transactionPoid(header.getTransactionPoid())
+                .released(header.getReleased())
+                .releasedToPerson(header.getReleasedToPerson())
+                .releasedPersonAddress(header.getReleasedPersonAddress())
+                .releasedByUserCode(header.getReleasedByUserCode())
+                .releasedDate(header.getReleasedDate())
+                .build();
+        
         spRepository.releaseCheque(
                 header.getGroupPoid(),
                 getCurrentUser(),
@@ -691,6 +732,16 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                 releasedTo,
                 contact
         );
+        
+        // Reload entity to get updated values
+        GLPaymentVoucherHDREntity updatedHeader = paymentVoucherRepository.findById(transactionPoid)
+                .orElse(header);
+        
+        // Log the update
+        String key = transactionPoid.toString();
+        String docId = UserContext.getDocumentId();
+        loggingService.logChanges(oldEntity, updatedHeader, GLPaymentVoucherHDREntity.class, 
+                docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
     }
 
     @Override
@@ -698,12 +749,33 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     public void unReleaseCheque(Long transactionPoid) {
         GLPaymentVoucherHDREntity header = paymentVoucherRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ValidationException("Voucher not found"));
+        
+        // Create a copy of the existing entity for logging
+        GLPaymentVoucherHDREntity oldEntity = GLPaymentVoucherHDREntity.builder()
+                .transactionPoid(header.getTransactionPoid())
+                .released(header.getReleased())
+                .releasedToPerson(header.getReleasedToPerson())
+                .releasedPersonAddress(header.getReleasedPersonAddress())
+                .releasedByUserCode(header.getReleasedByUserCode())
+                .releasedDate(header.getReleasedDate())
+                .build();
+        
         spRepository.unReleaseCheque(
                 UserContext.getGroupPoid(),
                 UserContext.getUserId(),
                 UserContext.getCompanyPoid(),
                 transactionPoid
         );
+        
+        // Reload entity to get updated values
+        GLPaymentVoucherHDREntity updatedHeader = paymentVoucherRepository.findById(transactionPoid)
+                .orElse(header);
+        
+        // Log the update
+        String key = transactionPoid.toString();
+        String docId = UserContext.getDocumentId();
+        loggingService.logChanges(oldEntity, updatedHeader, GLPaymentVoucherHDREntity.class, 
+                docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
     }
 
     @Override
@@ -711,12 +783,36 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     public void resetChequeStatus(Long transactionPoid) {
         GLPaymentVoucherHDREntity header = paymentVoucherRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ValidationException("Voucher not found"));
+        
+        // Create a copy of the existing entity for logging
+        GLPaymentVoucherHDREntity oldEntity = GLPaymentVoucherHDREntity.builder()
+                .transactionPoid(header.getTransactionPoid())
+                .chqPrinted(header.getChqPrinted())
+                .chqPrintedUserCode(header.getChqPrintedUserCode())
+                .chqPrintedDate(header.getChqPrintedDate())
+                .released(header.getReleased())
+                .releasedToPerson(header.getReleasedToPerson())
+                .releasedPersonAddress(header.getReleasedPersonAddress())
+                .releasedByUserCode(header.getReleasedByUserCode())
+                .releasedDate(header.getReleasedDate())
+                .build();
+        
         spRepository.resetChequeStatus(
                 header.getGroupPoid(),
                 header.getCompanyPoid(),
                 null,
                 transactionPoid
         );
+        
+        // Reload entity to get updated values
+        GLPaymentVoucherHDREntity updatedHeader = paymentVoucherRepository.findById(transactionPoid)
+                .orElse(header);
+        
+        // Log the update
+        String key = transactionPoid.toString();
+        String docId = UserContext.getDocumentId();
+        loggingService.logChanges(oldEntity, updatedHeader, GLPaymentVoucherHDREntity.class, 
+                docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
     }
 
     @Override
@@ -724,6 +820,13 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     public String revertReconciliation(Long transactionPoid, String documentId) {
         GLPaymentVoucherHDREntity header = paymentVoucherRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ValidationException("Voucher not found"));
+        
+        // Create a copy of the existing entity for logging
+        GLPaymentVoucherHDREntity oldEntity = GLPaymentVoucherHDREntity.builder()
+                .transactionPoid(header.getTransactionPoid())
+                .reconciledDate(header.getReconciledDate())
+                .build();
+        
         String status = spRepository.revertReconciliation(
                 UserContext.getGroupPoid(),
                 UserContext.getCompanyPoid(),
@@ -732,6 +835,16 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                 String.valueOf(transactionPoid),
                 "Y"
         );
+        
+        // Reload entity to get updated values
+        GLPaymentVoucherHDREntity updatedHeader = paymentVoucherRepository.findById(transactionPoid)
+                .orElse(header);
+        
+        // Log the update
+        String key = transactionPoid.toString();
+        loggingService.logChanges(oldEntity, updatedHeader, GLPaymentVoucherHDREntity.class, 
+                documentId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+        
         return status;
     }
 

@@ -3,6 +3,8 @@ package com.asg.finance.controller;
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.LoggingService;
 
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.TelexFileDtlDto;
@@ -39,6 +41,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.success;
 public class TelexFileGenerateController {
 
     private final TelexFileGenerateService service;
+    private final LoggingService loggingService;
 
     @Operation(
             summary = "Create Telex File",
@@ -102,6 +105,7 @@ public class TelexFileGenerateController {
             @PathVariable Long transactionPoid
     ) {
         TelexFileGenerateResponseDto response = service.getTelexFileById(transactionPoid);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
         return success("Telex File fetched successfully", response);
     }
 
@@ -208,6 +212,7 @@ public class TelexFileGenerateController {
                 return internalServerError("Both startDate and endDate should be specified or both dates should be empty.");
             }
             Map<String, Object> data = service.listTelexFiles(UserContext.getDocumentId(), filters, startDate, endDate, pageable);
+            
             return success("Telex Files fetched successfully", data);
         } catch (Exception ex) {
             return internalServerError("Unable to fetch Telex File list: " + ex.getMessage());

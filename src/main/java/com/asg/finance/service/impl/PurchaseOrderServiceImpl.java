@@ -17,9 +17,12 @@ import com.asg.finance.repository.PurchaseOrderRepository;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.PurchaseOrderService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import net.sf.jasperreports.engine.JasperReport;
+import org.springframework.beans.BeanUtils;
 import org.springframework.transaction.annotation.Propagation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -51,6 +54,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     private final JdbcTemplate jdbcTemplate;
     private final PrintService printService;
     private final DataSource dataSource;
+    private final LoggingService loggingService;
     private final DocumentDeleteService documentDeleteService;
 
     @Override
@@ -88,6 +92,9 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                         throw new IllegalArgumentException("Invalid RefType: " + refType);
             }
 
+            // Logging for create operation
+            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, documentId, savedPO.getTransactionPoid().toString());
+
             return mapToPurchaseOrderResponse(savedPO, savedItems);
 
         } catch (Exception ex) {
@@ -103,6 +110,10 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         try {
             PurchaseOrder existingPO = purchaseOrderRepository.findById(transactionPoid)
                     .orElseThrow(() -> new RuntimeException("Purchase Order not found with ID: " + transactionPoid));
+
+            // Create a copy of the existing entity for logging
+            PurchaseOrder oldEntity = new PurchaseOrder();
+            BeanUtils.copyProperties(existingPO, oldEntity);
 
             updatePurchaseOrderFields(existingPO, request);
 
@@ -128,6 +139,9 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
 
                 default -> throw new RuntimeException("Invalid RefType for update: " + refType);
             }
+
+            // Logging for update operation
+            loggingService.logChanges(oldEntity, updatedPO, PurchaseOrder.class, documentId, updatedPO.getTransactionPoid().toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
             return mapToPurchaseOrderResponse(updatedPO, updatedItems);
 

@@ -4,6 +4,8 @@ import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.*;
@@ -35,6 +37,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 public class JournalVoucherController {
 
     private final JournalVoucherService journalVoucherService;
+    private final LoggingService loggingService;
 
     @Operation(
             summary = "Create Journal Voucher",
@@ -215,7 +218,8 @@ public class JournalVoucherController {
             return badRequest("Both startDate and endDate should be specified or both dates should be empty.");
         }
         Map<String, Object> response = journalVoucherService.listJournalVouchers(UserContext.getDocumentId(), filters, startDate, endDate, pageable);
-        return success("Journal Vouchers list retrieved successfully", response);
+
+            return success("Journal Vouchers list retrieved successfully", response);
     }
 
     @Operation(
@@ -330,6 +334,7 @@ public class JournalVoucherController {
     ) {
         try {
             JournalVoucherDetailResponse response = journalVoucherService.getJournalVoucherById(transactionPoid);
+            loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
             return success("Journal Voucher retrieved successfully", response);
         } catch (ResourceNotFoundException e) {
             return notFound(e.getMessage());
@@ -416,6 +421,7 @@ public class JournalVoucherController {
     ) {
         try {
             JournalVoucherTotalsResponse response = journalVoucherService.getGlDetailTotals(transactionPoid);
+            loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
             return success("Totals calculated successfully", response);
         } catch (ResourceNotFoundException e) {
             return notFound(e.getMessage());
@@ -468,6 +474,7 @@ public class JournalVoucherController {
     ) {
         try {
             JournalVoucherCapitalizationDto response = journalVoucherService.getAssetCapitalizationDetails(request.getFaPoid());
+            loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), request.getFaPoid().toString());
             return success("Asset capitalization details retrieved successfully", response);
         } catch (ResourceNotFoundException e) {
             return notFound(e.getMessage());

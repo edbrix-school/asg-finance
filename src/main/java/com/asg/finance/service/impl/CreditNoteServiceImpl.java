@@ -4,7 +4,9 @@ import com.asg.common.lib.dto.*;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.LoadBillwiseBreakupResponseDto;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.finance.repository.GLMasterRepository;
 import com.asg.finance.repository.TaxMasterRepository;
@@ -28,6 +30,7 @@ import com.asg.finance.service.CostCenterBreakupService;
 import com.asg.finance.service.CreditNoteService;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -94,6 +97,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     private LovDataService lovService;
 
     @Autowired private PrintService printService;
+    
+    @Autowired
+    private LoggingService loggingService;
 
     @Override
     @Transactional(propagation = Propagation.REQUIRED)
@@ -166,6 +172,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             List<ArCreditNoteChargeDtl> chargeDetails = creditNoteChargeDtlRepository.findByTransactionPoidOrderByDetRowId(transactionPoid);
             result.setChargeDetails(chargeDetails.stream().map(charge -> mapChargeToDto(charge, result.getRefType())).collect(Collectors.toList()));
 
+            // Log the creation
+            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), transactionPoid.toString());
+
             return result;
 
         } catch (SQLException e) {
@@ -227,6 +236,10 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             executeBeforeSaveValidation(creditNoteDto);
             calculateDueDateFromCreditPeriod(creditNoteDto);
 
+            // Create a copy of the old entity for logging
+            ArCreditNoteHdr oldEntity = new ArCreditNoteHdr();
+            BeanUtils.copyProperties(existing, oldEntity);
+
             updateHeaderFromDto(existing, creditNoteDto);
             existing.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
             existing.setLastModifiedDate(Timestamp.from(Instant.now()));
@@ -257,6 +270,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             List<CreditNoteGLDetailDto> glDetailDtos = glDetails.stream().map(this::mapGLToDto).collect(Collectors.toList());
             loadBillwiseAndCostCenterBreakup(glDetailDtos, transactionPoid, "300-111");
             result.setGlDetails(glDetailDtos);
+            
+            // Log the update
+            loggingService.logChanges(oldEntity, existing, ArCreditNoteHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
             return result;
         } catch (SQLException e) {
             log.error("Database error updating credit note", e);

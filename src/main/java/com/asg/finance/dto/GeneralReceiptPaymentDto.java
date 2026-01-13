@@ -70,5 +70,8 @@ public class GeneralReceiptPaymentDto {
 
     @Schema(description = "Card POID (for card payments)", example = "300")
     private Long cardPoid;
+
+    @Schema(description = "Action type for frontend operations", example = "CREATE")
+    private String actionType;
 }
 

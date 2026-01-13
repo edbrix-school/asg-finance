@@ -33,6 +33,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.sql.Date;
 import java.time.LocalDate;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -198,6 +199,7 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
                 .costGroup(dto.getCostGroup())
                 .costPoid(dto.getCostPoid())
                 .prePrinted(dto.getPrePrinted())
+                .confidentialRemarks(dto.getConfidentialRemarks())
                 .accountPayee(dto.getAccountPayee())
                 .deleted("N")
                 .createdBy(getCurrentUser())
@@ -243,8 +245,8 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
                 .chqNumber(dto.getChqNumber())
                 .chqAmount(dto.getChqAmount())
                 .remarks(dto.getRemarks())
-                .bankPaymentPoid(null)
-                .bankPaymentRef(null)
+                .bankPaymentPoid(dto.getBankPaymentPoid())
+                .bankPaymentRef(dto.getBankPaymentRef())
                 .narration(dto.getNarration())
                 .billRef(dto.getBillRef())
                 .costPoid(dto.getCostPoid())
@@ -272,6 +274,8 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
                 .chqNumber(e.getChqNumber())
                 .chqAmount(e.getChqAmount())
                 .remarks(e.getRemarks())
+                .bankPaymentPoid(e.getBankPaymentPoid())
+                .bankPaymentRef(e.getBankPaymentRef())
                 .narration(e.getNarration())
                 .billRef(e.getBillRef())
                 .costPoid(e.getCostPoid())
@@ -303,11 +307,19 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
                 .prePrinted(hdr.getPrePrinted())
                 .accountPayee(hdr.getAccountPayee())
                 .chqStartNo(hdr.getChqStartNo())
+                .chqStartDate(hdr.getChqStartDate())
+                .billType(hdr.getBillType())
                 .chqAmount(hdr.getChqAmount())
                 .noOfChqs(hdr.getNoOfChqs())
                 .totalAmount(hdr.getTotalAmount())
+                .confidentialRemarks(hdr.getConfidentialRemarks())
+                .lastModifiedBy(hdr.getLastModifiedBy())
+                .lastModifiedDate(hdr.getLastModifiedDate())
+                .deleted(hdr.getDeleted())
                 .billRef(hdr.getBillRef())
                 .chequeDetails(dtlList)
+                .createdDate(hdr.getCreatedDate())
+                .createdBy(hdr.getCreatedBy())
                 .build();
     }
 

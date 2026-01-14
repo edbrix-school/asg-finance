@@ -15,6 +15,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -24,8 +25,11 @@ import org.springframework.transaction.annotation.Transactional;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.dto.ComputeTotalsRequest;
 import com.asg.finance.dto.ComputeTotalsResponse;
@@ -40,6 +44,7 @@ import com.asg.finance.dto.ValidateAllocationResponse;
 import com.asg.finance.entity.GlExpenseReallocationDtl;
 import com.asg.finance.entity.GlExpenseReallocationHdr;
 import com.asg.finance.entity.GlExpenseReallocationXlDtl;
+import com.asg.finance.entity.SupplierMasterEntity;
 import com.asg.finance.repository.ExpenseReallocationStoredProcedure;
 import com.asg.finance.repository.GlExpenseReallocationDtlRepository;
 import com.asg.finance.repository.GlExpenseReallocationHdrRepository;
@@ -59,6 +64,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 	private final GlExpenseReallocationXlDtlRepository xlDtlRepository;
 	private final ExpenseReallocationStoredProcedure storedProcedureHelper;
 	private final DocumentSearchService documentService;
+	private final LoggingService loggingService;
 
 	@Override
 	@Transactional
@@ -107,6 +113,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 
 		xlDtlRepository.saveAll(xlDtlEntities);
 		log.info("createExpenseReallocation completed for transactionPoid={}", savedHdr.getTransactionPoid());
+		loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), hdrPoid.toString());
 		return buildResponse(savedHdr);
 	}
 
@@ -132,9 +139,13 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 		log.info("updateExpenseReallocation started for transactionPoid={} groupPoid={} userId={}", transactionPoid,
 				groupPoid, userId);
 
-		GlExpenseReallocationHdr header = hdrRepository.findByTransactionPoidAndGroupPoid(transactionPoid, groupPoid)
+		GlExpenseReallocationHdr existingHeader = hdrRepository.findByTransactionPoidAndGroupPoid(transactionPoid, groupPoid)
 				.orElseThrow(() -> new ResourceNotFoundException("Expense Reallocation", "transactionPoid",
 						transactionPoid));
+		
+		GlExpenseReallocationHdr header=new GlExpenseReallocationHdr();
+		BeanUtils.copyProperties(existingHeader, header);
+		
 
 		if (header.getJvPoid() != null) {
 			throw new RuntimeException("Cannot update expense reallocation that has JV created");
@@ -194,6 +205,10 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 		}
 
 		log.info("updateExpenseReallocation completed for transactionPoid={}", transactionPoid);
+		 String key = header.getTransactionPoid().toString();
+	        String docId = UserContext.getDocumentId();
+		loggingService.logChanges(existingHeader, header, GlExpenseReallocationHdr.class, 
+                docId, key, LogDetailsEnum.MODIFIED, "SUPPLIER_POID");
 		return buildResponse(savedHeader);
 	}
 

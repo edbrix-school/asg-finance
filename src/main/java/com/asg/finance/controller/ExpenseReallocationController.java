@@ -21,8 +21,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.FilterRequestDto;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.finance.dto.ComputeTotalsRequest;
 import com.asg.finance.dto.ComputeTotalsResponse;
 import com.asg.finance.dto.CreateExpenseReallocationRequest;
@@ -50,6 +52,7 @@ import lombok.extern.slf4j.Slf4j;
 public class ExpenseReallocationController {
 
 	private final ExpenseReallocationService expenseReallocationService;
+	private final LoggingService loggingService;
 
 	@Operation(summary = "Create expense reallocation", description = "Creates a new expense reallocation with header and detail lines", responses = {
 			@ApiResponse(responseCode = "200", description = "Successfully created expense reallocation", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ExpenseReallocationResponse.class))),
@@ -81,6 +84,8 @@ public class ExpenseReallocationController {
 
 		log.info("getExpenseReallocationById started for transactionPoid={} groupPoid={}", transactionPoid,
 				UserContext.getGroupPoid());
+		loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(),
+				transactionPoid.toString());
 
 		ExpenseReallocationResponse response = expenseReallocationService.getExpenseReallocationById(transactionPoid,
 				UserContext.getGroupPoid());
@@ -126,6 +131,8 @@ public class ExpenseReallocationController {
 		expenseReallocationService.deleteExpenseReallocation(transactionPoid, UserContext.getGroupPoid());
 
 		log.info("deleteExpenseReallocation completed for transactionPoid={}", transactionPoid);
+		loggingService.createLogSummaryEntry(LogDetailsEnum.DELETED, UserContext.getDocumentId(),
+				transactionPoid.toString());
 
 		return success("Expense reallocation deleted successfully");
 	}

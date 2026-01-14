@@ -3,10 +3,14 @@ package com.asg.finance.service.impl;
 import com.asg.common.lib.dto.*;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
+import com.asg.common.lib.dto.response.LoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.service.*;
 import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.DocumentDeleteService;
+import com.asg.finance.repository.GLMasterRepository;
+import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.finance.projection.CurrencyRateProjection;
 import com.asg.finance.repository.*;
 import com.asg.finance.dto.*;
@@ -756,28 +760,6 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                 .build();
     }
 
-    @Override
-    public CurrencyConversionResponse calculateCurrencyConversion(CurrencyConversionRequest request) {
-        List<CurrencyRateProjection> rates = glJournalVoucherHdrRepository
-                .findLatestCurrencyRate(request.getCurrencyCode(), request.getTransactionDate());
-
-        if (rates == null || rates.isEmpty()) {
-            throw new IllegalArgumentException("Currency rate not found for " + request.getCurrencyCode() 
-                    + " on or before " + request.getTransactionDate());
-        }
-
-        CurrencyRateProjection latestRate = rates.get(0);
-        BigDecimal rate = latestRate.getRate() != null ? latestRate.getRate() : BigDecimal.ZERO;
-        BigDecimal bhdAmount = request.getAmount().multiply(rate);
-
-        return CurrencyConversionResponse.builder()
-                .currencyCode(request.getCurrencyCode())
-                .currencyRate(rate)
-                .amount(request.getAmount())
-                .bhdAmount(bhdAmount)
-                .rateDate(latestRate.getRateDate())
-                .build();
-    }
 
     private JournalVoucherDetailResponse.JournalVoucherDetailResponseBuilder buildBaseResponse(GlJournalVoucherHdr hdr) {
         return JournalVoucherDetailResponse.builder()
@@ -859,7 +841,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                 .build();
     }
 
-    private List<CostCenterBreakupPopupRequestDto> filterCostCenterBreakup(
+    private List<CostCenterBreakupResponseDto> filterCostCenterBreakup(
             GlVoucherCostCenterBreakupResponseDto response, Long detRowId) {
         
         if (response == null || response.getCostBreakupList() == null) {
@@ -869,17 +851,20 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         return response.getCostBreakupList().stream()
                 .filter(cc -> cc.getMainDetRowId().equals(detRowId))
                 .map(cc -> {
-                    CostCenterBreakupPopupRequestDto dto = new CostCenterBreakupPopupRequestDto();
+                    CostCenterBreakupResponseDto dto = new CostCenterBreakupResponseDto();
+                    dto.setAmount(cc.getAmount());
+                    dto.setGlPoid(cc.getGlPoid());
+                    dto.setDescription(cc.getDescription());
                     dto.setCostDetRowId(cc.getCostDetRowId());
+                    dto.setMainDetRowId(cc.getMainDetRowId());
                     dto.setCostGroup(cc.getCostGroup());
                     dto.setCostPoid(cc.getCostPoid());
-                    dto.setAmount(BigDecimal.valueOf(cc.getAmount()));
                     return dto;
                 })
                 .collect(Collectors.toList());
     }
 
-    private List<BillwiseBreakupPopupRequestDto> filterBillwiseBreakup(
+    private List<LoadBillwiseBreakupResponseDto> filterBillwiseBreakup(
             GlVoucherLoadBillwiseBreakupResponseDto response, Long detRowId) {
         
         if (response == null || response.getLoadBillwiseBreakupResponseDtoList() == null) {
@@ -889,13 +874,15 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         return response.getLoadBillwiseBreakupResponseDtoList().stream()
                 .filter(bw -> bw.getMainDetRowId().equals(detRowId))
                 .map(bw -> {
-                    BillwiseBreakupPopupRequestDto dto = new BillwiseBreakupPopupRequestDto();
+                    LoadBillwiseBreakupResponseDto dto = new LoadBillwiseBreakupResponseDto();
+                    dto.setMainDetRowId(bw.getMainDetRowId());
                     dto.setBillDetRowId(bw.getBillDetRowId());
+                    dto.setGlPoid(bw.getGlPoid());
                     dto.setBillRefType(bw.getBillRefType());
                     dto.setBillRef(bw.getBillRef());
                     dto.setBillDueDate(bw.getBillDueDate());
-                    dto.setAmount(bw.getDrAmt() != null ? bw.getDrAmt() : bw.getCrAmt());
-                    dto.setType(bw.getDrAmt() != null && bw.getDrAmt().compareTo(BigDecimal.ZERO) > 0 ? "Dr" : "Cr");
+                    dto.setDrAmt(bw.getDrAmt());
+                    dto.setCrAmt(bw.getCrAmt());
                     dto.setBillRemarks(bw.getBillRemarks());
                     return dto;
                 })

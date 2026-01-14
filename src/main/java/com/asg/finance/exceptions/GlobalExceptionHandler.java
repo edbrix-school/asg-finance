@@ -128,12 +128,31 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<?> handleJsonParseErrors(HttpMessageNotReadableException ex) {
-        Map<String, Object> response = new HashMap<>();
-
-        // extract root cause if it’s IllegalArgumentException from enum
         Throwable cause = ex.getMostSpecificCause();
         String message = cause != null ? cause.getMessage() : "Invalid request payload";
+        
+        if (message != null && message.contains("BigDecimal")) {
+            String fieldName = extractFieldName(ex.getMessage());
+            if (fieldName != null) {
+                message = fieldName + " format is not correct";
+            } else {
+                message = "Numeric field format is not correct";
+            }
+        }
+        
         return ApiResponse.error(message, HttpStatus.BAD_REQUEST.value());
+    }
+    
+    private String extractFieldName(String errorMessage) {
+        if (errorMessage == null) return null;
+        if (errorMessage.contains("[\"") && errorMessage.contains("\"]")) {
+            int start = errorMessage.lastIndexOf("[\"");
+            int end = errorMessage.indexOf("\"]", start);
+            if (start != -1 && end != -1) {
+                return errorMessage.substring(start + 2, end);
+            }
+        }
+        return null;
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)

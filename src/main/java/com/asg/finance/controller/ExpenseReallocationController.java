@@ -21,8 +21,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.FilterRequestDto;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.finance.dto.ComputeTotalsRequest;
 import com.asg.finance.dto.ComputeTotalsResponse;
 import com.asg.finance.dto.CreateExpenseReallocationRequest;
@@ -50,10 +52,11 @@ import lombok.extern.slf4j.Slf4j;
 public class ExpenseReallocationController {
 
 	private final ExpenseReallocationService expenseReallocationService;
+	private final LoggingService loggingService;
 
 	@Operation(summary = "Create expense reallocation", description = "Creates a new expense reallocation with header and detail lines", responses = {
-			@ApiResponse(responseCode = "200", description = "Successfully created expense reallocation", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ExpenseReallocationResponse.class))),
-			@ApiResponse(responseCode = "400", description = "Invalid input parameters or validation error", content = @Content(mediaType = "application/json")) }, security = @SecurityRequirement(name = "bearerAuth"))
+			@ApiResponse(responseCode = "200", description = "Successfully created expense reallocation"),
+			@ApiResponse(responseCode = "400", description = "Invalid input parameters or validation error") }, security = @SecurityRequirement(name = "bearerAuth"))
 	@PostMapping
 	@AllowedAction(UserRolesRightsEnum.CREATE)
 	public ResponseEntity<?> createExpenseReallocation(
@@ -72,8 +75,8 @@ public class ExpenseReallocationController {
 	}
 
 	@Operation(summary = "Get expense reallocation by ID", description = "Retrieves expense reallocation details including header, detail lines, and XL detail lines", responses = {
-			@ApiResponse(responseCode = "200", description = "Successfully retrieved expense reallocation", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ExpenseReallocationResponse.class))),
-			@ApiResponse(responseCode = "404", description = "Expense reallocation not found", content = @Content(mediaType = "application/json")) }, security = @SecurityRequirement(name = "bearerAuth"))
+			@ApiResponse(responseCode = "200", description = "Successfully retrieved expense reallocation"),
+			@ApiResponse(responseCode = "404", description = "Expense reallocation not found") }, security = @SecurityRequirement(name = "bearerAuth"))
 	@GetMapping("/{transactionPoid}")
 	@AllowedAction(UserRolesRightsEnum.VIEW)
 	public ResponseEntity<?> getExpenseReallocationById(
@@ -81,6 +84,8 @@ public class ExpenseReallocationController {
 
 		log.info("getExpenseReallocationById started for transactionPoid={} groupPoid={}", transactionPoid,
 				UserContext.getGroupPoid());
+		loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(),
+				transactionPoid.toString());
 
 		ExpenseReallocationResponse response = expenseReallocationService.getExpenseReallocationById(transactionPoid,
 				UserContext.getGroupPoid());
@@ -91,9 +96,9 @@ public class ExpenseReallocationController {
 	}
 
 	@Operation(summary = "Update expense reallocation", description = "Updates an existing expense reallocation. Cannot update if JV is already created.", responses = {
-			@ApiResponse(responseCode = "200", description = "Successfully updated expense reallocation", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ExpenseReallocationResponse.class))),
-			@ApiResponse(responseCode = "400", description = "Invalid input parameters or validation error", content = @Content(mediaType = "application/json")),
-			@ApiResponse(responseCode = "404", description = "Expense reallocation not found", content = @Content(mediaType = "application/json")) }, security = @SecurityRequirement(name = "bearerAuth"))
+			@ApiResponse(responseCode = "200", description = "Successfully updated expense reallocation"),
+			@ApiResponse(responseCode = "400", description = "Invalid input parameters or validation error"),
+			@ApiResponse(responseCode = "404", description = "Expense reallocation not found") }, security = @SecurityRequirement(name = "bearerAuth"))
 	@PutMapping("/{transactionPoid}")
 	@AllowedAction(UserRolesRightsEnum.EDIT)
 	public ResponseEntity<?> updateExpenseReallocation(
@@ -112,9 +117,9 @@ public class ExpenseReallocationController {
 	}
 
 	@Operation(summary = "Delete expense reallocation", description = "Soft deletes an expense reallocation. Cannot delete if JV is already created.", responses = {
-			@ApiResponse(responseCode = "200", description = "Successfully deleted expense reallocation", content = @Content(mediaType = "application/json")),
-			@ApiResponse(responseCode = "400", description = "Cannot delete expense reallocation with JV created", content = @Content(mediaType = "application/json")),
-			@ApiResponse(responseCode = "404", description = "Expense reallocation not found", content = @Content(mediaType = "application/json")) }, security = @SecurityRequirement(name = "bearerAuth"))
+			@ApiResponse(responseCode = "200", description = "Successfully deleted expense reallocation"),
+			@ApiResponse(responseCode = "400", description = "Cannot delete expense reallocation with JV created"),
+			@ApiResponse(responseCode = "404", description = "Expense reallocation not found") }, security = @SecurityRequirement(name = "bearerAuth"))
 	@DeleteMapping("/{transactionPoid}")
 	@AllowedAction(UserRolesRightsEnum.DELETE)
 	public ResponseEntity<?> deleteExpenseReallocation(
@@ -126,12 +131,14 @@ public class ExpenseReallocationController {
 		expenseReallocationService.deleteExpenseReallocation(transactionPoid, UserContext.getGroupPoid());
 
 		log.info("deleteExpenseReallocation completed for transactionPoid={}", transactionPoid);
+		loggingService.createLogSummaryEntry(LogDetailsEnum.DELETED, UserContext.getDocumentId(),
+				transactionPoid.toString());
 
 		return success("Expense reallocation deleted successfully");
 	}
 
 	@Operation(summary = "List expense reallocations", description = "Retrieves a paginated list of expense reallocations with optional filters", responses = {
-			@ApiResponse(responseCode = "200", description = "Successfully retrieved expense reallocations", content = @Content(mediaType = "application/json")) }, security = @SecurityRequirement(name = "bearerAuth"))
+			@ApiResponse(responseCode = "200", description = "Successfully retrieved expense reallocations)")}, security = @SecurityRequirement(name = "bearerAuth"))
 	@PostMapping("/search")
 	@AllowedAction(UserRolesRightsEnum.VIEW)
 	public ResponseEntity<?> getExpenseReallocations(@ParameterObject Pageable pageable,
@@ -154,8 +161,8 @@ public class ExpenseReallocationController {
 
 	@Operation(summary = "Create JV from expense reallocation", description = "Creates Journal Voucher entries from the expense reallocation via stored procedure", responses = {
 			@ApiResponse(responseCode = "200", description = "Successfully created JV"),
-			@ApiResponse(responseCode = "400", description = "Invalid input parameters or validation error", content = @Content(mediaType = "application/json")),
-			@ApiResponse(responseCode = "404", description = "Expense reallocation not found", content = @Content(mediaType = "application/json")) }, security = @SecurityRequirement(name = "bearerAuth"))
+			@ApiResponse(responseCode = "400", description = "Invalid input parameters or validation error"),
+			@ApiResponse(responseCode = "404", description = "Expense reallocation not found") }, security = @SecurityRequirement(name = "bearerAuth"))
 	@PostMapping("/{transactionPoid}/create-jv")
 	@AllowedAction(UserRolesRightsEnum.CREATE)
 	public ResponseEntity<?> createJv(
@@ -173,9 +180,9 @@ public class ExpenseReallocationController {
 	}
 
 	@Operation(summary = "Generate report", description = "Generates dynamic report for expense allocation", responses = {
-			@ApiResponse(responseCode = "200", description = "Successfully generated report", content = @Content(mediaType = "application/json", schema = @Schema(implementation = GenerateReportResponse.class))),
-			@ApiResponse(responseCode = "400", description = "Invalid input parameters or validation error", content = @Content(mediaType = "application/json")),
-			@ApiResponse(responseCode = "404", description = "Expense reallocation not found", content = @Content(mediaType = "application/json")) }, security = @SecurityRequirement(name = "bearerAuth"))
+			@ApiResponse(responseCode = "200", description = "Successfully generated report"),
+			@ApiResponse(responseCode = "400", description = "Invalid input parameters or validation error"),
+			@ApiResponse(responseCode = "404", description = "Expense reallocation not found") }, security = @SecurityRequirement(name = "bearerAuth"))
 	@PostMapping("/{transactionPoid}/generate-report")
 	@AllowedAction(UserRolesRightsEnum.VIEW)
 	public ResponseEntity<?> generateReport(
@@ -193,8 +200,8 @@ public class ExpenseReallocationController {
 	}
 
 	@Operation(summary = "Validate allocations", description = "Validates allocation totals and business rules before saving/posting", responses = {
-			@ApiResponse(responseCode = "200", description = "Validation completed", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ValidateAllocationResponse.class))),
-			@ApiResponse(responseCode = "404", description = "Expense reallocation not found", content = @Content(mediaType = "application/json")) }, security = @SecurityRequirement(name = "bearerAuth"))
+			@ApiResponse(responseCode = "200", description = "Validation completed"),
+			@ApiResponse(responseCode = "404", description = "Expense reallocation not found") }, security = @SecurityRequirement(name = "bearerAuth"))
 	@PostMapping("/{transactionPoid}/validate")
 	@AllowedAction(UserRolesRightsEnum.VIEW)
 	public ResponseEntity<?> validateAllocation(
@@ -213,8 +220,8 @@ public class ExpenseReallocationController {
 	}
 
 	@Operation(summary = "Compute totals", description = "Helper endpoint to compute totals from detail lines (client-side calculation helper)", responses = {
-			@ApiResponse(responseCode = "200", description = "Totals computed successfully", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ComputeTotalsResponse.class))),
-			@ApiResponse(responseCode = "400", description = "Invalid input parameters", content = @Content(mediaType = "application/json")) }, security = @SecurityRequirement(name = "bearerAuth"))
+			@ApiResponse(responseCode = "200", description = "Totals computed successfully"),
+			@ApiResponse(responseCode = "400", description = "Invalid input parameters") }, security = @SecurityRequirement(name = "bearerAuth"))
 	@PostMapping("/compute-totals")
 	@AllowedAction(UserRolesRightsEnum.VIEW)
 	public ResponseEntity<?> computeTotals(
@@ -230,7 +237,7 @@ public class ExpenseReallocationController {
 	}
 
 	@Operation(summary = "Get screen config", description = "Fetches screen configuration and parameters", responses = {
-			@ApiResponse(responseCode = "200", description = "Successfully retrieved config", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ExpenseReallocationConfigResponse.class))) }, security = @SecurityRequirement(name = "bearerAuth"))
+			@ApiResponse(responseCode = "200", description = "Successfully retrieved config") }, security = @SecurityRequirement(name = "bearerAuth"))
 	@GetMapping("/config")
 	@AllowedAction(UserRolesRightsEnum.VIEW)
 	public ResponseEntity<?> getConfig() {

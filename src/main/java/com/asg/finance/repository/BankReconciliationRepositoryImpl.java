@@ -91,7 +91,7 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
 	@Override
 	public String saveReconciliation(List<BankReconciliationRequest> req) {
 		if (req == null || req.isEmpty()) {
-			throw new InsufficientDataException();
+			throw new RuntimeException("Insufficient Data");
 		}
 
 		StoredProcedureQuery sp = createSP("PRODUCTION.PROC_GL_BANK_RECONCILE_SAVE");

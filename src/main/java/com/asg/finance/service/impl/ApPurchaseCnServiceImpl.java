@@ -7,6 +7,7 @@ import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.LoggingService;
@@ -370,26 +371,26 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
     private void validateRefTypeRequirements(ApPurchaseCnHdrDto dto) {
         String refType = dto.getRefType();
         if (refType == null) {
-            throw new RuntimeException("Reference type is required");
+            throw new ValidationException("Reference type is required");
         }
         
         switch (refType.toUpperCase()) {
             case "GENERAL":
                 if (dto.getGlDetails() == null || dto.getGlDetails().isEmpty()) {
-                    throw new RuntimeException("At least one GL detail is required for reference type: " + refType);
+                    throw new ValidationException("At least one GL detail is required for reference type: " + refType);
                 }
                 break;
                 
             case "FF":
                 // FF reference type requires charge details
                 if (dto.getChargeDetails() == null || dto.getChargeDetails().isEmpty()) {
-                    throw new RuntimeException("At least one charge detail is required for reference type: FF");
+                    throw new ValidationException("At least one charge detail is required for reference type: FF");
                 }
                 break;
                 
             case "FDA":
                 if (dto.getChargeDetails() == null || dto.getChargeDetails().isEmpty()) {
-                    throw new RuntimeException("At least one charge detail is required for reference type: " + refType);
+                    throw new ValidationException("At least one charge detail is required for reference type: " + refType);
                 }
                 break;
                 
@@ -397,16 +398,16 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                 // Check PJ Reversal Ref Type for FF Jobs
                 if ("FF".equalsIgnoreCase(dto.getPjReversalRefType()) || "FDA".equalsIgnoreCase(dto.getPjReversalRefType())) {
                     if (dto.getChargeDetails() == null || dto.getChargeDetails().isEmpty()) {
-                        throw new RuntimeException("At least one charge detail is required for PJ Type 'FF Jobs or FDA jobs'");
+                        throw new ValidationException("At least one charge detail is required for PJ Type 'FF Jobs or FDA jobs'");
                     }
-                } else if ("GENERAL_PO".equalsIgnoreCase(dto.getPjReversalRefType())) {
+                } else if ("GENERAL_PO".equalsIgnoreCase(dto.getPjReversalRefType()) || "GENERAL".equalsIgnoreCase(dto.getPjReversalRefType())) {
                     if (dto.getGlDetails() == null || dto.getGlDetails().isEmpty()) {
-                        throw new RuntimeException("At least one charge detail is required for PJ Type 'GENERAL PO Jobs'");
+                        throw new ValidationException("At least one charge detail is required for PJ Type 'GENERAL PO Jobs'");
                     }
                 } else {
                     // For other PJ types, require item details
                     if (dto.getItemDetails() == null || dto.getItemDetails().isEmpty()) {
-                        throw new RuntimeException("At least one item detail is required for reference type: " + refType);
+                        throw new ValidationException("At least one item detail is required for reference type: " + refType);
                     }
                 }
                 break;

@@ -59,6 +59,9 @@ public class GeneralReceiptResponse {
     @Schema(description = "Reference type", example = "AGAINST")
     private String refType;
 
+    @Schema(description = "doc ref", example = "ASGGEN33472")
+    private String docRef;
+
     @Schema(description = "Narration", example = "Payment against invoice INV-0045")
     private String narration;
 

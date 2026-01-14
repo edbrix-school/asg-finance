@@ -29,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import javax.sql.DataSource;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.LocalDate;
@@ -1203,6 +1204,12 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
     }
 
     private GeneralReceiptResponse buildResponse(ArGenReceiptHdr header) {
+
+        BigDecimal currencyRate = null;
+        if (header.getCurrencyRate() != null) {
+            currencyRate = header.getCurrencyRate().setScale(3, RoundingMode.HALF_UP);
+        }
+
         // Calculate BHD Amount (receiptAmount * currencyRate)
         BigDecimal bhdAmount = null;
         if (header.getRcptAmount() != null && header.getCurrencyRate() != null) {
@@ -1246,11 +1253,12 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                 .companyPoid(header.getCompanyPoid())
                 .receiptAmount(header.getRcptAmount())
                 .currencyCode(header.getCurrencyCode())
-                .currencyRate(header.getCurrencyRate())
+                .currencyRate(currencyRate)
                 .bhdAmount(bhdAmount)
                 .receivedFrom(header.getRcvdFromDtlPrint())
                 .creditGL(creditGL)
                 .refType(header.getRefType())
+                .docRef(header.getDocRef())
                 .narration(header.getRemarks())
                 .printTitle(printTitle)
                 .approvalStatus(approvalStatus)

@@ -28,6 +28,12 @@ public class GLPettyCashItemDtl {
     @Column(name = "DET_ROW_ID")
     private Long detRowId;
 
+    @Column(name = "STOCK_POID")
+    private Long stockPoid;
+
+    @Column(name = "STOCK_UNIT_POID")
+    private Long stockUnitPoid;
+
     @ManyToOne
     @JoinColumn(name = "STOCK_POID", referencedColumnName = "STOCK_POID", insertable = false, updatable = false)
     private StockMasterEntity stockMaster;

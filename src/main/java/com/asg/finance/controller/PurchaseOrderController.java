@@ -3,6 +3,8 @@ package com.asg.finance.controller;
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.finance.dto.PurchaseOrderRequest;
 
 import com.asg.finance.dto.PurchaseOrderResponse;
@@ -37,6 +39,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 public class PurchaseOrderController {
 
     private final PurchaseOrderService service;
+    private final LoggingService loggingService;
 
 
     @Operation(
@@ -156,6 +159,7 @@ public class PurchaseOrderController {
 
         try {
             PurchaseOrderResponse response = service.findById(transactionPoid);
+            loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
             return success("Purchase Order fetched successfully", response);
 
         } catch (Exception e) {
@@ -331,7 +335,6 @@ public class PurchaseOrderController {
             security = @SecurityRequirement(name = "bearerAuth")
     )
     @AllowedAction(UserRolesRightsEnum.CREATE)
-
     @PostMapping("/create-from-rfq")
     public ResponseEntity<?> createPOFromRFQ(
 

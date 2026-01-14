@@ -1,9 +1,11 @@
 package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.*;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.DocumentDeleteService;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.finance.client.RoleServiceClient;
 import com.asg.finance.dto.masters.*;
@@ -14,6 +16,7 @@ import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.InsuranceMasterService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -35,6 +38,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
     private final DocumentSearchService documentService;
     private final DocumentDeleteService documentDeleteService;
     private final RoleServiceClient roleServiceClient;
+    private final LoggingService loggingService;
     
     @Autowired
     private LovDataService lovService;
@@ -171,6 +175,10 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
             InsuranceMaster saved = insuranceMasterRepository.save(insuranceMaster);
             buildAndSetChildDetails(request, saved);
             InsuranceMaster finalSaved = insuranceMasterRepository.save(saved);
+            
+            // Logging for create operation
+            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), finalSaved.getTransactionPoid().toString());
+            
             return mapToResponseDto(finalSaved);
         } catch (Exception e) {
             System.err.println("Error in createInsuranceMaster: " + e.getMessage());
@@ -187,6 +195,10 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
 
         InsuranceMaster existing = insuranceMasterRepository.findById(insuranceId)
                 .orElseThrow(() -> new ResourceNotFoundException("Insurance Master", "ID", insuranceId));
+
+        // Create copy of old entity for logging
+        InsuranceMaster oldEntity = new InsuranceMaster();
+        BeanUtils.copyProperties(existing, oldEntity);
 
         // Validate unique policy number per company (excluding current record)
 
@@ -276,6 +288,10 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         }
 
         InsuranceMaster updated = insuranceMasterRepository.save(existing);
+        
+        // Logging for update operation
+        loggingService.logChanges(oldEntity, updated, InsuranceMaster.class, UserContext.getDocumentId(), insuranceId.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+        
         return mapToResponseDto(updated);
     }
 

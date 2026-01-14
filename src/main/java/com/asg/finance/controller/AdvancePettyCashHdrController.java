@@ -2,10 +2,12 @@ package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.finance.dto.AdvancePettyCashHdrRequestDTO;
 import com.asg.finance.dto.AdvancePettyCashHdrResponseDTO;
 import com.asg.finance.service.AdvancePettyCashHdrService;
@@ -33,6 +35,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.success;
 public class AdvancePettyCashHdrController {
     
     private final AdvancePettyCashHdrService service;
+    private final LoggingService loggingService;
 
     @Operation(
             summary = "Create a new Advance Petty Cash",
@@ -128,6 +131,7 @@ public class AdvancePettyCashHdrController {
             @PathVariable Long transactionPoid
     ) {
         AdvancePettyCashHdrResponseDTO response = service.getAdvancePettyCashById(transactionPoid);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
         return success("Advance Petty Cash fetched successfully", response);
     }
 

@@ -10,6 +10,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -51,7 +52,7 @@ public class SupplierMasterDto {
     private String tempPaymentName;
     @Size(max = 20, message = "Currency code must be at most 20 characters")
     private String currencyCode;
-    private Long currencyRate;
+    private BigDecimal currencyRate;
     private CurrencyLightDto currency;
     private LocalDate rateExpiryDate;
     @NotNull(message = "Gl poid is required")
@@ -82,6 +83,10 @@ public class SupplierMasterDto {
     private String profileVatCrMismatch;
     private Long customerPoid;
     private SalesCustomerMasterDto customer;
+    private String createdBy;
+    private LocalDate createdDate;
+    private String lastModifiedBy;
+    private LocalDate lastModifiedDate;
     @Valid
     private AddressTypeMapDTO addressTypeMap;
     @Valid

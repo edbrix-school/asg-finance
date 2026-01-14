@@ -10,6 +10,8 @@ import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.finance.service.ApPurchaseServiceJournal;
 import com.asg.finance.service.BillwiseBreakupService;
 import com.asg.finance.service.CostCenterBreakupService;
@@ -28,6 +30,7 @@ import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -66,6 +69,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
     private final CostCenterBreakupService costCenterBreakupService;
     private final PrintService printService;
     private final DataSource dataSource;
+    private final LoggingService loggingService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -431,6 +435,10 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         }
         saveAssetDetails(transactionPoid, apPurchaseInvoiceHdrDto);
         saveRjvDetails(transactionPoid, apPurchaseInvoiceHdrDto);
+
+        // Log the creation
+        String key = transactionPoid.toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, documentId, key);
 
         return fetchApPurchaseInvoiceHdr(transactionPoid);
     }
@@ -807,6 +815,10 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         ApPurchaseInvoiceHdrEntity apPurchaseInvoiceHdrEntity = repository.findById(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("ApPurchaseJournal", "transactionPoid", transactionPoid));
 
+        // Create a copy of the existing entity for logging
+
+        ApPurchaseInvoiceHdrEntity oldEntity = new ApPurchaseInvoiceHdrEntity();
+        BeanUtils.copyProperties(apPurchaseInvoiceHdrEntity, oldEntity);
 
         if (apPurchaseInvoiceHdrDto.getTransactionDate() != null)
             apPurchaseInvoiceHdrEntity.setTransactionDate(apPurchaseInvoiceHdrDto.getTransactionDate());
@@ -1189,6 +1201,10 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
             }
         }
 
+        // Log the update
+        String key = savedEntity.getTransactionPoid().toString();
+        loggingService.logChanges(oldEntity, savedEntity, ApPurchaseInvoiceHdrEntity.class,
+                UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
         return fetchApPurchaseInvoiceHdr(savedEntity.getTransactionPoid());
     }
 

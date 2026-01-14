@@ -1,17 +1,18 @@
 package com.asg.finance.service.impl;
 
-import com.asg.common.lib.dto.FilterDto;
-import com.asg.common.lib.dto.DeleteReasonDto;
-import com.asg.common.lib.dto.FilterRequestDto;
-import com.asg.common.lib.dto.RawSearchResult;
+import com.asg.common.lib.dto.*;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
+import com.asg.common.lib.dto.response.LoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
-import com.asg.common.lib.service.PrintService;
+import com.asg.common.lib.exception.ValidationException;
+import com.asg.common.lib.service.*;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.service.DocumentDeleteService;
-import com.asg.finance.projection.CurrencyRateProjection;
 import com.asg.finance.repository.GLMasterRepository;
 import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.finance.projection.CurrencyRateProjection;
+import com.asg.finance.repository.*;
 import com.asg.finance.dto.*;
 import com.asg.finance.entity.GlJournalFaCapitalization;
 import com.asg.finance.entity.GlJournalVoucherAssetDtl;
@@ -20,10 +21,6 @@ import com.asg.finance.entity.GlJournalVoucherHdr;
 
 import com.asg.finance.entity.key.TransactionDetailKey;
 import com.asg.finance.entity.master.FixedAsset;
-import com.asg.finance.repository.GlJournalFaCapitalizationRepository;
-import com.asg.finance.repository.GlJournalVoucherAssetDtlRepository;
-import com.asg.finance.repository.GlJournalVoucherDtlRepository;
-import com.asg.finance.repository.GlJournalVoucherHdrRepository;
 import com.asg.finance.repository.master.FixedAssetRepository;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.BillwiseBreakupService;
@@ -31,6 +28,7 @@ import com.asg.finance.service.CostCenterBreakupService;
 import com.asg.finance.service.JournalVoucherService;
 import lombok.RequiredArgsConstructor;
 import net.sf.jasperreports.engine.JasperReport;
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
@@ -63,8 +61,6 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
     public static final String REF_TYPE_GENERAL = "GENERAL";
     public static final String REF_TYPE_ASSET_DISPOSAL = "ASSET_DISPOSAL";
     public static final String REF_TYPE_ASSET_CAPITALIZATION = "ASSET_CAPITALIZATION";
-
-    public static final String STATUS_DELETED = "DELETED";
     public static final String STATUS_POSTED = "POSTED";
 
 
@@ -81,10 +77,12 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
     private final GLMasterRepository glMasterRepository;
     private final CostCenterBreakupService costCenterBreakupService;
     private final BillwiseBreakupService billwiseBreakupService;
+    private final LovDataService lovDataService;
     private final DocumentSearchService documentService;
     private final DocumentDeleteService documentDeleteService;
     private final PrintService printService;
     private final DataSource dataSource;
+    private final LoggingService loggingService;
 
     @Override
     @Transactional
@@ -139,6 +137,10 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         log.info("Journal Voucher created successfully - TransactionPoid: {}, DocRef: {}, RefType: {}", 
                 header.getTransactionPoid(), header.getDocRef(), request.getRefType());
         
+        // Log the creation
+        String key = header.getTransactionPoid().toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, key);
+        
         return JournalVoucherResponse.builder()
                 .transactionPoid(header.getTransactionPoid())
                 .docRef(header.getDocRef())
@@ -183,6 +185,14 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
             if (request.getCurrencyRate() == null || request.getCurrencyRate().compareTo(BigDecimal.ZERO) <= 0) {
                 throw new IllegalArgumentException("Currency rate must be greater than 0 for foreign currency");
             }
+        }
+
+        try {
+            if (request.getCurrencyCode() != null && !request.getCurrencyCode().isBlank()) {
+                lovDataService.getDetailsByCodeAndLovName(request.getCurrencyCode(), "CURRENCY");
+            }
+        } catch (ResourceNotFoundException e) {
+            throw new ResourceNotFoundException("Currency","Code",request.getCurrencyCode());
         }
 
         switch (refType) {
@@ -328,6 +338,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                     }
                 }
                 case ACTION_ISCREATED -> {
+                   validateGLPoid(dto.getGlPoid());
                     Long detRowId = dto.getDetRowId() != null ? dto.getDetRowId() : getNextDetRowIdForGl(transactionPoid);
                     GlJournalVoucherDtl detail = GlJournalVoucherDtl.builder()
                             .transactionPoid(transactionPoid)
@@ -485,6 +496,9 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         GlJournalVoucherHdr existing = glJournalVoucherHdrRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Journal Voucher", "POID", transactionPoid));
         
+        // Create a copy of the existing entity for logging
+        GlJournalVoucherHdr oldEntity = new GlJournalVoucherHdr();
+        BeanUtils.copyProperties(existing, oldEntity);
 
         if (!existing.getRefType().equals(request.getRefType())) {
             throw new IllegalArgumentException("RefType cannot be changed after creation");
@@ -523,6 +537,11 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
             saveCapitalizationDetails(transactionPoid, request.getAssetCapitalization());
             saveGlDetails(existing, request.getGlDetails(), isMultiCompany,docId);
         }
+
+        // Log the update
+        String key = transactionPoid.toString();
+        loggingService.logChanges(oldEntity, existing, GlJournalVoucherHdr.class, 
+                docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
         return JournalVoucherResponse.builder()
                 .transactionPoid(existing.getTransactionPoid())
@@ -741,28 +760,6 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                 .build();
     }
 
-    @Override
-    public CurrencyConversionResponse calculateCurrencyConversion(CurrencyConversionRequest request) {
-        List<CurrencyRateProjection> rates = glJournalVoucherHdrRepository
-                .findLatestCurrencyRate(request.getCurrencyCode(), request.getTransactionDate());
-
-        if (rates == null || rates.isEmpty()) {
-            throw new IllegalArgumentException("Currency rate not found for " + request.getCurrencyCode() 
-                    + " on or before " + request.getTransactionDate());
-        }
-
-        CurrencyRateProjection latestRate = rates.get(0);
-        BigDecimal rate = latestRate.getRate() != null ? latestRate.getRate() : BigDecimal.ZERO;
-        BigDecimal bhdAmount = request.getAmount().multiply(rate);
-
-        return CurrencyConversionResponse.builder()
-                .currencyCode(request.getCurrencyCode())
-                .currencyRate(rate)
-                .amount(request.getAmount())
-                .bhdAmount(bhdAmount)
-                .rateDate(latestRate.getRateDate())
-                .build();
-    }
 
     private JournalVoucherDetailResponse.JournalVoucherDetailResponseBuilder buildBaseResponse(GlJournalVoucherHdr hdr) {
         return JournalVoucherDetailResponse.builder()
@@ -790,11 +787,13 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
             JournalVoucherDetailResponse.JournalVoucherDetailResponseBuilder response,
             Long transactionPoid) {
 
-        List<GlJournalVoucherDtl> dtls = glJournalVoucherDtlRepository.findAll(
-                (root, query, cb) -> cb.equal(root.get("transactionPoid"), transactionPoid));
+        List<GlJournalVoucherDtl> dtls = glJournalVoucherDtlRepository.findByTransactionPoid(transactionPoid);
+
+        GlVoucherCostCenterBreakupResponseDto costCenterResponse = loadAllCostCenterData(transactionPoid);
+        GlVoucherLoadBillwiseBreakupResponseDto billwiseResponse = loadAllBillwiseData(transactionPoid);
 
         List<JournalVoucherDetailResponse.GlDetailResponse> glDetails = dtls.stream()
-                .map(this::mapGeneralDetail)
+                .map(dtl -> mapGeneralDetailWithBreakups(dtl, costCenterResponse, billwiseResponse))
                 .collect(Collectors.toList());
 
         response.glDetails(glDetails);
@@ -802,7 +801,31 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         response.crTotal(sumAmounts(dtls, GlJournalVoucherDtl::getCrAmt));
     }
 
-    private JournalVoucherDetailResponse.GlDetailResponse mapGeneralDetail(GlJournalVoucherDtl dtl) {
+    private GlVoucherCostCenterBreakupResponseDto loadAllCostCenterData(Long transactionPoid) {
+        try {
+            return costCenterBreakupService.loadCostCenterData(
+                    "400-100", transactionPoid, getGroupId(), getCompanyId(), getUserPoid());
+        } catch (Exception e) {
+            log.warn("Failed to load cost center breakup for transaction: {}", transactionPoid, e);
+            return null;
+        }
+    }
+
+    private GlVoucherLoadBillwiseBreakupResponseDto loadAllBillwiseData(Long transactionPoid) {
+        try {
+            return billwiseBreakupService.loadBillwiseBreakup(
+                    getGroupId(), getCompanyId(), "400-100", transactionPoid);
+        } catch (Exception e) {
+            log.warn("Failed to load billwise breakup for transaction: {}", transactionPoid, e);
+            return null;
+        }
+    }
+
+    private JournalVoucherDetailResponse.GlDetailResponse mapGeneralDetailWithBreakups(
+            GlJournalVoucherDtl dtl, 
+            GlVoucherCostCenterBreakupResponseDto costCenterResponse,
+            GlVoucherLoadBillwiseBreakupResponseDto billwiseResponse) {
+        
         return JournalVoucherDetailResponse.GlDetailResponse.builder()
                 .sn(dtl.getDetRowId())
                 .type(dtl.getType())
@@ -813,60 +836,57 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                 .drAmt(dtl.getDrAmt())
                 .crAmt(dtl.getCrAmt())
                 .remarks(dtl.getRemarks())
-                .costCenterBreakup(loadCostCenterBreakup(dtl.getTransactionPoid(), dtl.getDetRowId()))
-                .billWiseBreakup(loadBillwiseBreakup(dtl.getTransactionPoid(), dtl.getDetRowId()))
+                .costCenterBreakup(filterCostCenterBreakup(costCenterResponse, dtl.getDetRowId()))
+                .billWiseBreakup(filterBillwiseBreakup(billwiseResponse, dtl.getDetRowId()))
                 .build();
     }
 
-    private List<CostCenterBreakupPopupRequestDto> loadCostCenterBreakup(Long transactionPoid, Long detRowId) {
-        try {
-            GlVoucherCostCenterBreakupResponseDto response = costCenterBreakupService.loadCostCenterData(
-                    "400-100", transactionPoid, getGroupId(), getCompanyId(), getUserPoid());
-            
-            if (response != null && response.getCostBreakupList() != null) {
-                return response.getCostBreakupList().stream()
-                        .filter(cc -> cc.getMainDetRowId().equals(detRowId))
-                        .map(cc -> {
-                            CostCenterBreakupPopupRequestDto dto = new CostCenterBreakupPopupRequestDto();
-                            dto.setCostDetRowId(cc.getCostDetRowId());
-                            dto.setCostGroup(cc.getCostGroup());
-                            dto.setCostPoid(cc.getCostPoid());
-                            dto.setAmount(BigDecimal.valueOf(cc.getAmount()));
-                            return dto;
-                        })
-                        .collect(Collectors.toList());
-            }
-        } catch (Exception e) {
-            log.warn("Failed to load cost center breakup for transaction: {}, detRowId: {}", transactionPoid, detRowId, e);
+    private List<CostCenterBreakupResponseDto> filterCostCenterBreakup(
+            GlVoucherCostCenterBreakupResponseDto response, Long detRowId) {
+        
+        if (response == null || response.getCostBreakupList() == null) {
+            return List.of();
         }
-        return List.of();
+        
+        return response.getCostBreakupList().stream()
+                .filter(cc -> cc.getMainDetRowId().equals(detRowId))
+                .map(cc -> {
+                    CostCenterBreakupResponseDto dto = new CostCenterBreakupResponseDto();
+                    dto.setAmount(cc.getAmount());
+                    dto.setGlPoid(cc.getGlPoid());
+                    dto.setDescription(cc.getDescription());
+                    dto.setCostDetRowId(cc.getCostDetRowId());
+                    dto.setMainDetRowId(cc.getMainDetRowId());
+                    dto.setCostGroup(cc.getCostGroup());
+                    dto.setCostPoid(cc.getCostPoid());
+                    return dto;
+                })
+                .collect(Collectors.toList());
     }
 
-    private List<BillwiseBreakupPopupRequestDto> loadBillwiseBreakup(Long transactionPoid, Long detRowId) {
-        try {
-            GlVoucherLoadBillwiseBreakupResponseDto response = billwiseBreakupService.loadBillwiseBreakup(
-                    getGroupId(), getCompanyId(), "400-100", transactionPoid);
-            
-            if (response != null && response.getLoadBillwiseBreakupResponseDtoList() != null) {
-                return response.getLoadBillwiseBreakupResponseDtoList().stream()
-                        .filter(bw -> bw.getMainDetRowId().equals(detRowId))
-                        .map(bw -> {
-                            BillwiseBreakupPopupRequestDto dto = new BillwiseBreakupPopupRequestDto();
-                            dto.setBillDetRowId(bw.getBillDetRowId());
-                            dto.setBillRefType(bw.getBillRefType());
-                            dto.setBillRef(bw.getBillRef());
-                            dto.setBillDueDate(bw.getBillDueDate());
-                            dto.setAmount(bw.getDrAmt() != null ? bw.getDrAmt() : bw.getCrAmt());
-                            dto.setType(bw.getDrAmt() != null && bw.getDrAmt().compareTo(BigDecimal.ZERO) > 0 ? "Dr" : "Cr");
-                            dto.setBillRemarks(bw.getBillRemarks());
-                            return dto;
-                        })
-                        .collect(Collectors.toList());
-            }
-        } catch (Exception e) {
-            log.warn("Failed to load billwise breakup for transaction: {}, detRowId: {}", transactionPoid, detRowId, e);
+    private List<LoadBillwiseBreakupResponseDto> filterBillwiseBreakup(
+            GlVoucherLoadBillwiseBreakupResponseDto response, Long detRowId) {
+        
+        if (response == null || response.getLoadBillwiseBreakupResponseDtoList() == null) {
+            return List.of();
         }
-        return List.of();
+        
+        return response.getLoadBillwiseBreakupResponseDtoList().stream()
+                .filter(bw -> bw.getMainDetRowId().equals(detRowId))
+                .map(bw -> {
+                    LoadBillwiseBreakupResponseDto dto = new LoadBillwiseBreakupResponseDto();
+                    dto.setMainDetRowId(bw.getMainDetRowId());
+                    dto.setBillDetRowId(bw.getBillDetRowId());
+                    dto.setGlPoid(bw.getGlPoid());
+                    dto.setBillRefType(bw.getBillRefType());
+                    dto.setBillRef(bw.getBillRef());
+                    dto.setBillDueDate(bw.getBillDueDate());
+                    dto.setDrAmt(bw.getDrAmt());
+                    dto.setCrAmt(bw.getCrAmt());
+                    dto.setBillRemarks(bw.getBillRemarks());
+                    return dto;
+                })
+                .collect(Collectors.toList());
     }
 
 
@@ -950,5 +970,10 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         return printService.fillReportToPdf(mainReport, params, dataSource);
     }
 
+    private void validateGLPoid(Long glPoid){
+        if (!glMasterRepository.existsByGlPoid(glPoid)) {
+            throw new ResourceNotFoundException("Gl Master", "glPoid", glPoid);
+        }
+    }
 
 }

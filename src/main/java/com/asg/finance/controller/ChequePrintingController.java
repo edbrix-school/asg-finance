@@ -2,6 +2,9 @@ package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.LoggingService;
 
 import static com.asg.common.lib.dto.response.ApiResponse.success;
 
@@ -28,6 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 public class ChequePrintingController {
 
 	private final ChequePrintingService service;
+    private final LoggingService loggingService;
 
 	@AllowedAction(UserRolesRightsEnum.VIEW)
 	@GetMapping("/pending")

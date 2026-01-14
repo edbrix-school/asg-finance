@@ -3,6 +3,9 @@ package com.asg.finance.controller;
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.finance.dto.CreateScheduleRequest;
 import com.asg.finance.dto.RecurringJvRequest;
 import com.asg.finance.dto.RecurringJvResponse;
@@ -37,6 +40,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 public class GlRecurringJvController {
 
     private final GlRecurringJvService recurringJvService;
+    private final LoggingService loggingService;
 
     @Operation(summary = "Create Recurring JV")
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
@@ -184,7 +188,7 @@ public class GlRecurringJvController {
             return badRequest("Both startDate and endDate should be specified or both dates should be empty.");
         }
         Map<String, Object> response = recurringJvService.listRecurringJvs(documentId, filters, startDate, endDate, pageable);
-        return success("Recurring JVs list retrieved successfully", response);
+            return success("Recurring JVs list retrieved successfully", response);
     }
 
     @Operation(
@@ -216,6 +220,8 @@ public class GlRecurringJvController {
             @RequestParam String documentId,
             @Parameter(description = "Action requested", required = true, example = "view")
             @RequestParam String actionRequested) {
+
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
         return success("Recurring JV retrieved successfully", recurringJvService.getRecurringJvById(transactionPoid));
     }
 

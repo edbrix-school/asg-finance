@@ -1,6 +1,8 @@
 package com.asg.finance.dto.masters;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -43,9 +45,13 @@ public class InsuranceMasterRequestDto {
     private BigDecimal rate;
 
     @NotNull(message = "Insurance Amount is mandatory")
+    @DecimalMin(value = "0.01", message = "Insurance Amount format is not correct")
+    @Digits(integer = 15, fraction = 2, message = "Insurance Amount format is not correct")
     private BigDecimal insuranceAmount;
 
     @NotNull(message = "Premium Amount is mandatory")
+    @DecimalMin(value = "0.01", message = "Premium Amount format is not correct")
+    @Digits(integer = 15, fraction = 2, message = "Premium Amount format is not correct")
     private BigDecimal premiumAmount;
 
     private String paymentFrequency;

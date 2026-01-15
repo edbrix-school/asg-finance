@@ -569,7 +569,6 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                 .bhdAmount(dto.getCurrencyRate().multiply(dto.getSupplierCnAmount()))
                 .supplierCnAmount(dto.getSupplierCnAmount())
                 .roundingAmount(dto.getRoundingAmount())
-                .billType(dto.getBillType())
                 .partyType(dto.getPartyType())
                 .partyTinNumber(dto.getPartyTinNumber())
                 .fdaCoveringRef(dto.getFdaCoveringRef())
@@ -621,7 +620,6 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         entity.setBhdAmount(dto.getCurrencyRate().multiply(dto.getSupplierCnAmount()));
         entity.setSupplierCnAmount(dto.getSupplierCnAmount());
         entity.setRoundingAmount(dto.getRoundingAmount());
-        entity.setBillType(dto.getBillType());
         entity.setPartyType(dto.getPartyType());
         entity.setPartyTinNumber(dto.getPartyTinNumber());
         entity.setFdaCoveringRef(dto.getFdaCoveringRef());
@@ -662,7 +660,6 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         dto.setBhdAmount(entity.getBhdAmount());
         dto.setSupplierCnAmount(entity.getSupplierCnAmount());
         dto.setRoundingAmount(entity.getRoundingAmount());
-        dto.setBillType(entity.getBillType());
         dto.setPartyType(entity.getPartyType());
         dto.setPartyTinNumber(entity.getPartyTinNumber());
         dto.setFdaCoveringRef(entity.getFdaCoveringRef());

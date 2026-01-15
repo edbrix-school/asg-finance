@@ -46,12 +46,7 @@ public class ApPurchaseCnHdrDto {
     private LocalDate supplierCnDate;
     private String supplierCnRemark;
     private String partyTinNumber;
-    
-    @NotBlank(message = "Bill type is required")
-    private String billType; // NEW or AGAINST
-    
-    private String billReference; // When billType = AGAINST
-    
+
     @NotBlank(message = "Reference type is required")
     private String refType; // GENERAL, FF, PJ_REVERSAL, GENERAL_PO
     

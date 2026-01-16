@@ -84,6 +84,9 @@ public class GeneralReceiptResponse {
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime createdDate;
 
+    @Schema(description = "printDocCompId", example = "123")
+    private Long printDocCompId;
+
     @Schema(description = "Payment details")
     private List<GeneralReceiptPaymentDto> payments;
 

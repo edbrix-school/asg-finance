@@ -259,7 +259,7 @@ public class GLMasterServiceImpl implements GLMasterService {
         // Create a copy of the existing entity for logging
         GLMasterEntity oldEntity = new GLMasterEntity();
 
-        BeanUtils.copyProperties(oldEntity, entity);
+        BeanUtils.copyProperties(entity, oldEntity);
 
         if (glMasterRepo.existsByGlCodeAndGlPoidNot(req.getGlCode(), glPoid)) {
             throw new RuntimeException("GL Code already in use by another: " + req.getGlCode());

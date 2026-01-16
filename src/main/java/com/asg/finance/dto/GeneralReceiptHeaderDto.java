@@ -69,5 +69,9 @@ public class GeneralReceiptHeaderDto {
 
     @Schema(description = "Extra charges flag (Y/N)", example = "Y")
     private String extraCharges;
+
+    @Schema(description = "printDocCompId", example = "Y")
+    private Long printDocCompId;
+
 }
 

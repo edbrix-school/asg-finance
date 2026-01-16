@@ -780,6 +780,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                 .multicompany(dto.getMulticompany() != null ? dto.getMulticompany() : "N")
                 .ttBankPoid(dto.getTtBankPoid())
                 .costCenterPoid(dto.getCostCenterPoid())
+                .printDocCompId(dto.getPrintDocCompId())
                 .deleted("N")
                 .verified("N")
                 .dataLoaded("N")
@@ -814,6 +815,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         header.setCostCenterPoid(dto.getCostCenterPoid());
         header.setLastModifiedBy(currentUser);
         header.setLastModifiedDate(now);
+        header.setPrintDocCompId(dto.getPrintDocCompId());
     }
 
     private void savePaymentDetails(ArGenReceiptHdr header, List<GeneralReceiptPaymentDto> payments, 
@@ -1271,6 +1273,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                 .bills(convertBillDetailsToDto(header.getBillDetails()))
                 .extraCharges(convertChargeDetailsToDto(header.getChargesDetails()))
                 .advances(convertAdvanceDetailsToDto(header.getAdvanceDetails()))
+                .printDocCompId(header.getPrintDocCompId())
                 .build();
     }
 

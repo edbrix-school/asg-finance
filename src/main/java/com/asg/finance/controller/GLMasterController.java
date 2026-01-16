@@ -134,7 +134,7 @@ public class GLMasterController {
             @Valid @RequestBody GLMasterRequestDto req) {
 
         GLMasterResponseDto resp = glMasterService.updateGLMaster(glPoid, req);
-        return success("GL Master Updated Successfully", resp);
+        return success("GL Master found", resp);
     }
 
     @Operation(

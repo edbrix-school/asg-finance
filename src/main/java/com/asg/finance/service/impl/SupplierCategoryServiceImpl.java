@@ -76,6 +76,8 @@ public class SupplierCategoryServiceImpl implements SupplierCategoryService {
         dto.setSeqNo(String.valueOf(entity.getSequenceNumber()));
         dto.setGeneralRemarks(entity.getGeneralRemarks());
         dto.setDeleted(entity.getDeleted());
+        dto.setCreatedBy(entity.getCreatedBy());
+        dto.setCreatedDate(entity.getCreatedDate());
 
         log.info("dto: {}", dto);
         return dto;
@@ -126,6 +128,7 @@ public class SupplierCategoryServiceImpl implements SupplierCategoryService {
 
 
         entity.setLastModifiedDate(LocalDateTime.now());
+        entity.setLastModifiedBy(UserContext.getUserName());
 
         SupplierCategoryEntity updatedEntity = supplierCategoriesRepository.save(entity);
         
@@ -160,8 +163,8 @@ log.info("SupplierCategoryDto: {}", supplierCategoryDto);
         entity.setActive(StringUtils.isNotBlank(supplierCategoryDto.getActive()) ? supplierCategoryDto.getActive() : "Y");
         entity.setDeleted("N");
         entity.setCreatedDate(LocalDateTime.now());
+        entity.setCreatedBy(UserContext.getUserName());
         entity.setLastModifiedDate(LocalDateTime.now());
-
 
         SupplierCategoryEntity savedEntity = supplierCategoriesRepository.save(entity);
 

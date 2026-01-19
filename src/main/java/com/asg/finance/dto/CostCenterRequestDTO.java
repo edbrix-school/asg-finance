@@ -1,6 +1,9 @@
 package com.asg.finance.dto;
 
+import java.time.LocalDateTime;
+
 import com.asg.common.lib.dto.DetailsDto;
+
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -12,30 +15,34 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class CostCenterRequestDTO {
-    @NotBlank(message = "Cost Center Code is required")
-    private String costCenterCode;
+	@NotBlank(message = "Cost Center Code is required")
+	private String costCenterCode;
 
-    @NotBlank(message = "Cost Center Description is required")
-    private String costCenterDescription;
+	@NotBlank(message = "Cost Center Description is required")
+	private String costCenterDescription;
 
-    private String costCenterDescription2;
+	private String costCenterDescription2;
 
-    @NotBlank(message = "Cost Center Type is required")
-    private String costCenterType;
+	@NotBlank(message = "Cost Center Type is required")
+	private String costCenterType;
 
-    private Long parentCostCenterPoid;
+	private Long parentCostCenterPoid;
 
-    private DetailsDto parentCostCenterPoidDtl;
+	private DetailsDto parentCostCenterPoidDtl;
 
-    private Long groupPoid;
+	private Long groupPoid;
 
-    @Size(max = 100, message = "Remarks must be at most 100 characters")
-    private String remarks;
+	@Size(max = 100, message = "Remarks must be at most 100 characters")
+	private String remarks;
 
-    @Size(max = 1, message = "active must be at most 1 character")
-    private String active = "Y";
+	@Size(max = 1, message = "active must be at most 1 character")
+	private String active = "Y";
 
-    @Max(value = 99999, message = "Seq.No cannot be more than 5 digits")
-    private Integer seqNo;
+	@Max(value = 99999, message = "Seq.No cannot be more than 5 digits")
+	private Integer seqNo;
+
+	private String createdBy;
+
+	private LocalDateTime createdDate;
 
 }

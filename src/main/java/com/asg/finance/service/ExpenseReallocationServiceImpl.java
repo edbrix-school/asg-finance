@@ -77,7 +77,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 
 		GlExpenseReallocationHdr header = GlExpenseReallocationHdr.builder()
 				.transactionDate(request.getTransactionDate()).groupPoid(groupPoid)
-				.companyPoid(request.getCompanyPoid() != null ? request.getCompanyPoid() : companyPoid)
+				.companyPoid(companyPoid)
 				.expenseGroupGl(request.getExpenseGroupGlId()).fromCompany(request.getFromCompanyId())
 				.fromDate(request.getFromDate()).toDate(request.getToDate()).allocationType(request.getAllocationType())
 				.costPoid(request.getCostPoid()).remarks(request.getRemarks()).createdBy(userId)
@@ -430,9 +430,6 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 	private void validateMandatoryFields(CreateExpenseReallocationRequest request) {
 		if (request.getTransactionDate() == null) {
 			throw new RuntimeException("Transaction Date is required");
-		}
-		if (request.getCompanyPoid() == null) {
-			throw new RuntimeException("Company POID is required");
 		}
 		if (request.getExpenseGroupGlId() == null) {
 			throw new RuntimeException("Expense Group GL is required");

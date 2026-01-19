@@ -122,13 +122,13 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         log.info("Journal Voucher header saved - TransactionPoid: {}, DocRef: {}", 
                 header.getTransactionPoid(), header.getDocRef());
 
-        if (REF_TYPE_GENERAL.equals(request.getRefType()) && request.getGlDetails() != null) {
+        if (REF_TYPE_GENERAL.equalsIgnoreCase(request.getRefType()) && request.getGlDetails() != null) {
             log.debug("Saving {} GL detail lines", request.getGlDetails().size());
             saveGlDetails(header, request.getGlDetails(), isMultiCompany,docId);
-        } else if (REF_TYPE_ASSET_DISPOSAL.equals(request.getRefType()) && request.getAssetDetails() != null) {
+        } else if (REF_TYPE_ASSET_DISPOSAL.equalsIgnoreCase(request.getRefType()) && request.getAssetDetails() != null) {
             log.debug("Saving {} asset disposal detail lines", request.getAssetDetails().size());
             saveAssetDetails(header.getTransactionPoid(), request.getAssetDetails());
-        } else if (REF_TYPE_ASSET_CAPITALIZATION.equals(request.getRefType()) && request.getAssetCapitalization() != null) {
+        } else if (REF_TYPE_ASSET_CAPITALIZATION.equalsIgnoreCase(request.getRefType()) && request.getAssetCapitalization() != null) {
             log.debug("Saving {} asset capitalization detail lines", request.getAssetCapitalization().size());
             saveCapitalizationDetails(header.getTransactionPoid(), request.getAssetCapitalization());
             saveGlDetails(header, request.getGlDetails(), isMultiCompany,docId);
@@ -162,7 +162,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         if (refType == null || refType.isBlank()) {
             throw new IllegalArgumentException("RefType is mandatory");
         }
-        if (!REF_TYPE_GENERAL.equals(refType) && !REF_TYPE_ASSET_DISPOSAL.equals(refType) && !REF_TYPE_ASSET_CAPITALIZATION.equals(refType)) {
+        if (!REF_TYPE_GENERAL.equalsIgnoreCase(refType) && !REF_TYPE_ASSET_DISPOSAL.equalsIgnoreCase(refType) && !REF_TYPE_ASSET_CAPITALIZATION.equalsIgnoreCase(refType)) {
             throw new IllegalArgumentException("RefType must be GENERAL, ASSET_DISPOSAL, or ASSET_CAPITALIZATION");
         }
 
@@ -439,8 +439,8 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                         .billRefType(dto.getBillRefType())
                         .billRef(dto.getBillRef())
                         .billDueDate(dto.getBillDueDate())
-                        .drAmt("Dr".equals(dto.getType()) ? dto.getAmount() : BigDecimal.ZERO)
-                        .crAmt("Cr".equals(dto.getType()) ? dto.getAmount() : BigDecimal.ZERO)
+                        .drAmt("Dr".equalsIgnoreCase(dto.getType()) ? dto.getAmount() : BigDecimal.ZERO)
+                        .crAmt("Cr".equalsIgnoreCase(dto.getType()) ? dto.getAmount() : BigDecimal.ZERO)
                         .billRemarks(dto.getBillRemarks())
                         .loginUserPoid(getUserPoid())
                         .build())
@@ -500,7 +500,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         GlJournalVoucherHdr oldEntity = new GlJournalVoucherHdr();
         BeanUtils.copyProperties(existing, oldEntity);
 
-        if (!existing.getRefType().equals(request.getRefType())) {
+        if (!existing.getRefType().equalsIgnoreCase(request.getRefType())) {
             throw new IllegalArgumentException("RefType cannot be changed after creation");
         }
 
@@ -525,13 +525,13 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
 
         glJournalVoucherHdrRepository.save(existing);
 
-        if (REF_TYPE_GENERAL.equals(request.getRefType())) {
+        if (REF_TYPE_GENERAL.equalsIgnoreCase(request.getRefType())) {
             saveGlDetails(existing, request.getGlDetails(), isMultiCompany,docId);
-        } else if (REF_TYPE_ASSET_DISPOSAL.equals(request.getRefType())) {
+        } else if (REF_TYPE_ASSET_DISPOSAL.equalsIgnoreCase(request.getRefType())) {
             glJournalVoucherAssetDtlRepository.deleteAll(glJournalVoucherAssetDtlRepository.findAll((root, query, cb) -> 
                     cb.equal(root.get("transactionPoid"), transactionPoid)));
             saveAssetDetails(transactionPoid, request.getAssetDetails());
-        } else if (REF_TYPE_ASSET_CAPITALIZATION.equals(request.getRefType())) {
+        } else if (REF_TYPE_ASSET_CAPITALIZATION.equalsIgnoreCase(request.getRefType())) {
             glJournalFaCapitalizationRepository.deleteAll(glJournalFaCapitalizationRepository.findAll((root, query, cb) -> 
                     cb.equal(root.get("transactionPoid"), transactionPoid)));
             saveCapitalizationDetails(transactionPoid, request.getAssetCapitalization());
@@ -624,7 +624,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
 
 
 
-        if (REF_TYPE_GENERAL.equals(entity.getRefType())) {
+        if (REF_TYPE_GENERAL.equalsIgnoreCase(entity.getRefType())) {
             BigDecimal drTotal = glJournalVoucherDtlRepository.sumDrAmtByTransactionPoid(transactionPoid);
             BigDecimal crTotal = glJournalVoucherDtlRepository.sumCrAmtByTransactionPoid(transactionPoid);
             if (drTotal.compareTo(crTotal) != 0) {
@@ -655,7 +655,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         GlJournalVoucherHdr entity = glJournalVoucherHdrRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Journal Voucher", "POID", transactionPoid));
 
-        if (!REF_TYPE_GENERAL.equals(entity.getRefType())) {
+        if (!REF_TYPE_GENERAL.equalsIgnoreCase(entity.getRefType())) {
             throw new IllegalArgumentException("Totals are only applicable for GENERAL ref type");
         }
 
@@ -687,10 +687,10 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
     public void updateAssetDetail(Long transactionPoid, Long sn, UpdateAssetDetailRequest request) {
         // Validate process type
         if (request.getProcess() != null && 
-            !PROCESS_SCRAP.equals(request.getProcess()) && 
-            !PROCESS_SOLD.equals(request.getProcess()) && 
-            !PROCESS_OBSOLETE.equals(request.getProcess()) && 
-            !PROCESS_NOT_APPLICABLE.equals(request.getProcess())) {
+            !PROCESS_SCRAP.equalsIgnoreCase(request.getProcess()) &&
+            !PROCESS_SOLD.equalsIgnoreCase(request.getProcess()) &&
+            !PROCESS_OBSOLETE.equalsIgnoreCase(request.getProcess()) &&
+            !PROCESS_NOT_APPLICABLE.equalsIgnoreCase(request.getProcess())) {
             throw new IllegalArgumentException("Invalid process type. Must be SCRAP, SOLD, OBSOLETE, or Not Applicable");
         }
 

@@ -31,7 +31,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -84,10 +83,12 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
         // Validate GL Account should not be duplicated
         validateNoDuplicateGlAccounts(request.getGlAccounts());
 
-        // Validate user roles exist (if provided)
-        if (request.getUserRolePoids() != null && !request.getUserRolePoids().isEmpty()) {
-            validateUserRolesExist(request.getUserRolePoids());
-        }
+        // Filter out null and zero values from userRolePoids (treat [0] or [null] as empty)
+        List<Long> filteredUserRolePoids = filterValidUserRolePoids(request.getUserRolePoids());
+        request.setUserRolePoids(filteredUserRolePoids);
+
+        // Validate user roles exist (if provided) - method handles null/empty internally
+        validateUserRolesExist(filteredUserRolePoids);
 
         String currentUser = getCurrentUser();
         Timestamp now = new Timestamp(System.currentTimeMillis());
@@ -129,8 +130,8 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
         }
 
         // Create user role detail records
-        if (request.getUserRolePoids() != null && !request.getUserRolePoids().isEmpty()) {
-            for (Long userRolePoid : request.getUserRolePoids()) {
+        if (filteredUserRolePoids != null && !filteredUserRolePoids.isEmpty()) {
+            for (Long userRolePoid : filteredUserRolePoids) {
                 GlFavAcMasterUserRoleDtl userRoleDtl = GlFavAcMasterUserRoleDtl.builder()
                         .favAcPoid(savedMaster.getFavAcPoid())
                         .userRolePoid(userRolePoid)
@@ -188,10 +189,12 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
         // Validate GL Account should not be duplicated
         validateNoDuplicateGlAccounts(request.getGlAccounts());
 
-        // Validate user roles exist (if provided)
-        if (request.getUserRolePoids() != null && !request.getUserRolePoids().isEmpty()) {
-            validateUserRolesExist(request.getUserRolePoids());
-        }
+        // Filter out null and zero values from userRolePoids (treat [0] or [null] as empty)
+        List<Long> filteredUserRolePoids = filterValidUserRolePoids(request.getUserRolePoids());
+        request.setUserRolePoids(filteredUserRolePoids);
+
+        // Validate user roles exist (if provided) - method handles null/empty internally
+        validateUserRolesExist(filteredUserRolePoids);
 
         String currentUser = getCurrentUser();
         Timestamp now = new Timestamp(System.currentTimeMillis());
@@ -237,8 +240,8 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
         userRoleDtlRepository.deleteByFavAcPoid(favAcPoid);
         userRoleDtlRepository.flush(); // Ensure deletes are committed before inserts
         
-        if (request.getUserRolePoids() != null && !request.getUserRolePoids().isEmpty()) {
-            for (Long userRolePoid : request.getUserRolePoids()) {
+        if (filteredUserRolePoids != null && !filteredUserRolePoids.isEmpty()) {
+            for (Long userRolePoid : filteredUserRolePoids) {
                 GlFavAcMasterUserRoleDtl userRoleDtl = GlFavAcMasterUserRoleDtl.builder()
                         .favAcPoid(favAcPoid)
                         .userRolePoid(userRolePoid)
@@ -288,7 +291,9 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                 .distinct()
                 .collect(Collectors.toList());
 
-        List<GLMaster> glMasters = glMasterRepository.findByGlPoidIn(glPoids);
+        // Only query database if there are GL POIDs to look up
+        List<GLMaster> glMasters = glPoids.isEmpty() ? Collections.emptyList() 
+                : glMasterRepository.findByGlPoidIn(glPoids);
 
         Map<Long, GLMaster> glMap = glMasters.stream()
                 .collect(Collectors.toMap(GLMaster::getGlPoid, Function.identity()));
@@ -339,7 +344,9 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                 .distinct()
                 .collect(Collectors.toList());
 
-        List<RoleDto> roleDtos = roleServiceClient.findByUserRolePoidIn(rolePoids);
+        // Only query external service if there are role POIDs to look up
+        List<RoleDto> roleDtos = rolePoids.isEmpty() ? Collections.emptyList() 
+                : roleServiceClient.findByUserRolePoidIn(rolePoids);
 
         Map<Long, RoleDto> roleMap = roleDtos.stream()
                 .collect(Collectors.toMap(RoleDto::getUserRolePoid, Function.identity()));
@@ -372,10 +379,30 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
     }
 
     /**
-     * Validate that user roles exist in the database
+     * Filter out null and zero values from userRolePoids list.
+     * Returns null if the input is null, or an empty list if all values are filtered out.
+     * This allows [0] or [null] to be treated as empty (not mandatory).
+     */
+    private List<Long> filterValidUserRolePoids(List<Long> userRolePoids) {
+        if (userRolePoids == null) {
+            return null;
+        }
+        List<Long> filtered = userRolePoids.stream()
+                .filter(poid -> poid != null && poid != 0)
+                .collect(Collectors.toList());
+        return filtered.isEmpty() ? null : filtered;
+    }
+
+    /**
+     * Validate that user roles exist in the database.
+     * If userRolePoids is null or empty, validation is skipped (e.g., when userRolePoids: [0] or []).
      */
     private void validateUserRolesExist(List<Long> userRolePoids) {
-
+        // Skip validation if list is null or empty (e.g., userRolePoids: [0] means empty)
+        if (userRolePoids == null || userRolePoids.isEmpty()) {
+            return;
+        }
+        
         List<RoleDto> userRoles = roleServiceClient.findByUserRolePoidIn(userRolePoids);
         Set<Long> existingRoleIds = userRoles.stream()
                 .map(RoleDto::getUserRolePoid)

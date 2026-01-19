@@ -149,7 +149,7 @@ public class FixedAssetServiceImpl implements FixedAssetService {
         }
         //OpeningDetailsDto
         if(requestDto.getOpeningDetailsDto()!=null) {
-            entity.setOpeningAsset("N");
+            entity.setOpeningAsset(requestDto.getOpeningDetailsDto().getOpeningAsset());
             entity.setOpeningAssetValue(requestDto.getOpeningDetailsDto().getOpeningAssetValue());
             entity.setAccumulatedDepreciation(requestDto.getOpeningDetailsDto().getAccDepreciatedAmt());
             entity.setWdValue(requestDto.getOpeningDetailsDto().getWdvValue());

@@ -18,9 +18,6 @@ public class CreateExpenseReallocationRequest {
 	@NotNull(message = "Transaction Date is required")
 	private Timestamp transactionDate;
 
-	@NotNull(message = "Company POID is required")
-	private Long companyPoid;
-
 	@NotNull(message = "Expense Group GL is required")
 	private Long expenseGroupGlId;
 

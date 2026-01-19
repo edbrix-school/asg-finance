@@ -186,6 +186,8 @@ public class CostCenterServiceImpl implements CostCenterService {
         costCenterDto.setRemarks(costCenter.getRemarks());
         costCenterDto.setActive(costCenter.getActive());
         costCenterDto.setSeqNo(costCenter.getSeqNo());
+        costCenterDto.setCreatedBy(costCenter.getCreatedBy());
+        costCenterDto.setCreatedDate(costCenter.getCreatedDate());
         
         Optional.ofNullable(costCenter.getParentCostCenterPoid())
         .map(repository::findByCostCenterPoid)

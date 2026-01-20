@@ -4,10 +4,13 @@ import static com.asg.common.lib.dto.response.ApiResponse.badRequest;
 import static com.asg.common.lib.dto.response.ApiResponse.success;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.FilterRequestDto;
@@ -30,15 +34,12 @@ import com.asg.finance.dto.ComputeTotalsResponse;
 import com.asg.finance.dto.CreateExpenseReallocationRequest;
 import com.asg.finance.dto.ExpenseReallocationConfigResponse;
 import com.asg.finance.dto.ExpenseReallocationResponse;
-import com.asg.finance.dto.GenerateReportResponse;
 import com.asg.finance.dto.UpdateExpenseReallocationRequest;
 import com.asg.finance.dto.ValidateAllocationResponse;
 import com.asg.finance.service.ExpenseReallocationService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
@@ -138,7 +139,7 @@ public class ExpenseReallocationController {
 	}
 
 	@Operation(summary = "List expense reallocations", description = "Retrieves a paginated list of expense reallocations with optional filters", responses = {
-			@ApiResponse(responseCode = "200", description = "Successfully retrieved expense reallocations)")}, security = @SecurityRequirement(name = "bearerAuth"))
+			@ApiResponse(responseCode = "200", description = "Successfully retrieved expense reallocations)") }, security = @SecurityRequirement(name = "bearerAuth"))
 	@PostMapping("/search")
 	@AllowedAction(UserRolesRightsEnum.VIEW)
 	public ResponseEntity<?> getExpenseReallocations(@ParameterObject Pageable pageable,
@@ -177,6 +178,27 @@ public class ExpenseReallocationController {
 				response != null ? response : null);
 
 		return success("JV created successfully", response);
+	}
+
+	@PostMapping("/upload")
+	@AllowedAction(UserRolesRightsEnum.VIEW)
+	public ResponseEntity<?> uploadExpenseAllocationExcel(@RequestParam("file") MultipartFile file) {
+
+		List<Map<String, Object>> response = expenseReallocationService.processExpenseAllocationExcel(file);
+		return success("Data Extracted Sucessfully", response);
+	}
+
+	@GetMapping("/download-template")
+	@AllowedAction(UserRolesRightsEnum.VIEW)
+	public ResponseEntity<byte[]> exportExpenseAllocationExcel() {
+
+		byte[] excel = expenseReallocationService.exportExpenseAllocationExcel();
+
+		return ResponseEntity.ok()
+				.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=Expense_Allocation_Template.xlsx")
+				.contentType(
+						MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+				.body(excel);
 	}
 
 	@Operation(summary = "Generate report", description = "Generates dynamic report for expense allocation", responses = {

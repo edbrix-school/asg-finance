@@ -291,6 +291,7 @@ public class FixedAssetServiceImpl implements FixedAssetService {
 
         // OpeningDetailsDto mapping
         OpeningDetailsDto openingDetailsDto = OpeningDetailsDto.builder()
+        		.openingAsset(savedEntity.getOpeningAsset())
                 .openingAssetValue(savedEntity.getOpeningAssetValue())
                 .accDepreciatedAmt(savedEntity.getAccumulatedDepreciation())
                 .wdvValue(savedEntity.getWdValue())

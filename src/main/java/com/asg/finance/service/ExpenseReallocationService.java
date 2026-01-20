@@ -1,9 +1,11 @@
 package com.asg.finance.service;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.data.domain.Pageable;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.finance.dto.ComputeTotalsRequest;
@@ -26,8 +28,8 @@ public interface ExpenseReallocationService {
 
 	void deleteExpenseReallocation(Long transactionPoid, Long groupPoid);
 
-	Map<String, Object> listOfRecordsAndGenericSearch(String documentId,
-			FilterRequestDto filters, LocalDate startDate, LocalDate endDate, Pageable pageable);
+	Map<String, Object> listOfRecordsAndGenericSearch(String documentId, FilterRequestDto filters, LocalDate startDate,
+			LocalDate endDate, Pageable pageable);
 
 	Map<String, String> createJv(Long transactionPoid, Long groupPoid, Long companyPoid, Long userId);
 
@@ -38,4 +40,8 @@ public interface ExpenseReallocationService {
 	ComputeTotalsResponse computeTotals(ComputeTotalsRequest request);
 
 	ExpenseReallocationConfigResponse getConfig();
+
+	List<Map<String, Object>> processExpenseAllocationExcel(MultipartFile file);
+
+	byte[] exportExpenseAllocationExcel();
 }

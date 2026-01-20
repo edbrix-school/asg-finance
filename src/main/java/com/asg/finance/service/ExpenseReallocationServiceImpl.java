@@ -1,5 +1,7 @@
 package com.asg.finance.service;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.sql.Timestamp;
@@ -8,6 +10,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -15,12 +18,24 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
+import org.apache.poi.ss.usermodel.BorderStyle;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
@@ -44,7 +59,6 @@ import com.asg.finance.dto.ValidateAllocationResponse;
 import com.asg.finance.entity.GlExpenseReallocationDtl;
 import com.asg.finance.entity.GlExpenseReallocationHdr;
 import com.asg.finance.entity.GlExpenseReallocationXlDtl;
-import com.asg.finance.entity.SupplierMasterEntity;
 import com.asg.finance.repository.ExpenseReallocationStoredProcedure;
 import com.asg.finance.repository.GlExpenseReallocationDtlRepository;
 import com.asg.finance.repository.GlExpenseReallocationHdrRepository;
@@ -76,8 +90,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 		validateMandatoryFields(request);
 
 		GlExpenseReallocationHdr header = GlExpenseReallocationHdr.builder()
-				.transactionDate(request.getTransactionDate()).groupPoid(groupPoid)
-				.companyPoid(companyPoid)
+				.transactionDate(request.getTransactionDate()).groupPoid(groupPoid).companyPoid(companyPoid)
 				.expenseGroupGl(request.getExpenseGroupGlId()).fromCompany(request.getFromCompanyId())
 				.fromDate(request.getFromDate()).toDate(request.getToDate()).allocationType(request.getAllocationType())
 				.costPoid(request.getCostPoid()).remarks(request.getRemarks()).createdBy(userId)
@@ -139,13 +152,13 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 		log.info("updateExpenseReallocation started for transactionPoid={} groupPoid={} userId={}", transactionPoid,
 				groupPoid, userId);
 
-		GlExpenseReallocationHdr existingHeader = hdrRepository.findByTransactionPoidAndGroupPoid(transactionPoid, groupPoid)
+		GlExpenseReallocationHdr existingHeader = hdrRepository
+				.findByTransactionPoidAndGroupPoid(transactionPoid, groupPoid)
 				.orElseThrow(() -> new ResourceNotFoundException("Expense Reallocation", "transactionPoid",
 						transactionPoid));
-		
-		GlExpenseReallocationHdr header=new GlExpenseReallocationHdr();
+
+		GlExpenseReallocationHdr header = new GlExpenseReallocationHdr();
 		BeanUtils.copyProperties(existingHeader, header);
-		
 
 		if (header.getJvPoid() != null) {
 			throw new RuntimeException("Cannot update expense reallocation that has JV created");
@@ -205,10 +218,10 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 		}
 
 		log.info("updateExpenseReallocation completed for transactionPoid={}", transactionPoid);
-		 String key = header.getTransactionPoid().toString();
-	        String docId = UserContext.getDocumentId();
-		loggingService.logChanges(existingHeader, header, GlExpenseReallocationHdr.class, 
-                docId, key, LogDetailsEnum.MODIFIED, "SUPPLIER_POID");
+		String key = header.getTransactionPoid().toString();
+		String docId = UserContext.getDocumentId();
+		loggingService.logChanges(existingHeader, header, GlExpenseReallocationHdr.class, docId, key,
+				LogDetailsEnum.MODIFIED, "SUPPLIER_POID");
 		return buildResponse(savedHeader);
 	}
 
@@ -278,6 +291,243 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 				expenseGroupGL, toDate, costPoid);
 
 		return result;
+	}
+
+	private int getMergedColumnSpan(Sheet sheet, int rowIndex, int colIndex) {
+
+		for (CellRangeAddress region : sheet.getMergedRegions()) {
+
+			if (region.isInRange(rowIndex, colIndex)) {
+				return region.getLastColumn() - region.getFirstColumn() + 1;
+			}
+		}
+		return 1; // Not merged
+	}
+
+	@Override
+	public List<Map<String, Object>> processExpenseAllocationExcel(MultipartFile file) {
+
+		List<Map<String, Object>> result = new ArrayList<>();
+		BigDecimal grandTotal = BigDecimal.ZERO;
+
+		try (Workbook workbook = WorkbookFactory.create(file.getInputStream())) {
+
+			Sheet sheet = workbook.getSheetAt(0);
+			List<String> headers = new ArrayList<>();
+
+			// -------- HEADER PARSING (ROW 1 + ROW 2) --------
+			Row headerRow1 = sheet.getRow(1);
+			Row headerRow2 = sheet.getRow(2);
+
+			if (headerRow1 == null || headerRow2 == null) {
+				throw new RuntimeException("Invalid template: Header rows missing");
+			}
+
+			int colIndex = 0;
+			int span = getMergedColumnSpan(sheet, 1, 1);
+
+			for (int i = 0; i < span + 1; i++) {
+				headers.add(getStringCell(headerRow2.getCell(colIndex++)));
+			}
+
+			// -------- DATA ROWS --------
+			for (int r = 3; r <= sheet.getLastRowNum(); r++) {
+
+				Row row = sheet.getRow(r);
+				if (row == null)
+					continue;
+
+				String companyCode = getStringCell(row.getCell(0));
+				if (companyCode == null || companyCode.equalsIgnoreCase("Totals")) {
+					continue;
+				}
+
+				Map<String, Object> rowMap = new HashMap<>();
+				BigDecimal rowTotal = BigDecimal.ZERO;
+
+				for (int c = 0; c < headers.size(); c++) {
+
+					String key = headers.get(c);
+					Cell cell = row.getCell(c);
+
+					if ("Company Code".equalsIgnoreCase(key)) {
+						rowMap.put(key, getStringCell(cell));
+						continue;
+					}
+
+					BigDecimal value = getDecimal(cell);
+					value = value != null ? value : BigDecimal.ZERO;
+					rowMap.put(key, value);
+
+					if (!"TOTAL".equalsIgnoreCase(key)) {
+						rowTotal = rowTotal.add(value);
+					}
+				}
+
+				BigDecimal excelTotal = getDecimal(row.getCell(headers.size() - 1));
+				excelTotal = excelTotal != null ? excelTotal : BigDecimal.ZERO;
+
+				if (rowTotal.compareTo(excelTotal) != 0) {
+					throw new RuntimeException(
+							"Invalid Total at row " + (r + 1) + ". Expected: " + rowTotal + " Found: " + excelTotal);
+				}
+
+				grandTotal = grandTotal.add(rowTotal);
+				result.add(rowMap);
+			}
+
+		} catch (RuntimeException e) {
+			throw e;
+		} catch (Exception e) {
+			throw new RuntimeException("Failed to read Excel", e);
+		}
+
+		if (grandTotal.compareTo(BigDecimal.valueOf(100)) != 0) {
+			throw new IllegalArgumentException("Total allocation must be 100%, found: " + grandTotal);
+		}
+
+		return result;
+	}
+
+	@Override
+	public byte[] exportExpenseAllocationExcel() {
+
+		Workbook workbook = new XSSFWorkbook();
+		Sheet sheet = workbook.createSheet("Expense Allocation");
+
+		// Title Style
+		CellStyle titleStyle = workbook.createCellStyle();
+		Font titleFont = workbook.createFont();
+		titleFont.setFontName("Aptos Narrow");
+		titleFont.setBold(true);
+		titleFont.setFontHeightInPoints((short) 18);
+		titleStyle.setFont(titleFont);
+		titleStyle.setAlignment(HorizontalAlignment.LEFT);
+
+		// Subtitle Style
+		CellStyle subtitleStyle = workbook.createCellStyle();
+		Font subtitleFont = workbook.createFont();
+		subtitleFont.setBold(true);
+		subtitleStyle.setFont(subtitleFont);
+		subtitleStyle.setAlignment(HorizontalAlignment.CENTER);
+
+		// Header Style (Bold + Border)
+		CellStyle headerStyle = workbook.createCellStyle();
+		Font headerFont = workbook.createFont();
+		headerFont.setBold(true);
+		headerStyle.setFont(headerFont);
+		applyBorders(headerStyle);
+		headerStyle.setAlignment(HorizontalAlignment.CENTER);
+
+		// Footer Style (Italic)
+		CellStyle footerStyle = workbook.createCellStyle();
+		Font footerFont = workbook.createFont();
+		footerFont.setItalic(true);
+		footerStyle.setFont(footerFont);
+		footerStyle.setAlignment(HorizontalAlignment.RIGHT);
+
+		// Data Cell Style (Border)
+		CellStyle dataStyle = workbook.createCellStyle();
+		Font dataFont = workbook.createFont();
+		dataFont.setBold(true);
+		dataStyle.setFont(dataFont);
+		applyBorders(dataStyle);
+		dataStyle.setAlignment(HorizontalAlignment.RIGHT);
+
+		// TITLE ROW
+		Row titleRow = sheet.createRow(0);
+		Cell titleCell = titleRow.createCell(0);
+		titleCell.setCellValue("Expense Allocation Template");
+		titleCell.setCellStyle(titleStyle);
+
+		// SUBTITLE ROW
+		Row subtitleRow = sheet.createRow(1);
+		Cell subtitleCell = subtitleRow.createCell(1);
+		subtitleCell.setCellValue("Overhead Cost Centre Code (as per the ERP System)");
+		subtitleCell.setCellStyle(subtitleStyle);
+
+		// HEADER ROW
+		Row headerRow = sheet.createRow(2);
+		List<String> headers = new ArrayList<>();
+		headers.add("Company Code");
+		headers.addAll(allocationKeys()); // dynamic allocation columns
+		headers.add(null);
+		headers.add(null);
+		headers.add(null);
+		headers.add("TOTAL");
+
+		sheet.addMergedRegion(new CellRangeAddress(1, 1, 1, headers.size() - 1));
+
+		for (int i = 0; i < headers.size(); i++) {
+			Cell cell = headerRow.createCell(i);
+			if (headers.get(i) != null) {
+				cell.setCellValue(headers.get(i));
+			}
+			cell.setCellStyle(headerStyle);
+		}
+
+
+		Object[][] data = { { "ASG", 10, 15, 5, 5, 10, 0, 0, 0, "", "", "" },
+				{ "NSA", 15, 8, 0, 0, 0, 0, 0, 0, "", "", "" }, { "DSA", 10, 10, 0, 0, 0, 0, 0, 0, "", "", "" },
+				{ "FAL", 5, 7, 0, 0, 0, 0, 0, 0, "", "", "" } };
+
+		int rowIdx = 3;
+
+		for (Object[] rowData : data) {
+			Row row = sheet.createRow(rowIdx++);
+			double total = 0;
+
+			for (int col = 0; col < headers.size(); col++) {
+				Cell cell = row.createCell(col);
+				String header = headers.get(col);
+
+				if ("TOTAL".equals(header)) {
+					cell.setCellValue(total);
+					cell.setCellStyle(dataStyle);
+				} else if (header == null) {
+					cell.setBlank();
+				} else {
+					Object value = col < rowData.length ? rowData[col] : null;
+
+					if (value instanceof Number) {
+						double num = ((Number) value).doubleValue();
+						cell.setCellValue(num); // includes 0
+						total += num;
+					} else if (value != null && !value.toString().isEmpty()) {
+						cell.setCellValue(value.toString());
+					} else {
+						cell.setCellValue(0); // numeric default
+					}
+					cell.setCellStyle(headerStyle);
+				}
+			}
+		}
+		Row footerRow = sheet.createRow(0);
+		Cell footerTitle = footerRow.createCell(0);
+		footerTitle.setCellValue("Expense Allocation Template");
+		footerTitle.setCellStyle(titleStyle);
+		
+		Row finalRow = sheet.createRow(rowIdx++);
+		Cell cell = finalRow.createCell(headers.size() - 1);
+		cell.setCellValue("This should be always 100%");
+		cell.setCellStyle(footerStyle);
+
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		try {
+			workbook.write(out);
+			workbook.close();
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+
+		return out.toByteArray();
+	}
+
+	private void applyBorders(CellStyle style) {
+		style.setBorderTop(BorderStyle.THICK);
+		style.setBorderBottom(BorderStyle.THICK);
+		style.setBorderLeft(BorderStyle.THICK);
+		style.setBorderRight(BorderStyle.THICK);
 	}
 
 	@Override
@@ -414,12 +664,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 		response.setAllowDeleteAfterJvCreation(false);
 		response.setScale(3);
 
-		List<String> allocationColumns = Arrays.stream(GlExpenseReallocationDtl.class.getDeclaredFields())
-				.filter(field -> field.isAnnotationPresent(Column.class))
-				.map(field -> field.getAnnotation(Column.class)).map(Column::name)
-				.filter(name -> !List.of("TRANSACTION_POID", "DET_ROW_ID", "COMPANY", "COMPANY_NAME", "TOTAL",
-						"REMARKS", "CREATED_BY", "CREATED_DATE", "LASTMODIFIED_BY", "LASTMODIFIED_DATE").contains(name))
-				.toList();
+		List<String> allocationColumns = allocationKeys();
 
 		response.setAllocationColumns(allocationColumns);
 
@@ -570,5 +815,26 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 		response.setPercent(xlDetail.getPercent());
 		response.setRemarks(xlDetail.getRemarks());
 		return response;
+	}
+
+	private BigDecimal getDecimal(Cell cell) {
+		if (cell == null)
+			return BigDecimal.ZERO;
+		return BigDecimal.valueOf(cell.getNumericCellValue());
+	}
+
+	private String getStringCell(Cell cell) {
+		if (cell == null)
+			return null;
+		return cell.getStringCellValue().trim();
+	}
+	
+	private List<String> allocationKeys() {
+		return Arrays.stream(GlExpenseReallocationDtl.class.getDeclaredFields())
+				.filter(field -> field.isAnnotationPresent(Column.class))
+				.map(field -> field.getAnnotation(Column.class)).map(Column::name)
+				.filter(name -> !List.of("TRANSACTION_POID", "DET_ROW_ID", "COMPANY", "COMPANY_NAME", "TOTAL",
+						"REMARKS", "CREATED_BY", "CREATED_DATE", "LASTMODIFIED_BY", "LASTMODIFIED_DATE").contains(name))
+				.toList();
 	}
 }

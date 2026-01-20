@@ -4,6 +4,7 @@ import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
+import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.security.util.UserContext;
@@ -350,9 +351,12 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
     public void updateAgeingMastersChildDetails(List<GlAgeingMasterDtlDto> ageingDetails, Long ageingPoid) {
         String currentUser = getCurrentUser();
         LocalDateTime now = LocalDateTime.now();
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = ageingPoid.toString();
 
         List<GlAgeingMasterDtlEntity> toSave = new ArrayList<>();
         List<Long> toDelete = new ArrayList<>();
+        List<LogRequestDto<GlAgeingMasterDtlEntity>> logRequests = new ArrayList<>();
 
         // Group operations by action
         for (GlAgeingMasterDtlDto charge : ageingDetails) {
@@ -376,12 +380,19 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
                     GlAgeingMasterDtlEntity existingCharge = ageingMasterDtlRepository
                             .findByAgeingPoidAndDetRowId(ageingPoid, charge.getDetRowId())
                             .orElseThrow(() -> new ResourceNotFoundException("Ageing not found", "detRowId", charge.getDetRowId()));
+                    
+                    GlAgeingMasterDtlEntity oldCharge = new GlAgeingMasterDtlEntity();
+                    BeanUtils.copyProperties(existingCharge, oldCharge);
+                    
                     existingCharge.setBreakupTitle(charge.getBreakupTitle());
                     existingCharge.setBreakupFrom(charge.getBreakupFrom());
                     existingCharge.setBreakupTo(charge.getBreakupTo());
                     existingCharge.setLastModifiedBy(currentUser);
                     existingCharge.setLastModifiedDate(Timestamp.valueOf(now));
                     toSave.add(existingCharge);
+                    
+                    String logDetail = String.format("KeyId = AGEING_POID:%s DET_ROW_ID:%s", oldCharge.getAgeingPoid() ,charge.getDetRowId());
+                    logRequests.add(new LogRequestDto<>(oldCharge, existingCharge, GlAgeingMasterDtlEntity.class, docId, docKeyPoid, logDetail));
                     break;
 
                 case "ISDELETED":
@@ -398,6 +409,9 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
         }
         if (!toDelete.isEmpty()) {
             ageingMasterDtlRepository.deleteByAgeingPoidAndDetRowIdIn(ageingPoid, toDelete);
+        }
+        if (!logRequests.isEmpty()) {
+            loggingService.createLogBatch(logRequests);
         }
     }
 

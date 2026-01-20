@@ -1,6 +1,7 @@
 package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.*;
+import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.finance.entity.StockMasterEntity;
@@ -466,9 +467,12 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
     public void updateTaxPeriodCharges(List<TaxPeriodChargeDtlRequestDto> charges, Long transactionPoid) {
         String currentUser = getCurrentUser();
         LocalDateTime now = LocalDateTime.now();
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = transactionPoid.toString();
         
         List<GlobalTaxPeriodChargeDtlEntity> toSave = new ArrayList<>();
         List<Long> toDelete = new ArrayList<>();
+        List<LogRequestDto<GlobalTaxPeriodChargeDtlEntity>> logRequests = new ArrayList<>();
         
         // Group operations by action
         for (TaxPeriodChargeDtlRequestDto charge : charges) {
@@ -494,6 +498,9 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
                             .findByTransactionPoidAndDetRowId(transactionPoid, charge.getDetRowId())
                             .orElseThrow(() -> new ResourceNotFoundException("Charge not found", "detRowId", charge.getDetRowId()));
                     
+                    GlobalTaxPeriodChargeDtlEntity oldCharge = new GlobalTaxPeriodChargeDtlEntity();
+                    BeanUtils.copyProperties(existingCharge, oldCharge);
+                    
                     existingCharge.setChargePoid(charge.getChargePoid());
                     existingCharge.setChargeCatPoid(charge.getChargeCatPoid());
                     existingCharge.setOutputTaxPoid(charge.getOutputTaxPoid());
@@ -502,6 +509,9 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
                     existingCharge.setLastModifiedBy(currentUser);
                     existingCharge.setLastModifiedDate(now);
                     toSave.add(existingCharge);
+                    
+                    String logDetail = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", oldCharge.getTransactionPoid() ,charge.getDetRowId());
+                    logRequests.add(new LogRequestDto<>(oldCharge, existingCharge, GlobalTaxPeriodChargeDtlEntity.class, docId, docKeyPoid, logDetail));
                     break;
                     
                 case "ISDELETED":
@@ -517,14 +527,20 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
         if (!toDelete.isEmpty()) {
             globalTaxPeriodChargeDtlRepository.deleteByTransactionPoidAndDetRowIdIn(transactionPoid, toDelete);
         }
+        if (!logRequests.isEmpty()) {
+            loggingService.createLogBatch(logRequests);
+        }
     }
 
     private void updateTaxPeriodStocks(List<TaxPeriodStockDtlRequestDto> stocks, Long transactionPoid) {
         String currentUser = getCurrentUser();
         LocalDateTime now = LocalDateTime.now();
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = transactionPoid.toString();
         
         List<GlobalTaxPeriodStockDtlEntity> toSave = new ArrayList<>();
         List<Long> toDelete = new ArrayList<>();
+        List<LogRequestDto<GlobalTaxPeriodStockDtlEntity>> logRequests = new ArrayList<>();
 
         // Group operations by action
         for (TaxPeriodStockDtlRequestDto stock : stocks) {
@@ -550,6 +566,9 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
                             .findByTransactionPoidAndDetRowId(transactionPoid, stock.getDetRowId())
                             .orElseThrow(() -> new ResourceNotFoundException("Stock not found", "detRowId", stock.getDetRowId()));
                     
+                    GlobalTaxPeriodStockDtlEntity oldStock = new GlobalTaxPeriodStockDtlEntity();
+                    BeanUtils.copyProperties(existingStock, oldStock);
+                    
                     existingStock.setStockPoid(stock.getStockPoid());
                     existingStock.setStockCatPoid(stock.getStockCatPoid());
                     existingStock.setTaxPoid(stock.getOutputTaxPoid());
@@ -558,6 +577,9 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
                     existingStock.setLastModifiedBy(currentUser);
                     existingStock.setLastModifiedDate(now);
                     toSave.add(existingStock);
+                    
+                    String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s",oldStock.getTransactionPoid() ,stock.getDetRowId());
+                    logRequests.add(new LogRequestDto<>(oldStock, existingStock, GlobalTaxPeriodStockDtlEntity.class, docId, docKeyPoid, logDetail));
                     break;
                     
                 case "ISDELETED":
@@ -572,6 +594,9 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
         }
         if (!toDelete.isEmpty()) {
             globalTaxPeriodStockDtlRepository.deleteByTransactionPoidAndDetRowIdIn(transactionPoid, toDelete);
+        }
+        if (!logRequests.isEmpty()) {
+            loggingService.createLogBatch(logRequests);
         }
     }
 

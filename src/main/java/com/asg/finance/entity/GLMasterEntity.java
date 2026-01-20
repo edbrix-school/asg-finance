@@ -1,4 +1,5 @@
 package com.asg.finance.entity;
+import com.asg.common.lib.annotation.AuditIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -18,12 +19,15 @@ public class GLMasterEntity {
     @Id
     @Column(name = "GL_POID")
     @GeneratedValue(strategy = GenerationType.IDENTITY) // or appropriate strategy
+    @AuditIgnore
     private Long glPoid;
 
     @Column(name = "GROUP_POID")
+    @AuditIgnore
     private Long groupPoid;
 
     @Column(name = "GL_CODE", unique = true)
+    @AuditIgnore
     private String glCode;
 
     @Column(name = "GL_DESCRIPTION")
@@ -69,6 +73,7 @@ public class GLMasterEntity {
     private String billWiseFlag;
 
     @Column(name = "DELETED", length = 1)
+    @AuditIgnore
     private String deletedFlag = "N";  // default 'N'
 
     // KeyFavorite is not in DB — maybe in a separate flag or virtual; include if needed
@@ -83,31 +88,44 @@ public class GLMasterEntity {
 
     // audit fields
     @Column(name = "CREATED_BY")
+    @AuditIgnore
     private String createdBy;
+
     @Column(name = "CREATED_DATE")
+    @AuditIgnore
     private LocalDateTime createdDate;
+
     @Column(name = "LASTMODIFIED_BY")
+    @AuditIgnore
     private String lastModifiedBy;
+
     @Column(name = "LASTMODIFIED_DATE")
+    @AuditIgnore
     private LocalDateTime lastModifiedDate;
 
     // Additional fields from the original GLMaster
     @Column(name = "GROUP_CODE_OLD", length = 20)
+    @AuditIgnore
     private String groupCodeOld;
 
     @Column(name = "AMOUNT_LIMIT")
+    @AuditIgnore
     private Double amountLimit;
 
     @Column(name = "AMOUNT_ROL")
+    @AuditIgnore
     private Double amountRol;
 
     @Column(name = "OLD_ORGCODE", length = 50)
+    @AuditIgnore
     private String oldOrgCode;
 
     @Column(name = "OLD_ORIGINAL_CODE", length = 20)
+    @AuditIgnore
     private String oldOriginalCode;
 
     @Column(name = "OLD_MOD_CODE", length = 20)
+    @AuditIgnore
     private String oldModCode;
 
     // Helper methods for boolean conversions

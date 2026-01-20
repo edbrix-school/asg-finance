@@ -1,6 +1,7 @@
 package com.asg.finance.entity;
 
 
+import com.asg.common.lib.annotation.AuditIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,10 +21,12 @@ import java.time.LocalDateTime;
 public class GlobalTaxPeriodStockDtlEntity {
     @Id
     @Column(name = "TRANSACTION_POID")
+    @AuditIgnore
     private Long transactionPoid;
 
     @Id
     @Column(name = "DET_ROW_ID")
+    @AuditIgnore
     private Long detRowId;
 
     @Column(name = "STOCK_POID")
@@ -39,15 +42,19 @@ public class GlobalTaxPeriodStockDtlEntity {
     private String remarks;
 
     @Column(name = "CREATED_BY", length = 20)
+    @AuditIgnore
     private String createdBy;
 
     @Column(name = "CREATED_DATE")
+    @AuditIgnore
     private LocalDateTime createdDate;
 
     @Column(name = "LASTMODIFIED_BY", length = 20)
+    @AuditIgnore
     private String lastModifiedBy;
 
     @Column(name = "LASTMODIFIED_DATE")
+    @AuditIgnore
     private LocalDateTime lastModifiedDate;
 
     @Column(name = "INPUT_TAX_POID")

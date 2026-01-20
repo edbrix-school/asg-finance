@@ -111,9 +111,9 @@ public class SupplierCategoryServiceImpl implements SupplierCategoryService {
         if (StringUtils.isNotBlank(supplierCategoryDto.getSupplierCategoryName())) {
             entity.setSupplierCategoryName(supplierCategoryDto.getSupplierCategoryName());
         }
-        if (StringUtils.isNotBlank(supplierCategoryDto.getSupplierCategoryName2())) {
-            entity.setSupplierCategoryName2(supplierCategoryDto.getSupplierCategoryName2());
-        }
+
+        entity.setSupplierCategoryName2(supplierCategoryDto.getSupplierCategoryName2());
+
         if (StringUtils.isNotBlank(supplierCategoryDto.getSeqNo())) {
 
             String seq = supplierCategoryDto.getSeqNo().trim();
@@ -123,7 +123,10 @@ public class SupplierCategoryServiceImpl implements SupplierCategoryService {
             }
 
             entity.setSequenceNumber(Integer.valueOf(seq));
+        } else {
+            entity.setSequenceNumber(null);
         }
+
         entity.setActive(StringUtils.isNotBlank(supplierCategoryDto.getActive()) ? supplierCategoryDto.getActive() : "Y");
 
 

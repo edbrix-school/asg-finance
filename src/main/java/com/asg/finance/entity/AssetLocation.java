@@ -24,7 +24,6 @@ public class AssetLocation {
     private Long locationPoid;
 
     @Column(name = "LOCATION_CODE", nullable = false, unique = true)
-    @AuditIgnore
     private String locationCode;
 
     @Column(name = "DESCRIPTION", nullable = false, unique = true)

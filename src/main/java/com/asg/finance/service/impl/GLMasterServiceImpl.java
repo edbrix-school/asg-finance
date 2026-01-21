@@ -3,6 +3,7 @@ package com.asg.finance.service.impl;
 import com.asg.common.lib.dto.*;
 
 import com.asg.common.lib.dto.request.DocReleaseLockRequestDto;
+import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
@@ -1032,9 +1033,12 @@ public class GLMasterServiceImpl implements GLMasterService {
     public void updateGlPaymentDetails(List<PaymentDetailsDto> paymentDetails, Long glPoid) {
         String currentUser = getCurrentUser();
         LocalDateTime now = LocalDateTime.now();
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = glPoid.toString();
 
         List<GLPaymentDetailsEntity> toSave = new ArrayList<>();
         List<Long> toDelete = new ArrayList<>();
+        List<LogRequestDto<GLPaymentDetailsEntity>> logRequests = new ArrayList<>();
 
         // Group operations by action
         for (PaymentDetailsDto charge : paymentDetails) {
@@ -1075,6 +1079,10 @@ public class GLMasterServiceImpl implements GLMasterService {
                     GLPaymentDetailsEntity existingCharge = payDtlRepo
                             .findByGlPoidAndId(glPoid, charge.getDetRowId())
                             .orElseThrow(() -> new ResourceNotFoundException("Payment not found", "detRowId", charge.getDetRowId()));
+                    
+                    GLPaymentDetailsEntity oldCharge = new GLPaymentDetailsEntity();
+                    BeanUtils.copyProperties(existingCharge, oldCharge);
+                    
                     existingCharge.setType(charge.getType());
                     existingCharge.setBeneficiaryName(charge.getBeneficiaryName());
                     existingCharge.setAddress(charge.getAddress());
@@ -1093,6 +1101,9 @@ public class GLMasterServiceImpl implements GLMasterService {
                     existingCharge.setLastModifiedBy(currentUser);
                     existingCharge.setLastModifiedDate(now);
                     toSave.add(existingCharge);
+                    
+                    String logDetail = String.format("KeyId = GL_POID:%s DET_ROW_ID:%s", oldCharge.getGlPoid() ,charge.getDetRowId());
+                    logRequests.add(new LogRequestDto<>(oldCharge, existingCharge, GLPaymentDetailsEntity.class, docId, docKeyPoid, logDetail));
                     break;
 
                 case "ISDELETED":
@@ -1122,14 +1133,20 @@ public class GLMasterServiceImpl implements GLMasterService {
         if (!toDelete.isEmpty()) {
             payDtlRepo.deleteByGlPoidAndIdIn(glPoid, toDelete);
         }
+        if (!logRequests.isEmpty()) {
+            loggingService.createLogBatch(logRequests);
+        }
     }
 
     public void updateGlCompanyDetails(List<CompanyDetailsDto> companyDetails, Long glPoid) {
         String currentUser = getCurrentUser();
         LocalDateTime now = LocalDateTime.now();
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = glPoid.toString();
 
         List<GLMasterCompanyDtlEntity> toSave = new ArrayList<>();
         List<Long> toDelete = new ArrayList<>();
+        List<LogRequestDto<GLMasterCompanyDtlEntity>> logRequests = new ArrayList<>();
 
         // Group operations by action
         for (CompanyDetailsDto charge : companyDetails) {
@@ -1157,11 +1174,18 @@ public class GLMasterServiceImpl implements GLMasterService {
                     GLMasterCompanyDtlEntity existingCharge = companyDtlRepo
                             .findByGlPoidAndId(glPoid, charge.getDetRowId())
                             .orElseThrow(() -> new ResourceNotFoundException("Company not found", "detRowId", charge.getDetRowId()));
+                    
+                    GLMasterCompanyDtlEntity oldCharge = new GLMasterCompanyDtlEntity();
+                    BeanUtils.copyProperties(existingCharge, oldCharge);
+                    
                     existingCharge.setCompanyPoid(charge.getCompanyPoid());
                     existingCharge.setRemarks(charge.getRemarks());
                     existingCharge.setLastModifiedBy(currentUser);
                     existingCharge.setLastModifiedDate(now);
                     toSave.add(existingCharge);
+                    
+                    String logDetail = String.format("KeyId = GL_POID:%s DET_ROW_ID:%s", oldCharge.getGlPoid(), charge.getDetRowId());
+                    logRequests.add(new LogRequestDto<>(oldCharge, existingCharge, GLMasterCompanyDtlEntity.class, docId, docKeyPoid, logDetail));
                     break;
 
                 case "ISDELETED":
@@ -1188,6 +1212,9 @@ public class GLMasterServiceImpl implements GLMasterService {
         }
         if (!toDelete.isEmpty()) {
             companyDtlRepo.deleteByGlPoidAndIdIn(glPoid, toDelete);
+        }
+        if (!logRequests.isEmpty()) {
+            loggingService.createLogBatch(logRequests);
         }
     }
 

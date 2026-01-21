@@ -1,5 +1,6 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.annotation.AuditIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
@@ -19,6 +20,7 @@ public class BankPayee {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "PAYING_POID", nullable = false)
+    @AuditIgnore
     private Long payingPoid;
 
     @Column(name = "PAYING_NAME", nullable = false, length = 300)
@@ -30,6 +32,7 @@ public class BankPayee {
     private String payingName2;
 
     @Column(name = "PAY_GL_POID")
+    @AuditIgnore
     private Long payGlPoid;
 
     @Column(name = "REMARKS", length = 500)
@@ -42,6 +45,7 @@ public class BankPayee {
 
     @Column(name = "DELETED")
     @Pattern(regexp = YES_NO_FLAG_REGEX, message = "Deleted flag must be 'Y' or 'N'")
+    @AuditIgnore
     private String deleted;
 
     @Column(name = "SEQNO", precision = 5, scale = 0)
@@ -50,15 +54,19 @@ public class BankPayee {
     private Integer seqNo;
 
     @Column(name = "CREATED_BY")
+    @AuditIgnore
     private String createdBy;
 
     @Column(name = "CREATED_DATE")
+    @AuditIgnore
     private LocalDateTime createdDate;
 
     @Column(name = "LASTMODIFIED_BY")
+    @AuditIgnore
     private String lastModifiedBy;
 
     @Column(name = "LASTMODIFIED_DATE")
+    @AuditIgnore
     private LocalDateTime lastModifiedDate;
 
     @PrePersist

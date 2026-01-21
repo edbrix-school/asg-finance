@@ -1,5 +1,6 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.annotation.AuditIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -14,9 +15,11 @@ public class PropertyCostCenter {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "PROPERTY_COST_CENTER_POID")
+    @AuditIgnore
     private Long propertyCostCenterPoid;
 
     @Column(name = "PROPERTY_COST_CENTER_CODE")
+    @AuditIgnore
     private String propertyCostCenterCode;  // DB Trigger will generate this value
 
     @Column(name = "PROPERTY_COST_CENTER_NAME")
@@ -44,20 +47,25 @@ public class PropertyCostCenter {
     private String active;
 
     @Column(name = "DELETED")
+    @AuditIgnore
     private String deleted;
 
     @Column(name = "SEQNO")
     private Integer seqNo;
 
     @Column(name = "CREATED_BY")
+    @AuditIgnore
     private String createdBy;
 
     @Column(name = "CREATED_DATE")
+    @AuditIgnore
     private LocalDateTime createdDate;
 
     @Column(name = "LASTMODIFIED_BY")
+    @AuditIgnore
     private String lastModifiedBy;
 
     @Column(name = "LASTMODIFIED_DATE")
+    @AuditIgnore
     private LocalDateTime lastModifiedDate;
 }

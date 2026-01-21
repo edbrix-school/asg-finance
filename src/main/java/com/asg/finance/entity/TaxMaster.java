@@ -1,5 +1,6 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.annotation.AuditIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,6 +19,7 @@ public class TaxMaster {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "TAX_POID")
+    @AuditIgnore
     private Long taxPoid;
 
     @Column(name = "TAX_CODE",nullable = false, unique = true, length = 50)
@@ -45,27 +47,33 @@ public class TaxMaster {
     private String taxCategory;
 
     @Column(name = "GROUP_POID")
+    @AuditIgnore
     private Long groupPoid;
 
     @Column(name = "ACTIVE",length = 1)
     private String active;
 
     @Column(name = "DELETED", length = 1)
+    @AuditIgnore
     private String deleted="N";
 
     @Column(name = "SEQNO")
     private Integer seqNo;
 
     @Column(name = "CREATED_BY")
+    @AuditIgnore
     private String createdBy;
 
     @Column(name = "CREATED_DATE")
+    @AuditIgnore
     private LocalDateTime createdDate;
 
     @Column(name = "LASTMODIFIED_BY")
+    @AuditIgnore
     private String lastModifiedBy;
 
     @Column(name = "LASTMODIFIED_DATE")
+    @AuditIgnore
     private LocalDateTime lastModifiedDate;
 
 

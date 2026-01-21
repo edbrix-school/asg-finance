@@ -1,6 +1,7 @@
 package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.response.AddressMasterResponse;
+import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.exception.AsgException;
 import com.asg.common.lib.exception.ResourceAlreadyExistsException;
 import com.asg.common.lib.exception.ResourceNotFoundException;
@@ -833,8 +834,11 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
     private void processPaymentDtl(Long supplierPoid, List<SupplierMasterPaymentDtlDto> paymentDtlList) {
         List<SupplierMasterPaymentDtlEntity> entitiesToDelete = new ArrayList<>();
         List<SupplierMasterPaymentDtlEntity> entitiesToSave = new ArrayList<>();
+        List<LogRequestDto<SupplierMasterPaymentDtlEntity>> logRequests = new ArrayList<>();
         String currentUser = ASGHelperUtils.getCurrentUser();
         LocalDateTime now = LocalDateTime.now();
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = supplierPoid.toString();
 
         for (SupplierMasterPaymentDtlDto paymentDto : paymentDtlList) {
             String actionType = StringUtils.isBlank(paymentDto.getActionType()) ? null : paymentDto.getActionType();
@@ -874,10 +878,16 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                     if (paymentDto.getDetRowId() != null) {
                         SupplierMasterPaymentDtlEntity entity = supplierMasterPaymentDtlRepository.findBySupplierPoidAndDetRowId(supplierPoid, paymentDto.getDetRowId());
                         if (entity != null) {
+                            SupplierMasterPaymentDtlEntity oldEntity = new SupplierMasterPaymentDtlEntity();
+                            BeanUtils.copyProperties(entity, oldEntity);
+                            
                             BeanUtils.copyProperties(paymentDto, entity);
                             entity.setLastModifiedBy(currentUser);
                             entity.setLastModifiedDate(now);
                             entitiesToSave.add(entity);
+                            
+                            String logDetail = String.format("KeyId = SUPPLIER_POID:%s DET_ROW_ID:%s", oldEntity.getId().getSupplierPoid() ,paymentDto.getDetRowId());
+                            logRequests.add(new LogRequestDto<>(oldEntity, entity, SupplierMasterPaymentDtlEntity.class, docId, docKeyPoid, logDetail));
                         } else {
                             // Entity not found, treat as create
                             SupplierMasterPaymentDtlEntity newEntity = new SupplierMasterPaymentDtlEntity();
@@ -906,13 +916,21 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
         if (!entitiesToSave.isEmpty()) {
             supplierMasterPaymentDtlRepository.saveAll(entitiesToSave);
         }
+        
+        // Batch log operations
+        if (!logRequests.isEmpty()) {
+            loggingService.createLogBatch(logRequests);
+        }
     }
 
     private void processManagementDtl(Long supplierPoid, List<SupplierMasterManagementDtlDto> managementDtlList) {
         List<SupplierMasterManagementDtlEntity> entitiesToDelete = new ArrayList<>();
         List<SupplierMasterManagementDtlEntity> entitiesToSave = new ArrayList<>();
+        List<LogRequestDto<SupplierMasterManagementDtlEntity>> logRequests = new ArrayList<>();
         String currentUser = ASGHelperUtils.getCurrentUser();
         LocalDateTime now = LocalDateTime.now();
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = supplierPoid.toString();
 
         for (SupplierMasterManagementDtlDto managementDto : managementDtlList) {
             String actionType = StringUtils.isBlank(managementDto.getActionType()) ? null : managementDto.getActionType();
@@ -952,10 +970,16 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                     if (managementDto.getDetRowId() != null) {
                         SupplierMasterManagementDtlEntity entity = supplierMasterMangementDtlRepository.findBySupplierPoidAndDetRowId(supplierPoid, managementDto.getDetRowId());
                         if (entity != null) {
+                            SupplierMasterManagementDtlEntity oldEntity = new SupplierMasterManagementDtlEntity();
+                            BeanUtils.copyProperties(entity, oldEntity);
+                            
                             BeanUtils.copyProperties(managementDto, entity);
                             entity.setLastModifiedBy(currentUser);
                             entity.setLastModifiedDate(now);
                             entitiesToSave.add(entity);
+                            
+                            String logDetail = String.format("KeyId =SUPPLIER_POID:%s DET_ROW_ID:%s", managementDto.getSupplierPoid() ,managementDto.getDetRowId());
+                            logRequests.add(new LogRequestDto<>(oldEntity, entity, SupplierMasterManagementDtlEntity.class, docId, docKeyPoid, logDetail));
                         } else {
                             // Entity not found, treat as create
                             SupplierMasterManagementDtlEntity newEntity = new SupplierMasterManagementDtlEntity();
@@ -984,13 +1008,21 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
         if (!entitiesToSave.isEmpty()) {
             supplierMasterMangementDtlRepository.saveAll(entitiesToSave);
         }
+        
+        // Batch log operations
+        if (!logRequests.isEmpty()) {
+            loggingService.createLogBatch(logRequests);
+        }
     }
 
     private void processServiceDtl(Long supplierPoid, List<SupplierMasterServiceDtlDto> serviceDtlList) {
         List<SupplierMasterServiceDtlEntity> entitiesToDelete = new ArrayList<>();
         List<SupplierMasterServiceDtlEntity> entitiesToSave = new ArrayList<>();
+        List<LogRequestDto<SupplierMasterServiceDtlEntity>> logRequests = new ArrayList<>();
         String currentUser = ASGHelperUtils.getCurrentUser();
         LocalDateTime now = LocalDateTime.now();
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = supplierPoid.toString();
 
         for (SupplierMasterServiceDtlDto serviceDto : serviceDtlList) {
             // Validate servicePoid exists
@@ -1036,10 +1068,16 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                     if (serviceDto.getDetRowId() != null) {
                         SupplierMasterServiceDtlEntity entity = supplierMasterServiceDtlRepository.findBySupplierPoidAndDetRowId(supplierPoid, serviceDto.getDetRowId());
                         if (entity != null) {
+                            SupplierMasterServiceDtlEntity oldEntity = new SupplierMasterServiceDtlEntity();
+                            BeanUtils.copyProperties(entity, oldEntity);
+                            
                             BeanUtils.copyProperties(serviceDto, entity);
                             entity.setLastModifiedBy(currentUser);
                             entity.setLastModifiedDate(now);
                             entitiesToSave.add(entity);
+                            
+                            String logDetail = String.format("KeyId =SUPPLIER_POID:%s DET_ROW_ID:%s", oldEntity.getServicePoid(), serviceDto.getDetRowId());
+                            logRequests.add(new LogRequestDto<>(oldEntity, entity, SupplierMasterServiceDtlEntity.class, docId, docKeyPoid, logDetail));
                         } else {
                             // Entity not found, treat as create
                             SupplierMasterServiceDtlEntity newEntity = new SupplierMasterServiceDtlEntity();
@@ -1068,13 +1106,21 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
         if (!entitiesToSave.isEmpty()) {
             supplierMasterServiceDtlRepository.saveAll(entitiesToSave);
         }
+        
+        // Batch log operations
+        if (!logRequests.isEmpty()) {
+            loggingService.createLogBatch(logRequests);
+        }
     }
 
     private void processQuestionaries(Long supplierPoid, List<SupplierMasterQstnDtlDto> questionariesList) {
         List<SupplierMasterQstnDtlEntity> entitiesToDelete = new ArrayList<>();
         List<SupplierMasterQstnDtlEntity> entitiesToSave = new ArrayList<>();
+        List<LogRequestDto<SupplierMasterQstnDtlEntity>> logRequests = new ArrayList<>();
         String currentUser = ASGHelperUtils.getCurrentUser();
         LocalDateTime now = LocalDateTime.now();
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = supplierPoid.toString();
 
         for (SupplierMasterQstnDtlDto qstnDto : questionariesList) {
             String actionType = StringUtils.isBlank(qstnDto.getActionType()) ? null : qstnDto.getActionType();
@@ -1114,10 +1160,16 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                     if (qstnDto.getDetRowId() != null) {
                         SupplierMasterQstnDtlEntity entity = supplierMasterQstnDtlRepository.findBySupplierPoidAndDetRowId(supplierPoid, qstnDto.getDetRowId());
                         if (entity != null) {
+                            SupplierMasterQstnDtlEntity oldEntity = new SupplierMasterQstnDtlEntity();
+                            BeanUtils.copyProperties(entity, oldEntity);
+                            
                             BeanUtils.copyProperties(qstnDto, entity);
                             entity.setLastModifiedBy(currentUser);
                             entity.setLastModifiedDate(now);
                             entitiesToSave.add(entity);
+                            
+                            String logDetail = String.format("KeyId =SUPPLIER_POID:%s DET_ROW_ID:%s", oldEntity.getId().getSupplierPoid(), qstnDto.getDetRowId());
+                            logRequests.add(new LogRequestDto<>(oldEntity, entity, SupplierMasterQstnDtlEntity.class, docId, docKeyPoid, logDetail));
                         } else {
                             // Entity not found, treat as create
                             SupplierMasterQstnDtlEntity newEntity = new SupplierMasterQstnDtlEntity();
@@ -1145,6 +1197,11 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
         // Batch save operations
         if (!entitiesToSave.isEmpty()) {
             supplierMasterQstnDtlRepository.saveAll(entitiesToSave);
+        }
+        
+        // Batch log operations
+        if (!logRequests.isEmpty()) {
+            loggingService.createLogBatch(logRequests);
         }
     }
     private void callSupplierValidationProcedure(Long groupPoid, Long companyPoid, Long userPoid, String active, Long supplierPoid) {

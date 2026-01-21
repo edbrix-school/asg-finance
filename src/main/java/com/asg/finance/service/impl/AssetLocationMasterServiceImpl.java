@@ -134,7 +134,7 @@ public class AssetLocationMasterServiceImpl implements AssetLocationMasterServic
 
         documentDeleteService.deleteDocument(
                 locationPoid,
-                "ASSET_LOCATION_MASTER",
+                "FIXED_ASSET_LOCN_MASTER",
                 "LOCATION_POID",
                 deleteReasonDto,
                 null

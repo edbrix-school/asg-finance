@@ -18,6 +18,7 @@ import com.asg.finance.service.TaxMasterService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -194,7 +195,7 @@ public class TaxMasterServiceImpl implements TaxMasterService {
                 "GLOBAL_TAX_MASTER",
                 "TAX_POID",
                 deleteReasonDto,
-                existingTaxRecord.getCreatedDate().toLocalDate()
+                ObjectUtils.isNotEmpty(existingTaxRecord.getCreatedDate()) ? existingTaxRecord.getCreatedDate().toLocalDate() : null
         );
     }
 

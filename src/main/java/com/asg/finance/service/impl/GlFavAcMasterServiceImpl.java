@@ -509,23 +509,15 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
             return;
         }
         
-        try {
-            List<RoleDto> userRoles = roleServiceClient.findByUserRolePoidIn(userRolePoids);
-            Set<Long> existingRoleIds = userRoles.stream()
-                    .map(RoleDto::getUserRolePoid)
-                    .collect(Collectors.toSet());
+        List<RoleDto> userRoles = roleServiceClient.findByUserRolePoidIn(userRolePoids);
+        Set<Long> existingRoleIds = userRoles.stream()
+                .map(RoleDto::getUserRolePoid)
+                .collect(Collectors.toSet());
 
-            for (Long userRolePoid : userRolePoids) {
-                if (!existingRoleIds.contains(userRolePoid)) {
-                    throw new ValidationException("User Role does not exist: " + userRolePoid);
-                }
+        for (Long userRolePoid : userRolePoids) {
+            if (!existingRoleIds.contains(userRolePoid)) {
+                throw new ValidationException("User Role does not exist: " + userRolePoid);
             }
-        } catch (Exception e) {
-            // Log the error but don't fail the operation if Role Service is unavailable
-            // This allows the system to work even if external services are down
-            log.warn("Unable to validate user roles - Role Service may be unavailable: {}", e.getMessage());
-            // Optionally, you can uncomment the line below to fail fast when service is unavailable
-            // throw new ValidationException("User Role validation service is unavailable. Please try again later.");
         }
     }
 

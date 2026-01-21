@@ -63,6 +63,8 @@ public class BankPayeeServiceImpl implements IBankPayeeService {
         payee.setActive(request.getActive() != null ? request.getActive() : "N");
         payee.setDeleted("N");
         payee.setSeqNo(request.getSeqNo());
+        payee.setCreatedBy(ASGHelperUtils.getCurrentUser());
+        payee.setCreatedDate(LocalDateTime.now());
 
         BankPayee saved = repository.save(payee);
 
@@ -77,6 +79,8 @@ public class BankPayeeServiceImpl implements IBankPayeeService {
         response.setRemarks(saved.getRemarks());
         response.setActive(saved.getActive());
         response.setSeqNo(saved.getSeqNo());
+        response.setCreatedBy(saved.getCreatedBy());
+        response.setCreatedDate(saved.getCreatedDate());
 
         return response;
     }
@@ -91,6 +95,8 @@ public class BankPayeeServiceImpl implements IBankPayeeService {
         response.setRemarks(payee.getRemarks());
         response.setActive(payee.getActive());
         response.setSeqNo(payee.getSeqNo());
+        response.setCreatedBy(payee.getCreatedBy());
+        response.setCreatedDate(payee.getCreatedDate());
         return response;
     }
 
@@ -127,13 +133,10 @@ public class BankPayeeServiceImpl implements IBankPayeeService {
             entity.setPayingName(request.getPayingName());
         }
 
-        if (request.getPayingName2() != null) {
-            entity.setPayingName2(request.getPayingName2());
-        }
+        entity.setPayingName2(request.getPayingName2());
 
-        if (request.getRemarks() != null) {
-            entity.setRemarks(request.getRemarks());
-        }
+        entity.setRemarks(request.getRemarks());
+
 
         if (request.getActive() != null) {
             if (!request.getActive().matches("Y|N")) {
@@ -141,9 +144,9 @@ public class BankPayeeServiceImpl implements IBankPayeeService {
             }
             entity.setActive(request.getActive());
         }
-        if (request.getSeqNo() != null) {
-            entity.setSeqNo(request.getSeqNo());
-        }
+
+        entity.setSeqNo(request.getSeqNo());
+
         entity.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
         entity.setLastModifiedDate(LocalDateTime.now());
 
@@ -162,6 +165,8 @@ public class BankPayeeServiceImpl implements IBankPayeeService {
         response.setActive(entity.getActive());
         response.setActive("Y".equalsIgnoreCase(entity.getActive()) ? "Y" : "N");
         response.setSeqNo(entity.getSeqNo());
+        response.setCreatedBy(entity.getCreatedBy());
+        response.setCreatedDate(entity.getCreatedDate());
 
         return response;
     }

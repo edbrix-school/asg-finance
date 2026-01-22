@@ -4,6 +4,7 @@ import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
+import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceAlreadyExistsException;
 import com.asg.common.lib.exception.ResourceNotFoundException;
@@ -245,13 +246,14 @@ public class GlBankServiceImpl implements GlBankService {
         List<GlBankChequeDtlEntity> entitiesToDelete = new ArrayList<>();
         List<GlBankChequeDtlEntity> entitiesToSave = new ArrayList<>();
         List<GlBankChequeDtlEntity> savedEntities = new ArrayList<>();
+        List<LogRequestDto<GlBankChequeDtlEntity>> logRequests = new ArrayList<>();
 
         for (GlBankChequeDtlDto dto : glBankChequeDtlDtoList) {
             String action = StringUtils.isBlank(dto.getActionType()) ? "" : dto.getActionType().toLowerCase();
 
             switch (action) {
                 case "isdeleted" -> handleDeleteActionForChequeDetails(bankPoid, dto, entitiesToDelete);
-                case "iscreated", "isupdated" -> handleCreateOrUpdateChequeDetails(bankPoid, dto, entitiesToSave);
+                case "iscreated", "isupdated" -> handleCreateOrUpdateChequeDetails(bankPoid, dto, entitiesToSave, logRequests);
                 default ->
                         log.warn("Unknown or missing actionType '{}' for cheque detail with detRowId={}", dto.getActionType(), dto.getDetRowId());
             }
@@ -261,6 +263,9 @@ public class GlBankServiceImpl implements GlBankService {
         }
         if (!entitiesToSave.isEmpty()) {
             savedEntities = chequeDtlRepository.saveAll(entitiesToSave);
+        }
+        if (!logRequests.isEmpty()) {
+            loggingService.createLogBatch(logRequests);
         }
         return savedEntities;
     }
@@ -274,11 +279,17 @@ public class GlBankServiceImpl implements GlBankService {
         }
     }
 
-    private void handleCreateOrUpdateChequeDetails(Long bankPoid, GlBankChequeDtlDto glBankChequeDtlDto, List<GlBankChequeDtlEntity> entitiesToSave) {
+    private void handleCreateOrUpdateChequeDetails(Long bankPoid, GlBankChequeDtlDto glBankChequeDtlDto, List<GlBankChequeDtlEntity> entitiesToSave, List<LogRequestDto<GlBankChequeDtlEntity>> logRequests) {
         if (glBankChequeDtlDto.getDetRowId() != null) {
             chequeDtlRepository.findByBankPoidAndDetRowId(bankPoid, glBankChequeDtlDto.getDetRowId())
                     .ifPresentOrElse(
-                            existingEntity -> updateExistingGlBankChequeDtlEntity(existingEntity, glBankChequeDtlDto, entitiesToSave),
+                            existingEntity -> {
+                                GlBankChequeDtlEntity oldEntity = new GlBankChequeDtlEntity();
+                                BeanUtils.copyProperties(existingEntity, oldEntity);
+                                updateExistingGlBankChequeDtlEntity(existingEntity, glBankChequeDtlDto, entitiesToSave);
+                                logRequests.add(new LogRequestDto<>(oldEntity, existingEntity, GlBankChequeDtlEntity.class, 
+                                    UserContext.getDocumentId(), bankPoid.toString(), String.format( "KeyId = BANK_POID:%s DET_ROW_ID:%s", oldEntity.getBankPoid(), glBankChequeDtlDto.getDetRowId())));
+                            },
                             () -> createNewGlBankChequeDtlEntity(bankPoid, glBankChequeDtlDto, entitiesToSave)
                     );
         } else {
@@ -330,13 +341,14 @@ public class GlBankServiceImpl implements GlBankService {
         List<GlBankCommissionDtlEntity> entitiesToDelete = new ArrayList<>();
         List<GlBankCommissionDtlEntity> entitiesToSave = new ArrayList<>();
         List<GlBankCommissionDtlEntity> savedEntities = new ArrayList<>();
+        List<LogRequestDto<GlBankCommissionDtlEntity>> logRequests = new ArrayList<>();
 
         for (GlBankCommissionDtlDto dto : glBankCommissionDtlDtoList) {
             String action = StringUtils.isBlank(dto.getActionType()) ? "" : dto.getActionType().toLowerCase();
 
             switch (action) {
                 case "isdeleted" -> handleDeleteActionForCommissionDetails(bankPoid, dto, entitiesToDelete);
-                case "iscreated", "isupdated" -> handleCreateOrUpdateCommissionDetails(bankPoid, dto, entitiesToSave);
+                case "iscreated", "isupdated" -> handleCreateOrUpdateCommissionDetails(bankPoid, dto, entitiesToSave, logRequests);
                 default ->
                         log.warn("Unknown or missing actionType '{}' for commission detail with detRowId={}", dto.getActionType(), dto.getDetRowId());
             }
@@ -346,6 +358,9 @@ public class GlBankServiceImpl implements GlBankService {
         }
         if (!entitiesToSave.isEmpty()) {
             savedEntities = commissionDtlRepository.saveAll(entitiesToSave);
+        }
+        if (!logRequests.isEmpty()) {
+            loggingService.createLogBatch(logRequests);
         }
         return savedEntities;
     }
@@ -360,11 +375,17 @@ public class GlBankServiceImpl implements GlBankService {
     }
 
 
-    private void handleCreateOrUpdateCommissionDetails(Long bankPoid, GlBankCommissionDtlDto glBankCommissionDtlDto, List<GlBankCommissionDtlEntity> entitiesToSave) {
+    private void handleCreateOrUpdateCommissionDetails(Long bankPoid, GlBankCommissionDtlDto glBankCommissionDtlDto, List<GlBankCommissionDtlEntity> entitiesToSave, List<LogRequestDto<GlBankCommissionDtlEntity>> logRequests) {
         if (glBankCommissionDtlDto.getDetRowId() != null) {
             commissionDtlRepository.findByBankPoidAndDetRowId(bankPoid, glBankCommissionDtlDto.getDetRowId())
                     .ifPresentOrElse(
-                            existingEntity -> updateExistingGlBankCommissionDtlEntity(existingEntity, glBankCommissionDtlDto, entitiesToSave),
+                            existingEntity -> {
+                                GlBankCommissionDtlEntity oldEntity = new GlBankCommissionDtlEntity();
+                                BeanUtils.copyProperties(existingEntity, oldEntity);
+                                updateExistingGlBankCommissionDtlEntity(existingEntity, glBankCommissionDtlDto, entitiesToSave);
+                                logRequests.add(new LogRequestDto<>(oldEntity, existingEntity, GlBankCommissionDtlEntity.class, 
+                                    UserContext.getDocumentId(), bankPoid.toString(), String.format( "KeyId = BANK_POID:%s DET_ROW_ID:%s", oldEntity.getBankPoid(), glBankCommissionDtlDto.getDetRowId())));
+                            },
                             () -> createNewGlBankCommissionDtlEntity(bankPoid, glBankCommissionDtlDto, entitiesToSave)
                     );
         } else {

@@ -840,6 +840,9 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
         String docId = UserContext.getDocumentId();
         String docKeyPoid = supplierPoid.toString();
 
+        // Get the starting detRowId for new records to avoid conflicts when creating multiple records
+        Long nextDetRowId = getNextDetRowIdForPaymentDtl(supplierPoid);
+
         for (SupplierMasterPaymentDtlDto paymentDto : paymentDtlList) {
             String actionType = StringUtils.isBlank(paymentDto.getActionType()) ? null : paymentDto.getActionType();
 
@@ -866,7 +869,7 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                     BeanUtils.copyProperties(paymentDto, newEntity);
                     SupplierPaymentDetailId id = new SupplierPaymentDetailId();
                     id.setSupplierPoid(supplierPoid);
-                    id.setDetRowId(getNextDetRowIdForPaymentDtl(supplierPoid));
+                    id.setDetRowId(nextDetRowId++);
                     newEntity.setId(id);
                     newEntity.setCreatedBy(currentUser);
                     newEntity.setCreatedDate(now);
@@ -889,12 +892,12 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                             String logDetail = String.format("KeyId = SUPPLIER_POID:%s DET_ROW_ID:%s", oldEntity.getId().getSupplierPoid() ,paymentDto.getDetRowId());
                             logRequests.add(new LogRequestDto<>(oldEntity, entity, SupplierMasterPaymentDtlEntity.class, docId, docKeyPoid, logDetail));
                         } else {
-                            // Entity not found, treat as create
+                            // Entity not found, treat as create - use nextDetRowId to avoid conflicts
                             SupplierMasterPaymentDtlEntity newEntity = new SupplierMasterPaymentDtlEntity();
                             BeanUtils.copyProperties(paymentDto, newEntity);
                             SupplierPaymentDetailId id = new SupplierPaymentDetailId();
                             id.setSupplierPoid(supplierPoid);
-                            id.setDetRowId(paymentDto.getDetRowId());
+                            id.setDetRowId(nextDetRowId++);
                             newEntity.setId(id);
                             newEntity.setCreatedBy(currentUser);
                             newEntity.setCreatedDate(now);
@@ -915,6 +918,7 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
         // Batch save operations
         if (!entitiesToSave.isEmpty()) {
             supplierMasterPaymentDtlRepository.saveAll(entitiesToSave);
+            entityManager.flush(); // Flush to ensure detRowIds are persisted before next batch
         }
         
         // Batch log operations
@@ -931,6 +935,9 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
         LocalDateTime now = LocalDateTime.now();
         String docId = UserContext.getDocumentId();
         String docKeyPoid = supplierPoid.toString();
+
+        // Get the starting detRowId for new records to avoid conflicts when creating multiple records
+        Long nextDetRowId = getNextDetRowIdForManagementDtl(supplierPoid);
 
         for (SupplierMasterManagementDtlDto managementDto : managementDtlList) {
             String actionType = StringUtils.isBlank(managementDto.getActionType()) ? null : managementDto.getActionType();
@@ -958,7 +965,7 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                     BeanUtils.copyProperties(managementDto, newEntity);
                     SupplierMasterMangementDtlKey id = new SupplierMasterMangementDtlKey();
                     id.setSupplierPoid(supplierPoid);
-                    id.setDetRowId(getNextDetRowIdForManagementDtl(supplierPoid));
+                    id.setDetRowId(nextDetRowId++);
                     newEntity.setId(id);
                     newEntity.setCreatedBy(currentUser);
                     newEntity.setCreatedDate(now);
@@ -981,12 +988,12 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                             String logDetail = String.format("KeyId =SUPPLIER_POID:%s DET_ROW_ID:%s", managementDto.getSupplierPoid() ,managementDto.getDetRowId());
                             logRequests.add(new LogRequestDto<>(oldEntity, entity, SupplierMasterManagementDtlEntity.class, docId, docKeyPoid, logDetail));
                         } else {
-                            // Entity not found, treat as create
+                            // Entity not found, treat as create - use nextDetRowId to avoid conflicts
                             SupplierMasterManagementDtlEntity newEntity = new SupplierMasterManagementDtlEntity();
                             BeanUtils.copyProperties(managementDto, newEntity);
                             SupplierMasterMangementDtlKey id = new SupplierMasterMangementDtlKey();
                             id.setSupplierPoid(supplierPoid);
-                            id.setDetRowId(managementDto.getDetRowId());
+                            id.setDetRowId(nextDetRowId++);
                             newEntity.setId(id);
                             newEntity.setCreatedBy(currentUser);
                             newEntity.setCreatedDate(now);
@@ -1007,6 +1014,7 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
         // Batch save operations
         if (!entitiesToSave.isEmpty()) {
             supplierMasterMangementDtlRepository.saveAll(entitiesToSave);
+            entityManager.flush(); // Flush to ensure detRowIds are persisted before next batch
         }
         
         // Batch log operations
@@ -1023,6 +1031,9 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
         LocalDateTime now = LocalDateTime.now();
         String docId = UserContext.getDocumentId();
         String docKeyPoid = supplierPoid.toString();
+
+        // Get the starting detRowId for new records to avoid conflicts when creating multiple records
+        Long nextDetRowId = getNextDetRowIdForServiceDtl(supplierPoid);
 
         for (SupplierMasterServiceDtlDto serviceDto : serviceDtlList) {
             // Validate servicePoid exists
@@ -1056,7 +1067,7 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                     BeanUtils.copyProperties(serviceDto, newEntity);
                     SupplierMasterServiceDtlKey id = new SupplierMasterServiceDtlKey();
                     id.setSupplierPoid(supplierPoid);
-                    id.setDetRowId(getNextDetRowIdForServiceDtl(supplierPoid));
+                    id.setDetRowId(nextDetRowId++);
                     newEntity.setId(id);
                     newEntity.setCreatedBy(currentUser);
                     newEntity.setCreatedDate(now);
@@ -1079,12 +1090,12 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                             String logDetail = String.format("KeyId =SUPPLIER_POID:%s DET_ROW_ID:%s", oldEntity.getServicePoid(), serviceDto.getDetRowId());
                             logRequests.add(new LogRequestDto<>(oldEntity, entity, SupplierMasterServiceDtlEntity.class, docId, docKeyPoid, logDetail));
                         } else {
-                            // Entity not found, treat as create
+                            // Entity not found, treat as create - use nextDetRowId to avoid conflicts
                             SupplierMasterServiceDtlEntity newEntity = new SupplierMasterServiceDtlEntity();
                             BeanUtils.copyProperties(serviceDto, newEntity);
                             SupplierMasterServiceDtlKey id = new SupplierMasterServiceDtlKey();
                             id.setSupplierPoid(supplierPoid);
-                            id.setDetRowId(serviceDto.getDetRowId());
+                            id.setDetRowId(nextDetRowId++);
                             newEntity.setId(id);
                             newEntity.setCreatedBy(currentUser);
                             newEntity.setCreatedDate(now);
@@ -1105,6 +1116,7 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
         // Batch save operations
         if (!entitiesToSave.isEmpty()) {
             supplierMasterServiceDtlRepository.saveAll(entitiesToSave);
+            entityManager.flush(); // Flush to ensure detRowIds are persisted before next batch
         }
         
         // Batch log operations
@@ -1121,6 +1133,9 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
         LocalDateTime now = LocalDateTime.now();
         String docId = UserContext.getDocumentId();
         String docKeyPoid = supplierPoid.toString();
+
+        // Get the starting detRowId for new records to avoid conflicts when creating multiple records
+        Long nextDetRowId = getNextDetRowIdForQstnDtl(supplierPoid);
 
         for (SupplierMasterQstnDtlDto qstnDto : questionariesList) {
             String actionType = StringUtils.isBlank(qstnDto.getActionType()) ? null : qstnDto.getActionType();
@@ -1148,7 +1163,7 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                     BeanUtils.copyProperties(qstnDto, newEntity);
                     SupplierMasterQstnDtlKey id = new SupplierMasterQstnDtlKey();
                     id.setSupplierPoid(supplierPoid);
-                    id.setDetRowId(getNextDetRowIdForQstnDtl(supplierPoid));
+                    id.setDetRowId(nextDetRowId++);
                     newEntity.setId(id);
                     newEntity.setCreatedBy(currentUser);
                     newEntity.setCreatedDate(now);
@@ -1171,12 +1186,12 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                             String logDetail = String.format("KeyId =SUPPLIER_POID:%s DET_ROW_ID:%s", oldEntity.getId().getSupplierPoid(), qstnDto.getDetRowId());
                             logRequests.add(new LogRequestDto<>(oldEntity, entity, SupplierMasterQstnDtlEntity.class, docId, docKeyPoid, logDetail));
                         } else {
-                            // Entity not found, treat as create
+                            // Entity not found, treat as create - use nextDetRowId to avoid conflicts
                             SupplierMasterQstnDtlEntity newEntity = new SupplierMasterQstnDtlEntity();
                             BeanUtils.copyProperties(qstnDto, newEntity);
                             SupplierMasterQstnDtlKey id = new SupplierMasterQstnDtlKey();
                             id.setSupplierPoid(supplierPoid);
-                            id.setDetRowId(qstnDto.getDetRowId());
+                            id.setDetRowId(nextDetRowId++);
                             newEntity.setId(id);
                             newEntity.setCreatedBy(currentUser);
                             newEntity.setCreatedDate(now);
@@ -1197,6 +1212,7 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
         // Batch save operations
         if (!entitiesToSave.isEmpty()) {
             supplierMasterQstnDtlRepository.saveAll(entitiesToSave);
+            entityManager.flush(); // Flush to ensure detRowIds are persisted before next batch
         }
         
         // Batch log operations

@@ -1050,7 +1050,7 @@ public class GLMasterServiceImpl implements GLMasterService {
             String actionType = actionTypeStr.toUpperCase();
             switch (actionType) {
                 case "ISCREATED":
-                    toSave.add(GLPaymentDetailsEntity.builder()
+                    GLPaymentDetailsEntity newPaymentEntity = GLPaymentDetailsEntity.builder()
                             .id(charge.getDetRowId())
                             .glPoid(glPoid)
                             .type(charge.getType())
@@ -1072,7 +1072,10 @@ public class GLMasterServiceImpl implements GLMasterService {
                             .createdDate(now)
                             .lastModifiedBy(currentUser)
                             .lastModifiedDate(now)
-                            .build());
+                            .build();
+                    toSave.add(newPaymentEntity);
+                    String paymentLogDetail = String.format("Row Created on GL Payment Detail with detRowId: %s", charge.getDetRowId());
+                    loggingService.createLogSummaryEntry(UserContext.getDocumentId(), UserContext.getDocumentId(), paymentLogDetail);
                     break;
 
                 case "ISUPDATED":
@@ -1108,6 +1111,7 @@ public class GLMasterServiceImpl implements GLMasterService {
 
                 case "ISDELETED":
                     toDelete.add(charge.getDetRowId());
+                    loggingService.logDelete(charge, docId, docKeyPoid);
                     break;
 
                 case "NOCHANGES":
@@ -1128,7 +1132,11 @@ public class GLMasterServiceImpl implements GLMasterService {
         // Only delete records explicitly marked as "ISDELETED"
         // Records with "NOCHANGES" or unknown actionType are skipped (preserved in database)
         if (!toSave.isEmpty()) {
-            payDtlRepo.saveAll(toSave);
+            List<GLPaymentDetailsEntity> savedEntities = payDtlRepo.saveAll(toSave);
+            savedEntities.forEach(entity -> {
+                String logDetail = String.format("KeyId = GL_POID: %s DET_ROW_ID: %s", docKeyPoid, entity.getId());
+                loggingService.createLogSummaryEntry(docId, docKeyPoid, logDetail);
+            });
         }
         if (!toDelete.isEmpty()) {
             payDtlRepo.deleteByGlPoidAndIdIn(glPoid, toDelete);
@@ -1158,7 +1166,7 @@ public class GLMasterServiceImpl implements GLMasterService {
             String actionType = actionTypeStr.toUpperCase();
             switch (actionType) {
                 case "ISCREATED":
-                    toSave.add(GLMasterCompanyDtlEntity.builder()
+                    GLMasterCompanyDtlEntity newCompanyEntity = GLMasterCompanyDtlEntity.builder()
                             .id(charge.getDetRowId())
                             .glPoid(glPoid)
                             .companyPoid(charge.getCompanyPoid())
@@ -1167,7 +1175,10 @@ public class GLMasterServiceImpl implements GLMasterService {
                             .createdDate(now)
                             .lastModifiedBy(currentUser)
                             .lastModifiedDate(now)
-                            .build());
+                            .build();
+                    toSave.add(newCompanyEntity);
+                    String companyLogDetail = String.format("Row Created on GL Company Detail with detRowId: %s", charge.getDetRowId());
+                    loggingService.createLogSummaryEntry(UserContext.getDocumentId(), UserContext.getDocumentId(), companyLogDetail);
                     break;
 
                 case "ISUPDATED":
@@ -1190,6 +1201,7 @@ public class GLMasterServiceImpl implements GLMasterService {
 
                 case "ISDELETED":
                     toDelete.add(charge.getDetRowId());
+                    loggingService.logDelete(charge, docId, docKeyPoid);
                     break;
 
                 case "NOCHANGES":
@@ -1208,7 +1220,11 @@ public class GLMasterServiceImpl implements GLMasterService {
 
         // Batch operations
         if (!toSave.isEmpty()) {
-            companyDtlRepo.saveAll(toSave);
+            List<GLMasterCompanyDtlEntity> savedEntities = companyDtlRepo.saveAll(toSave);
+            savedEntities.forEach(entity -> {
+                String logDetail = String.format("KeyId = GL_POID: %s DET_ROW_ID: %s", docKeyPoid, entity.getId());
+                loggingService.createLogSummaryEntry(docId, docKeyPoid, logDetail);
+            });
         }
         if (!toDelete.isEmpty()) {
             companyDtlRepo.deleteByGlPoidAndIdIn(glPoid, toDelete);

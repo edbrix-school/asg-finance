@@ -209,7 +209,7 @@ public class FixedAssetServiceImpl implements FixedAssetService {
 
         DetailsDto companyPoidDet = null;
         if (savedEntity.getCompanyPoid() != null) {
-            LovGetListDto lovGetListDto = lovService.getDetailsByPoidAndLovNameFast(savedEntity.getCompanyPoid(), "COMPANY");
+            LovGetListDto lovGetListDto = lovService.getDetailsByPoidAndLovName(savedEntity.getCompanyPoid(), "COMPANY");
             if (lovGetListDto != null) {
                 companyPoidDet = new DetailsDto(lovGetListDto.getPoid(), lovGetListDto.getCode(),
                         lovGetListDto.getLabel(), lovGetListDto.getValue(), lovGetListDto.getDescription(), lovGetListDto.getSeqNo());

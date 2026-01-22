@@ -160,10 +160,6 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 		GlExpenseReallocationHdr header = new GlExpenseReallocationHdr();
 		BeanUtils.copyProperties(existingHeader, header);
 
-		if (header.getJvPoid() != null) {
-			throw new RuntimeException("Cannot update expense reallocation that has JV created");
-		}
-
 		if ("Y".equals(header.getDeleted())) {
 			throw new RuntimeException("Cannot update soft-deleted expense reallocation");
 		}
@@ -233,10 +229,6 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 		GlExpenseReallocationHdr header = hdrRepository.findByTransactionPoidAndGroupPoid(transactionPoid, groupPoid)
 				.orElseThrow(() -> new ResourceNotFoundException("Expense Reallocation", "transactionPoid",
 						transactionPoid));
-
-		if (header.getJvPoid() != null) {
-			throw new RuntimeException("Cannot delete expense reallocation that has JV created");
-		}
 
 		header.setDeleted("Y");
 		hdrRepository.save(header);

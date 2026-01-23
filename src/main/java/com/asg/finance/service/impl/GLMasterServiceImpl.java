@@ -1046,6 +1046,7 @@ public class GLMasterServiceImpl implements GLMasterService {
         String docKeyPoid = glPoid.toString();
 
         List<GLPaymentDetailsEntity> toSave = new ArrayList<>();
+        List<GLPaymentDetailsEntity> toUpdate = new ArrayList<>();
         List<Long> toDelete = new ArrayList<>();
         List<LogRequestDto<GLPaymentDetailsEntity>> logRequests = new ArrayList<>();
 
@@ -1083,8 +1084,6 @@ public class GLMasterServiceImpl implements GLMasterService {
                             .lastModifiedDate(now)
                             .build();
                     toSave.add(newPaymentEntity);
-                    String paymentLogDetail = String.format("Row Created on GL Payment Detail with detRowId: %s", charge.getDetRowId());
-                    loggingService.createLogSummaryEntry(UserContext.getDocumentId(), UserContext.getDocumentId(), paymentLogDetail);
                     break;
 
                 case "ISUPDATED":
@@ -1112,7 +1111,7 @@ public class GLMasterServiceImpl implements GLMasterService {
                     existingCharge.setActive(convertToActiveFlag(charge.getActive()));
                     existingCharge.setLastModifiedBy(currentUser);
                     existingCharge.setLastModifiedDate(now);
-                    toSave.add(existingCharge);
+                    toUpdate.add(existingCharge);
 
                     String logDetail = String.format("KeyId = SUPPLIER_POID:%s DET_ROW_ID:%s", existingCharge.getGlPoid() , existingCharge.getGlPoid());
                     logRequests.add(new LogRequestDto<>(oldCharge, existingCharge, GLPaymentDetailsEntity.class, docId, docKeyPoid, logDetail));
@@ -1150,8 +1149,12 @@ public class GLMasterServiceImpl implements GLMasterService {
         if (!toDelete.isEmpty()) {
             payDtlRepo.deleteByGlPoidAndIdIn(glPoid, toDelete);
         }
-        if (!logRequests.isEmpty()) {
-            loggingService.createLogBatch(logRequests);
+
+        if (!toUpdate.isEmpty()) {
+            payDtlRepo.saveAll(toUpdate);
+            if (!logRequests.isEmpty()) {
+                loggingService.createLogBatch(logRequests);
+            }
         }
     }
 
@@ -1162,6 +1165,7 @@ public class GLMasterServiceImpl implements GLMasterService {
         String docKeyPoid = glPoid.toString();
 
         List<GLMasterCompanyDtlEntity> toSave = new ArrayList<>();
+        List<GLMasterCompanyDtlEntity> toUpdate = new ArrayList<>();
         List<Long> toDelete = new ArrayList<>();
         List<LogRequestDto<GLMasterCompanyDtlEntity>> logRequests = new ArrayList<>();
 
@@ -1199,7 +1203,7 @@ public class GLMasterServiceImpl implements GLMasterService {
                     existingCharge.setRemarks(charge.getRemarks());
                     existingCharge.setLastModifiedBy(currentUser);
                     existingCharge.setLastModifiedDate(now);
-                    toSave.add(existingCharge);
+                    toUpdate.add(existingCharge);
 
                     String logDetail = String.format("KeyId = GL_POID:%s DET_ROW_ID:%s", oldCharge.getGlPoid(), oldCharge.getId());
                     logRequests.add(new LogRequestDto<>(oldCharge, existingCharge, GLMasterCompanyDtlEntity.class, docId, docKeyPoid, logDetail));
@@ -1207,6 +1211,7 @@ public class GLMasterServiceImpl implements GLMasterService {
 
                 case "ISDELETED":
                     toDelete.add(charge.getDetRowId());
+                    loggingService.logDelete(charge, UserContext.getDocumentId().toString(), glPoid.toString());
                     break;
 
                 case "NOCHANGES":
@@ -1231,12 +1236,17 @@ public class GLMasterServiceImpl implements GLMasterService {
                 loggingService.createLogSummaryEntry(UserContext.getDocumentId(), UserContext.getDocumentId(), paymentLogDetail);
             });
         }
+
+        if (!toUpdate.isEmpty()) {
+            if (!logRequests.isEmpty()) {
+                loggingService.createLogBatch(logRequests);
+            }
+        }
+
         if (!toDelete.isEmpty()) {
             companyDtlRepo.deleteByGlPoidAndIdIn(glPoid, toDelete);
         }
-        if (!logRequests.isEmpty()) {
-            loggingService.createLogBatch(logRequests);
-        }
+
     }
 
     @Override

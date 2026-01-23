@@ -355,7 +355,6 @@ public class CostCenterServiceImpl implements CostCenterService {
             }
         }
     }
-
     
     // Lov Methods
     @SuppressWarnings("unchecked")

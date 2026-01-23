@@ -421,7 +421,15 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
                     .build();
             entities.add(entity);
         }
-        return detailRepo.saveAll(entities);
+        List<ChequeReturnDetail> savedDetails = detailRepo.saveAll(entities);
+        
+        // Log each cheque detail creation
+        savedDetails.forEach(chequeDetail -> {
+            String logDetail = String.format("Row Created on Cheque Detail with detRowId: %s", chequeDetail.getId().getDetRowId());
+            loggingService.createLogSummaryEntry(UserContext.getDocumentId(), trnPoid.toString(), logDetail);
+        });
+        
+        return savedDetails;
     }
 
     private List<ChequeReturnGlDetail> buildAndSaveGlDetails(Long trnPoid, ChequeReturn header,
@@ -454,7 +462,15 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
                     .build();
             entities.add(entity);
         }
-        return glDetailRepo.saveAll(entities);
+        List<ChequeReturnGlDetail> savedGlDetails = glDetailRepo.saveAll(entities);
+        
+        // Log each GL detail creation
+        savedGlDetails.forEach(glDetail -> {
+            String logDetail = String.format("Row Created on GL Detail with detRowId: %s", glDetail.getId().getDetRowId());
+            loggingService.createLogSummaryEntry(UserContext.getDocumentId(), trnPoid.toString(), logDetail);
+        });
+        
+        return savedGlDetails;
     }
 
     // ============================================================

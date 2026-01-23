@@ -878,7 +878,13 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         
         // Batch save all payment details in one call
         if (!details.isEmpty()) {
-            pymtDetailsRepository.saveAll(details);
+            List<ArGenReceiptPymtDetails> savedDetails = pymtDetailsRepository.saveAll(details);
+            
+            // Log each payment detail creation
+            savedDetails.forEach(paymentDetail -> {
+                String logDetail = String.format("Row Created on Payment with detRowId: %s", paymentDetail.getDetRowId());
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), header.getTransactionPoid().toString(), logDetail);
+            });
         }
     }
 
@@ -936,8 +942,14 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         
         // Batch save all bill details in one call
         if (!details.isEmpty()) {
-            billDtlRepository.saveAll(details);
+            List<ArGenReceiptBillDtl> savedDetails = billDtlRepository.saveAll(details);
             entityManager.flush();  // Ensure details are persisted before calling procedure
+            
+            // Log each bill detail creation
+            savedDetails.forEach(billDetail -> {
+                String logDetail = String.format("Row Created on Bill with detRowId: %s", billDetail.getDetRowId());
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), header.getTransactionPoid().toString(), logDetail);
+            });
             
             // Call PROC_GEN_RECEIPT_BILLWISE_CHK to format bill references (trim at pipe delimiter)
             callBillwiseCheckProcedure(header.getTransactionPoid(), header.getCompanyPoid());
@@ -1002,7 +1014,13 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         
         // Batch save all charge details in one call
         if (!details.isEmpty()) {
-            chargesDtlRepository.saveAll(details);
+            List<ArGenReceiptChargesDtl> savedDetails = chargesDtlRepository.saveAll(details);
+            
+            // Log each charge detail creation
+            savedDetails.forEach(chargeDetail -> {
+                String logDetail = String.format("Row Created on Charge with detRowId: %s", chargeDetail.getDetRowId());
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), header.getTransactionPoid().toString(), logDetail);
+            });
         }
 
         // Set extra charges flag
@@ -1049,7 +1067,13 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         
         // Batch save all advance details
         if (!details.isEmpty()) {
-            advanceDtlRepository.saveAll(details);
+            List<ArGenReceiptAdvanceDtl> savedDetails = advanceDtlRepository.saveAll(details);
+            
+            // Log each advance detail creation
+            savedDetails.forEach(advanceDetail -> {
+                String logDetail = String.format("Row Created on Advance with detRowId: %s", advanceDetail.getDetRowId());
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), header.getTransactionPoid().toString(), logDetail);
+            });
         }
     }
 

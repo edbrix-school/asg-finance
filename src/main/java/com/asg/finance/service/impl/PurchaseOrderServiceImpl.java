@@ -81,6 +81,12 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                         savedItems = purchaseOrderItemRepository.saveAll(
                                 mapPurchaseOrderItems(request.getItems(), transactionPoid)
                         );
+                        
+                        // Log each item creation
+                        savedItems.forEach(item -> {
+                            String logDetail = String.format("Row Created on Purchase Order Item with detRowId: %s", item.getDetRowId());
+                            loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString(), logDetail);
+                        });
                     }
                 }
                 case "MTA" -> {

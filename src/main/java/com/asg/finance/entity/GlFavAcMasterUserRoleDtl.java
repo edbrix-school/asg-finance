@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.io.Serializable;
 import java.sql.Timestamp;
 
 /**
@@ -16,6 +17,7 @@ import java.sql.Timestamp;
  */
 @Entity
 @Table(name = "GL_FAV_AC_MASTER_USER_ROLE_DTL")
+@IdClass(GlFavAcMasterUserRoleDtl.CompositeKey.class)
 @Data
 @Builder
 @NoArgsConstructor
@@ -23,12 +25,11 @@ import java.sql.Timestamp;
 public class GlFavAcMasterUserRoleDtl {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "gl_fav_ac_user_role_dtl_seq")
-    @SequenceGenerator(name = "gl_fav_ac_user_role_dtl_seq", sequenceName = "GL_FAV_AC_MASTER_USER_ROLE_DTL_SEQ", allocationSize = 1)
     @Column(name = "DET_ROW_ID", nullable = false)
     @AuditIgnore
     private Long detRowId;
 
+    @Id
     @Column(name = "FAV_AC_POID", nullable = false)
     @AuditIgnore
     private Long favAcPoid;
@@ -54,5 +55,13 @@ public class GlFavAcMasterUserRoleDtl {
     @Column(name = "LASTMODIFIED_DATE")
     @AuditIgnore
     private Timestamp lastModifiedDate;
+    
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CompositeKey implements Serializable {
+        private Long detRowId;
+        private Long favAcPoid;
+    }
 }
 

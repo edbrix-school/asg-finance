@@ -16,9 +16,11 @@ import com.asg.finance.dto.*;
 import com.asg.finance.entity.GlFavAcMaster;
 import com.asg.finance.entity.GlFavAcMasterGlAcDtl;
 import com.asg.finance.entity.GlFavAcMasterUserRoleDtl;
+import com.asg.finance.entity.GlobalLogSummary;
 import com.asg.finance.repository.GlFavAcMasterGlAcDtlRepository;
 import com.asg.finance.repository.GlFavAcMasterRepository;
 import com.asg.finance.repository.GlFavAcMasterUserRoleDtlRepository;
+import com.asg.finance.repository.GlobalLogSummaryRepository;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
@@ -32,6 +34,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.sql.Timestamp;
 import java.util.*;
 import java.util.function.Function;
@@ -55,6 +59,10 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
     private final LovDataService lovService;
     private final DocumentDeleteService documentDeleteService;
     private final LoggingService loggingService;
+    
+    @PersistenceContext
+    private EntityManager entityManager;
+    private final GlobalLogSummaryRepository globalLogSummaryRepository;
 
     @Override
     public GlFavAcMasterResponse createFavoriteAccount(GlFavAcMasterRequest request) {
@@ -86,12 +94,13 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
         // Validate GL Account should not be duplicated
         validateNoDuplicateGlAccounts(request.getGlAccounts());
 
-        // Filter out null and zero values from userRolePoids (treat [0] or [null] as empty)
-        List<Long> filteredUserRolePoids = filterValidUserRolePoids(request.getUserRolePoids());
-        request.setUserRolePoids(filteredUserRolePoids);
-
-        // Validate user roles exist (if provided) - method handles null/empty internally
-        validateUserRolesExist(filteredUserRolePoids);
+        if (request.getUserRoles() != null && !request.getUserRoles().isEmpty()) {
+            List<Long> userRolePoids = request.getUserRoles().stream()
+                    .map(UserRoleDetailRequest::getUserRolePoid)
+                    .filter(rolePoid -> rolePoid != null && rolePoid != 0)
+                    .collect(Collectors.toList());
+            validateUserRolesExist(userRolePoids);
+        }
 
         String currentUser = getCurrentUser();
         Timestamp now = new Timestamp(System.currentTimeMillis());
@@ -112,43 +121,185 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                 .build();
 
         GlFavAcMaster savedMaster = masterRepository.save(master);
-
-        // Create GL account detail records
+        
         if (request.getGlAccounts() != null && !request.getGlAccounts().isEmpty()) {
             for (GlAccountDetailRequest glAccountRequest : request.getGlAccounts()) {
-                GlFavAcMasterGlAcDtl glAcDtl = GlFavAcMasterGlAcDtl.builder()
-                        .favAcPoid(savedMaster.getFavAcPoid())
-                        .glPoid(glAccountRequest.getGlAccountPoId())
-                        .company(glAccountRequest.getCompanyPoId())
-                        .viewCategory(glAccountRequest.getViewCategoryPoid())
-                        .remarks(glAccountRequest.getRemarks())
-                        .seqNo(glAccountRequest.getSeqNo())
-                        .createdBy(currentUser)
-                        .createdDate(now)
-                        .lastModifiedBy(currentUser)
-                        .lastModifiedDate(now)
-                        .build();
-                glAcDtlRepository.save(glAcDtl);
-            }
+                String rawAction = glAccountRequest.getActionType();
+                String action = (rawAction == null || rawAction.trim().isEmpty())
+                        ? "ISCREATED"  
+                        : rawAction.trim().toUpperCase();
+                
+                action = switch (action) {
+                    case "ISCREATED", "CREATED", "NEW" -> "ISCREATED";
+                    case "ISUPDATED", "UPDATED" -> "ISUPDATED";
+                    case "ISDELETED", "DELETED" -> "ISDELETED";
+                    default -> "NOCHANGES";
+                };
+                
+                switch (action) {
+                    case "NOCHANGES" -> {
+                        continue;
+                    }
+                    case "ISDELETED" -> {
+                        continue;
+                    }
+                    case "ISCREATED" -> {
+                        if (glAccountRequest.getDetRowId() != null) {
+                            Optional<GlFavAcMasterGlAcDtl> existingEntityOpt = glAcDtlRepository
+                                    .findByFavAcPoidAndDetRowId(savedMaster.getFavAcPoid(), glAccountRequest.getDetRowId());
+                            
+                            if (existingEntityOpt.isPresent()) {
+                                GlFavAcMasterGlAcDtl existingEntity = existingEntityOpt.get();
+                                existingEntity.setGlPoid(glAccountRequest.getGlAccountPoId());
+                                existingEntity.setCompany(glAccountRequest.getCompanyPoId());
+                                existingEntity.setViewCategory(glAccountRequest.getViewCategoryPoid());
+                                existingEntity.setRemarks(glAccountRequest.getRemarks());
+                                existingEntity.setSeqNo(glAccountRequest.getSeqNo());
+                                existingEntity.setLastModifiedBy(currentUser);
+                                existingEntity.setLastModifiedDate(now);
+                                glAcDtlRepository.save(existingEntity);
+                            } else {
+                                GlFavAcMasterGlAcDtl glAcDtl = GlFavAcMasterGlAcDtl.builder()
+                                        .favAcPoid(savedMaster.getFavAcPoid())
+                                        .detRowId(glAccountRequest.getDetRowId()) // Frontend provides detRowId
+                                        .glPoid(glAccountRequest.getGlAccountPoId())
+                                        .company(glAccountRequest.getCompanyPoId())
+                                        .viewCategory(glAccountRequest.getViewCategoryPoid())
+                                        .remarks(glAccountRequest.getRemarks())
+                                        .seqNo(glAccountRequest.getSeqNo())
+                                        .createdBy(currentUser)
+                                        .createdDate(now)
+                                        .lastModifiedBy(currentUser)
+                                        .lastModifiedDate(now)
+                                        .build();
+                                glAcDtlRepository.save(glAcDtl);
+                            }
+                        } else {
+                            throw new ValidationException("DetRowId is required for create operation");
+                        }
+                    }
+                    case "ISUPDATED" -> {
+                        if (glAccountRequest.getDetRowId() == null) {
+                            throw new ValidationException("DetRowId is required for update operation");
+                        }
+                        GlFavAcMasterGlAcDtl existingGlAcDtl = glAcDtlRepository
+                                .findByFavAcPoidAndDetRowId(savedMaster.getFavAcPoid(), glAccountRequest.getDetRowId())
+                                .orElse(null);
+                        
+                        if (existingGlAcDtl != null) {
+                            existingGlAcDtl.setGlPoid(glAccountRequest.getGlAccountPoId());
+                            existingGlAcDtl.setCompany(glAccountRequest.getCompanyPoId());
+                            existingGlAcDtl.setViewCategory(glAccountRequest.getViewCategoryPoid());
+                            existingGlAcDtl.setRemarks(glAccountRequest.getRemarks());
+                            existingGlAcDtl.setSeqNo(glAccountRequest.getSeqNo());
+                            existingGlAcDtl.setLastModifiedBy(currentUser);
+                            existingGlAcDtl.setLastModifiedDate(now);
+                            glAcDtlRepository.save(existingGlAcDtl);
+                        } else {
+                            GlFavAcMasterGlAcDtl glAcDtl = GlFavAcMasterGlAcDtl.builder()
+                                    .favAcPoid(savedMaster.getFavAcPoid())
+                                    .detRowId(glAccountRequest.getDetRowId())
+                                    .glPoid(glAccountRequest.getGlAccountPoId())
+                                    .company(glAccountRequest.getCompanyPoId())
+                                    .viewCategory(glAccountRequest.getViewCategoryPoid())
+                                    .remarks(glAccountRequest.getRemarks())
+                                    .seqNo(glAccountRequest.getSeqNo())
+                                    .createdBy(currentUser)
+                                    .createdDate(now)
+                                    .lastModifiedBy(currentUser)
+                                    .lastModifiedDate(now)
+                                    .build();
+                            glAcDtlRepository.save(glAcDtl);
+                        }
+                    }
+                }
+                            }
         }
 
         // Create user role detail records
-        if (filteredUserRolePoids != null && !filteredUserRolePoids.isEmpty()) {
-            for (Long userRolePoid : filteredUserRolePoids) {
-                GlFavAcMasterUserRoleDtl userRoleDtl = GlFavAcMasterUserRoleDtl.builder()
-                        .favAcPoid(savedMaster.getFavAcPoid())
-                        .userRolePoid(userRolePoid)
-                        .createdBy(currentUser)
-                        .createdDate(now)
-                        .lastModifiedBy(currentUser)
-                        .lastModifiedDate(now)
-                        .build();
-                userRoleDtlRepository.save(userRoleDtl);
+        if (request.getUserRoles() != null && !request.getUserRoles().isEmpty()) {
+            for (UserRoleDetailRequest userRoleRequest : request.getUserRoles()) {
+                String rawAction = userRoleRequest.getActionType();
+                String action = (rawAction == null || rawAction.trim().isEmpty())
+                        ? "ISCREATED"  
+                        : rawAction.trim().toUpperCase();
+                
+                action = switch (action) {
+                    case "ISCREATED", "CREATED", "NEW" -> "ISCREATED";
+                    case "ISUPDATED", "UPDATED" -> "ISUPDATED";
+                    case "ISDELETED", "DELETED" -> "ISDELETED";
+                    default -> "NOCHANGES";
+                };
+                
+                switch (action) {
+                    case "NOCHANGES" -> {
+                        continue;
+                    }
+                    case "ISDELETED" -> {
+                        continue;
+                    }
+                    case "ISCREATED" -> {
+                        if (userRoleRequest.getDetRowId() != null) {
+                            Optional<GlFavAcMasterUserRoleDtl> existingEntityOpt = userRoleDtlRepository
+                                    .findByFavAcPoidAndDetRowId(savedMaster.getFavAcPoid(), userRoleRequest.getDetRowId());
+                            
+                            if (existingEntityOpt.isPresent()) {
+                                GlFavAcMasterUserRoleDtl existingEntity = existingEntityOpt.get();
+                                existingEntity.setUserRolePoid(userRoleRequest.getUserRolePoid());
+                                existingEntity.setLastModifiedBy(currentUser);
+                                existingEntity.setLastModifiedDate(now);
+                                userRoleDtlRepository.save(existingEntity);
+                            } else {
+                                GlFavAcMasterUserRoleDtl userRoleDtl = GlFavAcMasterUserRoleDtl.builder()
+                                        .favAcPoid(savedMaster.getFavAcPoid())
+                                        .detRowId(userRoleRequest.getDetRowId()) // Frontend provides detRowId
+                                        .userRolePoid(userRoleRequest.getUserRolePoid())
+                                        .createdBy(currentUser)
+                                        .createdDate(now)
+                                        .lastModifiedBy(currentUser)
+                                        .lastModifiedDate(now)
+                                        .build();
+                                userRoleDtlRepository.save(userRoleDtl);
+                            }
+                        } else {
+                            throw new ValidationException("DetRowId is required for create operation");
+                        }
+                    }
+                    case "ISUPDATED" -> {
+                        if (userRoleRequest.getDetRowId() == null) {
+                            throw new ValidationException("DetRowId is required for update operation");
+                        }
+                        GlFavAcMasterUserRoleDtl existingUserRoleDtl = userRoleDtlRepository
+                                .findByFavAcPoidAndDetRowId(savedMaster.getFavAcPoid(), userRoleRequest.getDetRowId())
+                                .orElse(null);
+                        
+                        if (existingUserRoleDtl != null) {
+                            existingUserRoleDtl.setUserRolePoid(userRoleRequest.getUserRolePoid());
+                            existingUserRoleDtl.setLastModifiedBy(currentUser);
+                            existingUserRoleDtl.setLastModifiedDate(now);
+                            userRoleDtlRepository.save(existingUserRoleDtl);
+                        } else {
+                            GlFavAcMasterUserRoleDtl userRoleDtl = GlFavAcMasterUserRoleDtl.builder()
+                                    .favAcPoid(savedMaster.getFavAcPoid())
+                                    .detRowId(userRoleRequest.getDetRowId())
+                                    .userRolePoid(userRoleRequest.getUserRolePoid())
+                                    .createdBy(currentUser)
+                                    .createdDate(now)
+                                    .lastModifiedBy(currentUser)
+                                    .lastModifiedDate(now)
+                                    .build();
+                            userRoleDtlRepository.save(userRoleDtl);
+                        }
+                    }
+                }
+                
             }
         }
 
-        // Logging for create operation - master record only (like other screens)
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), savedMaster.getFavAcPoid().toString());
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = savedMaster.getFavAcPoid().toString();
+        GlobalLogSummary headerLog = createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, "Created", now);
+        globalLogSummaryRepository.save(headerLog);
 
         return getFavoriteAccountById(savedMaster.getFavAcPoid());
     }
@@ -192,12 +343,13 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
         // Validate GL Account should not be duplicated
         validateNoDuplicateGlAccounts(request.getGlAccounts());
 
-        // Filter out null and zero values from userRolePoids (treat [0] or [null] as empty)
-        List<Long> filteredUserRolePoids = filterValidUserRolePoids(request.getUserRolePoids());
-        request.setUserRolePoids(filteredUserRolePoids);
-
-        // Validate user roles exist (if provided) - method handles null/empty internally
-        validateUserRolesExist(filteredUserRolePoids);
+        if (request.getUserRoles() != null && !request.getUserRoles().isEmpty()) {
+            List<Long> userRolePoids = request.getUserRoles().stream()
+                    .map(UserRoleDetailRequest::getUserRolePoid)
+                    .filter(rolePoid -> rolePoid != null && rolePoid != 0)
+                    .collect(Collectors.toList());
+            validateUserRolesExist(userRolePoids);
+        }
 
         String currentUser = getCurrentUser();
         Timestamp now = new Timestamp(System.currentTimeMillis());
@@ -217,151 +369,325 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
 
         masterRepository.save(existing);
 
-        // Get existing GL account details before deletion for logging
         List<GlFavAcMasterGlAcDtl> oldGlAcDtls = glAcDtlRepository.findByFavAcPoidOrderBySeqNo(favAcPoid);
+        Map<Long, GlFavAcMasterGlAcDtl> oldGlAcMap = oldGlAcDtls.stream()
+                .collect(Collectors.toMap(GlFavAcMasterGlAcDtl::getDetRowId, Function.identity(), (first, second) -> first));
         
-        // Delete existing GL account details and recreate
-        glAcDtlRepository.deleteByFavAcPoid(favAcPoid);
-        glAcDtlRepository.flush(); // Ensure deletes are committed before inserts
-        
+        List<GlFavAcMasterGlAcDtl> toSave = new ArrayList<>();
+        List<GlFavAcMasterGlAcDtl> toDelete = new ArrayList<>();
         List<LogRequestDto<GlFavAcMasterGlAcDtl>> glAcLogRequests = new ArrayList<>();
+        List<GlobalLogSummary> glAcSummaryLogs = new ArrayList<>();
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = favAcPoid.toString();
+        
         if (request.getGlAccounts() != null && !request.getGlAccounts().isEmpty()) {
-            // Build map of old records by composite key (glPoid, company, viewCategory)
-            Map<String, GlFavAcMasterGlAcDtl> oldGlAcMap = oldGlAcDtls.stream()
-                    .collect(Collectors.toMap(
-                            dtl -> String.format("%s_%s_%s", dtl.getGlPoid(), dtl.getCompany(), dtl.getViewCategory()),
-                            Function.identity(),
-                            (first, second) -> first
-                    ));
-            
             for (GlAccountDetailRequest glAccountRequest : request.getGlAccounts()) {
-                GlFavAcMasterGlAcDtl glAcDtl = GlFavAcMasterGlAcDtl.builder()
-                        .favAcPoid(favAcPoid)
-                        .glPoid(glAccountRequest.getGlAccountPoId())
-                        .company(glAccountRequest.getCompanyPoId())
-                        .viewCategory(glAccountRequest.getViewCategoryPoid())
-                        .remarks(glAccountRequest.getRemarks())
-                        .seqNo(glAccountRequest.getSeqNo())
-                        .createdBy(currentUser)
-                        .createdDate(now)
-                        .lastModifiedBy(currentUser)
-                        .lastModifiedDate(now)
-                        .build();
-                GlFavAcMasterGlAcDtl savedGlAcDtl = glAcDtlRepository.save(glAcDtl);
-                
-                // Check if this is an update or create
-                String key = String.format("%s_%s_%s", glAcDtl.getGlPoid(), glAcDtl.getCompany(), glAcDtl.getViewCategory());
-                GlFavAcMasterGlAcDtl oldGlAcDtlFromMap = oldGlAcMap.get(key);
-                
-                // Create a copy of old entity for logging (similar to GLMasterServiceImpl)
-                GlFavAcMasterGlAcDtl oldGlAcDtl = null;
-                if (oldGlAcDtlFromMap != null) {
-                    oldGlAcDtl = new GlFavAcMasterGlAcDtl();
-                    BeanUtils.copyProperties(oldGlAcDtlFromMap, oldGlAcDtl);
+                String actionTypeStr = glAccountRequest.getActionType();
+                if (actionTypeStr == null || actionTypeStr.trim().isEmpty()) {
+                    if (glAccountRequest.getDetRowId() == null || glAccountRequest.getDetRowId() == 0) {
+                        actionTypeStr = "isCreated";
+                    } else {
+                        actionTypeStr = "isUpdated";
+                    }
                 }
+                String actionType = actionTypeStr.toUpperCase();
                 
-                String logDetail = String.format("KeyId = FAV_AC_POID:%s DET_ROW_ID:%s", 
-                    savedGlAcDtl.getFavAcPoid(), savedGlAcDtl.getDetRowId());
-                glAcLogRequests.add(new LogRequestDto<>(oldGlAcDtl, savedGlAcDtl, GlFavAcMasterGlAcDtl.class, 
-                    UserContext.getDocumentId(), favAcPoid.toString(), logDetail));
-            }
-            
-                // Log deletions for GL accounts that were removed
-                for (GlFavAcMasterGlAcDtl oldGlAcDtl : oldGlAcDtls) {
-                    String key = String.format("%s_%s_%s", oldGlAcDtl.getGlPoid(), oldGlAcDtl.getCompany(), oldGlAcDtl.getViewCategory());
-                    boolean stillExists = request.getGlAccounts().stream().anyMatch(req -> 
-                        String.format("%s_%s_%s", req.getGlAccountPoId(), req.getCompanyPoId(), req.getViewCategoryPoid()).equals(key));
-                    
-                    if (!stillExists) {
+                switch (actionType) {
+                    case "ISCREATED":
+                        GlFavAcMasterGlAcDtl newGlAcDtl = GlFavAcMasterGlAcDtl.builder()
+                                .favAcPoid(favAcPoid)
+                                .detRowId(glAccountRequest.getDetRowId()) 
+                                .glPoid(glAccountRequest.getGlAccountPoId())
+                                .company(glAccountRequest.getCompanyPoId())
+                                .viewCategory(glAccountRequest.getViewCategoryPoid())
+                                .remarks(glAccountRequest.getRemarks())
+                                .seqNo(glAccountRequest.getSeqNo())
+                                .createdBy(currentUser)
+                                .createdDate(now)
+                                .lastModifiedBy(currentUser)
+                                .lastModifiedDate(now)
+                                .build();
+                        toSave.add(newGlAcDtl);
+                        
+                        String createSummaryMessage = String.format("Row Created on GL_FAV_AC_MASTER_GL_AC_DTL with DetRowId: %s", glAccountRequest.getDetRowId());
+                        GlobalLogSummary createSummaryLog = createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, createSummaryMessage);
+                        glAcSummaryLogs.add(createSummaryLog);
+                        break;
+                        
+                    case "ISUPDATED":
+                        if (glAccountRequest.getDetRowId() == null) {
+                            throw new ValidationException("DetRowId is required for update operation");
+                        }
+                        GlFavAcMasterGlAcDtl existingGlAcDtl = glAcDtlRepository
+                                .findByFavAcPoidAndDetRowId(favAcPoid, glAccountRequest.getDetRowId())
+                                .orElse(null);
+                        
+                        if (existingGlAcDtl == null) {
+                            GlFavAcMasterGlAcDtl newGlAcDtlFromUpdate = GlFavAcMasterGlAcDtl.builder()
+                                    .favAcPoid(favAcPoid)
+                                    .detRowId(glAccountRequest.getDetRowId()) // Frontend provides detRowId
+                                    .glPoid(glAccountRequest.getGlAccountPoId())
+                                    .company(glAccountRequest.getCompanyPoId())
+                                    .viewCategory(glAccountRequest.getViewCategoryPoid())
+                                    .remarks(glAccountRequest.getRemarks())
+                                    .seqNo(glAccountRequest.getSeqNo())
+                                    .createdBy(currentUser)
+                                    .createdDate(now)
+                                    .lastModifiedBy(currentUser)
+                                    .lastModifiedDate(now)
+                                    .build();
+                            toSave.add(newGlAcDtlFromUpdate);
+                            
+                            String createSummaryMessageFromUpdate = String.format("Row Created on GL_FAV_AC_MASTER_GL_AC_DTL with DetRowId: %s", glAccountRequest.getDetRowId());
+                            GlobalLogSummary createSummaryLogFromUpdate = createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, createSummaryMessageFromUpdate);
+                            glAcSummaryLogs.add(createSummaryLogFromUpdate);
+                            break;
+                        }
+                        
+                        GlFavAcMasterGlAcDtl oldGlAcDtl = new GlFavAcMasterGlAcDtl();
+                        BeanUtils.copyProperties(existingGlAcDtl, oldGlAcDtl);
+                        oldGlAcDtl.setDetRowId(existingGlAcDtl.getDetRowId());
+                        oldGlAcDtl.setFavAcPoid(existingGlAcDtl.getFavAcPoid());
+                        
+                        existingGlAcDtl.setGlPoid(glAccountRequest.getGlAccountPoId());
+                        existingGlAcDtl.setCompany(glAccountRequest.getCompanyPoId());
+                        existingGlAcDtl.setViewCategory(glAccountRequest.getViewCategoryPoid());
+                        existingGlAcDtl.setRemarks(glAccountRequest.getRemarks());
+                        existingGlAcDtl.setSeqNo(glAccountRequest.getSeqNo());
+                        existingGlAcDtl.setLastModifiedBy(currentUser);
+                        existingGlAcDtl.setLastModifiedDate(now);
+                        toSave.add(existingGlAcDtl);
+                        
                         String logDetail = String.format("KeyId = FAV_AC_POID:%s DET_ROW_ID:%s", 
                             oldGlAcDtl.getFavAcPoid(), oldGlAcDtl.getDetRowId());
-                        glAcLogRequests.add(new LogRequestDto<>(oldGlAcDtl, null, GlFavAcMasterGlAcDtl.class, 
-                            UserContext.getDocumentId(), favAcPoid.toString(), logDetail));
-                    }
+                        glAcLogRequests.add(new LogRequestDto<>(oldGlAcDtl, existingGlAcDtl, GlFavAcMasterGlAcDtl.class, 
+                            docId, docKeyPoid, logDetail));
+                        
+                        String updateSummaryMessage = "Modified";
+                        GlobalLogSummary updateSummaryLog = createSummaryLogEntry(LogDetailsEnum.MODIFIED, docId, docKeyPoid, updateSummaryMessage);
+                        glAcSummaryLogs.add(updateSummaryLog);
+                        break;
+                        
+                    case "ISDELETED":
+                        if (glAccountRequest.getDetRowId() == null) {
+                            throw new ValidationException("DetRowId is required for delete operation");
+                        }
+                        GlFavAcMasterGlAcDtl glAcDtlToDelete = glAcDtlRepository
+                                .findByFavAcPoidAndDetRowId(favAcPoid, glAccountRequest.getDetRowId())
+                                .orElse(null);
+                        if (glAcDtlToDelete != null) {
+                            toDelete.add(glAcDtlToDelete);
+                            
+                            String deletedRecordString = String.format("DET_ROW_ID:%s, FAV_AC_POID:%s, GL_POID:%s, COMPANY:%s, VIEW_CATEGORY:%s, REMARKS:%s, SEQNO:%s",
+                                    glAcDtlToDelete.getDetRowId(), glAcDtlToDelete.getFavAcPoid(), glAcDtlToDelete.getGlPoid(),
+                                    glAcDtlToDelete.getCompany(), glAcDtlToDelete.getViewCategory(), glAcDtlToDelete.getRemarks(), glAcDtlToDelete.getSeqNo());
+                            String deleteSummaryMessage = String.format("Row Deleted %s", deletedRecordString);
+                            GlobalLogSummary deleteSummaryLog = createSummaryLogEntry(LogDetailsEnum.DELETED, docId, docKeyPoid, deleteSummaryMessage);
+                            glAcSummaryLogs.add(deleteSummaryLog);
+                        }
+                        break;
+                        
+                    case "NOCHANGES", "NOCHANGE":
+                        if (glAccountRequest.getDetRowId() != null) {
+                            GlFavAcMasterGlAcDtl unchangedGlAcDtl = oldGlAcMap.get(glAccountRequest.getDetRowId());
+                            if (unchangedGlAcDtl != null) {
+                                toSave.add(unchangedGlAcDtl);
+                            }
+                        }
+                        break;
+                        
+                    default:
+                        if (glAccountRequest.getDetRowId() != null) {
+                            GlFavAcMasterGlAcDtl defaultGlAcDtl = oldGlAcMap.get(glAccountRequest.getDetRowId());
+                            if (defaultGlAcDtl != null) {
+                                toSave.add(defaultGlAcDtl);
+                            }
+                        }
+                        break;
                 }
-        } else {
-            // All GL accounts were deleted
-            for (GlFavAcMasterGlAcDtl oldGlAcDtl : oldGlAcDtls) {
-                String logDetail = String.format("KeyId = FAV_AC_POID:%s DET_ROW_ID:%s", 
-                    oldGlAcDtl.getFavAcPoid(), oldGlAcDtl.getDetRowId());
-                glAcLogRequests.add(new LogRequestDto<>(oldGlAcDtl, null, GlFavAcMasterGlAcDtl.class, 
-                    UserContext.getDocumentId(), favAcPoid.toString(), logDetail));
             }
         }
+        
+        if (!toSave.isEmpty()) {
+            glAcDtlRepository.saveAll(toSave);
+        }
+        
+        if (!toDelete.isEmpty()) {
+            glAcDtlRepository.deleteAll(toDelete);
+        }
 
-        // Get existing user role details before deletion for logging
         List<GlFavAcMasterUserRoleDtl> oldUserRoleDtls = userRoleDtlRepository.findByFavAcPoid(favAcPoid);
+        Map<Long, GlFavAcMasterUserRoleDtl> oldUserRoleMap = oldUserRoleDtls.stream()
+                .collect(Collectors.toMap(GlFavAcMasterUserRoleDtl::getDetRowId, Function.identity(), (first, second) -> first));
         
-        // Delete existing user role details and recreate
-        userRoleDtlRepository.deleteByFavAcPoid(favAcPoid);
-        userRoleDtlRepository.flush(); // Ensure deletes are committed before inserts
-        
+        List<GlFavAcMasterUserRoleDtl> userRoleToSave = new ArrayList<>();
+        List<GlFavAcMasterUserRoleDtl> userRoleToDelete = new ArrayList<>();
         List<LogRequestDto<GlFavAcMasterUserRoleDtl>> userRoleLogRequests = new ArrayList<>();
-        if (filteredUserRolePoids != null && !filteredUserRolePoids.isEmpty()) {
-            // Build map of old records by userRolePoid
-            Map<Long, GlFavAcMasterUserRoleDtl> oldUserRoleMap = oldUserRoleDtls.stream()
-                    .collect(Collectors.toMap(
-                            GlFavAcMasterUserRoleDtl::getUserRolePoid,
-                            Function.identity(),
-                            (first, second) -> first
-                    ));
-            
-            for (Long userRolePoid : filteredUserRolePoids) {
-                GlFavAcMasterUserRoleDtl userRoleDtl = GlFavAcMasterUserRoleDtl.builder()
-                        .favAcPoid(favAcPoid)
-                        .userRolePoid(userRolePoid)
-                        .createdBy(currentUser)
-                        .createdDate(now)
-                        .lastModifiedBy(currentUser)
-                        .lastModifiedDate(now)
-                        .build();
-                GlFavAcMasterUserRoleDtl savedUserRoleDtl = userRoleDtlRepository.save(userRoleDtl);
-                
-                // Check if this is an update or create
-                GlFavAcMasterUserRoleDtl oldUserRoleDtlFromMap = oldUserRoleMap.get(userRolePoid);
-                
-                // Create a copy of old entity for logging (similar to GLMasterServiceImpl)
-                GlFavAcMasterUserRoleDtl oldUserRoleDtl = null;
-                if (oldUserRoleDtlFromMap != null) {
-                    oldUserRoleDtl = new GlFavAcMasterUserRoleDtl();
-                    BeanUtils.copyProperties(oldUserRoleDtlFromMap, oldUserRoleDtl);
+        List<GlobalLogSummary> userRoleSummaryLogs = new ArrayList<>();
+        
+        if (request.getUserRoles() != null && !request.getUserRoles().isEmpty()) {
+            for (UserRoleDetailRequest userRoleRequest : request.getUserRoles()) {
+                String actionTypeStr = userRoleRequest.getActionType();
+                if (actionTypeStr == null || actionTypeStr.trim().isEmpty()) {
+                    if (userRoleRequest.getDetRowId() == null || userRoleRequest.getDetRowId() == 0) {
+                        actionTypeStr = "isCreated";
+                    } else {
+                        actionTypeStr = "isUpdated";
+                    }
                 }
+                String actionType = actionTypeStr.toUpperCase();
                 
-                String logDetail = String.format("KeyId = FAV_AC_POID:%s DET_ROW_ID:%s", 
-                    savedUserRoleDtl.getFavAcPoid(), savedUserRoleDtl.getDetRowId());
-                userRoleLogRequests.add(new LogRequestDto<>(oldUserRoleDtl, savedUserRoleDtl, GlFavAcMasterUserRoleDtl.class, 
-                    UserContext.getDocumentId(), favAcPoid.toString(), logDetail));
-            }
-            
-                // Log deletions for user roles that were removed
-                for (GlFavAcMasterUserRoleDtl oldUserRoleDtl : oldUserRoleDtls) {
-                    boolean stillExists = filteredUserRolePoids.contains(oldUserRoleDtl.getUserRolePoid());
-                    if (!stillExists) {
+                switch (actionType) {
+                    case "ISCREATED":
+                        GlFavAcMasterUserRoleDtl newUserRoleDtl = GlFavAcMasterUserRoleDtl.builder()
+                                .favAcPoid(favAcPoid)
+                                .detRowId(userRoleRequest.getDetRowId()) // Frontend provides detRowId
+                                .userRolePoid(userRoleRequest.getUserRolePoid())
+                                .createdBy(currentUser)
+                                .createdDate(now)
+                                .lastModifiedBy(currentUser)
+                                .lastModifiedDate(now)
+                                .build();
+                        userRoleToSave.add(newUserRoleDtl);
+                        
+                        String createSummaryMessage = String.format("Row Created on GL_FAV_AC_MASTER_USER_ROLE_DTL with DetRowId: %s", userRoleRequest.getDetRowId());
+                        GlobalLogSummary createSummaryLog = createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, createSummaryMessage);
+                        userRoleSummaryLogs.add(createSummaryLog);
+                        break;
+                        
+                    case "ISUPDATED":
+                        if (userRoleRequest.getDetRowId() == null) {
+                            throw new ValidationException("DetRowId is required for update operation");
+                        }
+                        GlFavAcMasterUserRoleDtl existingUserRoleDtl = userRoleDtlRepository
+                                .findByFavAcPoidAndDetRowId(favAcPoid, userRoleRequest.getDetRowId())
+                                .orElse(null);
+                        
+                        if (existingUserRoleDtl == null) {
+                            GlFavAcMasterUserRoleDtl newUserRoleDtlFromUpdate = GlFavAcMasterUserRoleDtl.builder()
+                                    .favAcPoid(favAcPoid)
+                                    .detRowId(userRoleRequest.getDetRowId())
+                                    .userRolePoid(userRoleRequest.getUserRolePoid())
+                                    .createdBy(currentUser)
+                                    .createdDate(now)
+                                    .lastModifiedBy(currentUser)
+                                    .lastModifiedDate(now)
+                                    .build();
+                            userRoleToSave.add(newUserRoleDtlFromUpdate);
+                            
+                            String createSummaryMessageFromUpdate = String.format("Row Created on GL_FAV_AC_MASTER_USER_ROLE_DTL with DetRowId: %s", userRoleRequest.getDetRowId());
+                            GlobalLogSummary createSummaryLogFromUpdate = createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, createSummaryMessageFromUpdate);
+                            userRoleSummaryLogs.add(createSummaryLogFromUpdate);
+                            break;
+                        }
+                        
+                        GlFavAcMasterUserRoleDtl oldUserRoleDtl = new GlFavAcMasterUserRoleDtl();
+                        BeanUtils.copyProperties(existingUserRoleDtl, oldUserRoleDtl);
+                        oldUserRoleDtl.setDetRowId(existingUserRoleDtl.getDetRowId());
+                        oldUserRoleDtl.setFavAcPoid(existingUserRoleDtl.getFavAcPoid());
+                        
+                        existingUserRoleDtl.setUserRolePoid(userRoleRequest.getUserRolePoid());
+                        existingUserRoleDtl.setLastModifiedBy(currentUser);
+                        existingUserRoleDtl.setLastModifiedDate(now);
+                        userRoleToSave.add(existingUserRoleDtl);
+                        
                         String logDetail = String.format("KeyId = FAV_AC_POID:%s DET_ROW_ID:%s", 
                             oldUserRoleDtl.getFavAcPoid(), oldUserRoleDtl.getDetRowId());
-                        userRoleLogRequests.add(new LogRequestDto<>(oldUserRoleDtl, null, GlFavAcMasterUserRoleDtl.class, 
-                            UserContext.getDocumentId(), favAcPoid.toString(), logDetail));
-                    }
+                        userRoleLogRequests.add(new LogRequestDto<>(oldUserRoleDtl, existingUserRoleDtl, GlFavAcMasterUserRoleDtl.class, 
+                            docId, docKeyPoid, logDetail));
+                        
+                        String updateSummaryMessage = "Modified";
+                        GlobalLogSummary updateSummaryLog = createSummaryLogEntry(LogDetailsEnum.MODIFIED, docId, docKeyPoid, updateSummaryMessage);
+                        userRoleSummaryLogs.add(updateSummaryLog);
+                        break;
+                        
+                    case "ISDELETED":
+                        if (userRoleRequest.getDetRowId() == null) {
+                            throw new ValidationException("DetRowId is required for delete operation");
+                        }
+                        GlFavAcMasterUserRoleDtl userRoleDtlToDelete = userRoleDtlRepository
+                                .findByFavAcPoidAndDetRowId(favAcPoid, userRoleRequest.getDetRowId())
+                                .orElse(null);
+                        if (userRoleDtlToDelete != null) {
+                            userRoleToDelete.add(userRoleDtlToDelete);
+                            
+                            String deletedRecordString = String.format("DET_ROW_ID:%s, FAV_AC_POID:%s, USER_ROLE_POID:%s",
+                                    userRoleDtlToDelete.getDetRowId(), userRoleDtlToDelete.getFavAcPoid(), userRoleDtlToDelete.getUserRolePoid());
+                            String deleteSummaryMessage = String.format("Row Deleted %s", deletedRecordString);
+                            GlobalLogSummary deleteSummaryLog = createSummaryLogEntry(LogDetailsEnum.DELETED, docId, docKeyPoid, deleteSummaryMessage);
+                            userRoleSummaryLogs.add(deleteSummaryLog);
+                        }
+                        break;
+                        
+                    case "NOCHANGES", "NOCHANGE":
+                        if (userRoleRequest.getDetRowId() != null) {
+                            GlFavAcMasterUserRoleDtl unchangedUserRoleDtl = oldUserRoleMap.get(userRoleRequest.getDetRowId());
+                            if (unchangedUserRoleDtl != null) {
+                                userRoleToSave.add(unchangedUserRoleDtl);
+                            }
+                        }
+                        break;
+                        
+                    default:
+                        if (userRoleRequest.getDetRowId() != null) {
+                            GlFavAcMasterUserRoleDtl defaultUserRoleDtl = oldUserRoleMap.get(userRoleRequest.getDetRowId());
+                            if (defaultUserRoleDtl != null) {
+                                userRoleToSave.add(defaultUserRoleDtl);
+                            }
+                        }
+                        break;
                 }
-        } else {
-            // All user roles were deleted
-            for (GlFavAcMasterUserRoleDtl oldUserRoleDtl : oldUserRoleDtls) {
-                String logDetail = String.format("KeyId = FAV_AC_POID:%s DET_ROW_ID:%s", 
-                    oldUserRoleDtl.getFavAcPoid(), oldUserRoleDtl.getDetRowId());
-                userRoleLogRequests.add(new LogRequestDto<>(oldUserRoleDtl, null, GlFavAcMasterUserRoleDtl.class, 
-                    UserContext.getDocumentId(), favAcPoid.toString(), logDetail));
             }
         }
-
-        // Logging for update operation - master record
-        loggingService.logChanges(oldEntity, existing, GlFavAcMaster.class, UserContext.getDocumentId(), favAcPoid.toString(), LogDetailsEnum.MODIFIED, "FAV_AC_POID");
         
-        // Log detail records
+        for (GlFavAcMasterUserRoleDtl oldUserRoleDtl : oldUserRoleDtls) {
+            boolean stillExists = request.getUserRoles() != null && 
+                    request.getUserRoles().stream()
+                            .anyMatch(ur -> ur.getDetRowId() != null && ur.getDetRowId().equals(oldUserRoleDtl.getDetRowId()));
+            if (!stillExists) {
+                userRoleToDelete.add(oldUserRoleDtl);
+                
+                String deletedRecordString = String.format("DET_ROW_ID:%s, FAV_AC_POID:%s, USER_ROLE_POID:%s",
+                        oldUserRoleDtl.getDetRowId(), oldUserRoleDtl.getFavAcPoid(), oldUserRoleDtl.getUserRolePoid());
+                String deleteSummaryMessage = String.format("Row Deleted %s", deletedRecordString);
+                GlobalLogSummary deleteSummaryLog = createSummaryLogEntry(LogDetailsEnum.DELETED, docId, docKeyPoid, deleteSummaryMessage);
+                userRoleSummaryLogs.add(deleteSummaryLog);
+            }
+        }
+        
+        if (!userRoleToSave.isEmpty()) {
+            userRoleDtlRepository.saveAll(userRoleToSave);
+        }
+        
+        if (!userRoleToDelete.isEmpty()) {
+            userRoleDtlRepository.deleteAll(userRoleToDelete);
+        }
+
+        
+        GlobalLogSummary headerUpdateLog = createSummaryLogEntry(LogDetailsEnum.MODIFIED, docId, docKeyPoid, "Modified", now);
+        globalLogSummaryRepository.save(headerUpdateLog);
+        
+        List<LogRequestDto<GlFavAcMaster>> headerLogRequests = new ArrayList<>();
+        String logDetail = String.format("KeyId = FAV_AC_POID:%s", favAcPoid);
+        headerLogRequests.add(new LogRequestDto<>(oldEntity, existing, GlFavAcMaster.class, docId, docKeyPoid, logDetail));
+        if (!headerLogRequests.isEmpty()) {
+            loggingService.createLogBatch(headerLogRequests);
+        }
+        
+      
         if (!glAcLogRequests.isEmpty()) {
             loggingService.createLogBatch(glAcLogRequests);
         }
         if (!userRoleLogRequests.isEmpty()) {
             loggingService.createLogBatch(userRoleLogRequests);
+        }
+        
+        if (!glAcSummaryLogs.isEmpty()) {
+            globalLogSummaryRepository.saveAll(glAcSummaryLogs);
+        }
+        
+        if (!userRoleSummaryLogs.isEmpty()) {
+            globalLogSummaryRepository.saveAll(userRoleSummaryLogs);
         }
 
         return getFavoriteAccountById(favAcPoid);
@@ -648,6 +974,21 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                 gl.setViewCategoryDetails(null);
             }
         }
+    }
+    
+ 
+    private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage) {
+        return createSummaryLogEntry(logDetailsEnum, docId, docKeyPoid, customMessage, null);
+    }
+    
+    private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage, Timestamp logDateTime) {
+        GlobalLogSummary summary = new GlobalLogSummary();
+        summary.setLogUserPoid(UserContext.getUserPoid());
+        summary.setLogDateTime(logDateTime != null ? logDateTime : new Timestamp(System.currentTimeMillis()));
+        summary.setLogDocId(docId);
+        summary.setLogDocKeyPoid(docKeyPoid);
+        summary.setLogDetails(customMessage);
+        return summary;
     }
 
 

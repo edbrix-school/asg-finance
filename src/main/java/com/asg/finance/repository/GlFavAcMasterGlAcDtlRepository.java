@@ -14,7 +14,7 @@ import java.util.List;
  * Repository for GL account detail records
  */
 @Repository
-public interface GlFavAcMasterGlAcDtlRepository extends JpaRepository<GlFavAcMasterGlAcDtl, Long> {
+public interface GlFavAcMasterGlAcDtlRepository extends JpaRepository<GlFavAcMasterGlAcDtl, GlFavAcMasterGlAcDtl.CompositeKey> {
     
     List<GlFavAcMasterGlAcDtl> findByFavAcPoid(Long favAcPoid);
     
@@ -24,6 +24,9 @@ public interface GlFavAcMasterGlAcDtlRepository extends JpaRepository<GlFavAcMas
     @Modifying
     @Query("DELETE FROM GlFavAcMasterGlAcDtl g WHERE g.favAcPoid = :favAcPoid")
     void deleteByFavAcPoid(@Param("favAcPoid") Long favAcPoid);
+    
+    @Query("SELECT g FROM GlFavAcMasterGlAcDtl g WHERE g.favAcPoid = :favAcPoid AND g.detRowId = :detRowId")
+    java.util.Optional<GlFavAcMasterGlAcDtl> findByFavAcPoidAndDetRowId(@Param("favAcPoid") Long favAcPoid, @Param("detRowId") Long detRowId);
 
 }
 

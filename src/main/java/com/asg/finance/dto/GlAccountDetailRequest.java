@@ -30,5 +30,8 @@ public class GlAccountDetailRequest {
     private String remarks;
 
     private Long seqNo;
+    
+    private Long detRowId; 
+    private String actionType; 
 }
 

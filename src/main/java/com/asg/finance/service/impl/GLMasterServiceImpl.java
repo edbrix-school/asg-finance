@@ -16,6 +16,7 @@ import com.asg.finance.dto.*;
 import com.asg.finance.entity.GLMasterCompanyDtlEntity;
 import com.asg.finance.entity.GLMasterEntity;
 import com.asg.finance.entity.GLPaymentDetailsEntity;
+import com.asg.finance.entity.SupplierMasterPaymentDtlEntity;
 import com.asg.finance.repository.GLMasterCompanyDtlRepository;
 import com.asg.finance.repository.GLMasterTreeViewRepository;
 import com.asg.finance.repository.GLMastersRepository;
@@ -91,12 +92,12 @@ public class GLMasterServiceImpl implements GLMasterService {
         if (active == null) {
             return "Y"; // Default to active
         }
-        
+
         // Handle boolean
         if (active instanceof Boolean) {
             return ((Boolean) active) ? "Y" : "N";
         }
-        
+
         // Handle String
         if (active instanceof String) {
             String activeStr = ((String) active).trim().toUpperCase();
@@ -111,7 +112,7 @@ public class GLMasterServiceImpl implements GLMasterService {
                 return activeStr;
             }
         }
-        
+
         // Default to "Y" if unrecognized format
         return "Y";
     }
@@ -317,7 +318,7 @@ public class GLMasterServiceImpl implements GLMasterService {
 
         // Log the update
         String key = entity.getGlPoid().toString();
-        loggingService.logChanges(oldEntity, entity, GLMasterEntity.class, 
+        loggingService.logChanges(oldEntity, entity, GLMasterEntity.class,
                 UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "GL_POID");
 
         return toResponseDto(entity);
@@ -349,6 +350,10 @@ public class GLMasterServiceImpl implements GLMasterService {
                 }).toList();
         if (!entities.isEmpty()) {
             companyDtlRepo.saveAll(entities);
+            entities.forEach(e -> {
+                String paymentLogDetail = String.format("Row Created on GL Company Detail with detRowId: %s", e.getId());
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), UserContext.getDocumentId(), paymentLogDetail);
+            });
         }
     }
 
@@ -390,6 +395,10 @@ public class GLMasterServiceImpl implements GLMasterService {
                 }).toList();
         if (!entities.isEmpty()) {
             payDtlRepo.saveAll(entities);
+            entities.forEach(e -> {
+                String paymentLogDetail = String.format("Row Created on GL Payment Detail with detRowId: %s", e.getId());
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), UserContext.getDocumentId(), paymentLogDetail);
+            });
         }
     }
 
@@ -1055,18 +1064,18 @@ public class GLMasterServiceImpl implements GLMasterService {
                             .glPoid(glPoid)
                             .type(charge.getType())
                             .beneficiaryName(charge.getBeneficiaryName())
-                                    .address(charge.getAddress())
-                                    .bank(charge.getBank())
-                                    .bankAddress(charge.getBankAddress())
-                                    .beneficiaryCountry(charge.getBeneficiaryCountry())
-                                    .swiftCode(charge.getSwiftCode())
-                                    .accountNumber(charge.getAccountNumber())
-                                    .iban(charge.getIban())
-                                    .intermediaryBank(charge.getIntermediaryBank())
-                                    .intermediaryAcct(charge.getIntermediaryAcct())
-                                    .intermediaryOth(charge.getIntermediaryOth())
-                                    .specialInstruction(charge.getSpecialInstruction())
-                                    .intermediaryCountryPoid(charge.getIntermediaryCountryPoid())
+                            .address(charge.getAddress())
+                            .bank(charge.getBank())
+                            .bankAddress(charge.getBankAddress())
+                            .beneficiaryCountry(charge.getBeneficiaryCountry())
+                            .swiftCode(charge.getSwiftCode())
+                            .accountNumber(charge.getAccountNumber())
+                            .iban(charge.getIban())
+                            .intermediaryBank(charge.getIntermediaryBank())
+                            .intermediaryAcct(charge.getIntermediaryAcct())
+                            .intermediaryOth(charge.getIntermediaryOth())
+                            .specialInstruction(charge.getSpecialInstruction())
+                            .intermediaryCountryPoid(charge.getIntermediaryCountryPoid())
                             .active(convertToActiveFlag(charge.getActive()))
                             .createdBy(currentUser)
                             .createdDate(now)
@@ -1082,10 +1091,10 @@ public class GLMasterServiceImpl implements GLMasterService {
                     GLPaymentDetailsEntity existingCharge = payDtlRepo
                             .findByGlPoidAndId(glPoid, charge.getDetRowId())
                             .orElseThrow(() -> new ResourceNotFoundException("Payment not found", "detRowId", charge.getDetRowId()));
-                    
+
                     GLPaymentDetailsEntity oldCharge = new GLPaymentDetailsEntity();
                     BeanUtils.copyProperties(existingCharge, oldCharge);
-                    
+
                     existingCharge.setType(charge.getType());
                     existingCharge.setBeneficiaryName(charge.getBeneficiaryName());
                     existingCharge.setAddress(charge.getAddress());
@@ -1104,8 +1113,8 @@ public class GLMasterServiceImpl implements GLMasterService {
                     existingCharge.setLastModifiedBy(currentUser);
                     existingCharge.setLastModifiedDate(now);
                     toSave.add(existingCharge);
-                    
-                    String logDetail = String.format("KeyId = GL_POID:%s DET_ROW_ID:%s", oldCharge.getGlPoid() ,charge.getDetRowId());
+
+                    String logDetail = String.format("KeyId = SUPPLIER_POID:%s DET_ROW_ID:%s", existingCharge.getGlPoid() , existingCharge.getGlPoid());
                     logRequests.add(new LogRequestDto<>(oldCharge, existingCharge, GLPaymentDetailsEntity.class, docId, docKeyPoid, logDetail));
                     break;
 
@@ -1122,7 +1131,7 @@ public class GLMasterServiceImpl implements GLMasterService {
                 default:
                     // If actionType is null or unrecognized, treat as NOCHANGES
                     // This prevents accidental deletion of records
-                    log.warn("Unknown actionType '{}' for payment detail (detRowId: {}), treating as NOCHANGES", 
+                    log.warn("Unknown actionType '{}' for payment detail (detRowId: {}), treating as NOCHANGES",
                             charge.getActionType(), charge.getDetRowId());
                     break;
             }
@@ -1132,10 +1141,10 @@ public class GLMasterServiceImpl implements GLMasterService {
         // Only delete records explicitly marked as "ISDELETED"
         // Records with "NOCHANGES" or unknown actionType are skipped (preserved in database)
         if (!toSave.isEmpty()) {
-            List<GLPaymentDetailsEntity> savedEntities = payDtlRepo.saveAll(toSave);
-            savedEntities.forEach(entity -> {
-                String logDetail = String.format("KeyId = GL_POID: %s DET_ROW_ID: %s", docKeyPoid, entity.getId());
-                loggingService.createLogSummaryEntry(docId, docKeyPoid, logDetail);
+            payDtlRepo.saveAll(toSave);
+            toSave.forEach(e -> {
+                String paymentLogDetail = String.format("Row Created on GL Payment Detail with detRowId: %s", e.getId());
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), UserContext.getDocumentId(), paymentLogDetail);
             });
         }
         if (!toDelete.isEmpty()) {
@@ -1177,31 +1186,27 @@ public class GLMasterServiceImpl implements GLMasterService {
                             .lastModifiedDate(now)
                             .build();
                     toSave.add(newCompanyEntity);
-                    String companyLogDetail = String.format("Row Created on GL Company Detail with detRowId: %s", charge.getDetRowId());
-                    loggingService.createLogSummaryEntry(UserContext.getDocumentId(), UserContext.getDocumentId(), companyLogDetail);
                     break;
-
                 case "ISUPDATED":
                     GLMasterCompanyDtlEntity existingCharge = companyDtlRepo
                             .findByGlPoidAndId(glPoid, charge.getDetRowId())
                             .orElseThrow(() -> new ResourceNotFoundException("Company not found", "detRowId", charge.getDetRowId()));
-                    
+
                     GLMasterCompanyDtlEntity oldCharge = new GLMasterCompanyDtlEntity();
                     BeanUtils.copyProperties(existingCharge, oldCharge);
-                    
+
                     existingCharge.setCompanyPoid(charge.getCompanyPoid());
                     existingCharge.setRemarks(charge.getRemarks());
                     existingCharge.setLastModifiedBy(currentUser);
                     existingCharge.setLastModifiedDate(now);
                     toSave.add(existingCharge);
-                    
-                    String logDetail = String.format("KeyId = GL_POID:%s DET_ROW_ID:%s", oldCharge.getGlPoid(), charge.getDetRowId());
+
+                    String logDetail = String.format("KeyId = GL_POID:%s DET_ROW_ID:%s", oldCharge.getGlPoid(), oldCharge.getId());
                     logRequests.add(new LogRequestDto<>(oldCharge, existingCharge, GLMasterCompanyDtlEntity.class, docId, docKeyPoid, logDetail));
                     break;
 
                 case "ISDELETED":
                     toDelete.add(charge.getDetRowId());
-                    loggingService.logDelete(charge, docId, docKeyPoid);
                     break;
 
                 case "NOCHANGES":
@@ -1212,7 +1217,7 @@ public class GLMasterServiceImpl implements GLMasterService {
                 default:
                     // If actionType is null or unrecognized, treat as NOCHANGES
                     // This prevents accidental deletion of records
-                    log.warn("Unknown actionType '{}' for company detail (detRowId: {}), treating as NOCHANGES", 
+                    log.warn("Unknown actionType '{}' for company detail (detRowId: {}), treating as NOCHANGES",
                             charge.getActionType(), charge.getDetRowId());
                     break;
             }
@@ -1220,10 +1225,10 @@ public class GLMasterServiceImpl implements GLMasterService {
 
         // Batch operations
         if (!toSave.isEmpty()) {
-            List<GLMasterCompanyDtlEntity> savedEntities = companyDtlRepo.saveAll(toSave);
-            savedEntities.forEach(entity -> {
-                String logDetail = String.format("KeyId = GL_POID: %s DET_ROW_ID: %s", docKeyPoid, entity.getId());
-                loggingService.createLogSummaryEntry(docId, docKeyPoid, logDetail);
+            companyDtlRepo.saveAll(toSave);
+            toSave.forEach(e -> {
+                String paymentLogDetail = String.format("Row Created on GL Company Detail with detRowId: %s", e.getId());
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), UserContext.getDocumentId(), paymentLogDetail);
             });
         }
         if (!toDelete.isEmpty()) {
@@ -1239,10 +1244,10 @@ public class GLMasterServiceImpl implements GLMasterService {
         if (subOf == null) {
             throw new RuntimeException("subOf (GROUP_GL_POID) cannot be null");
         }
-        
+
         GLMasterEntity parentGl = glMasterRepo.findById(subOf)
                 .orElseThrow(() -> new RuntimeException("GL Master not found with POID: " + subOf));
-        
+
         return parentGl.getAccountType();
     }
 }

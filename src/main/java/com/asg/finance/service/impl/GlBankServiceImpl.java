@@ -273,7 +273,13 @@ public class GlBankServiceImpl implements GlBankService {
     private void handleDeleteActionForChequeDetails(Long bankPoid, GlBankChequeDtlDto dto, List<GlBankChequeDtlEntity> entitiesToDelete) {
         if (dto.getDetRowId() != null) {
             chequeDtlRepository.findByBankPoidAndDetRowId(bankPoid, dto.getDetRowId())
-                    .ifPresentOrElse(entitiesToDelete::add, () -> log.warn("No GlBankChequeDtlEntity found for bankPoid={} and detRowId={}, skipping delete.", bankPoid, dto.getDetRowId()));
+                    .ifPresentOrElse(
+                            entity -> {
+                                entitiesToDelete.add(entity);
+                                loggingService.logDelete(dto, UserContext.getDocumentId(), bankPoid.toString());
+                            },
+                            () -> log.warn("No GlBankChequeDtlEntity found for bankPoid={} and detRowId={}, skipping delete.", bankPoid, dto.getDetRowId())
+                    );
         } else {
             log.warn("detRowId is null for bankPoid={} in cheque details, skipping delete.", bankPoid);
         }
@@ -318,6 +324,9 @@ public class GlBankServiceImpl implements GlBankService {
         newEntity.setLastChqNo(dto.getLastChqNo());
         newEntity.setLastModifiedDate(Timestamp.valueOf(LocalDateTime.now()));
         entitiesToSave.add(newEntity);
+        
+        String logDetail = String.format("Row Created on Bank Cheque Detail with detRowId: %s", dto.getDetRowId());
+        loggingService.createLogSummaryEntry(UserContext.getDocumentId(), UserContext.getDocumentId(), logDetail);
     }
 
     private void updateExistingGlBankChequeDtlEntity(GlBankChequeDtlEntity entity, GlBankChequeDtlDto dto, List<GlBankChequeDtlEntity> entities) {
@@ -368,7 +377,13 @@ public class GlBankServiceImpl implements GlBankService {
     private void handleDeleteActionForCommissionDetails(Long bankPoid, GlBankCommissionDtlDto dto, List<GlBankCommissionDtlEntity> entitiesToDelete) {
         if (dto.getDetRowId() != null) {
             commissionDtlRepository.findByBankPoidAndDetRowId(bankPoid, dto.getDetRowId())
-                    .ifPresentOrElse(entitiesToDelete::add, () -> log.warn("No GlBankCommissionDtlEntity found for bankPoid={} and detRowId={}, skipping delete.", bankPoid, dto.getDetRowId()));
+                    .ifPresentOrElse(
+                            entity -> {
+                                entitiesToDelete.add(entity);
+                                loggingService.logDelete(dto, UserContext.getDocumentId(), bankPoid.toString());
+                            },
+                            () -> log.warn("No GlBankCommissionDtlEntity found for bankPoid={} and detRowId={}, skipping delete.", bankPoid, dto.getDetRowId())
+                    );
         } else {
             log.warn("detRowId is null for bankPoid={} in commission details, skipping delete.", bankPoid);
         }
@@ -424,6 +439,9 @@ public class GlBankServiceImpl implements GlBankService {
         newEntity.setLastModifiedDate(Timestamp.valueOf(LocalDateTime.now()));
         newEntity.setCardType(dto.getCardType());
         entitiesToSave.add(newEntity);
+        
+        String logDetail = String.format("Row Created on Bank Commission Detail with detRowId: %s", dto.getDetRowId());
+        loggingService.createLogSummaryEntry(UserContext.getDocumentId(), UserContext.getDocumentId(), logDetail);
     }
 
     private void updateExistingGlBankCommissionDtlEntity(GlBankCommissionDtlEntity entity, GlBankCommissionDtlDto dto, List<GlBankCommissionDtlEntity> entities) {

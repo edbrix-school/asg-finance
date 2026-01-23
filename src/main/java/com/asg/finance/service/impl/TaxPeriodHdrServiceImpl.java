@@ -74,6 +74,8 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
         TaxPeriodHdr taxPeriodHdr = taxPeriodHdrRepository.save(entity);
         String currentUser = getCurrentUser();
         Long transactionPoid = taxPeriodHdr.getTransactionPoid();
+        String key = taxPeriodHdr.getTransactionPoid().toString();
+        String docId = UserContext.getDocumentId();
         if (request.getCharges() != null && !request.getCharges().isEmpty()) {
             List<GlobalTaxPeriodChargeDtlEntity> chargeEntities = request.getCharges().stream()
                     .map(dto -> GlobalTaxPeriodChargeDtlEntity.builder()
@@ -92,6 +94,11 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
                     .collect(Collectors.toList());
 
             globalTaxPeriodChargeDtlRepository.saveAll(chargeEntities);
+
+            chargeEntities.forEach(chargeDtlEntity -> {
+                String logDetail = String.format("Row Created on Tax Charge with detRowId: %s", chargeDtlEntity.getDetRowId());
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), docId , logDetail);
+            });
         }
 
         if (request.getStocks() != null && !request.getStocks().isEmpty()) {
@@ -110,13 +117,15 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
                            .lastModifiedDate(LocalDateTime.now())
                            .build())
                    .collect(Collectors.toList());
-            globalTaxPeriodStockDtlRepository.saveAll(stockDtlEntities);
+           globalTaxPeriodStockDtlRepository.saveAll(stockDtlEntities);
+           stockDtlEntities.forEach(stockDtlEntity -> {
+                String logDetail = String.format("Row Created on Tax stock with detRowId: %s", stockDtlEntity.getDetRowId());
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), docId , logDetail);
+            });
         }
 
-        // Log the creation
-        String key = taxPeriodHdr.getTransactionPoid().toString();
-        String docId = UserContext.getDocumentId();
         loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, key);
+
 
         return convertFromTaxPeriodHdrEntityToTaxPeriodHdrDto(taxPeriodHdr);
     }
@@ -471,6 +480,7 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
         String docKeyPoid = transactionPoid.toString();
         
         List<GlobalTaxPeriodChargeDtlEntity> toSave = new ArrayList<>();
+        List<GlobalTaxPeriodChargeDtlEntity> toUpdate = new ArrayList<>();
         List<Long> toDelete = new ArrayList<>();
         List<LogRequestDto<GlobalTaxPeriodChargeDtlEntity>> logRequests = new ArrayList<>();
         
@@ -508,14 +518,15 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
                     existingCharge.setRemarks(charge.getRemarks());
                     existingCharge.setLastModifiedBy(currentUser);
                     existingCharge.setLastModifiedDate(now);
-                    toSave.add(existingCharge);
+                    toUpdate.add(existingCharge);
                     
-                    String logDetail = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", oldCharge.getTransactionPoid() ,charge.getDetRowId());
-                    logRequests.add(new LogRequestDto<>(oldCharge, existingCharge, GlobalTaxPeriodChargeDtlEntity.class, docId, docKeyPoid, logDetail));
+                    String logDetailForUpdate = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", oldCharge.getTransactionPoid() ,charge.getDetRowId());
+                    logRequests.add(new LogRequestDto<>(oldCharge, existingCharge, GlobalTaxPeriodChargeDtlEntity.class, docId, docKeyPoid, logDetailForUpdate));
                     break;
                     
                 case "ISDELETED":
                     toDelete.add(charge.getDetRowId());
+                    loggingService.logDelete(charge, docId, docKeyPoid);
                     break;
             }
         }
@@ -523,13 +534,23 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
         // Batch operations
         if (!toSave.isEmpty()) {
             globalTaxPeriodChargeDtlRepository.saveAll(toSave);
+            toSave.forEach(e -> {
+                String logDetailForCreated = String.format("Row Created on Tax Charge with detRowId: %s", e.getDetRowId());
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), UserContext.getDocumentId(), logDetailForCreated);
+            });
         }
+
+        if (!toUpdate.isEmpty()) {
+            globalTaxPeriodChargeDtlRepository.saveAll(toUpdate);
+            if (!logRequests.isEmpty()) {
+                loggingService.createLogBatch(logRequests);
+            }
+        }
+
         if (!toDelete.isEmpty()) {
             globalTaxPeriodChargeDtlRepository.deleteByTransactionPoidAndDetRowIdIn(transactionPoid, toDelete);
         }
-        if (!logRequests.isEmpty()) {
-            loggingService.createLogBatch(logRequests);
-        }
+
     }
 
     private void updateTaxPeriodStocks(List<TaxPeriodStockDtlRequestDto> stocks, Long transactionPoid) {
@@ -539,6 +560,7 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
         String docKeyPoid = transactionPoid.toString();
         
         List<GlobalTaxPeriodStockDtlEntity> toSave = new ArrayList<>();
+        List<GlobalTaxPeriodStockDtlEntity> toUpdate = new ArrayList<>();
         List<Long> toDelete = new ArrayList<>();
         List<LogRequestDto<GlobalTaxPeriodStockDtlEntity>> logRequests = new ArrayList<>();
 
@@ -560,15 +582,15 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
                             .lastModifiedDate(now)
                             .build());
                     break;
-                    
+
                 case "ISUPDATED":
                     GlobalTaxPeriodStockDtlEntity existingStock = globalTaxPeriodStockDtlRepository
                             .findByTransactionPoidAndDetRowId(transactionPoid, stock.getDetRowId())
                             .orElseThrow(() -> new ResourceNotFoundException("Stock not found", "detRowId", stock.getDetRowId()));
-                    
+
                     GlobalTaxPeriodStockDtlEntity oldStock = new GlobalTaxPeriodStockDtlEntity();
                     BeanUtils.copyProperties(existingStock, oldStock);
-                    
+
                     existingStock.setStockPoid(stock.getStockPoid());
                     existingStock.setStockCatPoid(stock.getStockCatPoid());
                     existingStock.setTaxPoid(stock.getOutputTaxPoid());
@@ -576,27 +598,37 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
                     existingStock.setRemarks(stock.getRemarks());
                     existingStock.setLastModifiedBy(currentUser);
                     existingStock.setLastModifiedDate(now);
-                    toSave.add(existingStock);
-                    
+                    toUpdate.add(existingStock);
+
                     String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s",oldStock.getTransactionPoid() ,stock.getDetRowId());
                     logRequests.add(new LogRequestDto<>(oldStock, existingStock, GlobalTaxPeriodStockDtlEntity.class, docId, docKeyPoid, logDetail));
                     break;
-                    
+
                 case "ISDELETED":
                     toDelete.add(stock.getDetRowId());
+                    loggingService.logDelete(stock, docId, docKeyPoid);
                     break;
             }
         }
-        
-        // Batch operations
+
+        // Save operations first
         if (!toSave.isEmpty()) {
             globalTaxPeriodStockDtlRepository.saveAll(toSave);
+            toSave.forEach(e ->
+            {
+                String logDetailForCreated = String.format("Row Created on Tax Stock with detRowId: %s", e.getDetRowId());
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), UserContext.getDocumentId(), logDetailForCreated);
+            });
+        }
+
+        if (!toUpdate.isEmpty()) {
+            globalTaxPeriodStockDtlRepository.saveAll(toUpdate);
+            if (!logRequests.isEmpty()) {
+                loggingService.createLogBatch(logRequests);
+            }
         }
         if (!toDelete.isEmpty()) {
             globalTaxPeriodStockDtlRepository.deleteByTransactionPoidAndDetRowIdIn(transactionPoid, toDelete);
-        }
-        if (!logRequests.isEmpty()) {
-            loggingService.createLogBatch(logRequests);
         }
     }
 

@@ -1,5 +1,6 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.annotation.AuditIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -25,9 +26,11 @@ public class GlFavAcMasterGlAcDtl {
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "gl_fav_ac_gl_ac_dtl_seq")
     @SequenceGenerator(name = "gl_fav_ac_gl_ac_dtl_seq", sequenceName = "GL_FAV_AC_MASTER_GL_AC_DTL_SEQ", allocationSize = 1)
     @Column(name = "DET_ROW_ID", nullable = false)
+    @AuditIgnore
     private Long detRowId;
 
     @Column(name = "FAV_AC_POID", nullable = false)
+    @AuditIgnore
     private Long favAcPoid;
 
     @Column(name = "GL_POID", nullable = false)
@@ -37,15 +40,19 @@ public class GlFavAcMasterGlAcDtl {
     private String remarks;
 
     @Column(name = "CREATED_BY", length = 20)
+    @AuditIgnore
     private String createdBy;
 
     @Column(name = "CREATED_DATE")
+    @AuditIgnore
     private Timestamp createdDate;
 
     @Column(name = "LASTMODIFIED_BY", length = 20)
+    @AuditIgnore
     private String lastModifiedBy;
 
     @Column(name = "LASTMODIFIED_DATE")
+    @AuditIgnore
     private Timestamp lastModifiedDate;
 
     @Column(name = "SEQNO")

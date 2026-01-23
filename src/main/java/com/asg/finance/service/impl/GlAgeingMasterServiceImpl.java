@@ -31,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 
@@ -358,12 +359,17 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
         List<Long> toDelete = new ArrayList<>();
         List<LogRequestDto<GlAgeingMasterDtlEntity>> logRequests = new ArrayList<>();
 
+        // Get existing records for deletion logging
+        List<GlAgeingMasterDtlEntity> existingDetails = ageingMasterDtlRepository.findByAgeingMaster_AgeingPoid(ageingPoid);
+        Map<Long, GlAgeingMasterDtlEntity> existingMap = existingDetails.stream()
+                .collect(Collectors.toMap(GlAgeingMasterDtlEntity::getDetRowId, Function.identity(), (first, second) -> first));
+
         // Group operations by action
         for (GlAgeingMasterDtlDto charge : ageingDetails) {
             String actionType = charge.getActionType() == null ? "NOCHANGE" : charge.getActionType().toUpperCase();
             switch (actionType) {
                 case "ISCREATED":
-                    toSave.add(GlAgeingMasterDtlEntity.builder()
+                    GlAgeingMasterDtlEntity newEntity = GlAgeingMasterDtlEntity.builder()
                             .ageingPoid(ageingPoid)
                             .detRowId(charge.getDetRowId())
                             .breakupTitle(charge.getBreakupTitle())
@@ -373,7 +379,11 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
                             .createdDate(Timestamp.valueOf(now))
                             .lastModifiedBy(currentUser)
                             .lastModifiedDate(Timestamp.valueOf(now))
-                            .build());
+                            .build();
+                    toSave.add(newEntity);
+                    // Log creation - oldEntity is null
+                    String createLogDetail = String.format("KeyId = AGEING_POID:%s DET_ROW_ID:%s", ageingPoid, charge.getDetRowId());
+                    logRequests.add(new LogRequestDto<>(null, newEntity, GlAgeingMasterDtlEntity.class, docId, docKeyPoid, createLogDetail));
                     break;
 
                 case "ISUPDATED":
@@ -391,12 +401,20 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
                     existingCharge.setLastModifiedDate(Timestamp.valueOf(now));
                     toSave.add(existingCharge);
                     
-                    String logDetail = String.format("KeyId = AGEING_POID:%s DET_ROW_ID:%s", oldCharge.getAgeingPoid() ,charge.getDetRowId());
+                    String logDetail = String.format("KeyId = AGEING_POID:%s DET_ROW_ID:%s", oldCharge.getAgeingPoid(), charge.getDetRowId());
                     logRequests.add(new LogRequestDto<>(oldCharge, existingCharge, GlAgeingMasterDtlEntity.class, docId, docKeyPoid, logDetail));
                     break;
 
                 case "ISDELETED":
                     toDelete.add(charge.getDetRowId());
+                    // Log deletion - get old entity before deletion
+                    GlAgeingMasterDtlEntity oldEntityForDelete = existingMap.get(charge.getDetRowId());
+                    if (oldEntityForDelete != null) {
+                        GlAgeingMasterDtlEntity oldEntityCopy = new GlAgeingMasterDtlEntity();
+                        BeanUtils.copyProperties(oldEntityForDelete, oldEntityCopy);
+                        String deleteLogDetail = String.format("KeyId = AGEING_POID:%s DET_ROW_ID:%s", ageingPoid, charge.getDetRowId());
+                        logRequests.add(new LogRequestDto<>(oldEntityCopy, null, GlAgeingMasterDtlEntity.class, docId, docKeyPoid, deleteLogDetail));
+                    }
                     break;
                     
                 case "NOCHANGE":

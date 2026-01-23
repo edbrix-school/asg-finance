@@ -1,6 +1,7 @@
 package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.*;
+import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.entity.Company;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
@@ -23,6 +24,7 @@ import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.GlFavAcMasterService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -38,6 +40,7 @@ import java.util.stream.Collectors;
 /**
  * Service implementation for Key Favorite Account Master operations
  */
+@Slf4j
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -144,7 +147,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
             }
         }
 
-        // Logging for create operation
+        // Logging for create operation - master record only (like other screens)
         loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), savedMaster.getFavAcPoid().toString());
 
         return getFavoriteAccountById(savedMaster.getFavAcPoid());
@@ -214,11 +217,23 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
 
         masterRepository.save(existing);
 
+        // Get existing GL account details before deletion for logging
+        List<GlFavAcMasterGlAcDtl> oldGlAcDtls = glAcDtlRepository.findByFavAcPoidOrderBySeqNo(favAcPoid);
+        
         // Delete existing GL account details and recreate
         glAcDtlRepository.deleteByFavAcPoid(favAcPoid);
         glAcDtlRepository.flush(); // Ensure deletes are committed before inserts
         
+        List<LogRequestDto<GlFavAcMasterGlAcDtl>> glAcLogRequests = new ArrayList<>();
         if (request.getGlAccounts() != null && !request.getGlAccounts().isEmpty()) {
+            // Build map of old records by composite key (glPoid, company, viewCategory)
+            Map<String, GlFavAcMasterGlAcDtl> oldGlAcMap = oldGlAcDtls.stream()
+                    .collect(Collectors.toMap(
+                            dtl -> String.format("%s_%s_%s", dtl.getGlPoid(), dtl.getCompany(), dtl.getViewCategory()),
+                            Function.identity(),
+                            (first, second) -> first
+                    ));
+            
             for (GlAccountDetailRequest glAccountRequest : request.getGlAccounts()) {
                 GlFavAcMasterGlAcDtl glAcDtl = GlFavAcMasterGlAcDtl.builder()
                         .favAcPoid(favAcPoid)
@@ -232,15 +247,65 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                         .lastModifiedBy(currentUser)
                         .lastModifiedDate(now)
                         .build();
-                glAcDtlRepository.save(glAcDtl);
+                GlFavAcMasterGlAcDtl savedGlAcDtl = glAcDtlRepository.save(glAcDtl);
+                
+                // Check if this is an update or create
+                String key = String.format("%s_%s_%s", glAcDtl.getGlPoid(), glAcDtl.getCompany(), glAcDtl.getViewCategory());
+                GlFavAcMasterGlAcDtl oldGlAcDtlFromMap = oldGlAcMap.get(key);
+                
+                // Create a copy of old entity for logging (similar to GLMasterServiceImpl)
+                GlFavAcMasterGlAcDtl oldGlAcDtl = null;
+                if (oldGlAcDtlFromMap != null) {
+                    oldGlAcDtl = new GlFavAcMasterGlAcDtl();
+                    BeanUtils.copyProperties(oldGlAcDtlFromMap, oldGlAcDtl);
+                }
+                
+                String logDetail = String.format("KeyId = FAV_AC_POID:%s DET_ROW_ID:%s", 
+                    savedGlAcDtl.getFavAcPoid(), savedGlAcDtl.getDetRowId());
+                glAcLogRequests.add(new LogRequestDto<>(oldGlAcDtl, savedGlAcDtl, GlFavAcMasterGlAcDtl.class, 
+                    UserContext.getDocumentId(), favAcPoid.toString(), logDetail));
+            }
+            
+                // Log deletions for GL accounts that were removed
+                for (GlFavAcMasterGlAcDtl oldGlAcDtl : oldGlAcDtls) {
+                    String key = String.format("%s_%s_%s", oldGlAcDtl.getGlPoid(), oldGlAcDtl.getCompany(), oldGlAcDtl.getViewCategory());
+                    boolean stillExists = request.getGlAccounts().stream().anyMatch(req -> 
+                        String.format("%s_%s_%s", req.getGlAccountPoId(), req.getCompanyPoId(), req.getViewCategoryPoid()).equals(key));
+                    
+                    if (!stillExists) {
+                        String logDetail = String.format("KeyId = FAV_AC_POID:%s DET_ROW_ID:%s", 
+                            oldGlAcDtl.getFavAcPoid(), oldGlAcDtl.getDetRowId());
+                        glAcLogRequests.add(new LogRequestDto<>(oldGlAcDtl, null, GlFavAcMasterGlAcDtl.class, 
+                            UserContext.getDocumentId(), favAcPoid.toString(), logDetail));
+                    }
+                }
+        } else {
+            // All GL accounts were deleted
+            for (GlFavAcMasterGlAcDtl oldGlAcDtl : oldGlAcDtls) {
+                String logDetail = String.format("KeyId = FAV_AC_POID:%s DET_ROW_ID:%s", 
+                    oldGlAcDtl.getFavAcPoid(), oldGlAcDtl.getDetRowId());
+                glAcLogRequests.add(new LogRequestDto<>(oldGlAcDtl, null, GlFavAcMasterGlAcDtl.class, 
+                    UserContext.getDocumentId(), favAcPoid.toString(), logDetail));
             }
         }
 
+        // Get existing user role details before deletion for logging
+        List<GlFavAcMasterUserRoleDtl> oldUserRoleDtls = userRoleDtlRepository.findByFavAcPoid(favAcPoid);
+        
         // Delete existing user role details and recreate
         userRoleDtlRepository.deleteByFavAcPoid(favAcPoid);
         userRoleDtlRepository.flush(); // Ensure deletes are committed before inserts
         
+        List<LogRequestDto<GlFavAcMasterUserRoleDtl>> userRoleLogRequests = new ArrayList<>();
         if (filteredUserRolePoids != null && !filteredUserRolePoids.isEmpty()) {
+            // Build map of old records by userRolePoid
+            Map<Long, GlFavAcMasterUserRoleDtl> oldUserRoleMap = oldUserRoleDtls.stream()
+                    .collect(Collectors.toMap(
+                            GlFavAcMasterUserRoleDtl::getUserRolePoid,
+                            Function.identity(),
+                            (first, second) -> first
+                    ));
+            
             for (Long userRolePoid : filteredUserRolePoids) {
                 GlFavAcMasterUserRoleDtl userRoleDtl = GlFavAcMasterUserRoleDtl.builder()
                         .favAcPoid(favAcPoid)
@@ -250,12 +315,54 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                         .lastModifiedBy(currentUser)
                         .lastModifiedDate(now)
                         .build();
-                userRoleDtlRepository.save(userRoleDtl);
+                GlFavAcMasterUserRoleDtl savedUserRoleDtl = userRoleDtlRepository.save(userRoleDtl);
+                
+                // Check if this is an update or create
+                GlFavAcMasterUserRoleDtl oldUserRoleDtlFromMap = oldUserRoleMap.get(userRolePoid);
+                
+                // Create a copy of old entity for logging (similar to GLMasterServiceImpl)
+                GlFavAcMasterUserRoleDtl oldUserRoleDtl = null;
+                if (oldUserRoleDtlFromMap != null) {
+                    oldUserRoleDtl = new GlFavAcMasterUserRoleDtl();
+                    BeanUtils.copyProperties(oldUserRoleDtlFromMap, oldUserRoleDtl);
+                }
+                
+                String logDetail = String.format("KeyId = FAV_AC_POID:%s DET_ROW_ID:%s", 
+                    savedUserRoleDtl.getFavAcPoid(), savedUserRoleDtl.getDetRowId());
+                userRoleLogRequests.add(new LogRequestDto<>(oldUserRoleDtl, savedUserRoleDtl, GlFavAcMasterUserRoleDtl.class, 
+                    UserContext.getDocumentId(), favAcPoid.toString(), logDetail));
+            }
+            
+                // Log deletions for user roles that were removed
+                for (GlFavAcMasterUserRoleDtl oldUserRoleDtl : oldUserRoleDtls) {
+                    boolean stillExists = filteredUserRolePoids.contains(oldUserRoleDtl.getUserRolePoid());
+                    if (!stillExists) {
+                        String logDetail = String.format("KeyId = FAV_AC_POID:%s DET_ROW_ID:%s", 
+                            oldUserRoleDtl.getFavAcPoid(), oldUserRoleDtl.getDetRowId());
+                        userRoleLogRequests.add(new LogRequestDto<>(oldUserRoleDtl, null, GlFavAcMasterUserRoleDtl.class, 
+                            UserContext.getDocumentId(), favAcPoid.toString(), logDetail));
+                    }
+                }
+        } else {
+            // All user roles were deleted
+            for (GlFavAcMasterUserRoleDtl oldUserRoleDtl : oldUserRoleDtls) {
+                String logDetail = String.format("KeyId = FAV_AC_POID:%s DET_ROW_ID:%s", 
+                    oldUserRoleDtl.getFavAcPoid(), oldUserRoleDtl.getDetRowId());
+                userRoleLogRequests.add(new LogRequestDto<>(oldUserRoleDtl, null, GlFavAcMasterUserRoleDtl.class, 
+                    UserContext.getDocumentId(), favAcPoid.toString(), logDetail));
             }
         }
 
-        // Logging for update operation
+        // Logging for update operation - master record
         loggingService.logChanges(oldEntity, existing, GlFavAcMaster.class, UserContext.getDocumentId(), favAcPoid.toString(), LogDetailsEnum.MODIFIED, "FAV_AC_POID");
+        
+        // Log detail records
+        if (!glAcLogRequests.isEmpty()) {
+            loggingService.createLogBatch(glAcLogRequests);
+        }
+        if (!userRoleLogRequests.isEmpty()) {
+            loggingService.createLogBatch(userRoleLogRequests);
+        }
 
         return getFavoriteAccountById(favAcPoid);
     }
@@ -398,7 +505,6 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
      * If userRolePoids is null or empty, validation is skipped (e.g., when userRolePoids: [0] or []).
      */
     private void validateUserRolesExist(List<Long> userRolePoids) {
-        // Skip validation if list is null or empty (e.g., userRolePoids: [0] means empty)
         if (userRolePoids == null || userRolePoids.isEmpty()) {
             return;
         }

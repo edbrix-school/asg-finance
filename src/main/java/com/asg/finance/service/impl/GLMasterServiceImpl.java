@@ -1113,7 +1113,7 @@ public class GLMasterServiceImpl implements GLMasterService {
                     existingCharge.setLastModifiedDate(now);
                     toUpdate.add(existingCharge);
 
-                    String logDetail = String.format("KeyId = SUPPLIER_POID:%s DET_ROW_ID:%s", existingCharge.getGlPoid() , existingCharge.getGlPoid());
+                    String logDetail = String.format("KeyId = GL_POID:%s DET_ROW_ID:%s", existingCharge.getGlPoid() , existingCharge.getGlPoid());
                     logRequests.add(new LogRequestDto<>(oldCharge, existingCharge, GLPaymentDetailsEntity.class, docId, docKeyPoid, logDetail));
                     break;
 

@@ -298,7 +298,8 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
 
         String docId = UserContext.getDocumentId();
         String docKeyPoid = savedMaster.getFavAcPoid().toString();
-        GlobalLogSummary headerLog = createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, "Created", now);
+        String createdMessage = String.format("Created - - DOC:%s KEY:%s", docId, docKeyPoid);
+        GlobalLogSummary headerLog = createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, createdMessage, now);
         globalLogSummaryRepository.save(headerLog);
 
         return getFavoriteAccountById(savedMaster.getFavAcPoid());
@@ -409,7 +410,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                                 .build();
                         toSave.add(newGlAcDtl);
                         
-                        String createSummaryMessage = String.format("Row Created on GL_FAV_AC_MASTER_GL_AC_DTL with DetRowId: %s", glAccountRequest.getDetRowId());
+                        String createSummaryMessage = String.format("Row Created on Favorite Account Master Detail with DetRowId: %s", glAccountRequest.getDetRowId());
                         GlobalLogSummary createSummaryLog = createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, createSummaryMessage);
                         glAcSummaryLogs.add(createSummaryLog);
                         break;
@@ -425,7 +426,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                         if (existingGlAcDtl == null) {
                             GlFavAcMasterGlAcDtl newGlAcDtlFromUpdate = GlFavAcMasterGlAcDtl.builder()
                                     .favAcPoid(favAcPoid)
-                                    .detRowId(glAccountRequest.getDetRowId()) // Frontend provides detRowId
+                                    .detRowId(glAccountRequest.getDetRowId()) 
                                     .glPoid(glAccountRequest.getGlAccountPoId())
                                     .company(glAccountRequest.getCompanyPoId())
                                     .viewCategory(glAccountRequest.getViewCategoryPoid())
@@ -438,7 +439,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                                     .build();
                             toSave.add(newGlAcDtlFromUpdate);
                             
-                            String createSummaryMessageFromUpdate = String.format("Row Created on GL_FAV_AC_MASTER_GL_AC_DTL with DetRowId: %s", glAccountRequest.getDetRowId());
+                            String createSummaryMessageFromUpdate = String.format("Row Created on Favorite Account Master Detail with DetRowId: %s", glAccountRequest.getDetRowId());
                             GlobalLogSummary createSummaryLogFromUpdate = createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, createSummaryMessageFromUpdate);
                             glAcSummaryLogs.add(createSummaryLogFromUpdate);
                             break;
@@ -463,7 +464,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                         glAcLogRequests.add(new LogRequestDto<>(oldGlAcDtl, existingGlAcDtl, GlFavAcMasterGlAcDtl.class, 
                             docId, docKeyPoid, logDetail));
                         
-                        String updateSummaryMessage = "Modified";
+                        String updateSummaryMessage = String.format("Modified - - DOC:%s KEY:%s", docId, docKeyPoid);
                         GlobalLogSummary updateSummaryLog = createSummaryLogEntry(LogDetailsEnum.MODIFIED, docId, docKeyPoid, updateSummaryMessage);
                         glAcSummaryLogs.add(updateSummaryLog);
                         break;
@@ -478,7 +479,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                         if (glAcDtlToDelete != null) {
                             toDelete.add(glAcDtlToDelete);
                             
-                            String deletedRecordString = String.format("DET_ROW_ID:%s, FAV_AC_POID:%s, GL_POID:%s, COMPANY:%s, VIEW_CATEGORY:%s, REMARKS:%s, SEQNO:%s",
+                            String deletedRecordString = String.format("detRowId:%s, favAcPoid:%s, glPoid:%s, company:%s, viewCategory:%s, remarks:%s, seqNo:%s",
                                     glAcDtlToDelete.getDetRowId(), glAcDtlToDelete.getFavAcPoid(), glAcDtlToDelete.getGlPoid(),
                                     glAcDtlToDelete.getCompany(), glAcDtlToDelete.getViewCategory(), glAcDtlToDelete.getRemarks(), glAcDtlToDelete.getSeqNo());
                             String deleteSummaryMessage = String.format("Row Deleted %s", deletedRecordString);
@@ -550,7 +551,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                                 .build();
                         userRoleToSave.add(newUserRoleDtl);
                         
-                        String createSummaryMessage = String.format("Row Created on GL_FAV_AC_MASTER_USER_ROLE_DTL with DetRowId: %s", userRoleRequest.getDetRowId());
+                        String createSummaryMessage = String.format("Row Created on Favorite Account Master User Role Detail with DetRowId: %s", userRoleRequest.getDetRowId());
                         GlobalLogSummary createSummaryLog = createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, createSummaryMessage);
                         userRoleSummaryLogs.add(createSummaryLog);
                         break;
@@ -575,7 +576,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                                     .build();
                             userRoleToSave.add(newUserRoleDtlFromUpdate);
                             
-                            String createSummaryMessageFromUpdate = String.format("Row Created on GL_FAV_AC_MASTER_USER_ROLE_DTL with DetRowId: %s", userRoleRequest.getDetRowId());
+                            String createSummaryMessageFromUpdate = String.format("Row Created on Favorite Account Master User Role Detail with DetRowId: %s", userRoleRequest.getDetRowId());
                             GlobalLogSummary createSummaryLogFromUpdate = createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, createSummaryMessageFromUpdate);
                             userRoleSummaryLogs.add(createSummaryLogFromUpdate);
                             break;
@@ -596,7 +597,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                         userRoleLogRequests.add(new LogRequestDto<>(oldUserRoleDtl, existingUserRoleDtl, GlFavAcMasterUserRoleDtl.class, 
                             docId, docKeyPoid, logDetail));
                         
-                        String updateSummaryMessage = "Modified";
+                        String updateSummaryMessage = String.format("Modified - - DOC:%s KEY:%s", docId, docKeyPoid);
                         GlobalLogSummary updateSummaryLog = createSummaryLogEntry(LogDetailsEnum.MODIFIED, docId, docKeyPoid, updateSummaryMessage);
                         userRoleSummaryLogs.add(updateSummaryLog);
                         break;
@@ -611,7 +612,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                         if (userRoleDtlToDelete != null) {
                             userRoleToDelete.add(userRoleDtlToDelete);
                             
-                            String deletedRecordString = String.format("DET_ROW_ID:%s, FAV_AC_POID:%s, USER_ROLE_POID:%s",
+                            String deletedRecordString = String.format("detRowId:%s, favAcPoid:%s, userRolePoid:%s",
                                     userRoleDtlToDelete.getDetRowId(), userRoleDtlToDelete.getFavAcPoid(), userRoleDtlToDelete.getUserRolePoid());
                             String deleteSummaryMessage = String.format("Row Deleted %s", deletedRecordString);
                             GlobalLogSummary deleteSummaryLog = createSummaryLogEntry(LogDetailsEnum.DELETED, docId, docKeyPoid, deleteSummaryMessage);
@@ -647,7 +648,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
             if (!stillExists) {
                 userRoleToDelete.add(oldUserRoleDtl);
                 
-                String deletedRecordString = String.format("DET_ROW_ID:%s, FAV_AC_POID:%s, USER_ROLE_POID:%s",
+                String deletedRecordString = String.format("detRowId:%s, favAcPoid:%s, userRolePoid:%s",
                         oldUserRoleDtl.getDetRowId(), oldUserRoleDtl.getFavAcPoid(), oldUserRoleDtl.getUserRolePoid());
                 String deleteSummaryMessage = String.format("Row Deleted %s", deletedRecordString);
                 GlobalLogSummary deleteSummaryLog = createSummaryLogEntry(LogDetailsEnum.DELETED, docId, docKeyPoid, deleteSummaryMessage);
@@ -664,7 +665,8 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
         }
 
         
-        GlobalLogSummary headerUpdateLog = createSummaryLogEntry(LogDetailsEnum.MODIFIED, docId, docKeyPoid, "Modified", now);
+        String modifiedMessage = String.format("Modified - - DOC:%s KEY:%s", docId, docKeyPoid);
+        GlobalLogSummary headerUpdateLog = createSummaryLogEntry(LogDetailsEnum.MODIFIED, docId, docKeyPoid, modifiedMessage, now);
         globalLogSummaryRepository.save(headerUpdateLog);
         
         List<LogRequestDto<GlFavAcMaster>> headerLogRequests = new ArrayList<>();

@@ -84,7 +84,8 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
 
         String docId = UserContext.getDocumentId();
         String docKeyPoid = masterEntity.getAgeingPoid().toString();
-        GlobalLogSummary headerLog = createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, "Created");
+        String createdMessage = String.format("Created - - DOC:%s KEY:%s", docId, docKeyPoid);
+        GlobalLogSummary headerLog = createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, createdMessage);
         globalLogSummaryRepository.save(headerLog);
 
         return GlAgeingMasterResponseDto.builder()
@@ -148,7 +149,8 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
 
         String docId = UserContext.getDocumentId();
         String docKeyPoid = ageingPoid.toString();
-        GlobalLogSummary headerUpdateLog = createSummaryLogEntry(LogDetailsEnum.MODIFIED, docId, docKeyPoid, "Modified");
+        String modifiedMessage = String.format("Modified - - DOC:%s KEY:%s", docId, docKeyPoid);
+        GlobalLogSummary headerUpdateLog = createSummaryLogEntry(LogDetailsEnum.MODIFIED, docId, docKeyPoid, modifiedMessage);
         globalLogSummaryRepository.save(headerUpdateLog);
         
         List<LogRequestDto<GlAgeingMasterEntity>> headerLogRequests = new ArrayList<>();
@@ -421,7 +423,7 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
                     String logDetail = String.format("KeyId = AGEING_POID:%s DET_ROW_ID:%s", oldCharge.getAgeingPoid(), oldCharge.getDetRowId());
                     logRequests.add(new LogRequestDto<>(oldCharge, existingCharge, GlAgeingMasterDtlEntity.class, docId, docKeyPoid, logDetail));
                     
-                    String updateSummaryMessage = "Modified";
+                    String updateSummaryMessage = String.format("Modified - - DOC:%s KEY:%s", docId, docKeyPoid);
                     GlobalLogSummary updateSummaryLog = createSummaryLogEntry(LogDetailsEnum.MODIFIED, docId, docKeyPoid, updateSummaryMessage);
                     summaryLogs.add(updateSummaryLog);
                     break;
@@ -430,10 +432,10 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
                     toDelete.add(charge.getDetRowId());
                     GlAgeingMasterDtlEntity oldEntityForDelete = existingMap.get(charge.getDetRowId());
                     if (oldEntityForDelete != null) {
-                        String deletedRecordString = String.format("DET_ROW_ID:%s, AGEING_POID:%s, BREAKUP_TITLE:%s, BREAKUP_FROM:%s, BREAKUP_TO:%s",
+                        String deletedRecordString = String.format("detRowId:%s, ageingPoid:%s, breakupTitle:%s, breakupFrom:%s, breakupTo:%s",
                                 oldEntityForDelete.getDetRowId(), oldEntityForDelete.getAgeingPoid(), oldEntityForDelete.getBreakupTitle(),
                                 oldEntityForDelete.getBreakupFrom(), oldEntityForDelete.getBreakupTo());
-                        String deleteSummaryMessage = String.format("Row Deleted with deleted record in string: %s", deletedRecordString);
+                        String deleteSummaryMessage = String.format("Row Deleted %s", deletedRecordString);
                         GlobalLogSummary deleteSummaryLog = createSummaryLogEntry(LogDetailsEnum.DELETED, docId, docKeyPoid, deleteSummaryMessage);
                         summaryLogs.add(deleteSummaryLog);
                     }
@@ -457,7 +459,7 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
                         .orElse(null);
                 
                 if (savedEntity != null && savedEntity.getDetRowId() != null) {
-                    String summaryMessage = String.format("Row Created on GL_AGEING_MASTER_DTL with DetRowId: %s", savedEntity.getDetRowId());
+                    String summaryMessage = String.format("Row Created on Ageing Master Detail with DetRowId: %s", savedEntity.getDetRowId());
                     GlobalLogSummary summaryLog = createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, summaryMessage);
                     summaryLogs.add(summaryLog);
                 }

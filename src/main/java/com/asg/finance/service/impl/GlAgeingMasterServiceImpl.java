@@ -16,8 +16,10 @@ import com.asg.finance.dto.GlAgeingMasterDto;
 import com.asg.finance.dto.GlAgeingMasterResponseDto;
 import com.asg.finance.entity.GlAgeingMasterEntity;
 import com.asg.finance.entity.GlAgeingMasterDtlEntity;
+import com.asg.finance.entity.GlobalLogSummary;
 import com.asg.finance.repository.GlAgeingMasterRepository;
 import com.asg.finance.repository.GlAgeingMasterDtlRepository;
+import com.asg.finance.repository.GlobalLogSummaryRepository;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.GlAgeingMasterService;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +49,7 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
     private final GlAgeingMasterRepository ageingMasterRepository;
     private final GlAgeingMasterDtlRepository ageingMasterDtlRepository;
     private final LoggingService loggingService;
+    private final GlobalLogSummaryRepository globalLogSummaryRepository;
 
 
     @Autowired
@@ -79,8 +82,11 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
         // Save detail records
         saveAgeingDetails(ageingMasterDto.getAgeingDetails(), masterEntity);
 
-        // Log the creation
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), masterEntity.getAgeingPoid().toString());
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = masterEntity.getAgeingPoid().toString();
+        String createdMessage = String.format("Created - - DOC:%s KEY:%s", docId, docKeyPoid);
+        GlobalLogSummary headerLog = createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, createdMessage);
+        globalLogSummaryRepository.save(headerLog);
 
         return GlAgeingMasterResponseDto.builder()
                 .status("success")
@@ -141,8 +147,18 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
         //updateAgeingDetails(ageingMasterDto.getAgeingDetails(), existingEntity);
         updateAgeingMastersChildDetails(ageingMasterDto.getAgeingDetails(), ageingPoid);
 
-        // Log the update
-        loggingService.logChanges(oldEntity, existingEntity, GlAgeingMasterEntity.class, UserContext.getDocumentId(), ageingPoid.toString(), LogDetailsEnum.MODIFIED, "AGEING_POID");
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = ageingPoid.toString();
+        String modifiedMessage = String.format("Modified - - DOC:%s KEY:%s", docId, docKeyPoid);
+        GlobalLogSummary headerUpdateLog = createSummaryLogEntry(LogDetailsEnum.MODIFIED, docId, docKeyPoid, modifiedMessage);
+        globalLogSummaryRepository.save(headerUpdateLog);
+        
+        List<LogRequestDto<GlAgeingMasterEntity>> headerLogRequests = new ArrayList<>();
+        String logDetail = String.format("KeyId = AGEING_POID:%s", ageingPoid);
+        headerLogRequests.add(new LogRequestDto<>(oldEntity, existingEntity, GlAgeingMasterEntity.class, docId, docKeyPoid, logDetail));
+        if (!headerLogRequests.isEmpty()) {
+            loggingService.createLogBatch(headerLogRequests);
+        }
 
         return fetchAgeingMaster(ageingPoid);
     }
@@ -356,8 +372,10 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
         String docKeyPoid = ageingPoid.toString();
 
         List<GlAgeingMasterDtlEntity> toSave = new ArrayList<>();
+        List<GlAgeingMasterDtlEntity> newlyCreatedEntities = new ArrayList<>(); 
         List<Long> toDelete = new ArrayList<>();
         List<LogRequestDto<GlAgeingMasterDtlEntity>> logRequests = new ArrayList<>();
+        List<GlobalLogSummary> summaryLogs = new ArrayList<>();
 
         // Get existing records for deletion logging
         List<GlAgeingMasterDtlEntity> existingDetails = ageingMasterDtlRepository.findByAgeingMaster_AgeingPoid(ageingPoid);
@@ -371,7 +389,7 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
                 case "ISCREATED":
                     GlAgeingMasterDtlEntity newEntity = GlAgeingMasterDtlEntity.builder()
                             .ageingPoid(ageingPoid)
-                            .detRowId(charge.getDetRowId())
+                            .detRowId(charge.getDetRowId()) 
                             .breakupTitle(charge.getBreakupTitle())
                             .breakupFrom(charge.getBreakupFrom())
                             .breakupTo(charge.getBreakupTo())
@@ -381,9 +399,7 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
                             .lastModifiedDate(Timestamp.valueOf(now))
                             .build();
                     toSave.add(newEntity);
-                    // Log creation - oldEntity is null
-                    String createLogDetail = String.format("KeyId = AGEING_POID:%s DET_ROW_ID:%s", ageingPoid, charge.getDetRowId());
-                    logRequests.add(new LogRequestDto<>(null, newEntity, GlAgeingMasterDtlEntity.class, docId, docKeyPoid, createLogDetail));
+                    newlyCreatedEntities.add(newEntity);
                     break;
 
                 case "ISUPDATED":
@@ -393,6 +409,9 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
                     
                     GlAgeingMasterDtlEntity oldCharge = new GlAgeingMasterDtlEntity();
                     BeanUtils.copyProperties(existingCharge, oldCharge);
+                    oldCharge.setDetRowId(existingCharge.getDetRowId());
+                    oldCharge.setAgeingPoid(existingCharge.getAgeingPoid());
+                    oldCharge.setAgeingMaster(existingCharge.getAgeingMaster());
                     
                     existingCharge.setBreakupTitle(charge.getBreakupTitle());
                     existingCharge.setBreakupFrom(charge.getBreakupFrom());
@@ -401,19 +420,24 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
                     existingCharge.setLastModifiedDate(Timestamp.valueOf(now));
                     toSave.add(existingCharge);
                     
-                    String logDetail = String.format("KeyId = AGEING_POID:%s DET_ROW_ID:%s", oldCharge.getAgeingPoid(), charge.getDetRowId());
+                    String logDetail = String.format("KeyId = AGEING_POID:%s DET_ROW_ID:%s", oldCharge.getAgeingPoid(), oldCharge.getDetRowId());
                     logRequests.add(new LogRequestDto<>(oldCharge, existingCharge, GlAgeingMasterDtlEntity.class, docId, docKeyPoid, logDetail));
+                    
+                    String updateSummaryMessage = String.format("Modified - - DOC:%s KEY:%s", docId, docKeyPoid);
+                    GlobalLogSummary updateSummaryLog = createSummaryLogEntry(LogDetailsEnum.MODIFIED, docId, docKeyPoid, updateSummaryMessage);
+                    summaryLogs.add(updateSummaryLog);
                     break;
 
                 case "ISDELETED":
                     toDelete.add(charge.getDetRowId());
-                    // Log deletion - get old entity before deletion
                     GlAgeingMasterDtlEntity oldEntityForDelete = existingMap.get(charge.getDetRowId());
                     if (oldEntityForDelete != null) {
-                        GlAgeingMasterDtlEntity oldEntityCopy = new GlAgeingMasterDtlEntity();
-                        BeanUtils.copyProperties(oldEntityForDelete, oldEntityCopy);
-                        String deleteLogDetail = String.format("KeyId = AGEING_POID:%s DET_ROW_ID:%s", ageingPoid, charge.getDetRowId());
-                        logRequests.add(new LogRequestDto<>(oldEntityCopy, null, GlAgeingMasterDtlEntity.class, docId, docKeyPoid, deleteLogDetail));
+                        String deletedRecordString = String.format("detRowId:%s, ageingPoid:%s, breakupTitle:%s, breakupFrom:%s, breakupTo:%s",
+                                oldEntityForDelete.getDetRowId(), oldEntityForDelete.getAgeingPoid(), oldEntityForDelete.getBreakupTitle(),
+                                oldEntityForDelete.getBreakupFrom(), oldEntityForDelete.getBreakupTo());
+                        String deleteSummaryMessage = String.format("Row Deleted %s", deletedRecordString);
+                        GlobalLogSummary deleteSummaryLog = createSummaryLogEntry(LogDetailsEnum.DELETED, docId, docKeyPoid, deleteSummaryMessage);
+                        summaryLogs.add(deleteSummaryLog);
                     }
                     break;
                     
@@ -423,7 +447,23 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
         }
         // Batch operations
         if (!toSave.isEmpty()) {
-            ageingMasterDtlRepository.saveAll(toSave);
+            List<GlAgeingMasterDtlEntity> savedEntities = ageingMasterDtlRepository.saveAll(toSave);
+            
+            for (GlAgeingMasterDtlEntity newlyCreated : newlyCreatedEntities) {
+                GlAgeingMasterDtlEntity savedEntity = savedEntities.stream()
+                        .filter(saved -> saved.getAgeingPoid().equals(newlyCreated.getAgeingPoid()) &&
+                                saved.getBreakupTitle().equals(newlyCreated.getBreakupTitle()) &&
+                                saved.getBreakupFrom().equals(newlyCreated.getBreakupFrom()) &&
+                                saved.getBreakupTo().equals(newlyCreated.getBreakupTo()))
+                        .findFirst()
+                        .orElse(null);
+                
+                if (savedEntity != null && savedEntity.getDetRowId() != null) {
+                    String summaryMessage = String.format("Row Created on Ageing Master Detail with DetRowId: %s", savedEntity.getDetRowId());
+                    GlobalLogSummary summaryLog = createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, summaryMessage);
+                    summaryLogs.add(summaryLog);
+                }
+            }
         }
         if (!toDelete.isEmpty()) {
             ageingMasterDtlRepository.deleteByAgeingPoidAndDetRowIdIn(ageingPoid, toDelete);
@@ -431,6 +471,20 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
         if (!logRequests.isEmpty()) {
             loggingService.createLogBatch(logRequests);
         }
+        if (!summaryLogs.isEmpty()) {
+            globalLogSummaryRepository.saveAll(summaryLogs);
+        }
+    }
+    
+   
+    private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage) {
+        GlobalLogSummary summary = new GlobalLogSummary();
+        summary.setLogUserPoid(UserContext.getUserPoid());
+        summary.setLogDateTime(new Timestamp(System.currentTimeMillis()));
+        summary.setLogDocId(docId);
+        summary.setLogDocKeyPoid(docKeyPoid);
+        summary.setLogDetails(customMessage);
+        return summary;
     }
 
 }

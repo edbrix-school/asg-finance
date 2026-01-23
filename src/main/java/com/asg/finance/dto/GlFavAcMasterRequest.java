@@ -39,9 +39,9 @@ public class GlFavAcMasterRequest {
     private String active = "Y";
 
     /**
-     * List of user role POIDs to associate with this favorite account group
      */
-    private List<Long> userRolePoids;
+    @Valid
+    private List<UserRoleDetailRequest> userRoles;
 
     /**
      * List of GL account details with company and view category mappings

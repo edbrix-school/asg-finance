@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -62,7 +63,7 @@ public class GLPaymentVoucherHDREntity {
     private Long currencyRate;
 
     @Column(name = "CURRENCY_AMOUNT")
-    private Long currencyAmount;
+    private BigDecimal currencyAmount;
 
     @Column(name = "LOCAL_AMOUNT")
     private Long localAmount;

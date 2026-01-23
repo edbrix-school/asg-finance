@@ -382,6 +382,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         entity.setAccountPayee(req.getAccountPayee());
         entity.setMultiCompany(req.getMultiple());
         entity.setSecurityCheque(req.getSecurityCheque());
+        entity.setCurrencyAmount(req.getCurrencyAmount());
 
         if (Boolean.TRUE.equals(req.getReleased())) {
             entity.setReleasedToPerson(req.getReleasedToPerson());
@@ -443,6 +444,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         entity.setAccountPayee(req.getAccountPayee());
         entity.setMultiCompany(req.getMultiple());
         entity.setSecurityCheque(req.getSecurityCheque());
+        entity.setCurrencyAmount(req.getCurrencyAmount());
         entity.setPrePrinted("N");
         entity.setReleased("N");
         entity.setHold("N");

@@ -1238,6 +1238,7 @@ public class GLMasterServiceImpl implements GLMasterService {
         }
 
         if (!toUpdate.isEmpty()) {
+            companyDtlRepo.saveAll(toUpdate);
             if (!logRequests.isEmpty()) {
                 loggingService.createLogBatch(logRequests);
             }

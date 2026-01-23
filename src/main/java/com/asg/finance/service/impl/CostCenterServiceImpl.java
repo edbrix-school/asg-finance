@@ -3,12 +3,14 @@ package com.asg.finance.service.impl;
 import com.asg.common.lib.dto.DetailsDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
+import com.asg.common.lib.dto.LovGetListDto;
 import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.finance.dto.CostCenterListResponseDto;
 import com.asg.finance.dto.CostCenterRequestDTO;
@@ -25,6 +27,7 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
+import org.springframework.data.domain.AbstractPageRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -43,6 +46,7 @@ public class CostCenterServiceImpl implements CostCenterService {
     private final DocumentDeleteService documentDeleteService;
     private final CostCenterTreeViewRepository costCenterTreeViewRepository;
     private final LoggingService loggingService;
+    private final LovDataService lovDataService;
     
     private static final Logger log = LoggerFactory.getLogger(CostCenterServiceImpl.class);
 
@@ -331,19 +335,63 @@ public class CostCenterServiceImpl implements CostCenterService {
     }
 
     private void sortTreeNodes(List<CostCenterTreeResponseDto> nodes) {
-        // Sort by cost center code
+
+        Map<String, Integer> typePriority = getCostCenterTypePriorityMap();
+
         nodes.sort((a, b) -> {
-            String codeA = a.getCostCenterCode() != null ? a.getCostCenterCode() : "";
-            String codeB = b.getCostCenterCode() != null ? b.getCostCenterCode() : "";
-            return codeA.compareTo(codeB);
+            String typeA = a.getCostCenterType() != null ? a.getCostCenterType() : "UNKNOWN";
+            String typeB = b.getCostCenterType() != null ? b.getCostCenterType() : "UNKNOWN";
+
+            int priorityA = typePriority.getOrDefault(typeA, Integer.MAX_VALUE);
+            int priorityB = typePriority.getOrDefault(typeB, Integer.MAX_VALUE);
+
+            return Integer.compare(priorityA, priorityB);
         });
 
         // Recursively sort children
         for (CostCenterTreeResponseDto node : nodes) {
-            if (!node.getChildren().isEmpty()) {
+            if (node.getChildren() != null && !node.getChildren().isEmpty()) {
                 sortTreeNodes(node.getChildren());
             }
         }
+    }
+
+    
+    // Lov Methods
+    @SuppressWarnings("unchecked")
+    private Map<String, Integer> getCostCenterTypePriorityMap() {
+
+        Map<String, Object> lovRes = lovDataService.getLovList(
+                null,
+                UserContext.getGroupPoid(),
+                UserContext.getCompanyPoid(),
+                UserContext.getUserPoid(),
+                "COST_CENTER_TYPE",
+                0, 0, null, null, null, null
+        );
+
+        if (lovRes == null || !lovRes.containsKey("data")) {
+            return Collections.emptyMap();
+        }
+
+        List<LovGetListDto> data =
+                (List<LovGetListDto>) lovRes.get("data");
+
+        Map<String, Integer> priorityMap = new HashMap<>();
+
+        for (LovGetListDto row : data) {
+            String code = row.getCode();
+            Long value = row.getValue(); 
+
+            if (code != null && value != null) {
+                priorityMap.put(code, value.intValue());
+            }
+        }
+
+        // Fallback for unknown types
+        priorityMap.putIfAbsent("UNKNOWN", Integer.MAX_VALUE);
+
+        return priorityMap;
     }
 
     // Helper methods

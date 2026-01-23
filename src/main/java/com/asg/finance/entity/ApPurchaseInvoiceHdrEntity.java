@@ -3,9 +3,9 @@ package com.asg.finance.entity;
 import jakarta.persistence.*;
 import lombok.Data;
 
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 @Data
 @Entity
@@ -44,8 +44,8 @@ public class ApPurchaseInvoiceHdrEntity {
     @Column(name = "CURRENCY_CODE")
     private String currencyCode;
 
-    @Column(name = "CURRENCY_RATE")
-    private Long currencyRate;
+    @Column(name = "CURRENCY_RATE", precision = 10, scale = 3)
+    private BigDecimal currencyRate;
 
     @Column(name = "SUPPLIER_POID")
     private Long supplierPoid;
@@ -134,11 +134,11 @@ public class ApPurchaseInvoiceHdrEntity {
     @Column(name = "MULTI_COMPANY")
     private String multiCompany;
 
-    @Column(name = "BHD_AMOUNT")
-    private Long bhdAmount;
+    @Column(name = "BHD_AMOUNT", precision = 15, scale = 3)
+    private BigDecimal bhdAmount;
 
-    @Column(name = "SUPPLIER_INV_AMOUNT")
-    private Long supplierInvAmount;
+    @Column(name = "SUPPLIER_INV_AMOUNT", precision = 15, scale = 3)
+    private BigDecimal supplierInvAmount;
 
     @Column(name = "ROUNDING_AMOUNT")
     private Long roundingAmount;

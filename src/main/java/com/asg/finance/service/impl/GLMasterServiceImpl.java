@@ -16,7 +16,6 @@ import com.asg.finance.dto.*;
 import com.asg.finance.entity.GLMasterCompanyDtlEntity;
 import com.asg.finance.entity.GLMasterEntity;
 import com.asg.finance.entity.GLPaymentDetailsEntity;
-import com.asg.finance.entity.SupplierMasterPaymentDtlEntity;
 import com.asg.finance.repository.GLMasterCompanyDtlRepository;
 import com.asg.finance.repository.GLMasterTreeViewRepository;
 import com.asg.finance.repository.GLMastersRepository;
@@ -37,9 +36,9 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @Service
@@ -350,9 +349,11 @@ public class GLMasterServiceImpl implements GLMasterService {
                 }).toList();
         if (!entities.isEmpty()) {
             companyDtlRepo.saveAll(entities);
+            AtomicInteger initial = new AtomicInteger(1);
             entities.forEach(e -> {
-                String paymentLogDetail = String.format("Row Created on GL Company Detail with detRowId: %s", e.getId());
+                String paymentLogDetail = String.format("Row Created on GL Company Detail with detRowId: %s", initial);
                 loggingService.createLogSummaryEntry(UserContext.getDocumentId(), entity.getGlPoid().toString(), paymentLogDetail);
+                initial.set(+1);
             });
         }
     }

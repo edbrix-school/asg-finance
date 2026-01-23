@@ -352,7 +352,7 @@ public class GLMasterServiceImpl implements GLMasterService {
             companyDtlRepo.saveAll(entities);
             entities.forEach(e -> {
                 String paymentLogDetail = String.format("Row Created on GL Company Detail with detRowId: %s", e.getId());
-                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), UserContext.getDocumentId(), paymentLogDetail);
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), entity.getGlPoid().toString(), paymentLogDetail);
             });
         }
     }
@@ -397,7 +397,7 @@ public class GLMasterServiceImpl implements GLMasterService {
             payDtlRepo.saveAll(entities);
             entities.forEach(e -> {
                 String paymentLogDetail = String.format("Row Created on GL Payment Detail with detRowId: %s", e.getId());
-                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), UserContext.getDocumentId(), paymentLogDetail);
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), entity.getGlPoid().toString(), paymentLogDetail);
             });
         }
     }
@@ -1143,7 +1143,7 @@ public class GLMasterServiceImpl implements GLMasterService {
             payDtlRepo.saveAll(toSave);
             toSave.forEach(e -> {
                 String paymentLogDetail = String.format("Row Created on GL Payment Detail with detRowId: %s", e.getId());
-                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), UserContext.getDocumentId(), paymentLogDetail);
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), glPoid.toString(), paymentLogDetail);
             });
         }
         if (!toDelete.isEmpty()) {
@@ -1233,7 +1233,7 @@ public class GLMasterServiceImpl implements GLMasterService {
             companyDtlRepo.saveAll(toSave);
             toSave.forEach(e -> {
                 String paymentLogDetail = String.format("Row Created on GL Company Detail with detRowId: %s", e.getId());
-                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), UserContext.getDocumentId(), paymentLogDetail);
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), glPoid.toString(), paymentLogDetail);
             });
         }
 

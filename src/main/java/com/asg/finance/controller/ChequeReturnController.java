@@ -194,14 +194,8 @@ public class ChequeReturnController {
             @Parameter(description = "TRANSACTION_POID", required = true) @PathVariable Long transactionPoid,
             @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto
     ) {
-        try {
             service.softDeleteChequeReturn(transactionPoid, deleteReasonDto);
             return success("Cheque Return soft deleted successfully");
-        } catch (jakarta.persistence.EntityNotFoundException ex) {
-            return notFound(ex.getMessage());
-        } catch (Exception ex) {
-            return internalServerError("Failed to delete Cheque Return: " + ex.getMessage());
-        }
     }
 
     @Operation(

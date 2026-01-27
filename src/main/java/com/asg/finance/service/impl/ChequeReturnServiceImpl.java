@@ -341,10 +341,7 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
                 "GL_CHEQUE_RETURN_HDR",
                 "TRANSACTION_POID",
                 deleteReasonDto,
-                existing.getTransactionDate()
-                        .toInstant()
-                        .atZone(ZoneId.systemDefault())
-                        .toLocalDate()
+                null
         );
     }
 

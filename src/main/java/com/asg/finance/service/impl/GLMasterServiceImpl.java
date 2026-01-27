@@ -392,13 +392,16 @@ public class GLMasterServiceImpl implements GLMasterService {
                     payEntity.setCreatedDate(now());
                     payEntity.setLastModifiedBy(getCurrentUser());
                     payEntity.setLastModifiedDate(now());
+                    payEntity.setDefaults(pdto.getIsDefault());
                     return payEntity;
                 }).toList();
         if (!entities.isEmpty()) {
             payDtlRepo.saveAll(entities);
+            AtomicInteger initial = new AtomicInteger(1);
             entities.forEach(e -> {
-                String paymentLogDetail = String.format("Row Created on GL Payment Detail with detRowId: %s", e.getId());
+                String paymentLogDetail = String.format("Row Created on GL Payment Detail with detRowId: %s", initial);
                 loggingService.createLogSummaryEntry(UserContext.getDocumentId(), entity.getGlPoid().toString(), paymentLogDetail);
+                initial.getAndIncrement();
             });
         }
     }
@@ -522,7 +525,8 @@ public class GLMasterServiceImpl implements GLMasterService {
                         log.warn("Failed to fetch intermediary country details for ID: {}", pay.getIntermediaryCountryPoid());
                     }
                 }
-                pdto.setActive("Y");
+                pdto.setActive(entity.getActiveFlag());
+                pdto.setIsDefault(pay.getDefaults());
                 return pdto;
             }).toList());
         }
@@ -1083,6 +1087,7 @@ public class GLMasterServiceImpl implements GLMasterService {
                             .createdDate(now)
                             .lastModifiedBy(currentUser)
                             .lastModifiedDate(now)
+                            .defaults(charge.getIsDefault())
                             .build();
                     toSave.add(newPaymentEntity);
                     break;
@@ -1112,6 +1117,7 @@ public class GLMasterServiceImpl implements GLMasterService {
                     existingCharge.setActive(convertToActiveFlag(charge.getActive()));
                     existingCharge.setLastModifiedBy(currentUser);
                     existingCharge.setLastModifiedDate(now);
+                    existingCharge.setDefaults(charge.getIsDefault());
                     toUpdate.add(existingCharge);
 
                     String logDetail = String.format("KeyId = GL_POID:%s DET_ROW_ID:%s", existingCharge.getGlPoid() , existingCharge.getGlPoid());

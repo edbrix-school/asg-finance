@@ -1,6 +1,7 @@
 package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.*;
+import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
@@ -518,60 +519,127 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             Long transactionPoid,
             PurchaseOrderRequest request
     ) {
-
-        List<PurchaseOrderItem> existingItems =
-                purchaseOrderItemRepository.findByTransactionPoid(transactionPoid);
-
-        Map<Long, PurchaseOrderItem> existingMap = existingItems.stream()
-                .collect(Collectors.toMap(PurchaseOrderItem::getDetRowId, i -> i));
-
-        List<PurchaseOrderItem> mergedList = new ArrayList<>();
-
+        String currentUser = getCurrentUser();
+        LocalDateTime now = LocalDateTime.now();
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = transactionPoid.toString();
+        
+        List<PurchaseOrderItem> toSave = new ArrayList<>();
+        List<PurchaseOrderItem> toUpdate = new ArrayList<>();
+        List<Long> toDelete = new ArrayList<>();
+        List<LogRequestDto<PurchaseOrderItem>> logRequests = new ArrayList<>();
+        
         if (request.getItems() == null || request.getItems().isEmpty()) {
-            return mergedList;
+            return new ArrayList<>();
         }
-
+        
         for (PurchaseOrderItemRequestDto dto : request.getItems()) {
-
-            PurchaseOrderItem entity =
-                    existingMap.getOrDefault(dto.getDetRowId(), new PurchaseOrderItem());
-
-
-            entity.setTransactionPoid(transactionPoid);
-
-            entity.setDetRowId(dto.getDetRowId());
-            entity.setStockPoid(dto.getStockPoid());
-            entity.setStockUnitPoid(dto.getStockUnitPoid());
-            entity.setQty(dto.getQty());
-            entity.setPrice(dto.getPrice());
-            entity.setDiscount(dto.getDiscount());
-            entity.setDiscountPercentage(dto.getDiscountPercentage());
-            entity.setTotal(dto.getTotal());
-            entity.setRemarks(dto.getRemarks());
-            entity.setRfqDetRowId(dto.getRfqDetRowId());
-            entity.setRfqPoid(dto.getRfqPoid());
-            entity.setPurReqDetRowId(dto.getPurReqDetRowId());
-            entity.setPurReqPoid(dto.getPurReqPoid());
-            entity.setTaxPoid(dto.getTaxPoid());
-            entity.setTaxPercentage(dto.getTaxPercentage());
-            entity.setTaxAmount(dto.getTaxAmount());
-            entity.setItemDtlReadOnly(dto.getItemDtlReadOnly());
-            entity.setPjDetRowId(dto.getPjDetRowId());
-            entity.setPjPoid(dto.getPjPoid());
-            entity.setBaseAmount(dto.getBaseAmount());
-            entity.setPoImpDetRowId(dto.getPoImpDetRowId());
-            entity.setLastPurPrice(dto.getLastPurPrice());
-            entity.setConvertedQty(dto.getConvertedQty());
-            entity.setConvertedUnit(dto.getConvertedUnit());
-            entity.setConversionValue(dto.getConversionValue());
-
-            entity.setLastModifiedBy(getCurrentUser());
-            entity.setLastModifiedDate(LocalDateTime.now());
-
-            mergedList.add(entity);
+            String action = dto.getActionType() != null ? dto.getActionType().toUpperCase() : "ISCREATED";
+            switch (action) {
+                case "ISCREATED":
+                    toSave.add(PurchaseOrderItem.builder()
+                            .transactionPoid(transactionPoid)
+                            .detRowId(dto.getDetRowId())
+                            .stockPoid(dto.getStockPoid())
+                            .stockUnitPoid(dto.getStockUnitPoid())
+                            .qty(dto.getQty())
+                            .price(dto.getPrice())
+                            .discount(dto.getDiscount())
+                            .discountPercentage(dto.getDiscountPercentage())
+                            .total(dto.getTotal())
+                            .remarks(dto.getRemarks())
+                            .rfqDetRowId(dto.getRfqDetRowId())
+                            .rfqPoid(dto.getRfqPoid())
+                            .purReqDetRowId(dto.getPurReqDetRowId())
+                            .purReqPoid(dto.getPurReqPoid())
+                            .taxPoid(dto.getTaxPoid())
+                            .taxPercentage(dto.getTaxPercentage())
+                            .taxAmount(dto.getTaxAmount())
+                            .itemDtlReadOnly(dto.getItemDtlReadOnly())
+                            .pjDetRowId(dto.getPjDetRowId())
+                            .pjPoid(dto.getPjPoid())
+                            .baseAmount(dto.getBaseAmount())
+                            .poImpDetRowId(dto.getPoImpDetRowId())
+                            .lastPurPrice(dto.getLastPurPrice())
+                            .convertedQty(dto.getConvertedQty())
+                            .convertedUnit(dto.getConvertedUnit())
+                            .conversionValue(dto.getConversionValue())
+                            .createdBy(currentUser)
+                            .createdDate(now)
+                            .build());
+                    break;
+                    
+                case "ISUPDATED":
+                    PurchaseOrderItem existingItem = purchaseOrderItemRepository
+                            .findByTransactionPoidAndDetRowId(transactionPoid, dto.getDetRowId())
+                            .orElseThrow(() -> new RuntimeException("Purchase Order Item not found for detRowId: " + dto.getDetRowId()));
+                    
+                    PurchaseOrderItem oldItem = new PurchaseOrderItem();
+                    BeanUtils.copyProperties(existingItem, oldItem);
+                    
+                    existingItem.setStockPoid(dto.getStockPoid());
+                    existingItem.setStockUnitPoid(dto.getStockUnitPoid());
+                    existingItem.setQty(dto.getQty());
+                    existingItem.setPrice(dto.getPrice());
+                    existingItem.setDiscount(dto.getDiscount());
+                    existingItem.setDiscountPercentage(dto.getDiscountPercentage());
+                    existingItem.setTotal(dto.getTotal());
+                    existingItem.setRemarks(dto.getRemarks());
+                    existingItem.setRfqDetRowId(dto.getRfqDetRowId());
+                    existingItem.setRfqPoid(dto.getRfqPoid());
+                    existingItem.setPurReqDetRowId(dto.getPurReqDetRowId());
+                    existingItem.setPurReqPoid(dto.getPurReqPoid());
+                    existingItem.setTaxPoid(dto.getTaxPoid());
+                    existingItem.setTaxPercentage(dto.getTaxPercentage());
+                    existingItem.setTaxAmount(dto.getTaxAmount());
+                    existingItem.setItemDtlReadOnly(dto.getItemDtlReadOnly());
+                    existingItem.setPjDetRowId(dto.getPjDetRowId());
+                    existingItem.setPjPoid(dto.getPjPoid());
+                    existingItem.setBaseAmount(dto.getBaseAmount());
+                    existingItem.setPoImpDetRowId(dto.getPoImpDetRowId());
+                    existingItem.setLastPurPrice(dto.getLastPurPrice());
+                    existingItem.setConvertedQty(dto.getConvertedQty());
+                    existingItem.setConvertedUnit(dto.getConvertedUnit());
+                    existingItem.setConversionValue(dto.getConversionValue());
+                    existingItem.setLastModifiedBy(currentUser);
+                    existingItem.setLastModifiedDate(now);
+                    toUpdate.add(existingItem);
+                    
+                    String logDetailForUpdate = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", transactionPoid, dto.getDetRowId());
+                    logRequests.add(new LogRequestDto<>(oldItem, existingItem, PurchaseOrderItem.class, docId, docKeyPoid, logDetailForUpdate));
+                    break;
+                    
+                case "ISDELETED":
+                    toDelete.add(dto.getDetRowId());
+                    loggingService.logDelete(dto, docId, docKeyPoid);
+                    break;
+            }
+        }
+        
+        List<PurchaseOrderItem> allItems = new ArrayList<>();
+        
+        if (!toSave.isEmpty()) {
+            List<PurchaseOrderItem> savedItems = purchaseOrderItemRepository.saveAll(toSave);
+            allItems.addAll(savedItems);
+            savedItems.forEach(e -> {
+                String logDetail = String.format("Row Created on Purchase Order Item with detRowId: %s", e.getDetRowId());
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString(), logDetail);
+            });
         }
 
-        return purchaseOrderItemRepository.saveAll(mergedList);
+        if (!toUpdate.isEmpty()) {
+            List<PurchaseOrderItem> updatedItems = purchaseOrderItemRepository.saveAll(toUpdate);
+            allItems.addAll(updatedItems);
+            if (!logRequests.isEmpty()) {
+                loggingService.createLogBatch(logRequests);
+            }
+        }
+
+        if (!toDelete.isEmpty()) {
+            purchaseOrderItemRepository.deleteByTransactionPoidAndDetRowIdIn(transactionPoid, toDelete);
+        }
+        
+        return allItems;
     }
 
     private void validatePurchaseOrder(PurchaseOrderRequest request, Long transactionPoid, String documentId) {

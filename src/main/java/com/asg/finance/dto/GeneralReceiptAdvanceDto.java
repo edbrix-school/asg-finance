@@ -28,5 +28,8 @@ public class GeneralReceiptAdvanceDto {
     private BigDecimal amount;
     
     private String remarks;
+
+    @Schema(description = "Action type for update operations", example = "ISCREATED", allowableValues = {"ISCREATED", "ISUPDATED", "ISDELETED"})
+    private String actionType;
 }
 

@@ -945,27 +945,24 @@ public class GLMasterServiceImpl implements GLMasterService {
             log.info("Fetching GL Master list for documentId: {}, actionRequested: {}, parentPoid: {}",
                     documentId, actionRequested, parentPoid);
 
-            // Get data directly from database using repository
             List<GLMasterEntity> entities;
-
             if (parentPoid == null) {
-                // Get main groups (records with no parent)
-                entities = glMasterRepo.findMainGroups(
-                        false, // Always exclude deleted records
-                        null   // No group filtering needed
-                );
+                entities = glMasterRepo.findMainGroups(false, null);
             } else {
-                // Get direct children of the specified parent
-                entities = glMasterRepo.findDirectChildren(
-                        parentPoid,
-                        false, // Always exclude deleted records
-                        null   // No group filtering needed
-                );
+                entities = glMasterRepo.findDirectChildren(parentPoid, false, null);
             }
 
-            // Convert entities to list items
             List<GLMasterResponseDto> listItems = convertEntitiesToListItems(entities);
+            
+            List<Long> parentIds = entities.stream().map(GLMasterEntity::getGlPoid).collect(Collectors.toList());
+            if (!parentIds.isEmpty()) {
+                List<Object[]> childCounts = glMasterRepo.countChildrenByParentIds(parentIds);
+                Map<Long, Long> countMap = childCounts.stream()
+                    .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
+                listItems.forEach(dto -> dto.setChildCount(countMap.getOrDefault(dto.getGlPoid(), 0L)));
+            }
 
+            sortListItems(listItems);
             log.info("Successfully retrieved GL Master list with {} items for parentPoid: {}", listItems.size(), parentPoid);
             return listItems;
 

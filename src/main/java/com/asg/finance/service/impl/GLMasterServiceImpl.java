@@ -16,7 +16,6 @@ import com.asg.finance.dto.*;
 import com.asg.finance.entity.GLMasterCompanyDtlEntity;
 import com.asg.finance.entity.GLMasterEntity;
 import com.asg.finance.entity.GLPaymentDetailsEntity;
-import com.asg.finance.entity.SupplierMasterPaymentDtlEntity;
 import com.asg.finance.repository.GLMasterCompanyDtlRepository;
 import com.asg.finance.repository.GLMasterTreeViewRepository;
 import com.asg.finance.repository.GLMastersRepository;
@@ -37,9 +36,9 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @Service
@@ -350,9 +349,11 @@ public class GLMasterServiceImpl implements GLMasterService {
                 }).toList();
         if (!entities.isEmpty()) {
             companyDtlRepo.saveAll(entities);
+            AtomicInteger initial = new AtomicInteger(1);
             entities.forEach(e -> {
-                String paymentLogDetail = String.format("Row Created on GL Company Detail with detRowId: %s", e.getId());
+                String paymentLogDetail = String.format("Row Created on GL Company Detail with detRowId: %s", initial);
                 loggingService.createLogSummaryEntry(UserContext.getDocumentId(), entity.getGlPoid().toString(), paymentLogDetail);
+                initial.set(+1);
             });
         }
     }
@@ -391,13 +392,16 @@ public class GLMasterServiceImpl implements GLMasterService {
                     payEntity.setCreatedDate(now());
                     payEntity.setLastModifiedBy(getCurrentUser());
                     payEntity.setLastModifiedDate(now());
+                    payEntity.setDefaults(pdto.getIsDefault());
                     return payEntity;
                 }).toList();
         if (!entities.isEmpty()) {
             payDtlRepo.saveAll(entities);
+            AtomicInteger initial = new AtomicInteger(1);
             entities.forEach(e -> {
-                String paymentLogDetail = String.format("Row Created on GL Payment Detail with detRowId: %s", e.getId());
+                String paymentLogDetail = String.format("Row Created on GL Payment Detail with detRowId: %s", initial);
                 loggingService.createLogSummaryEntry(UserContext.getDocumentId(), entity.getGlPoid().toString(), paymentLogDetail);
+                initial.getAndIncrement();
             });
         }
     }
@@ -521,7 +525,8 @@ public class GLMasterServiceImpl implements GLMasterService {
                         log.warn("Failed to fetch intermediary country details for ID: {}", pay.getIntermediaryCountryPoid());
                     }
                 }
-                pdto.setActive("Y");
+                pdto.setActive(entity.getActiveFlag());
+                pdto.setIsDefault(pay.getDefaults());
                 return pdto;
             }).toList());
         }
@@ -940,27 +945,24 @@ public class GLMasterServiceImpl implements GLMasterService {
             log.info("Fetching GL Master list for documentId: {}, actionRequested: {}, parentPoid: {}",
                     documentId, actionRequested, parentPoid);
 
-            // Get data directly from database using repository
             List<GLMasterEntity> entities;
-
             if (parentPoid == null) {
-                // Get main groups (records with no parent)
-                entities = glMasterRepo.findMainGroups(
-                        false, // Always exclude deleted records
-                        null   // No group filtering needed
-                );
+                entities = glMasterRepo.findMainGroups(false, null);
             } else {
-                // Get direct children of the specified parent
-                entities = glMasterRepo.findDirectChildren(
-                        parentPoid,
-                        false, // Always exclude deleted records
-                        null   // No group filtering needed
-                );
+                entities = glMasterRepo.findDirectChildren(parentPoid, false, null);
             }
 
-            // Convert entities to list items
             List<GLMasterResponseDto> listItems = convertEntitiesToListItems(entities);
+            
+            List<Long> parentIds = entities.stream().map(GLMasterEntity::getGlPoid).collect(Collectors.toList());
+            if (!parentIds.isEmpty()) {
+                List<Object[]> childCounts = glMasterRepo.countChildrenByParentIds(parentIds);
+                Map<Long, Long> countMap = childCounts.stream()
+                    .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
+                listItems.forEach(dto -> dto.setChildCount(countMap.getOrDefault(dto.getGlPoid(), 0L)));
+            }
 
+            sortListItems(listItems);
             log.info("Successfully retrieved GL Master list with {} items for parentPoid: {}", listItems.size(), parentPoid);
             return listItems;
 
@@ -1082,6 +1084,7 @@ public class GLMasterServiceImpl implements GLMasterService {
                             .createdDate(now)
                             .lastModifiedBy(currentUser)
                             .lastModifiedDate(now)
+                            .defaults(charge.getIsDefault())
                             .build();
                     toSave.add(newPaymentEntity);
                     break;
@@ -1111,6 +1114,7 @@ public class GLMasterServiceImpl implements GLMasterService {
                     existingCharge.setActive(convertToActiveFlag(charge.getActive()));
                     existingCharge.setLastModifiedBy(currentUser);
                     existingCharge.setLastModifiedDate(now);
+                    existingCharge.setDefaults(charge.getIsDefault());
                     toUpdate.add(existingCharge);
 
                     String logDetail = String.format("KeyId = GL_POID:%s DET_ROW_ID:%s", existingCharge.getGlPoid() , existingCharge.getGlPoid());

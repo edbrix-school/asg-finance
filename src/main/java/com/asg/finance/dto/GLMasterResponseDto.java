@@ -38,4 +38,5 @@ public class GLMasterResponseDto {
     private Long parentPoid;     // mirrors subOf in list responses
     private Integer level;       // hierarchy level (0 main groups, 1 direct children)
     private Boolean deleted;     // soft delete flag
+    private Long childCount;     // number of direct children
 }

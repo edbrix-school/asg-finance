@@ -28,6 +28,7 @@ public class PaymentDetailsDto {
     private Long intermediaryCountryPoid;
     private CountryInfoDto intermediaryCountryDetails;  // for response output
     private String active;
+    private String isDefault;
     private String actionType;
 
     /**
@@ -51,6 +52,30 @@ public class PaymentDetailsDto {
             }
         } else {
             this.active = "Y"; // Default
+        }
+    }
+
+    /**
+     * Custom setter to handle both boolean and String values for active field
+     * This allows the API to accept boolean values from JSON and convert them to "Y"/"N"
+     */
+    @JsonProperty("isDefault")
+    public void setIsDefault(Object activeValue) {
+        if (activeValue == null) {
+            this.isDefault = "Y"; // Default to active
+        } else if (activeValue instanceof Boolean) {
+            this.isDefault = ((Boolean) activeValue) ? "Y" : "N";
+        } else if (activeValue instanceof String) {
+            String str = ((String) activeValue).trim().toUpperCase();
+            if ("TRUE".equals(str) || "Y".equals(str) || "YES".equals(str) || "1".equals(str)) {
+                this.isDefault = "Y";
+            } else if ("FALSE".equals(str) || "N".equals(str) || "NO".equals(str) || "0".equals(str)) {
+                this.isDefault = "N";
+            } else {
+                this.isDefault = str; // Keep as is if already "Y" or "N"
+            }
+        } else {
+            this.isDefault = "Y"; // Default
         }
     }
 }

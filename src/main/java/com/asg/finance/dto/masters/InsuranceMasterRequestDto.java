@@ -60,6 +60,8 @@ public class InsuranceMasterRequestDto {
 
     private String description;
 
+    private Long faPoid;
+
     private String active;
 
     @Valid

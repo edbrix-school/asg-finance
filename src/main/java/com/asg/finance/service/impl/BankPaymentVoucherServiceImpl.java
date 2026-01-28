@@ -288,6 +288,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         response.setGroupDet(lovService.getDetailsByPoidAndLovName(header.getGroupPoid(), "COMPANY"));
         response.setCompanyDet(lovService.getDetailsByPoidAndLovName(header.getCompanyPoid(), "COMPANY"));
+        response.setPayGlDet(lovService.getDetailsByPoidAndLovName(header.getPayGlPoid(), "GL_MASTER_LEDGERS"));
         response.setBankDet(lovService.getDetailsByPoidAndLovName(header.getBankPoid(), "BANK_MASTER"));
         response.setFdaDet(lovService.getDetailsByPoidAndLovName(header.getFdaRef(), "FDA_JOB"));
 

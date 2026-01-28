@@ -296,10 +296,12 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
             throw new RuntimeException("Ageing details cannot be empty");
         }
 
-        // Validate that breakupFrom <= breakupTo for each detail
+        // Validate that breakupFrom <= breakupTo for each detail (skip if null)
         for (GlAgeingMasterDtlDto detail : ageingDetails) {
-            if (detail.getBreakupFrom() > detail.getBreakupTo()) {
-                throw new RuntimeException("Breakup 'from' value cannot be greater than 'to' value for: " + detail.getBreakupTitle());
+            if (detail.getBreakupFrom() != null && detail.getBreakupTo() != null) {
+                if (detail.getBreakupFrom() > detail.getBreakupTo()) {
+                    throw new RuntimeException("Breakup 'from' value cannot be greater than 'to' value for: " + detail.getBreakupTitle());
+                }
             }
         }
 
@@ -313,16 +315,20 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
                 GlAgeingMasterDtlDto detail1 = ageingDetails.get(i);
                 GlAgeingMasterDtlDto detail2 = ageingDetails.get(j);
 
-                if (rangesOverlap(detail1.getBreakupFrom(), detail1.getBreakupTo(),
-                        detail2.getBreakupFrom(), detail2.getBreakupTo())) {
-                    throw new RuntimeException("Overlapping ageing ranges found between '" +
-                            detail1.getBreakupTitle() + "' and '" + detail2.getBreakupTitle() + "'");
+                // Skip validation if any value is null
+                if (detail1.getBreakupFrom() != null && detail1.getBreakupTo() != null &&
+                    detail2.getBreakupFrom() != null && detail2.getBreakupTo() != null) {
+                    if (rangesOverlap(detail1.getBreakupFrom(), detail1.getBreakupTo(),
+                            detail2.getBreakupFrom(), detail2.getBreakupTo())) {
+                        throw new RuntimeException("Overlapping ageing ranges found between '" +
+                                detail1.getBreakupTitle() + "' and '" + detail2.getBreakupTitle() + "'");
+                    }
                 }
             }
         }
     }
 
-    private boolean rangesOverlap(int from1, int to1, int from2, int to2) {
+    private boolean rangesOverlap(Integer from1, Integer to1, Integer from2, Integer to2) {
         return Math.max(from1, from2) <= Math.min(to1, to2);
     }
 

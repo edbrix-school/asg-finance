@@ -258,4 +258,25 @@ public class TelexFileGenerateController {
         }
     }
 
+    @Operation(
+            summary = "Generate Telex File",
+            description = "Generate the telex file for a given transaction"
+    )
+    @AllowedAction(UserRolesRightsEnum.CREATE)
+    @PostMapping("/{id}/generate")
+    public ResponseEntity<?> generateBankFileButton(
+            @Parameter(description = "Telex file generate", required = true)
+            @PathVariable Long id
+    ) {
+        try {
+            String result = service.regenerateTelexFile(id);
+            if (result != null && result.contains("ERROR")) {
+                return internalServerError("Error generating telex file: " + result);
+            }
+            return success("Telex file regenerated successfully");
+        } catch (Exception ex) {
+            return internalServerError("Failed to generate telex file: " + ex.getMessage());
+        }
+    }
+
 }

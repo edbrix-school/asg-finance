@@ -356,6 +356,8 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
         if (details == null || details.isEmpty()) return;
 
+        String docId = UserContext.getDocumentId();
+        String key = transactionPoid.toString();
         List<BillwiseBreakupRequestDto> billwiseRequestDtoList = new ArrayList<>();
         List<CostCenterBreakupRequestDto> costCenterRequestDtoList = new ArrayList<>();
 
@@ -377,6 +379,11 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                 case "NOCHANGES" -> {}
                 case "ISDELETED" -> {
                     if (dtl.getDetRowId() != null) {
+                        GlBankDebitDtlGl toDelete = paymentGlRepository.findById(new GlBankDebitDtlGlId(transactionPoid, dtl.getDetRowId()))
+                                .orElse(null);
+                        if (toDelete != null) {
+                            loggingService.logDelete(toDelete, docId, key);
+                        }
                         paymentGlRepository.deleteById(new GlBankDebitDtlGlId(transactionPoid, dtl.getDetRowId()));
                     }
                 }
@@ -394,6 +401,9 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                     populateCreateAudit(entity);
                     mapToPaymentGlEntity(dtl, entity);
                     paymentGlRepository.save(entity);
+                    
+                    String logDetail = String.format("Row Created on Payment GL Detail with detRowId: %s", detRowId);
+                    loggingService.createLogSummaryEntry(docId, key, logDetail);
 
                     if (dtl.getBreakupList() != null && !dtl.getBreakupList().isEmpty()) {
                         List<BillwiseBreakupRequestDto> bwList = dtl.getBreakupList().stream().map(p -> {
@@ -448,9 +458,16 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
                     GlBankDebitDtlGl entity = paymentGlRepository.findById(new GlBankDebitDtlGlId(transactionPoid, dtl.getDetRowId()))
                             .orElseThrow(() -> new ResourceNotFoundException("Payment GL Detail", "detRowId", dtl.getDetRowId()));
+                    
+                    GlBankDebitDtlGl oldEntity = new GlBankDebitDtlGl();
+                    BeanUtils.copyProperties(entity, oldEntity);
+                    
                     populateUpdateAudit(entity);
                     mapToPaymentGlEntity(dtl, entity);
                     paymentGlRepository.save(entity);
+                    
+                    String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", transactionPoid, dtl.getDetRowId());
+                    loggingService.createLog(oldEntity, entity, GlBankDebitDtlGl.class, docId, key, logDetail);
 
                     if (dtl.getBreakupList() != null && !dtl.getBreakupList().isEmpty()) {
                         List<BillwiseBreakupRequestDto> bwList = dtl.getBreakupList().stream().map(p -> {
@@ -510,6 +527,9 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
         if (details == null || details.isEmpty()) return;
 
+        String docId = UserContext.getDocumentId();
+        String key = transactionPoid.toString();
+
         for (ChargeDetailDto dto : details) {
 
             String rawAction = dto.getActionType();
@@ -528,6 +548,11 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                 case "NOCHANGES" -> {}
                 case "ISDELETED" -> {
                     if (dto.getDetRowId() != null) {
+                        GlBankDebitChargeDtl toDelete = chargeDetailRepository.findById(new GlBankDebitChargeDtlId(transactionPoid, dto.getDetRowId()))
+                                .orElse(null);
+                        if (toDelete != null) {
+                            loggingService.logDelete(toDelete, docId, key);
+                        }
                         chargeDetailRepository.deleteById(new GlBankDebitChargeDtlId(transactionPoid, dto.getDetRowId()));
                     }
                 }
@@ -545,6 +570,9 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                     populateCreateAudit(entity);
                     mapToChargeEntity(dto, entity);
                     chargeDetailRepository.save(entity);
+                    
+                    String logDetail = String.format("Row Created on Charge Detail with detRowId: %s", detRowId);
+                    loggingService.createLogSummaryEntry(docId, key, logDetail);
                 }
                 case "ISUPDATED" -> {
                     if (!shipChargeRepository.existsByChargePoid(dto.getChargePoid())) {
@@ -556,9 +584,16 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
                     GlBankDebitChargeDtl entity = chargeDetailRepository.findById(new GlBankDebitChargeDtlId(transactionPoid, dto.getDetRowId()))
                             .orElseThrow(() -> new ResourceNotFoundException("Charge Detail", "detRowId", dto.getDetRowId()));
+                    
+                    GlBankDebitChargeDtl oldEntity = new GlBankDebitChargeDtl();
+                    BeanUtils.copyProperties(entity, oldEntity);
+                    
                     populateUpdateAudit(entity);
                     mapToChargeEntity(dto, entity);
                     chargeDetailRepository.save(entity);
+                    
+                    String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", transactionPoid, dto.getDetRowId());
+                    loggingService.createLog(oldEntity, entity, GlBankDebitChargeDtl.class, docId, key, logDetail);
                 }
             }
         }

@@ -19,4 +19,5 @@ public class ApPurchaseJournalResponseDto {
     private Double chargeAmount;
     private Double pdaAmount;
     private String remarks;
+
 }

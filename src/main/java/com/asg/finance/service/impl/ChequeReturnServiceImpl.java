@@ -418,7 +418,9 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
                     .build();
             entities.add(entity);
         }
-        return detailRepo.saveAll(entities);
+        List<ChequeReturnDetail> savedDetails = detailRepo.saveAll(entities);
+        
+        return savedDetails;
     }
 
     private List<ChequeReturnGlDetail> buildAndSaveGlDetails(Long trnPoid, ChequeReturn header,
@@ -451,7 +453,9 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
                     .build();
             entities.add(entity);
         }
-        return glDetailRepo.saveAll(entities);
+        List<ChequeReturnGlDetail> savedGlDetails = glDetailRepo.saveAll(entities);
+        
+        return savedGlDetails;
     }
 
     // ============================================================

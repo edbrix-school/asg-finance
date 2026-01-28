@@ -286,10 +286,11 @@ public class PropertyCostCenterController {
     @GetMapping("/list")
     public ResponseEntity<?> getPropertyCostCenterList(
             @Parameter(description = "Parent Property Cost Center POID (null for main groups)", example = "1000")
-            @RequestParam(required = false) Long parentPoid) {
+            @RequestParam(required = false) Long parentPoid,
+             @RequestParam(required = false) String sort) {
 
         try {
-            var listItems = propertyCostCenterService.getPropertyCostCenterList(UserContext.getDocumentId(), UserContext.getActionRequested(), parentPoid);
+            var listItems = propertyCostCenterService.getPropertyCostCenterList(UserContext.getDocumentId(), UserContext.getActionRequested(), parentPoid,sort);
 
             if (listItems.isEmpty()) {
                 return success("No Property Cost Center records found", new java.util.ArrayList<>());

@@ -881,7 +881,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         }
         dto.setGlPoid(entity.getGlPoid());
         if (entity.getGlPoid() != null) {
-            dto.setGlDet(lovService.getDetailsByPoidAndLovName(entity.getGlPoid(), "GL_MASTER_LEDGERS_BDV_DT"));
+            dto.setGlDet(lovService.getDetailsByPoidAndLovName(entity.getGlPoid(), "GL_MASTER_LEDGERS_BDV_DTL"));
         }
         dto.setDrAmt(entity.getDrAmt());
         dto.setCrAmt(entity.getCrAmt());

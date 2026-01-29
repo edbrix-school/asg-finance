@@ -80,6 +80,9 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
 
             if (request.getDetails() != null && !request.getDetails().isEmpty()) {
                 List<GlBankFileDtl> details = new ArrayList<>();
+                String docId = UserContext.getDocumentId();
+                String key = savedHdr.getTransactionPoid().toString();
+                
                 for (int i = 0; i < request.getDetails().size(); i++) {
                     TelexFileDtlDto dto = request.getDetails().get(i);
                     GlBankFileDtl detail = convertToDetailEntity(dto, savedHdr.getTransactionPoid());
@@ -88,18 +91,14 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
                 }
                 dtlRepository.saveAll(details);
                 dtlRepository.flush();
+                
+                details.forEach(detail -> {
+                    String logDetail = String.format("Row Created on Telex File Detail with detRowId: %s", detail.getDetRowId());
+                    loggingService.createLogSummaryEntry(docId, key, logDetail);
+                });
             }
 
-            Long userId = UserContext.getUserPoid() != null ? UserContext.getUserPoid() : 1L;
             Long transactionPoid = savedHdr.getTransactionPoid();
-
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    processFileAsync(transactionPoid, userId);
-                }
-            });
-            
             String key = savedHdr.getTransactionPoid().toString();
             String docId = UserContext.getDocumentId();
             loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, key);
@@ -131,28 +130,9 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
 
             hdrRepository.saveAndFlush(hdr);
 
-            dtlRepository.deleteByTransactionPoid(transactionPoid);
-
             if (request.getDetails() != null && !request.getDetails().isEmpty()) {
-                List<GlBankFileDtl> details = new ArrayList<>();
-                for (int i = 0; i < request.getDetails().size(); i++) {
-                    TelexFileDtlDto dto = request.getDetails().get(i);
-                    GlBankFileDtl detail = convertToDetailEntity(dto, transactionPoid);
-                    detail.setDetRowId((long) (i + 1));
-                    details.add(detail);
-                }
-                dtlRepository.saveAll(details);
-                dtlRepository.flush();
+                processDetails(transactionPoid, request.getDetails());
             }
-
-            Long userId = UserContext.getUserPoid() != null ? UserContext.getUserPoid() : 1L;
-            
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    processFileAsync(transactionPoid, userId);
-                }
-            });
             
             String key = transactionPoid.toString();
             String docId = UserContext.getDocumentId();
@@ -228,6 +208,13 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
         Long userId = UserContext.getUserPoid() != null ? UserContext.getUserPoid() : 1L;
         return procRepository.regenerateTelexFile(UserContext.getGroupPoid(), UserContext.getCompanyPoid(),
                 userId, debitVoucherPoid);
+    }
+
+    @Override
+    @Transactional
+    public String generateBankFileButton(Long transactionPoid) {
+        Long userId = UserContext.getUserPoid() != null ? UserContext.getUserPoid() : 1L;
+        return bankFileBatchService.createBankFileBatch(transactionPoid, userId);
     }
 
     private GlBankFileDtl convertToDetailEntity(TelexFileDtlDto dto, Long transactionPoid) {
@@ -307,12 +294,81 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
         return userPoid != null ? userPoid.toString() : "SYSTEM";
     }
 
-    @Async
-    public void processFileAsync(Long transactionPoid, Long userId) {
-        try {
-            bankFileBatchService.createBankFileBatch(transactionPoid, userId);
-        } catch (Exception e) {
-            // Log error but don't throw - async method
+    private void processDetails(Long transactionPoid, List<TelexFileDtlDto> details) {
+        List<GlBankFileDtl> toSave = new ArrayList<>();
+        List<GlBankFileDtl> toUpdate = new ArrayList<>();
+        List<GlBankFileDtl> oldUpdates = new ArrayList<>();
+        List<Long> toDelete = new ArrayList<>();
+        String docId = UserContext.getDocumentId();
+        String key = transactionPoid.toString();
+        
+        Long maxDetRowId = dtlRepository.findMaxDetRowIdByTransactionPoid(transactionPoid);
+        Long nextDetRowId = (maxDetRowId == null) ? 1L : maxDetRowId + 1;
+        
+        for (TelexFileDtlDto dto : details) {
+            String actionType = dto.getActionType() != null ? dto.getActionType().toUpperCase() : "NOCHANGES";
+            
+            switch (actionType) {
+                case "ISCREATED":
+                    GlBankFileDtl newDetail = convertToDetailEntity(dto, transactionPoid);
+                    newDetail.setDetRowId(nextDetRowId++);
+                    toSave.add(newDetail);
+                    break;
+                    
+                case "ISUPDATED":
+                    GlBankFileDtl existing = dtlRepository.findByTransactionPoidAndDetRowId(transactionPoid, dto.getDetRowId())
+                            .orElseThrow(() -> new ResourceNotFoundException("Detail", "detRowId", dto.getDetRowId()));
+                    
+                    GlBankFileDtl oldDetail = new GlBankFileDtl();
+                    BeanUtils.copyProperties(existing, oldDetail);
+                    oldUpdates.add(oldDetail);
+                    
+                    existing.setDebitTransactionPoid(dto.getDebitTransactionPoid());
+                    existing.setDebitTransactionDate(dto.getDebitTransactionDate());
+                    existing.setDebitCompanyPoid(dto.getDebitCompanyPoid());
+                    existing.setDebitDocRef(dto.getDebitDocRef());
+                    existing.setDebitPayingToName(dto.getDebitPayingToName());
+                    existing.setDebitPayingType(dto.getDebitPayingType());
+                    existing.setDebitLongNarration(dto.getDebitLongNarration());
+                    existing.setDebitTtDate(dto.getDebitTtDate());
+                    existing.setDebitCurrencyCode(dto.getDebitCurrencyCode());
+                    existing.setDebitCurrencyRate(dto.getDebitCurrencyRate());
+                    existing.setDebitCurrencyAmt(dto.getDebitCurrencyAmt());
+                    existing.setDebitAmount(dto.getDebitAmount());
+                    existing.setSelected(dto.getSelected());
+                    existing.setDebitTtChargeType(dto.getDebitTtChargeType());
+                    existing.setLastModifiedBy(getCurrentUser());
+                    existing.setLastModifiedDate(LocalDateTime.now());
+                    toUpdate.add(existing);
+                    break;
+                    
+                case "ISDELETED":
+                    GlBankFileDtl toDeleteEntity = dtlRepository.findByTransactionPoidAndDetRowId(transactionPoid, dto.getDetRowId())
+                            .orElse(null);
+                    if (toDeleteEntity != null) {
+                        loggingService.logDelete(toDeleteEntity, docId, key);
+                    }
+                    toDelete.add(dto.getDetRowId());
+                    break;
+            }
+        }
+        
+        if (!toSave.isEmpty()) {
+            dtlRepository.saveAll(toSave);
+            toSave.forEach(detail -> {
+                String logDetail = String.format("Row Created on Telex File Detail with detRowId: %s", detail.getDetRowId());
+                loggingService.createLogSummaryEntry(docId, key, logDetail);
+            });
+        }
+        if (!toUpdate.isEmpty()) {
+            dtlRepository.saveAll(toUpdate);
+            for (int i = 0; i < toUpdate.size(); i++) {
+                String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", transactionPoid, toUpdate.get(i).getDetRowId());
+                loggingService.createLog(oldUpdates.get(i), toUpdate.get(i), GlBankFileDtl.class, docId, key, logDetail);
+            }
+        }
+        if (!toDelete.isEmpty()) {
+            toDelete.forEach(detRowId -> dtlRepository.deleteByTransactionPoidAndDetRowId(transactionPoid, detRowId));
         }
     }
 

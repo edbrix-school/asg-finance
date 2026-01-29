@@ -551,13 +551,15 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             return new ArrayList<>();
         }
         
+        Long maxDetRowId = purchaseOrderItemRepository.findMaxDetRowIdByTransactionPoid(transactionPoid);
+        
         for (PurchaseOrderItemRequestDto dto : request.getItems()) {
             String action = dto.getActionType() != null ? dto.getActionType().toUpperCase() : "ISCREATED";
             switch (action) {
                 case "ISCREATED":
                     toSave.add(PurchaseOrderItem.builder()
                             .transactionPoid(transactionPoid)
-                            .detRowId(dto.getDetRowId())
+                            .detRowId(dto.getDetRowId() != null ? dto.getDetRowId() : ++maxDetRowId)
                             .stockPoid(dto.getStockPoid())
                             .stockUnitPoid(dto.getStockUnitPoid() != null && dto.getStockUnitPoid() != 0 ? dto.getStockUnitPoid() : null)
                             .qty(dto.getQty())

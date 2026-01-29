@@ -702,7 +702,7 @@ public class GLMasterServiceImpl implements GLMasterService {
         node.setDeleted("Y".equals(record.get("DELETED")));
         node.setActive(!"N".equals(record.get("ACTIVE")));
         node.setId("row-" + poid);
-        node.setIsExpanded(false);
+        node.setIsExpanded(true);
         node.setIsRowGroup(true);
         node.setChildren(new ArrayList<>());
         return node;

@@ -38,5 +38,8 @@ public interface ArGenReceiptPymtDetailsRepository extends JpaRepository<ArGenRe
     void deleteByTransactionPoidAndDetRowIdIn(@Param("transactionPoid") Long transactionPoid, @Param("detRowIds") List<Long> detRowIds);
 
     long countByTransactionPoid(Long transactionPoid);
+
+    @Query("SELECT COALESCE(MAX(d.detRowId), 0) FROM ArGenReceiptPymtDetails d WHERE d.transactionPoid = :transactionPoid")
+    Long findMaxDetRowIdByTransactionPoid(@Param("transactionPoid") Long transactionPoid);
 }
 

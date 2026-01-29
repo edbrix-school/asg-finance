@@ -65,7 +65,7 @@ public class ImcoDepositRefundRequestDTO {
         private String refDocRef;
         private String choDocId;
         private Long paymentMainPoid;
-        private String action; // CREATE, EDIT, DELETE
+        private String actionType; // CREATE, EDIT, DELETE
 
     }
     
@@ -78,7 +78,7 @@ public class ImcoDepositRefundRequestDTO {
         private String billRef;
         private BigDecimal billAmount;
         private String remarks;
-        private String action; // CREATE, EDIT, DELETE
+        private String actionType; // CREATE, EDIT, DELETE
 
     }
 }

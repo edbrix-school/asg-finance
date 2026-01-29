@@ -160,17 +160,63 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
 
         hdrRepository.save(hdr);
 
-        dtlRepository.deleteByTransactionPoid(transactionPoid);
 
         if (request.getDetails() != null) {
-            List<GlBankDepositVoucherDtl> details = new ArrayList<>();
-            for (int i = 0; i < request.getDetails().size(); i++) {
-                BankDepositVoucherDtlDto dto = request.getDetails().get(i);
-                GlBankDepositVoucherDtl detail = convertToDetailEntity(dto, transactionPoid);
-                detail.setDetRowId((long) (i + 1));
-                details.add(detail);
+            List<GlBankDepositVoucherDtl> toSave = new ArrayList<>();
+            List<GlBankDepositVoucherDtl> toUpdate = new ArrayList<>();
+            List<Long> toDelete = new ArrayList<>();
+            
+            List<GlBankDepositVoucherDtl> existingDetailsList = dtlRepository.findByTransactionPoid(transactionPoid);
+            Map<Long, GlBankDepositVoucherDtl> existingDetailsMap = existingDetailsList.stream()
+                .collect(Collectors.toMap(GlBankDepositVoucherDtl::getDetRowId, d -> d));
+            
+            Long maxDetRowId = existingDetailsList.stream()
+                .map(GlBankDepositVoucherDtl::getDetRowId)
+                .max(Long::compareTo)
+                .orElse(0L);
+            
+            for (BankDepositVoucherDtlDto dto : request.getDetails()) {
+                String action = dto.getActionType() != null ? dto.getActionType().toUpperCase() : "ISCREATED";
+                switch (action) {
+                    case "ISCREATED":
+                        Long detId = dto.getDetRowId() != null ? dto.getDetRowId() : ++maxDetRowId;
+                        GlBankDepositVoucherDtl newDetail = convertToDetailEntity(dto, transactionPoid);
+                        newDetail.setDetRowId(detId);
+                        toSave.add(newDetail);
+                        break;
+                    case "ISUPDATED":
+                        GlBankDepositVoucherDtl existing = existingDetailsMap.get(dto.getDetRowId());
+                        if (existing == null) {
+                            throw new ResourceNotFoundException("Detail", "detRowId", dto.getDetRowId());
+                        }
+                        GlBankDepositVoucherDtl oldDetail = new GlBankDepositVoucherDtl();
+                        BeanUtils.copyProperties(existing, oldDetail);
+                        updateDetailEntity(existing, dto);
+                        toUpdate.add(existing);
+                        loggingService.logChanges(oldDetail, existing, GlBankDepositVoucherDtl.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+                        break;
+                    case "ISDELETED":
+                        toDelete.add(dto.getDetRowId());
+                        loggingService.logDelete(dto, UserContext.getDocumentId(), transactionPoid.toString());
+                        break;
+                }
             }
-            dtlRepository.saveAll(details);
+            
+            if (!toSave.isEmpty()) {
+                List<GlBankDepositVoucherDtl> saved = dtlRepository.saveAll(toSave);
+                saved.forEach(detail -> {
+                    String logDetail = String.format("Row Created on Bank Deposit Voucher Detail with detRowId: %s", detail.getDetRowId());
+                    loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString(), logDetail);
+                });
+            }
+            if (!toUpdate.isEmpty()) {
+                dtlRepository.saveAll(toUpdate);
+            }
+            if (!toDelete.isEmpty()) {
+                existingDetailsList.stream()
+                    .filter(d -> toDelete.contains(d.getDetRowId()))
+                    .forEach(dtlRepository::delete);
+            }
         }
         callMarkPaymentsCompleted(transactionPoid, hdr.getGroupPoid(), hdr.getCompanyPoid(), request.getType());
 
@@ -266,6 +312,24 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
                 .chqSeqNum(dto.getChqSeqNum())
                 .paymentMainPoid(dto.getPaymentMainPoid())
                 .build();
+    }
+
+    private void updateDetailEntity(GlBankDepositVoucherDtl entity, BankDepositVoucherDtlDto dto) {
+        entity.setBankPoid(dto.getBankPoid());
+        entity.setPymtType(dto.getPymtType());
+        entity.setRefDocPoid(dto.getRefDocPoid());
+        entity.setRefDocRef(dto.getRefDocRef());
+        entity.setRefDocId(dto.getRefDocId());
+        entity.setRcpDate(dto.getRcpDate());
+        entity.setChqAcName(dto.getChqAcName());
+        entity.setChqAcNo(dto.getChqAcNo());
+        entity.setChqCardNo(dto.getChqCardNo());
+        entity.setChqDate(dto.getChqDate());
+        entity.setAmount(dto.getAmount());
+        entity.setRemarks(dto.getRemarks());
+        entity.setSelected(dto.getSelected() != null && dto.getSelected().length() == 1 ? dto.getSelected() : "Y");
+        entity.setChqSeqNum(dto.getChqSeqNum());
+        entity.setPaymentMainPoid(dto.getPaymentMainPoid());
     }
 
     private BankDepositVoucherDtlDto convertToDetailDto(GlBankDepositVoucherDtl entity) {

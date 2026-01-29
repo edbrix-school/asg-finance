@@ -1,6 +1,8 @@
 package com.asg.finance.dto;
 
+import com.asg.finance.config.ThreeDecimalSerializer;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
@@ -38,11 +40,13 @@ public class GeneralReceiptHeaderDto {
     @NotNull(message = "Currency rate is required")
     @DecimalMin(value = "0.0", inclusive = false, message = "Currency rate must be greater than 0")
     @Schema(description = "Currency exchange rate", example = "0.376", required = true)
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private BigDecimal rate;
 
     @NotNull(message = "Receipt amount is required")
     @DecimalMin(value = "0.0", inclusive = false, message = "Receipt amount must be greater than 0")
     @Schema(description = "Total receipt amount", example = "1000", required = true)
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private BigDecimal receiptAmount;
 
     @NotBlank(message = "Ref Type is required")

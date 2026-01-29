@@ -1,5 +1,7 @@
 package com.asg.finance.dto;
 
+import com.asg.finance.config.ThreeDecimalSerializer;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,9 +18,13 @@ public class PurchaseOrderItemResponseDto {
     private Long stockPoid;
     private Long stockUnitPoid;
 
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private Double qty;
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private Double price;
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private Double discount;
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private Double total;
 
     private String remarks;
@@ -30,7 +36,9 @@ public class PurchaseOrderItemResponseDto {
     private Long purReqPoid;
 
     private Long taxPoid;
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private Double taxPercentage;
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private Double taxAmount;
 
     private String itemDtlReadOnly;
@@ -38,14 +46,20 @@ public class PurchaseOrderItemResponseDto {
     private Long pjDetRowId;
     private Long pjPoid;
 
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private Double baseAmount;
 
     private Long poImpDetRowId;
 
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private Double discountPercentage;
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private Double lastPurPrice;
 
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private Double convertedQty;
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private Double convertedUnit;
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private Double conversionValue;
 }

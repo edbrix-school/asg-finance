@@ -40,5 +40,5 @@ public class PdcChqBatchDtlResponseDto {
     private String createdBy;
     private LocalDateTime createdDate;
     private String lastModifiedBy;
-    private Date lastModifiedDate;
+    private LocalDateTime lastModifiedDate;
 }

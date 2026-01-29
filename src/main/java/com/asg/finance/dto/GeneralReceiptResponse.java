@@ -1,6 +1,8 @@
 package com.asg.finance.dto;
 
+import com.asg.finance.config.ThreeDecimalSerializer;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -39,15 +41,18 @@ public class GeneralReceiptResponse {
     private Long companyPoid;
 
     @Schema(description = "Receipt amount", example = "1000")
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private BigDecimal receiptAmount;
 
     @Schema(description = "Currency code", example = "USD")
     private String currencyCode;
 
     @Schema(description = "Currency rate", example = "0.376")
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private BigDecimal currencyRate;
 
     @Schema(description = "BHD equivalent amount (receiptAmount * currencyRate)", example = "376.000")
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private BigDecimal bhdAmount;
 
     @Schema(description = "Received from", example = "ABC TRADING CO")

@@ -1,6 +1,8 @@
 package com.asg.finance.dto;
 
+import com.asg.finance.config.ThreeDecimalSerializer;
 import com.asg.common.lib.dto.LovGetListDto;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -35,11 +37,14 @@ public class ApPurchaseCnHdrDto {
     private String currencyCode;
     
     @NotNull(message = "Rate is required")
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private BigDecimal currencyRate;
     
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private BigDecimal bhdAmount; // Auto-calculated
     
     @NotNull(message = "Credit note amount is required")
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private BigDecimal supplierCnAmount;
     
     private String supplierCnNo;
@@ -64,12 +69,19 @@ public class ApPurchaseCnHdrDto {
     private String description;
     private String type;
     
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private BigDecimal subTotal;
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private BigDecimal discount;
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private BigDecimal grandTotal;
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private BigDecimal itemTotal;
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private BigDecimal chargeTotal;
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private BigDecimal glTotal;
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private BigDecimal roundingAmount;
     
     private Long creditPeriod;

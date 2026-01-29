@@ -1,6 +1,8 @@
 package com.asg.finance.dto;
 
+import com.asg.finance.config.ThreeDecimalSerializer;
 import com.asg.common.lib.dto.LovGetListDto;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.Getter;
 import lombok.Setter;
 import jakarta.validation.constraints.NotBlank;
@@ -31,8 +33,11 @@ public class CreditNoteHeaderDto {
     private String refType;
 
     private String currencyCode;
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private BigDecimal currencyRate;
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private BigDecimal bhdAmount;
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private BigDecimal amount;
 
     /**
@@ -81,6 +86,7 @@ public class CreditNoteHeaderDto {
 
 
     private String remarks;
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private BigDecimal grandTotal;
 
     /**

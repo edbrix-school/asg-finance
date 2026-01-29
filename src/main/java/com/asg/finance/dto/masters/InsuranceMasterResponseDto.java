@@ -1,5 +1,7 @@
 package com.asg.finance.dto.masters;
 
+import com.asg.finance.config.ThreeDecimalSerializer;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -26,8 +28,11 @@ public class InsuranceMasterResponseDto {
     private LocalDate expiryDate;
     private String status;
     private Long currency;
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private BigDecimal rate;
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private BigDecimal insuranceAmount;
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private BigDecimal premiumAmount;
     private String paymentFrequency;
     private String oneTime;

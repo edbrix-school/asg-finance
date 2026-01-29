@@ -1,6 +1,8 @@
 package com.asg.finance.dto;
 
+import com.asg.finance.config.ThreeDecimalSerializer;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
@@ -29,6 +31,7 @@ public class GeneralReceiptBillDto {
     @NotNull(message = "Amount is required")
     @DecimalMin(value = "0.0", inclusive = false, message = "Amount must be greater than 0")
     @Schema(description = "Bill amount", example = "1000", required = true)
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private BigDecimal amount;
 
     @NotBlank(message = "Dr/Cr type is required")

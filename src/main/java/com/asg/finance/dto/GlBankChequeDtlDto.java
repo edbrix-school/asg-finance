@@ -25,7 +25,7 @@ public class GlBankChequeDtlDto {
     private String defaultPrinterAddr;
     @Size(max = 200, message = "Default Printer Tray must be at most 200 characters")
     private String defaultPrinterTray;
-    @Size(max = 10, message = "Stock Finished Yn must be at most 10 characters")
+    @Size(max = 1, message = "Stock Finished Yn must be at most 1 character")
     private String stockFinishedYn;
     @Size(max = 100, message = "Remarks must be at most 100 characters")
     private String remarks;

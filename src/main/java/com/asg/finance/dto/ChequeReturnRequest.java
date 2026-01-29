@@ -1,7 +1,9 @@
 // com/asg/dto/ChequeReturnRequest.java
 package com.asg.finance.dto;
 
+import com.asg.finance.config.ThreeDecimalSerializer;
 import com.asg.common.lib.dto.LovGetListDto;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import com.asg.finance.validation.ValidChequeHeader;
@@ -52,6 +54,7 @@ public class ChequeReturnRequest {
 
         @NotNull(message = "amount is mandatory")
         @DecimalMin(value = "0.01", message = "amount must be > 0")
+        @JsonSerialize(using = ThreeDecimalSerializer.class)
         private Double amount;
 
         @NotBlank(message = "pymtType is mandatory")
@@ -123,7 +126,8 @@ public class ChequeReturnRequest {
 
         @NotNull(message = "amount is mandatory")
         @DecimalMin(value = "0.01", message = "amount must be > 0")
-        private Double amount; // we’ll map to DR/CR depending on type
+        @JsonSerialize(using = ThreeDecimalSerializer.class)
+        private Double amount; // we'll map to DR/CR depending on type
 
         @Size(max = 100, message = "remarks cannot exceed 100 characters")
         private String remarks;

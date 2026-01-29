@@ -16,6 +16,9 @@ public class InsurancePropertyDetailRequestDto {
 
     private Long detRowId;
     
+    @NotNull(message = "Property POID is mandatory")
+    private Long propertyPoid;
+    
     @NotNull(message = "Amount is mandatory")
     private BigDecimal amount;
     

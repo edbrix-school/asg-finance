@@ -1,5 +1,7 @@
 package com.asg.finance.dto;
 
+import com.asg.finance.config.ThreeDecimalSerializer;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -31,15 +33,20 @@ public class DebitNoteHeaderDto {
     private String currencyCode;
 
     @NotNull(message = "Currency rate is required")
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private BigDecimal currencyRate;
 
     @NotNull(message = "Grand total is required")
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private BigDecimal grandTotal;
 
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private BigDecimal drTotal;
 
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private BigDecimal crTotal;
 
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private BigDecimal bhdAmount;
 
     @NotBlank(message = "Posting narration is mandatory")

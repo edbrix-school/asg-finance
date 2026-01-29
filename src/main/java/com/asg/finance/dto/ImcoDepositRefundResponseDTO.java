@@ -1,6 +1,8 @@
 package com.asg.finance.dto;
 
+import com.asg.finance.config.ThreeDecimalSerializer;
 import com.asg.common.lib.dto.DetailsDto;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -23,6 +25,7 @@ public class ImcoDepositRefundResponseDTO {
     private Long companyPoid;
     private String docRef;
     private String remarks;
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private BigDecimal grandTotal;
     private String blNumber;
     private String receiptNum;
@@ -54,6 +57,7 @@ public class ImcoDepositRefundResponseDTO {
         private Long addressPoid;
         private String chqAcName;
         private String chqAcNo;
+        @JsonSerialize(using = ThreeDecimalSerializer.class)
         private BigDecimal amount;
         private String status;
         private String remarks;
@@ -72,6 +76,7 @@ public class ImcoDepositRefundResponseDTO {
         private Long poid;
         private Long detRowId;
         private String billRef;
+        @JsonSerialize(using = ThreeDecimalSerializer.class)
         private BigDecimal billAmount;
         private String remarks;
     }

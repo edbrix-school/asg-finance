@@ -1,6 +1,8 @@
 package com.asg.finance.dto;
 
+import com.asg.finance.config.ThreeDecimalSerializer;
 import com.asg.common.lib.dto.LovGetListDto;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.*;
 import java.time.LocalDate;
 import java.util.List;
@@ -20,6 +22,7 @@ public class PurchaseOrderResponse {
     private Long companyPoid;
 
     private String currencyCode;
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private Double currencyRate;
 
     private LocalDate expectedDate;
@@ -36,16 +39,22 @@ public class PurchaseOrderResponse {
     private Long billingAddressPoid;
     private Long deliveryAddressPoid;
 
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private Double subTotal;
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private Double discount;
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private Double expenseBySupplier;
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private Double grandTotal;
 
     private String remarks;
     private Long rfqPoid;
     private String poStatus;
 
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private Double itemTotal;
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private Double chargeTotal;
     private String type;
 
@@ -79,8 +88,11 @@ public class PurchaseOrderResponse {
 
     private LocalDate shipmentMonth;
 
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private Double discountPercentage;
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private Double itemDiscountTotal;
+    @JsonSerialize(using = ThreeDecimalSerializer.class)
     private Double itemDiscountTotalPercentage;
 
     // Child List

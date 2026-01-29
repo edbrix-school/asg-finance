@@ -7,6 +7,9 @@ import java.util.List;
 @Data
 public class BankPaymentGLDetailRequest {
 
+    // === Action Type ===
+    private String actionType;          // "isCreated", "isUpdated", "isDeleted", "noChanges"
+
     // === Link fields ===
     private Long transactionPoid;       // FK → GL_BANK_PAYMENT_HDR.TRANSACTION_POID
     private Long detRowId;              // Row number (auto/incremental in UI)

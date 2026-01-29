@@ -16,4 +16,5 @@ public class BankPaymentChargeDetailRequest {
     private Boolean selected;
     private Long pdaAmount;
     private Long ffAmount;
+    private String actionType;          // "isCreated", "isUpdated", "isDeleted", "noChanges"
 }

@@ -303,13 +303,14 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             return items;
         }
 
+        Long intial = 1L;
         for (PurchaseOrderItemRequestDto dto : itemDtos) {
 
             PurchaseOrderItem item = PurchaseOrderItem.builder()
-                    .transactionPoid(transactionPoid)                     // FK to main PO
-                    .detRowId(dto.getDetRowId())
+                    .transactionPoid(transactionPoid)
+                    .detRowId(intial)
                     .stockPoid(dto.getStockPoid())
-                    .stockUnitPoid(dto.getStockUnitPoid())
+                    .stockUnitPoid(dto.getStockUnitPoid() != null && dto.getStockUnitPoid() != 0 ? dto.getStockUnitPoid() : null)
                     .qty(dto.getQty())
                     .price(dto.getPrice())
                     .discount(dto.getDiscount())
@@ -337,6 +338,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                     .build();
 
             items.add(item);
+            intial++;
         }
 
         return items;
@@ -442,11 +444,9 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                 .itemDiscountTotal(savedPO.getItemDiscountTotal())
                 .itemDiscountTotalPercentage(savedPO.getItemDiscountTotalPercentage())
                 .supplierDetails(mapLovDetails(savedPO.getSupplierPoid(), "SUPPLIER_MASTER", true))
-                .paymentTermsDetails(mapLovDetails(savedPO.getPaymentTerms(), "PO_PAYMENT_TYPE", false))
-                .deliveryMethodDetails(mapLovDetails(savedPO.getDeliveryMethod(), "DELIVERY_METHOD", false))
-
+                .paymentTermsDetails(mapLovDetailsWithFallback(savedPO.getPaymentTerms(), "PO_PAYMENT_TYPE"))
+                .deliveryMethodDetails(mapLovDetailsWithFallback(savedPO.getDeliveryMethod(), "DELIVERY_METHOD"))
                 .items(itemDtos)
-
                 .build();
     }
 
@@ -464,6 +464,23 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         } catch (Exception e) {
             log.warn("Failed to map LOV details for value: {}, lovName: {}, isPoid: {}", value, lovName, isPoid, e);
             return null;
+        }
+    }
+
+    private LovGetListDto mapLovDetailsWithFallback(Object value, String lovName) {
+        if (value == null) return null;
+        
+        try {
+            Long poid = value instanceof Long ? (Long) value : Long.valueOf(value.toString());
+            return lovService.getDetailsByPoidAndLovName(poid, lovName);
+        } catch (Exception e) {
+            try {
+                String code = value.toString();
+                return lovService.getDetailsByCodeAndLovName(code, lovName);
+            } catch (Exception ex) {
+                log.warn("Failed to map LOV details for value: {}, lovName: {}", value, lovName, ex);
+                return null;
+            }
         }
     }
 
@@ -542,7 +559,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                             .transactionPoid(transactionPoid)
                             .detRowId(dto.getDetRowId())
                             .stockPoid(dto.getStockPoid())
-                            .stockUnitPoid(dto.getStockUnitPoid())
+                            .stockUnitPoid(dto.getStockUnitPoid() != null && dto.getStockUnitPoid() != 0 ? dto.getStockUnitPoid() : null)
                             .qty(dto.getQty())
                             .price(dto.getPrice())
                             .discount(dto.getDiscount())
@@ -579,7 +596,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                     BeanUtils.copyProperties(existingItem, oldItem);
                     
                     existingItem.setStockPoid(dto.getStockPoid());
-                    existingItem.setStockUnitPoid(dto.getStockUnitPoid());
+                    existingItem.setStockUnitPoid(dto.getStockUnitPoid() != null && dto.getStockUnitPoid() != 0 ? dto.getStockUnitPoid() : null);
                     existingItem.setQty(dto.getQty());
                     existingItem.setPrice(dto.getPrice());
                     existingItem.setDiscount(dto.getDiscount());

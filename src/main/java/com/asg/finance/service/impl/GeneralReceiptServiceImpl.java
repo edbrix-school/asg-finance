@@ -479,13 +479,15 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         List<Long> toDelete = new ArrayList<>();
         List<LogRequestDto<ArGenReceiptPymtDetails>> logRequests = new ArrayList<>();
         
+        Long maxDetRowId = pymtDetailsRepository.findMaxDetRowIdByTransactionPoid(transactionPoid);
+        
         for (GeneralReceiptPaymentDto payment : payments) {
-            String action = payment.getActionType() != null ? payment.getActionType().toUpperCase() : "ISCREATED";
+            String action = payment.getActionType() != null ? payment.getActionType().toUpperCase() : "NOCHANGE";
             switch (action) {
                 case "ISCREATED":
                     toSave.add(ArGenReceiptPymtDetails.builder()
                             .transactionPoid(transactionPoid)
-                            .detRowId(payment.getDetRowId())
+                            .detRowId(++maxDetRowId)
                             .pymtType(payment.getType())
                             .amount(payment.getAmount())
                             .chqCardno(payment.getChequeNo())

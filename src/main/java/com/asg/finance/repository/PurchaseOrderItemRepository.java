@@ -21,4 +21,7 @@ public interface PurchaseOrderItemRepository extends JpaRepository<PurchaseOrder
     @Query("DELETE FROM PurchaseOrderItem p WHERE p.transactionPoid = :transactionPoid AND p.detRowId IN :detRowIds")
     void deleteByTransactionPoidAndDetRowIdIn(@Param("transactionPoid") Long transactionPoid, @Param("detRowIds") List<Long> detRowIds);
 
+    @Query("SELECT COALESCE(MAX(p.detRowId), 0) FROM PurchaseOrderItem p WHERE p.transactionPoid = :transactionPoid")
+    Long findMaxDetRowIdByTransactionPoid(@Param("transactionPoid") Long transactionPoid);
+
 }

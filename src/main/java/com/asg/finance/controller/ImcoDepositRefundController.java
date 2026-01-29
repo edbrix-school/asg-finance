@@ -8,9 +8,6 @@ import com.asg.common.lib.service.LoggingService;
 
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.response.GlPostingViewResponseDto;
-import com.asg.common.lib.enums.UserRolesRightsEnum;
-import com.asg.common.lib.enums.LogDetailsEnum;
-import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.ImcoDepositRefundRequestDTO;
 import com.asg.finance.dto.ImcoDepositRefundResponseDTO;
@@ -91,7 +88,7 @@ public class ImcoDepositRefundController {
             return success("IMCO Deposit Refund created successfully", response);
 
         } catch (ValidationException ex) {
-            return internalServerError(ex.getMessage());
+            throw ex;
         } catch (Exception ex) {
             return internalServerError("Failed to create IMCO deposit refund: " + ex.getMessage());
         }

@@ -250,7 +250,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                 } else if ("iscreated".equals(actionType)) {
                     ApPurchaseCnItemDtl item = mapItemToEntity(itemDto);
                     item.setTransactionPoid(transactionPoid);
-                    item.setDetRowId(itemDto.getDetRowId() != null ? itemDto.getDetRowId() : getNextItemRowId(transactionPoid));
+                    item.setDetRowId(getNextItemRowId(transactionPoid));
                     item.setCreatedBy(UserContext.getUserId());
                     item.setCreatedDate(Timestamp.valueOf(LocalDateTime.now()));
                     itemDtlRepository.save(item);

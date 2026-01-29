@@ -2,6 +2,7 @@ package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.*;
 import com.asg.common.lib.dto.request.LogRequestDto;
+import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
@@ -105,7 +106,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             return mapToPurchaseOrderResponse(savedPO, savedItems);
 
         } catch (Exception ex) {
-            throw new RuntimeException("Error while creating Purchase Order: " + ex.getMessage(), ex);
+            throw new ValidationException("Error while creating Purchase Order: " + ex.getMessage());
         }
 
     }
@@ -116,7 +117,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                                                         PurchaseOrderRequest request) {
         try {
             PurchaseOrder existingPO = purchaseOrderRepository.findById(transactionPoid)
-                    .orElseThrow(() -> new RuntimeException("Purchase Order not found with ID: " + transactionPoid));
+                    .orElseThrow(() -> new ValidationException("Purchase Order not found with ID: " + transactionPoid));
 
             // Create a copy of the existing entity for logging
             PurchaseOrder oldEntity = new PurchaseOrder();
@@ -144,7 +145,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                     callMtaDeleteProcedureInNewTransaction(transactionPoid);
                 }
 
-                default -> throw new RuntimeException("Invalid RefType for update: " + refType);
+                default -> throw new ValidationException("Invalid RefType for update: " + refType);
             }
 
             // Logging for update operation
@@ -153,7 +154,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             return mapToPurchaseOrderResponse(updatedPO, updatedItems);
 
         } catch (Exception e) {
-            throw new RuntimeException("Error during Purchase Order update: " + e.getMessage(), e);
+            throw new ValidationException("Error during Purchase Order update: " + e.getMessage());
         }
     }
 
@@ -162,7 +163,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     public PurchaseOrderResponse findById(Long transactionPoid) {
 
         PurchaseOrder po = purchaseOrderRepository.findById(transactionPoid)
-                .orElseThrow(() -> new RuntimeException("Purchase Order not found for POID: " + transactionPoid));
+                .orElseThrow(() -> new ValidationException("Purchase Order not found for POID: " + transactionPoid));
 
         List<PurchaseOrderItem> items = purchaseOrderItemRepository.findByTransactionPoid(transactionPoid);
 
@@ -230,7 +231,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
 
         } catch (Exception e) {
             log.error("Error calling PROC_AP_PO_CREATE_FROM_RFQ: {}", e.getMessage(), e);
-            throw new RuntimeException("Failed to execute PO creation from RFQ: " + e.getMessage(), e);
+            throw new ValidationException("Failed to execute PO creation from RFQ: " + e.getMessage());
         }
     }
 
@@ -572,7 +573,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                 case "ISUPDATED":
                     PurchaseOrderItem existingItem = purchaseOrderItemRepository
                             .findByTransactionPoidAndDetRowId(transactionPoid, dto.getDetRowId())
-                            .orElseThrow(() -> new RuntimeException("Purchase Order Item not found for detRowId: " + dto.getDetRowId()));
+                            .orElseThrow(() -> new ValidationException("Purchase Order Item not found for detRowId: " + dto.getDetRowId()));
                     
                     PurchaseOrderItem oldItem = new PurchaseOrderItem();
                     BeanUtils.copyProperties(existingItem, oldItem);
@@ -666,13 +667,13 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         for (int i = 0; i < request.getItems().size(); i++) {
             PurchaseOrderItemRequestDto item = request.getItems().get(i);
             if (item.getTotal() == null || item.getTotal() == 0.0) {
-                throw new RuntimeException("Total amount is showing as zero. Please note the row number -" + (i + 1));
+                throw new ValidationException("Total amount is showing as zero. Please note the row number -" + (i + 1));
             }
             totalAmount = totalAmount.add(BigDecimal.valueOf(item.getTotal()));
         }
         
         if (totalAmount.compareTo(BigDecimal.ZERO) == 0) {
-            throw new RuntimeException("No total amounts found in this transaction.");
+            throw new ValidationException("No total amounts found in this transaction.");
         }
     }
 
@@ -701,13 +702,13 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                 
                 String status = cs.getString(8);
                 if (status != null && (status.contains("ERROR") || status.contains("WARNING"))) {
-                    throw new RuntimeException(status);
+                    throw new ValidationException(status);
                 }
                 
                 return null;
             });
         } catch (Exception e) {
-            throw new RuntimeException("Supplier VAT validation failed: " + e.getMessage(), e);
+            throw new ValidationException("Supplier VAT validation failed: " + e.getMessage());
         }
     }
 
@@ -728,13 +729,13 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                 
                 String status = cs.getString(7);
                 if (status != null && (status.contains("ERROR") || status.contains("WARNING"))) {
-                    throw new RuntimeException(status);
+                    throw new ValidationException(status);
                 }
                 
                 return null;
             });
         } catch (Exception e) {
-            throw new RuntimeException("Purchase request validation failed: " + e.getMessage(), e);
+            throw new ValidationException("Purchase request validation failed: " + e.getMessage());
         }
     }
 
@@ -760,7 +761,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                 String status = cs.getString(5);
                 if (status != null && status.contains("ERROR")) {
                     log.error("MTA procedure error: {}", status);
-                    throw new RuntimeException("MTA procedure failed: " + status);
+                    throw new ValidationException("MTA procedure failed: " + status);
                 } else {
                     log.info("MTA procedure completed successfully: {}", status);
                 }
@@ -769,7 +770,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             });
         } catch (Exception e) {
             log.error("Error calling MTA procedure for RFQ POID: {}", rfqPoid, e);
-            throw new RuntimeException("Failed to execute MTA procedure: " + e.getMessage(), e);
+            throw new ValidationException("Failed to execute MTA procedure: " + e.getMessage());
         }
     }
 
@@ -790,7 +791,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                 String status = cs.getString(5);
                 if (status != null && status.contains("ERROR")) {
                     log.error("MTA delete procedure error: {}", status);
-                    throw new RuntimeException("MTA delete procedure failed: " + status);
+                    throw new ValidationException("MTA delete procedure failed: " + status);
                 } else {
                     log.info("MTA delete procedure completed successfully: {}", status);
                 }
@@ -799,7 +800,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             });
         } catch (Exception e) {
             log.error("Error calling MTA delete procedure for Transaction POID: {}", transactionPoid, e);
-            throw new RuntimeException("Failed to execute MTA delete procedure: " + e.getMessage(), e);
+            throw new ValidationException("Failed to execute MTA delete procedure: " + e.getMessage());
         }
     }
 

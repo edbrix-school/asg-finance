@@ -99,6 +99,8 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
         GlBankDepositVoucherHdr savedHdr = hdrRepository.save(hdr);
 
         if (request.getDetails() != null) {
+            String docId = UserContext.getDocumentId();
+            String key = savedHdr.getTransactionPoid().toString();
             List<GlBankDepositVoucherDtl> details = new ArrayList<>();
             for (int i = 0; i < request.getDetails().size(); i++) {
                 BankDepositVoucherDtlDto dto = request.getDetails().get(i);
@@ -107,6 +109,11 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
                 details.add(detail);
             }
             dtlRepository.saveAll(details);
+            
+            details.forEach(detail -> {
+                String logDetail = String.format("Row Created on Bank Deposit Voucher Detail with detRowId: %s", detail.getDetRowId());
+                loggingService.createLogSummaryEntry(docId, key, logDetail);
+            });
         }
         hdrRepository.flush();
         return savedHdr.getTransactionPoid();

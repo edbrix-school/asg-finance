@@ -32,4 +32,5 @@ public class TelexFileDtlDto {
     private String selected;
     private String drilldownLinkInfo;
     private String debitTtChargeType;
+    private String actionType;
 }

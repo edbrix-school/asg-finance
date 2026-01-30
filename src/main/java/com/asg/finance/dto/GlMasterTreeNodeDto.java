@@ -19,8 +19,9 @@ public class GlMasterTreeNodeDto extends GLMasterResponseDto {
     @Schema(description = "Unique identifier for the row", example = "row-1000")
     private String id;
 
-    @Schema(description = "Whether the node is expanded in UI", example = "false")
-    private Boolean isExpanded;
+    @Schema(description = "Whether the node is expanded in UI", example = "true")
+    @Builder.Default
+    private Boolean isExpanded = Boolean.TRUE;
 
     @Schema(description = "Whether this is a group row", example = "true")
     private Boolean isRowGroup;

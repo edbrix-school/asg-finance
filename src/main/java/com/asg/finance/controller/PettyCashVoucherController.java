@@ -88,7 +88,6 @@ public class PettyCashVoucherController {
             PettyCashResponseDto response = pettyCashVoucherService.createPettyCash(request, UserContext.getDocumentId());
             
             String key = response.getTransactionPoid().toString();
-            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), key);
 
             return success("Petty cash voucher created successfully", response);
         } catch (ValidationException ex) {

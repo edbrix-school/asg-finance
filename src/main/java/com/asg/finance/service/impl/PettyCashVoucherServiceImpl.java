@@ -6,6 +6,7 @@ import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
+import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.LoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.ShowPendingBillwiseBreakupResponseDto;
@@ -1136,6 +1137,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
         List<GlPettyCashPaymentDtl> toSave = new ArrayList<>();
         List<GlPettyCashPaymentDtl> toDelete = new ArrayList<>();
+        List<LogRequestDto<GlPettyCashPaymentDtl>> logRequests = new ArrayList<>();
         String documentId = UserContext.getDocumentId();
 
         for (var dto : Optional.ofNullable(requestDto.getGlPettyCashPaymentDtlRequestDtos())
@@ -1213,9 +1215,9 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
                     toSave.add(existingEntity);
                     
-                    // Log the update
+                    // Add to batch logging
                     String logDetail = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", hdrPoid, dto.getDetRowId());
-                    loggingService.logChanges(oldEntity, existingEntity, GlPettyCashPaymentDtl.class, documentId, hdrPoid.toString(), LogDetailsEnum.MODIFIED, logDetail);
+                    logRequests.add(new LogRequestDto<>(oldEntity, existingEntity, GlPettyCashPaymentDtl.class, documentId, hdrPoid.toString(), logDetail));
                     break;
 
                 case "ISDELETED":
@@ -1251,15 +1253,23 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             glPettyCashPaymentDtlRepository.deleteAll(toDelete);
         }
         
+        // Save all entities
+        List<GlPettyCashPaymentDtl> savedEntities = glPettyCashPaymentDtlRepository.saveAll(toSave);
+        
+        // Process batch logging for updates
+        if (!logRequests.isEmpty()) {
+            loggingService.createLogBatch(logRequests);
+        }
+        
         // Log creation for new records
-        toSave.stream()
+        savedEntities.stream()
             .filter(entity -> entity.getCreatedDate() != null && entity.getCreatedDate().isAfter(LocalDateTime.now().minusMinutes(1)))
             .forEach(entity -> {
                 String logDetail = String.format("Row Created on Payment Detail with detRowId: %s", entity.getDetRowId());
                 loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
             });
 
-        return toSave;
+        return savedEntities;
     }
 
     private List<GlPettyCashChargeDtl> mergeChargeDtls(List<GlPettyCashChargeDtl> existing,
@@ -1270,6 +1280,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
         List<GlPettyCashChargeDtl> toSave = new ArrayList<>();
         List<GlPettyCashChargeDtl> toDelete = new ArrayList<>();
+        List<LogRequestDto<GlPettyCashChargeDtl>> logRequests = new ArrayList<>();
         String documentId = UserContext.getDocumentId();
 
         for (var dto : Optional.ofNullable(requestDto.getGlPettyCashChargeDtlRequestDtos())
@@ -1345,9 +1356,9 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
                     toSave.add(existingEntity);
                     
-                    // Log the update
+                    // Add to batch logging
                     String logDetail = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", hdrPoid, dto.getDetRowId());
-                    loggingService.logChanges(oldEntity, existingEntity, GlPettyCashChargeDtl.class, documentId, hdrPoid.toString(), LogDetailsEnum.MODIFIED, logDetail);
+                    logRequests.add(new LogRequestDto<>(oldEntity, existingEntity, GlPettyCashChargeDtl.class, documentId, hdrPoid.toString(), logDetail));
                     break;
 
                 case "ISDELETED":
@@ -1383,15 +1394,23 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             glPettyCashChargeDtlRepository.deleteAll(toDelete);
         }
         
+        // Save all entities
+        List<GlPettyCashChargeDtl> savedEntities = glPettyCashChargeDtlRepository.saveAll(toSave);
+        
+        // Process batch logging for updates
+        if (!logRequests.isEmpty()) {
+            loggingService.createLogBatch(logRequests);
+        }
+        
         // Log creation for new records
-        toSave.stream()
+        savedEntities.stream()
             .filter(entity -> entity.getCreatedDate() != null && entity.getCreatedDate().isAfter(LocalDateTime.now().minusMinutes(1)))
             .forEach(entity -> {
                 String logDetail = String.format("Row Created on Charge Detail with detRowId: %s", entity.getDetRowId());
                 loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
             });
 
-        return toSave;
+        return savedEntities;
     }
 
     private List<GLPettyCashItemDtl> mergeItemDtls(List<GLPettyCashItemDtl> existing,
@@ -1402,6 +1421,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
         List<GLPettyCashItemDtl> toSave = new ArrayList<>();
         List<GLPettyCashItemDtl> toDelete = new ArrayList<>();
+        List<LogRequestDto<GLPettyCashItemDtl>> logRequests = new ArrayList<>();
         String documentId = UserContext.getDocumentId();
 
         for (var dto : Optional.ofNullable(requestDto.getGlPettyCashItemDtlRequestDtos())
@@ -1479,9 +1499,9 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
                     toSave.add(existingEntity);
                     
-                    // Log the update
+                    // Add to batch logging
                     String logDetail = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", hdrPoid, dto.getDetRowId());
-                    loggingService.logChanges(oldEntity, existingEntity, GLPettyCashItemDtl.class, documentId, hdrPoid.toString(), LogDetailsEnum.MODIFIED, logDetail);
+                    logRequests.add(new LogRequestDto<>(oldEntity, existingEntity, GLPettyCashItemDtl.class, documentId, hdrPoid.toString(), logDetail));
                     break;
 
                 case "ISDELETED":
@@ -1517,15 +1537,23 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             glPettyCashItemDtlRepository.deleteAll(toDelete);
         }
         
+        // Save all entities
+        List<GLPettyCashItemDtl> savedEntities = glPettyCashItemDtlRepository.saveAll(toSave);
+        
+        // Process batch logging for updates
+        if (!logRequests.isEmpty()) {
+            loggingService.createLogBatch(logRequests);
+        }
+        
         // Log creation for new records
-        toSave.stream()
+        savedEntities.stream()
             .filter(entity -> entity.getCreatedDate() != null && entity.getCreatedDate().isAfter(LocalDateTime.now().minusMinutes(1)))
             .forEach(entity -> {
                 String logDetail = String.format("Row Created on Item Detail with detRowId: %s", entity.getDetRowId());
                 loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
             });
 
-        return toSave;
+        return savedEntities;
     }
 
 

@@ -5,6 +5,7 @@ import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
+import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.LoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.service.DocumentDeleteService;
@@ -528,6 +529,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         List<GlBankPaymentChargeDtlEntity> toSave = new ArrayList<>();
         List<GlBankPaymentChargeDtlEntity> toDelete = new ArrayList<>();
+        List<LogRequestDto<GlBankPaymentChargeDtlEntity>> logRequests = new ArrayList<>();
         String documentId = UserContext.getDocumentId();
 
         for (BankPaymentChargeDetailRequest detail : chargeDetails) {
@@ -559,9 +561,9 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                         mapChargeFields(existingEntity, detail, transactionPoid);
                         toSave.add(existingEntity);
                         
-                        // Log the update
+                        // Add to batch logging
                         String logDetail = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", transactionPoid, detail.getDetRowId());
-                        loggingService.logChanges(oldEntity, existingEntity, GlBankPaymentChargeDtlEntity.class, documentId, transactionPoid.toString(), LogDetailsEnum.MODIFIED, logDetail);
+                        logRequests.add(new LogRequestDto<>(oldEntity, existingEntity, GlBankPaymentChargeDtlEntity.class, documentId, transactionPoid.toString(), logDetail));
                     }
                     break;
 
@@ -592,6 +594,11 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         // Save all entities to the repository
         List<GlBankPaymentChargeDtlEntity> savedEntities = chargeDtlRepository.saveAll(toSave);
+        
+        // Process batch logging for updates
+        if (!logRequests.isEmpty()) {
+            loggingService.createLogBatch(logRequests);
+        }
         
         // Log creation for new records
         savedEntities.stream()
@@ -633,6 +640,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         List<GlBankPaymentItemDtlEntity> toSave = new ArrayList<>();
         List<GlBankPaymentItemDtlEntity> toDelete = new ArrayList<>();
+        List<LogRequestDto<GlBankPaymentItemDtlEntity>> logRequests = new ArrayList<>();
         String documentId = UserContext.getDocumentId();
 
         for (BankPaymentItemDetailRequest detail : itemDetails) {
@@ -664,9 +672,9 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                         mapItemFields(existingEntity, detail, transactionPoid);
                         toSave.add(existingEntity);
                         
-                        // Log the update
+                        // Add to batch logging
                         String logDetail = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", transactionPoid, detail.getDetRowId());
-                        loggingService.logChanges(oldEntity, existingEntity, GlBankPaymentItemDtlEntity.class, documentId, transactionPoid.toString(), LogDetailsEnum.MODIFIED, logDetail);
+                        logRequests.add(new LogRequestDto<>(oldEntity, existingEntity, GlBankPaymentItemDtlEntity.class, documentId, transactionPoid.toString(), logDetail));
                     }
                     break;
 
@@ -696,6 +704,11 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         }
 
         List<GlBankPaymentItemDtlEntity> savedEntities = itemRepository.saveAll(toSave);
+        
+        // Process batch logging for updates
+        if (!logRequests.isEmpty()) {
+            loggingService.createLogBatch(logRequests);
+        }
         
         // Log creation for new records
         savedEntities.stream()
@@ -1083,6 +1096,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         List<GLPaymentVoucherDtlGLEntity> toSave = new ArrayList<>();
         List<GLPaymentVoucherDtlGLEntity> toDelete = new ArrayList<>();
+        List<LogRequestDto<GLPaymentVoucherDtlGLEntity>> logRequests = new ArrayList<>();
 
         for (BankPaymentGLDetailRequest detail : glDetails) {
             // Handle null, empty string, or whitespace as "noChanges"
@@ -1113,9 +1127,9 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                         mapGLFields(existingEntity, detail, transactionPoid);
                         toSave.add(existingEntity);
                         
-                        // Log the update
+                        // Add to batch logging
                         String logDetail = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", transactionPoid, detail.getDetRowId());
-                        loggingService.logChanges(oldEntity, existingEntity, GLPaymentVoucherDtlGLEntity.class, documentId, transactionPoid.toString(), LogDetailsEnum.MODIFIED, logDetail);
+                        logRequests.add(new LogRequestDto<>(oldEntity, existingEntity, GLPaymentVoucherDtlGLEntity.class, documentId, transactionPoid.toString(), logDetail));
                     }
                     break;
 
@@ -1146,6 +1160,12 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         // Save records and log creations
         List<GLPaymentVoucherDtlGLEntity> savedEntities = paymentVoucherDetailsRepository.saveAll(toSave);
+        
+        // Process batch logging for updates
+        if (!logRequests.isEmpty()) {
+            loggingService.createLogBatch(logRequests);
+        }
+        
         savedEntities.stream()
             .filter(entity -> entity.getCreatedDate() != null && entity.getCreatedDate().isAfter(LocalDateTime.now().minusMinutes(1)))
             .forEach(entity -> {

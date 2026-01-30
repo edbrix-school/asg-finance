@@ -6,6 +6,7 @@ import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.LoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.exception.ValidationException;
+import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.service.*;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.service.DocumentDeleteService;
@@ -335,6 +336,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                 case ACTION_ISDELETED -> {
                     if (dto.getDetRowId() != null) {
                         glJournalVoucherDtlRepository.deleteById(new TransactionDetailKey(transactionPoid, dto.getDetRowId()));
+                        loggingService.logDelete(dto, docId, transactionPoid.toString());
                     }
                 }
                 case ACTION_ISCREATED -> {
@@ -353,6 +355,9 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                             .createdDate(LocalDateTime.now())
                             .build();
                     glJournalVoucherDtlRepository.save(detail);
+                    
+                    String logDetail = String.format("Row Created on Journal Voucher GL Detail with detRowId: %s", detRowId);
+                    loggingService.createLogSummaryEntry(docId, transactionPoid.toString(), logDetail);
 
                     if (dto.getCostCenterBreakup() != null && !dto.getCostCenterBreakup().isEmpty()) {
                         costCenterRequestDtoList.addAll(buildCostCenterBreakups(transactionPoid, detRowId, docId, dto.getGlPoid(), dto.getCostCenterBreakup()));
@@ -368,6 +373,10 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                     GlJournalVoucherDtl detail = glJournalVoucherDtlRepository.findById(
                             new TransactionDetailKey(transactionPoid, dto.getDetRowId()))
                             .orElseThrow(() -> new ResourceNotFoundException("GL Detail", "detRowId", dto.getDetRowId()));
+                    
+                    GlJournalVoucherDtl oldDetail = new GlJournalVoucherDtl();
+                    BeanUtils.copyProperties(detail, oldDetail);
+                    
                     detail.setType(dto.getType());
                     detail.setCompanyPoid(companyPoid);
                     detail.setGlPoid(dto.getGlPoid());
@@ -377,6 +386,8 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                     detail.setLastModifiedBy(currentUser);
                     detail.setLastModifiedDate(LocalDateTime.now());
                     glJournalVoucherDtlRepository.save(detail);
+                    
+                    loggingService.logChanges(oldDetail, detail, GlJournalVoucherDtl.class, docId, transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
                     if (dto.getCostCenterBreakup() != null && !dto.getCostCenterBreakup().isEmpty()) {
                         costCenterRequestDtoList.addAll(buildCostCenterBreakups(transactionPoid, dto.getDetRowId(), docId, dto.getGlPoid(), dto.getCostCenterBreakup()));
@@ -448,45 +459,166 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
     }
 
     private void saveAssetDetails(Long transactionPoid, List<JournalVoucherAssetDetailDto> assetDetails) {
-        for (int i = 0; i < assetDetails.size(); i++) {
-            JournalVoucherAssetDetailDto dto = assetDetails.get(i);
-            GlJournalVoucherAssetDtl detail = GlJournalVoucherAssetDtl.builder()
-                    .transactionPoid(transactionPoid)
-                    .detRowId((long) (i + 1))
-                    .faPoid(dto.getFaPoid())
-                    .lifeYear(dto.getLifeYear())
-                    .purchaseDate(dto.getPurchaseDate())
-                    .depreciationStartDate(dto.getDepreciationStartDate())
-                    .assetValue(dto.getAssetValue())
-                    .depreciatedAmt(dto.getDepreciatedAmt())
-                    .wdvValue(dto.getWdvValue())
-                    .process(dto.getProcess())
-                    .scrapSoldDate(dto.getScrapSoldDate())
-                    .scrapSoldValue(dto.getScrapSoldValue())
-                    .remarks(dto.getRemarks())
-                    .createdBy(getCurrentUser())
-                    .createdDate(LocalDateTime.now())
-                    .build();
-            glJournalVoucherAssetDtlRepository.save(detail);
+        String docId = UserContext.getDocumentId();
+        List<GlJournalVoucherAssetDtl> toSave = new ArrayList<>();
+        List<GlJournalVoucherAssetDtl> toUpdate = new ArrayList<>();
+        List<Long> toDelete = new ArrayList<>();
+        
+        List<GlJournalVoucherAssetDtl> existingList = glJournalVoucherAssetDtlRepository.findAll((root, query, cb) -> 
+                cb.equal(root.get("transactionPoid"), transactionPoid));
+        Map<Long, GlJournalVoucherAssetDtl> existingMap = existingList.stream()
+                .collect(Collectors.toMap(GlJournalVoucherAssetDtl::getDetRowId, d -> d));
+        
+        Long[] maxSn = {existingList.stream()
+                .map(GlJournalVoucherAssetDtl::getDetRowId)
+                .max(Long::compareTo)
+                .orElse(0L)};
+        
+        for (JournalVoucherAssetDetailDto dto : assetDetails) {
+            String action = dto.getActionType() != null ? dto.getActionType().toUpperCase() : "ISCREATED";
+            switch (action) {
+                case "ISCREATED":
+                    Long sn = ++maxSn[0];
+                    GlJournalVoucherAssetDtl newDetail = GlJournalVoucherAssetDtl.builder()
+                            .transactionPoid(transactionPoid)
+                            .detRowId(sn)
+                            .faPoid(dto.getFaPoid())
+                            .lifeYear(dto.getLifeYear())
+                            .purchaseDate(dto.getPurchaseDate())
+                            .depreciationStartDate(dto.getDepreciationStartDate())
+                            .assetValue(dto.getAssetValue())
+                            .depreciatedAmt(dto.getDepreciatedAmt())
+                            .wdvValue(dto.getWdvValue())
+                            .process(dto.getProcess())
+                            .scrapSoldDate(dto.getScrapSoldDate())
+                            .scrapSoldValue(dto.getScrapSoldValue())
+                            .remarks(dto.getRemarks())
+                            .createdBy(getCurrentUser())
+                            .createdDate(LocalDateTime.now())
+                            .build();
+                    toSave.add(newDetail);
+                    break;
+                case "ISUPDATED":
+                    GlJournalVoucherAssetDtl existing = existingMap.get(dto.getSn());
+                    if (existing == null) {
+                        throw new ResourceNotFoundException("Asset Detail", "sn", dto.getSn());
+                    }
+                    GlJournalVoucherAssetDtl oldDetail = new GlJournalVoucherAssetDtl();
+                    BeanUtils.copyProperties(existing, oldDetail);
+                    existing.setFaPoid(dto.getFaPoid());
+                    existing.setLifeYear(dto.getLifeYear());
+                    existing.setPurchaseDate(dto.getPurchaseDate());
+                    existing.setDepreciationStartDate(dto.getDepreciationStartDate());
+                    existing.setAssetValue(dto.getAssetValue());
+                    existing.setDepreciatedAmt(dto.getDepreciatedAmt());
+                    existing.setWdvValue(dto.getWdvValue());
+                    existing.setProcess(dto.getProcess());
+                    existing.setScrapSoldDate(dto.getScrapSoldDate());
+                    existing.setScrapSoldValue(dto.getScrapSoldValue());
+                    existing.setRemarks(dto.getRemarks());
+                    existing.setLastModifiedBy(getCurrentUser());
+                    existing.setLastModifiedDate(LocalDateTime.now());
+                    toUpdate.add(existing);
+                    loggingService.logChanges(oldDetail, existing, GlJournalVoucherAssetDtl.class, docId, transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+                    break;
+                case "ISDELETED":
+                    toDelete.add(dto.getSn());
+                    loggingService.logDelete(dto, docId, transactionPoid.toString());
+                    break;
+            }
+        }
+        
+        if (!toSave.isEmpty()) {
+            List<GlJournalVoucherAssetDtl> saved = glJournalVoucherAssetDtlRepository.saveAll(toSave);
+            saved.forEach(detail -> {
+                String logDetail = String.format("Row Created on Journal Voucher Asset Detail with sn: %s", detail.getDetRowId());
+                loggingService.createLogSummaryEntry(docId, transactionPoid.toString(), logDetail);
+            });
+        }
+        if (!toUpdate.isEmpty()) {
+            glJournalVoucherAssetDtlRepository.saveAll(toUpdate);
+        }
+        if (!toDelete.isEmpty()) {
+            existingList.stream()
+                    .filter(d -> toDelete.contains(d.getDetRowId()))
+                    .forEach(glJournalVoucherAssetDtlRepository::delete);
         }
     }
 
     private void saveCapitalizationDetails(Long transactionPoid, List<JournalVoucherCapitalizationDto> capitalizationDetails) {
-        for (int i = 0; i < capitalizationDetails.size(); i++) {
-            JournalVoucherCapitalizationDto dto = capitalizationDetails.get(i);
-            GlJournalFaCapitalization detail = GlJournalFaCapitalization.builder()
-                    .transactionPoid(transactionPoid)
-                    .detRowId((long) (i + 1))
-                    .faPoid(dto.getFaPoid())
-                    .faDescription(dto.getFaDescription())
-                    .faCategory(dto.getFaCategory())
-                    .assetType(dto.getAssetType())
-                    .assetValue(dto.getAssetValue())
-                    .remarks(dto.getRemarks())
-                    .createdBy(getCurrentUser())
-                    .createdDate(LocalDateTime.now())
-                    .build();
-            glJournalFaCapitalizationRepository.save(detail);
+        String docId = UserContext.getDocumentId();
+        List<GlJournalFaCapitalization> toSave = new ArrayList<>();
+        List<GlJournalFaCapitalization> toUpdate = new ArrayList<>();
+        List<Long> toDelete = new ArrayList<>();
+        
+        List<GlJournalFaCapitalization> existingList = glJournalFaCapitalizationRepository.findAll((root, query, cb) -> 
+                cb.equal(root.get("transactionPoid"), transactionPoid));
+        Map<Long, GlJournalFaCapitalization> existingMap = existingList.stream()
+                .collect(Collectors.toMap(GlJournalFaCapitalization::getDetRowId, d -> d));
+        
+        Long[] maxSn = {existingList.stream()
+                .map(GlJournalFaCapitalization::getDetRowId)
+                .max(Long::compareTo)
+                .orElse(0L)};
+        
+        for (JournalVoucherCapitalizationDto dto : capitalizationDetails) {
+            String action = dto.getActionType() != null ? dto.getActionType().toUpperCase() : "ISCREATED";
+            switch (action) {
+                case "ISCREATED":
+                    Long sn = ++maxSn[0];
+                    GlJournalFaCapitalization newDetail = GlJournalFaCapitalization.builder()
+                            .transactionPoid(transactionPoid)
+                            .detRowId(sn)
+                            .faPoid(dto.getFaPoid())
+                            .faDescription(dto.getFaDescription())
+                            .faCategory(dto.getFaCategory())
+                            .assetType(dto.getAssetType())
+                            .assetValue(dto.getAssetValue())
+                            .remarks(dto.getRemarks())
+                            .createdBy(getCurrentUser())
+                            .createdDate(LocalDateTime.now())
+                            .build();
+                    toSave.add(newDetail);
+                    break;
+                case "ISUPDATED":
+                    GlJournalFaCapitalization existing = existingMap.get(dto.getSn());
+                    if (existing == null) {
+                        throw new ResourceNotFoundException("Capitalization Detail", "sn", dto.getSn());
+                    }
+                    GlJournalFaCapitalization oldDetail = new GlJournalFaCapitalization();
+                    BeanUtils.copyProperties(existing, oldDetail);
+                    existing.setFaPoid(dto.getFaPoid());
+                    existing.setFaDescription(dto.getFaDescription());
+                    existing.setFaCategory(dto.getFaCategory());
+                    existing.setAssetType(dto.getAssetType());
+                    existing.setAssetValue(dto.getAssetValue());
+                    existing.setRemarks(dto.getRemarks());
+                    existing.setLastModifiedBy(getCurrentUser());
+                    existing.setLastModifiedDate(LocalDateTime.now());
+                    toUpdate.add(existing);
+                    loggingService.logChanges(oldDetail, existing, GlJournalFaCapitalization.class, docId, transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+                    break;
+                case "ISDELETED":
+                    toDelete.add(dto.getSn());
+                    loggingService.logDelete(dto, docId, transactionPoid.toString());
+                    break;
+            }
+        }
+        
+        if (!toSave.isEmpty()) {
+            List<GlJournalFaCapitalization> saved = glJournalFaCapitalizationRepository.saveAll(toSave);
+            saved.forEach(detail -> {
+                String logDetail = String.format("Row Created on Journal Voucher Capitalization Detail with sn: %s", detail.getDetRowId());
+                loggingService.createLogSummaryEntry(docId, transactionPoid.toString(), logDetail);
+            });
+        }
+        if (!toUpdate.isEmpty()) {
+            glJournalFaCapitalizationRepository.saveAll(toUpdate);
+        }
+        if (!toDelete.isEmpty()) {
+            existingList.stream()
+                    .filter(d -> toDelete.contains(d.getDetRowId()))
+                    .forEach(glJournalFaCapitalizationRepository::delete);
         }
     }
 

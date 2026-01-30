@@ -211,26 +211,76 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
             List<PdcChqBatchDtlRequestDto> dtos,
             Long transactionPoid) {
 
-        long nextRowId = 1;
-
-        PdcChqBatchDtlEntity last =
-                dtlRepo.findTopByTransactionPoidOrderByDetRowIdDesc(transactionPoid);
-
-        if (last != null) {
-            nextRowId = last.getDetRowId() + 1;
-        }
+        String docId = "400-113";
+        List<PdcChqBatchDtlEntity> existingList = dtlRepo.findByTransactionPoidOrderByDetRowIdAsc(transactionPoid);
+        Map<Long, PdcChqBatchDtlEntity> existingMap = existingList.stream()
+                .collect(Collectors.toMap(PdcChqBatchDtlEntity::getDetRowId, d -> d));
+        
+        Long[] maxDetRowId = {existingList.stream()
+                .map(PdcChqBatchDtlEntity::getDetRowId)
+                .max(Long::compareTo)
+                .orElse(0L)};
 
         List<PdcChqBatchDtlResponseDto> responseList = new ArrayList<>();
 
         for (PdcChqBatchDtlRequestDto dto : dtos) {
-
-            PdcChqBatchDtlEntity entity = mapDtlDtoToEntity(dto, transactionPoid, nextRowId++);
-            entity = dtlRepo.save(entity);
-
-            responseList.add(mapDtlEntityToResponseDto(entity));
+            String action = dto.getActionType() != null ? dto.getActionType().toUpperCase() : "ISCREATED";
+            
+            switch (action) {
+                case "ISCREATED":
+                    Long detRowId = ++maxDetRowId[0];
+                    PdcChqBatchDtlEntity newEntity = mapDtlDtoToEntity(dto, transactionPoid, detRowId);
+                    newEntity = dtlRepo.save(newEntity);
+                    responseList.add(mapDtlEntityToResponseDto(newEntity));
+                    String logDetail = String.format("Row Created on PDC Cheque Batch Detail with detRowId: %s", detRowId);
+                    loggingService.createLogSummaryEntry(docId, transactionPoid.toString(), logDetail);
+                    break;
+                    
+                case "ISUPDATED":
+                    PdcChqBatchDtlEntity existing = existingMap.get(dto.getDetRowId());
+                    if (existing == null) {
+                        throw new ResourceNotFoundException("PDC Batch Detail", "detRowId", dto.getDetRowId());
+                    }
+                    PdcChqBatchDtlEntity oldEntity = new PdcChqBatchDtlEntity();
+                    BeanUtils.copyProperties(existing, oldEntity);
+                    updateDetailEntity(existing, dto);
+                    existing = dtlRepo.save(existing);
+                    responseList.add(mapDtlEntityToResponseDto(existing));
+                    loggingService.logChanges(oldEntity, existing, PdcChqBatchDtlEntity.class, docId, transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+                    break;
+                    
+                case "ISDELETED":
+                    if (dto.getDetRowId() != null) {
+                        dtlRepo.deleteByTransactionPoidAndDetRowId(transactionPoid, dto.getDetRowId());
+                        loggingService.logDelete(dto, docId, transactionPoid.toString());
+                    }
+                    break;
+            }
         }
 
         return responseList;
+    }
+
+    private void updateDetailEntity(PdcChqBatchDtlEntity entity, PdcChqBatchDtlRequestDto dto) {
+        entity.setPdcChqDate(dto.getPdcChqDate());
+        entity.setChqNumber(dto.getChqNumber());
+        entity.setChqAmount(dto.getChqAmount());
+        entity.setRemarks(dto.getRemarks());
+        entity.setBankPaymentPoid(dto.getBankPaymentPoid());
+        entity.setBankPaymentRef(dto.getBankPaymentRef());
+        entity.setNarration(dto.getNarration());
+        entity.setBillRef(dto.getBillRef());
+        entity.setCostPoid(dto.getCostPoid());
+        entity.setDrGlPoid1(dto.getDrGlPoid1());
+        entity.setDrAmt1(dto.getDrAmt1());
+        entity.setDrGlPoid2(dto.getDrGlPoid2());
+        entity.setDrAmt2(dto.getDrAmt2());
+        entity.setDrGlPoid3(dto.getDrGlPoid3());
+        entity.setDrAmt3(dto.getDrAmt3());
+        entity.setCrGlPoid(dto.getCrGlPoid());
+        entity.setCrAmt(dto.getCrAmt());
+        entity.setLastModifiedBy(getCurrentUser());
+        entity.setLastModifiedDate(LocalDateTime.now());
     }
 
     private PdcChqBatchDtlEntity mapDtlDtoToEntity(

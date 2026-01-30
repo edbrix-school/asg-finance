@@ -182,25 +182,27 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
     }
 
     private void saveAgeingDetails(List<GlAgeingMasterDtlDto> detailDtos, GlAgeingMasterEntity masterEntity) {
-        List<GlAgeingMasterDtlEntity> detailEntities = detailDtos.stream()
-                .map(dto -> createDetailEntity(dto, masterEntity))
-                .collect(Collectors.toList());
+        List<GlAgeingMasterDtlEntity> detailEntities = new ArrayList<>();
+
+        for (GlAgeingMasterDtlDto dto : detailDtos) {
+
+            GlAgeingMasterDtlEntity entity = GlAgeingMasterDtlEntity.builder()
+                    .ageingMaster(masterEntity)
+                    .ageingPoid(masterEntity.getAgeingPoid())
+                    .detRowId(dto.getDetRowId())
+                    .breakupTitle(dto.getBreakupTitle())
+                    .breakupFrom(dto.getBreakupFrom())
+                    .breakupTo(dto.getBreakupTo())
+                    .createdBy(getCurrentUser())
+                    .createdDate(Timestamp.valueOf(LocalDateTime.now()))
+                    .lastModifiedBy(getCurrentUser())
+                    .lastModifiedDate(Timestamp.valueOf(LocalDateTime.now()))
+                    .build();
+
+            detailEntities.add(entity);
+        }
 
         ageingMasterDtlRepository.saveAll(detailEntities);
-    }
-
-    private GlAgeingMasterDtlEntity createDetailEntity(GlAgeingMasterDtlDto dto, GlAgeingMasterEntity masterEntity) {
-        return GlAgeingMasterDtlEntity.builder()
-                .ageingMaster(masterEntity)
-                .ageingPoid(masterEntity.getAgeingPoid())
-                .breakupTitle(dto.getBreakupTitle())
-                .breakupFrom(dto.getBreakupFrom())
-                .breakupTo(dto.getBreakupTo())
-                .createdBy(getCurrentUser())
-                .createdDate(Timestamp.valueOf(LocalDateTime.now()))
-                .lastModifiedBy(getCurrentUser())
-                .lastModifiedDate(Timestamp.valueOf(LocalDateTime.now()))
-                .build();
     }
 
     private void updateAgeingMasterFields(GlAgeingMasterEntity entity, GlAgeingMasterDto dto) {
@@ -212,67 +214,6 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
         entity.setActive(dto.getActive() ? "Y" : "N");
     }
 
-    private void updateAgeingDetails(List<GlAgeingMasterDtlDto> detailDtos, GlAgeingMasterEntity masterEntity) {
-        List<GlAgeingMasterDtlEntity> entitiesToDelete = new ArrayList<>();
-        List<GlAgeingMasterDtlEntity> entitiesToSave = new ArrayList<>();
-
-        for (GlAgeingMasterDtlDto dto : detailDtos) {
-            if (dto.getDetRowId() != null) {
-                // Update existing record - verify it belongs to the correct master
-                // This query ensures we only get entities that belong to this master
-                Optional<GlAgeingMasterDtlEntity> existingEntityOpt = 
-                    ageingMasterDtlRepository.findByAgeingMaster_AgeingPoidAndDetRowId(
-                        masterEntity.getAgeingPoid(), dto.getDetRowId());
-
-                if (existingEntityOpt.isPresent()) {
-                    GlAgeingMasterDtlEntity entity = existingEntityOpt.get();
-                    
-                    // Explicitly set the master relationship and ageingPoid to ensure proper composite key management
-                    // This ensures Hibernate correctly handles the composite primary key (DET_ROW_ID, AGEING_POID)
-                    entity.setAgeingMaster(masterEntity);
-                    entity.setAgeingPoid(masterEntity.getAgeingPoid());
-                    updateDetailEntity(entity, dto);
-                    entitiesToSave.add(entity);
-                } else {
-                    throw new RuntimeException("Detail record not found with detRowId: " + dto.getDetRowId() + 
-                        " for ageing master " + masterEntity.getAgeingPoid());
-                }
-            } else {
-                // Create new record
-                GlAgeingMasterDtlEntity newEntity = createDetailEntity(dto, masterEntity);
-                entitiesToSave.add(newEntity);
-            }
-        }
-
-        // Find and mark for deletion any existing records not included in the update
-        List<GlAgeingMasterDtlEntity> existingDetails = ageingMasterDtlRepository.findByAgeingMaster_AgeingPoid(masterEntity.getAgeingPoid());
-        List<Long> providedDetRowIds = detailDtos.stream()
-                .map(GlAgeingMasterDtlDto::getDetRowId)
-                .filter(id -> id != null)
-                .collect(Collectors.toList());
-
-        for (GlAgeingMasterDtlEntity existing : existingDetails) {
-            if (!providedDetRowIds.contains(existing.getDetRowId())) {
-                entitiesToDelete.add(existing);
-            }
-        }
-
-        // Perform batch operations
-        if (!entitiesToDelete.isEmpty()) {
-            ageingMasterDtlRepository.deleteAll(entitiesToDelete);
-        }
-        if (!entitiesToSave.isEmpty()) {
-            ageingMasterDtlRepository.saveAll(entitiesToSave);
-        }
-    }
-
-    private void updateDetailEntity(GlAgeingMasterDtlEntity entity, GlAgeingMasterDtlDto dto) {
-        entity.setBreakupTitle(dto.getBreakupTitle());
-        entity.setBreakupFrom(dto.getBreakupFrom());
-        entity.setBreakupTo(dto.getBreakupTo());
-        entity.setLastModifiedBy(getCurrentUser());
-        entity.setLastModifiedDate(Timestamp.valueOf(LocalDateTime.now()));
-    }
 
     private GlAgeingMasterDtlDto convertDetailEntityToDto(GlAgeingMasterDtlEntity entity) {
         return GlAgeingMasterDtlDto.builder()
@@ -393,9 +334,10 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
             String actionType = charge.getActionType() == null ? "NOCHANGE" : charge.getActionType().toUpperCase();
             switch (actionType) {
                 case "ISCREATED":
+                
                     GlAgeingMasterDtlEntity newEntity = GlAgeingMasterDtlEntity.builder()
                             .ageingPoid(ageingPoid)
-                            .detRowId(charge.getDetRowId()) 
+                            .detRowId(charge.getDetRowId())
                             .breakupTitle(charge.getBreakupTitle())
                             .breakupFrom(charge.getBreakupFrom())
                             .breakupTo(charge.getBreakupTo())

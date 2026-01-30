@@ -15,12 +15,14 @@ import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.utility.ASGHelperUtils;
 import com.asg.finance.dto.*;
 import com.asg.finance.entity.*;
+import com.asg.finance.entity.GlobalLogSummary;
 import com.asg.finance.entity.key.SupplierMasterMangementDtlKey;
 import com.asg.finance.entity.key.SupplierMasterQstnDtlKey;
 import com.asg.finance.entity.key.SupplierMasterServiceDtlKey;
 import com.asg.finance.entity.key.SupplierPaymentDetailId;
 import com.asg.finance.entity.master.HrEmployeeMaster;
 import com.asg.finance.repository.*;
+import com.asg.finance.repository.GlobalLogSummaryRepository;
 import com.asg.finance.repository.master.HrEmployeeMasterRepository;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.utility.PaginationUtil;
@@ -46,6 +48,7 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -73,6 +76,7 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
     private final LovDataService lovDataService;
     private final LoggingService loggingService;
     private final DocumentDeleteService documentDeleteService;
+    private final GlobalLogSummaryRepository globalLogSummaryRepository;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -256,21 +260,32 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
         existingEntity.setLastModifiedDate(LocalDate.now());
         SupplierMasterEntity updatedEntity = supplierMasterRepository.save(existingEntity);
 
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = updatedEntity.getSupplierPoid().toString();
+        List<GlobalLogSummary> subTableSummaryLogs = new ArrayList<>();
+
         if (supplierMasterDto.getPaymentDtl() != null && !supplierMasterDto.getPaymentDtl().isEmpty()) {
-            processPaymentDtl(supplierPoid, supplierMasterDto.getPaymentDtl());
+            processPaymentDtl(supplierPoid, supplierMasterDto.getPaymentDtl(), subTableSummaryLogs);
         }
 
         if (supplierMasterDto.getManagementDtl() != null && !supplierMasterDto.getManagementDtl().isEmpty()) {
-            processManagementDtl(supplierPoid, supplierMasterDto.getManagementDtl());
+            processManagementDtl(supplierPoid, supplierMasterDto.getManagementDtl(), subTableSummaryLogs);
         }
 
         if (supplierMasterDto.getServiceDtl() != null && !supplierMasterDto.getServiceDtl().isEmpty()) {
-            processServiceDtl(supplierPoid, supplierMasterDto.getServiceDtl());
+            processServiceDtl(supplierPoid, supplierMasterDto.getServiceDtl(), subTableSummaryLogs);
         }
 
         if (supplierMasterDto.getQuestionaries() != null && !supplierMasterDto.getQuestionaries().isEmpty()) {
-            processQuestionaries(supplierPoid, supplierMasterDto.getQuestionaries());
+            processQuestionaries(supplierPoid, supplierMasterDto.getQuestionaries(), subTableSummaryLogs);
         }
+
+        if (!subTableSummaryLogs.isEmpty()) {
+            globalLogSummaryRepository.saveAll(subTableSummaryLogs);
+        }
+
+        String modifiedMessage = String.format("Modified - - DOC:%s KEY:%s", docId, docKeyPoid);
+        globalLogSummaryRepository.save(createSummaryLogEntry(LogDetailsEnum.MODIFIED, docId, docKeyPoid, modifiedMessage));
 
         callSupplierValidationProcedure(UserContext.getGroupPoid(),
                 supplierMasterDto.getCustomerPoid(),
@@ -278,11 +293,9 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                 "Y",
                 supplierMasterDto.getSupplierPoid());
         
-        // Log the update
-        String key = updatedEntity.getSupplierPoid().toString();
-        String docId = UserContext.getDocumentId();
-        loggingService.logChanges(oldEntity, updatedEntity, SupplierMasterEntity.class, 
-                docId, key, LogDetailsEnum.MODIFIED, "SUPPLIER_POID");
+     
+        loggingService.logChanges(oldEntity, updatedEntity, SupplierMasterEntity.class,
+                docId, docKeyPoid, LogDetailsEnum.MODIFIED, "SUPPLIER_POID");
         
         return getSupplierMaster(supplierPoid);
     }
@@ -484,10 +497,13 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
             throw new ResourceAlreadyExistsException("Supplier Name", supplierMasterDto.getSupplierName());
         }
 
-        if (supplierMasterDto.getAddressPoid() == null && StringUtils.isNotBlank(supplierMasterDto.getAddressName())) {
+        if (supplierMasterDto.getAddressPoid() == null) {
+            String addressName = StringUtils.isNotBlank(supplierMasterDto.getAddressName())
+                    ? supplierMasterDto.getAddressName()
+                    : supplierMasterDto.getSupplierName();
             AddressMasterUpsertDto addressRequest = new AddressMasterUpsertDto();
-            addressRequest.setAddressName(supplierMasterDto.getAddressName());
-            addressRequest.setAddressName2(supplierMasterDto.getAddressName());
+            addressRequest.setAddressName(addressName);
+            addressRequest.setAddressName2(addressName);
             addressRequest.setGroupPoid(UserContext.getGroupPoid());
             addressRequest.setCountryId(supplierMasterDto.getCountryPoid());
             addressRequest.setActive("Y");
@@ -510,64 +526,91 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
         SupplierMasterEntity entity = mapToEntity(supplierMasterDto);
         SupplierMasterEntity savedEntity = supplierMasterRepository.save(entity); // save parent first
 
-        entityManager.flush();   // ensure INSERT actually runs
-        entityManager.refresh(savedEntity); // reload with trigger-updated values
+        entityManager.flush(); 
+        entityManager.refresh(savedEntity); 
 
-        // For POST, only process isCreated actions (or treat as isCreated if actionType not provided)
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = savedEntity.getSupplierPoid().toString();
+        Timestamp now = new Timestamp(System.currentTimeMillis());
+
+        String createdMessage = String.format("Created - - DOC:%s KEY:%s", docId, docKeyPoid);
+        GlobalLogSummary headerLog = createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, createdMessage, now);
+        globalLogSummaryRepository.save(headerLog);
+
+        List<SupplierMasterPaymentDtlDto> createdPayments = Collections.emptyList();
         if (supplierMasterDto.getPaymentDtl() != null && !supplierMasterDto.getPaymentDtl().isEmpty()) {
-            List<SupplierMasterPaymentDtlDto> createdPayments = supplierMasterDto.getPaymentDtl().stream()
+            createdPayments = supplierMasterDto.getPaymentDtl().stream()
                     .filter(p -> {
                         String action = StringUtils.isBlank(p.getActionType()) ? "isCreated" : p.getActionType();
                         return "isCreated".equalsIgnoreCase(action);
                     })
                     .toList();
             if (!createdPayments.isEmpty()) {
-                processPaymentDtl(savedEntity.getSupplierPoid(), createdPayments);
+                processPaymentDtl(savedEntity.getSupplierPoid(), createdPayments, null);
             }
         }
 
+        List<SupplierMasterManagementDtlDto> createdMgmt = Collections.emptyList();
         if (supplierMasterDto.getManagementDtl() != null && !supplierMasterDto.getManagementDtl().isEmpty()) {
-            List<SupplierMasterManagementDtlDto> createdMgmt = supplierMasterDto.getManagementDtl().stream()
+            createdMgmt = supplierMasterDto.getManagementDtl().stream()
                     .filter(m -> {
                         String action = StringUtils.isBlank(m.getActionType()) ? "isCreated" : m.getActionType();
                         return "isCreated".equalsIgnoreCase(action);
                     })
                     .toList();
             if (!createdMgmt.isEmpty()) {
-                processManagementDtl(savedEntity.getSupplierPoid(), createdMgmt);
+                processManagementDtl(savedEntity.getSupplierPoid(), createdMgmt, null);
             }
         }
 
+        List<SupplierMasterQstnDtlDto> createdQstn = Collections.emptyList();
         if (supplierMasterDto.getQuestionaries() != null && !supplierMasterDto.getQuestionaries().isEmpty()) {
-            List<SupplierMasterQstnDtlDto> createdQstn = supplierMasterDto.getQuestionaries().stream()
+            createdQstn = supplierMasterDto.getQuestionaries().stream()
                     .filter(q -> {
                         String action = StringUtils.isBlank(q.getActionType()) ? "isCreated" : q.getActionType();
                         return "isCreated".equalsIgnoreCase(action);
                     })
                     .toList();
             if (!createdQstn.isEmpty()) {
-                processQuestionaries(savedEntity.getSupplierPoid(), createdQstn);
+                processQuestionaries(savedEntity.getSupplierPoid(), createdQstn, null);
             }
         }
 
+        List<SupplierMasterServiceDtlDto> createdService = Collections.emptyList();
         if (supplierMasterDto.getServiceDtl() != null && !supplierMasterDto.getServiceDtl().isEmpty()) {
-            List<SupplierMasterServiceDtlDto> createdService = supplierMasterDto.getServiceDtl().stream()
+            createdService = supplierMasterDto.getServiceDtl().stream()
                     .filter(s -> {
                         String action = StringUtils.isBlank(s.getActionType()) ? "isCreated" : s.getActionType();
                         return "isCreated".equalsIgnoreCase(action);
                     })
                     .toList();
             if (!createdService.isEmpty()) {
-                processServiceDtl(savedEntity.getSupplierPoid(), createdService);
+                processServiceDtl(savedEntity.getSupplierPoid(), createdService, null);
             }
         }
 
-        callSupplierValidationProcedure(UserContext.getGroupPoid(), supplierMasterDto.getCustomerPoid(), UserContext.getUserPoid(), "Y", supplierMasterDto.getSupplierPoid());
+        List<GlobalLogSummary> subTableLogs = new ArrayList<>();
+        for (SupplierMasterPaymentDtlDto dto : createdPayments) {
+            String msg = String.format("Row Created on Supplier Master Payment Detail with DetRowId: %s", dto.getDetRowId());
+            subTableLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, msg, now));
+        }
+        for (SupplierMasterManagementDtlDto dto : createdMgmt) {
+            String msg = String.format("Row Created on Supplier Master Management Detail with DetRowId: %s", dto.getDetRowId());
+            subTableLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, msg, now));
+        }
+        for (SupplierMasterQstnDtlDto dto : createdQstn) {
+            String msg = String.format("Row Created on Supplier Master Questionaries Detail with DetRowId: %s", dto.getDetRowId());
+            subTableLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, msg, now));
+        }
+        for (SupplierMasterServiceDtlDto dto : createdService) {
+            String msg = String.format("Row Created on Supplier Master Service Detail with DetRowId: %s", dto.getDetRowId());
+            subTableLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, msg, now));
+        }
+        if (!subTableLogs.isEmpty()) {
+            globalLogSummaryRepository.saveAll(subTableLogs);
+        }
 
-        // Log the creation
-        String key = savedEntity.getSupplierPoid().toString();
-        String docId = UserContext.getDocumentId();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, key);
+        callSupplierValidationProcedure(UserContext.getGroupPoid(), supplierMasterDto.getCustomerPoid(), UserContext.getUserPoid(), "Y", supplierMasterDto.getSupplierPoid());
 
         return getSupplierMaster(savedEntity.getSupplierPoid());
     }
@@ -831,7 +874,7 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
         return supplierMasterQstnDto;
     }
 
-    private void processPaymentDtl(Long supplierPoid, List<SupplierMasterPaymentDtlDto> paymentDtlList) {
+    private void processPaymentDtl(Long supplierPoid, List<SupplierMasterPaymentDtlDto> paymentDtlList, List<GlobalLogSummary> summaryLogs) {
         List<SupplierMasterPaymentDtlEntity> entitiesToDelete = new ArrayList<>();
         List<SupplierMasterPaymentDtlEntity> entitiesToSave = new ArrayList<>();
         List<LogRequestDto<SupplierMasterPaymentDtlEntity>> logRequests = new ArrayList<>();
@@ -846,7 +889,6 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
         for (SupplierMasterPaymentDtlDto paymentDto : paymentDtlList) {
             String actionType = StringUtils.isBlank(paymentDto.getActionType()) ? null : paymentDto.getActionType();
 
-            // Handle backward compatibility: if actionType is null, determine from detRowId
             if (actionType == null) {
                 actionType = (paymentDto.getDetRowId() == null) ? "isCreated" : "isUpdated";
             }
@@ -857,6 +899,25 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                         SupplierMasterPaymentDtlEntity entity = supplierMasterPaymentDtlRepository.findBySupplierPoidAndDetRowId(supplierPoid, paymentDto.getDetRowId());
                         if (entity != null) {
                             entitiesToDelete.add(entity);
+                            if (summaryLogs != null) {
+                                String deletedRecordString = String.format(
+                                        "detRowId:%s, supplierPoid:%s, bank:%s, accountNumber:%s, beneficiaryId:%s, beneficiaryCountry:%s, intermediaryAcct:%s, intermediaryOth:%s, remarks:%s, type:%s, active:%s, defaults:%s",
+                                        entity.getId().getDetRowId(),
+                                        entity.getId().getSupplierPoid(),
+                                        entity.getBank(),
+                                        entity.getAccountNumber(),
+                                        entity.getBeneficiaryId(),
+                                        entity.getBeneficiaryCountry(),
+                                        entity.getIntermediaryAcct(),
+                                        entity.getIntermediaryOth(),
+                                        entity.getRemarks(),
+                                        entity.getType(),
+                                        entity.getActive(),
+                                        entity.getDefaults()
+                                );
+                                String deleteSummaryMessage = String.format("Row Deleted %s", deletedRecordString);
+                                summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.DELETED, docId, docKeyPoid, deleteSummaryMessage));
+                            }
                         }
                     }
                 }
@@ -865,17 +926,21 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                     continue;
                 }
                 case "iscreated" -> {
-                    SupplierMasterPaymentDtlEntity newEntity = new SupplierMasterPaymentDtlEntity();
-                    BeanUtils.copyProperties(paymentDto, newEntity);
                     SupplierPaymentDetailId id = new SupplierPaymentDetailId();
                     id.setSupplierPoid(supplierPoid);
                     id.setDetRowId(nextDetRowId++);
+                    SupplierMasterPaymentDtlEntity newEntity = new SupplierMasterPaymentDtlEntity();
+                    BeanUtils.copyProperties(paymentDto, newEntity);
                     newEntity.setId(id);
                     newEntity.setCreatedBy(currentUser);
                     newEntity.setCreatedDate(now);
                     newEntity.setLastModifiedBy(currentUser);
                     newEntity.setLastModifiedDate(now);
                     entitiesToSave.add(newEntity);
+                    if (summaryLogs != null) {
+                        String msg = String.format("Row Created on Supplier Master Payment Detail with DetRowId: %s", id.getDetRowId());
+                        summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, msg));
+                    }
                 }
                 case "isupdated" -> {
                     if (paymentDto.getDetRowId() != null) {
@@ -889,21 +954,24 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                             entity.setLastModifiedDate(now);
                             entitiesToSave.add(entity);
                             
-                            String logDetail = String.format("KeyId = SUPPLIER_POID:%s DET_ROW_ID:%s", oldEntity.getId().getSupplierPoid() ,paymentDto.getDetRowId());
+                            String logDetail = String.format("KeyId = SUPPLIER_POID:%s DET_ROW_ID:%s", oldEntity.getId().getSupplierPoid(), paymentDto.getDetRowId());
                             logRequests.add(new LogRequestDto<>(oldEntity, entity, SupplierMasterPaymentDtlEntity.class, docId, docKeyPoid, logDetail));
                         } else {
-                            // Entity not found, treat as create - use nextDetRowId to avoid conflicts
-                            SupplierMasterPaymentDtlEntity newEntity = new SupplierMasterPaymentDtlEntity();
-                            BeanUtils.copyProperties(paymentDto, newEntity);
                             SupplierPaymentDetailId id = new SupplierPaymentDetailId();
                             id.setSupplierPoid(supplierPoid);
                             id.setDetRowId(nextDetRowId++);
+                            SupplierMasterPaymentDtlEntity newEntity = new SupplierMasterPaymentDtlEntity();
+                            BeanUtils.copyProperties(paymentDto, newEntity);
                             newEntity.setId(id);
                             newEntity.setCreatedBy(currentUser);
                             newEntity.setCreatedDate(now);
                             newEntity.setLastModifiedBy(currentUser);
                             newEntity.setLastModifiedDate(now);
                             entitiesToSave.add(newEntity);
+                            if (summaryLogs != null) {
+                                String msg = String.format("Row Created on Supplier Master Payment Detail with DetRowId: %s", id.getDetRowId());
+                                summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, msg));
+                            }
                         }
                     }
                 }
@@ -927,7 +995,7 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
         }
     }
 
-    private void processManagementDtl(Long supplierPoid, List<SupplierMasterManagementDtlDto> managementDtlList) {
+    private void processManagementDtl(Long supplierPoid, List<SupplierMasterManagementDtlDto> managementDtlList, List<GlobalLogSummary> summaryLogs) {
         List<SupplierMasterManagementDtlEntity> entitiesToDelete = new ArrayList<>();
         List<SupplierMasterManagementDtlEntity> entitiesToSave = new ArrayList<>();
         List<LogRequestDto<SupplierMasterManagementDtlEntity>> logRequests = new ArrayList<>();
@@ -945,6 +1013,8 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
             // Handle backward compatibility: if actionType is null, determine from detRowId
             if (actionType == null) {
                 actionType = (managementDto.getDetRowId() == null) ? "isCreated" : "isUpdated";
+            } else if ("isupdated".equalsIgnoreCase(actionType) && managementDto.getDetRowId() == null) {
+                actionType = "isCreated";
             }
 
             switch (actionType.toLowerCase()) {
@@ -953,6 +1023,21 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                         SupplierMasterManagementDtlEntity entity = supplierMasterMangementDtlRepository.findBySupplierPoidAndDetRowId(supplierPoid, managementDto.getDetRowId());
                         if (entity != null) {
                             entitiesToDelete.add(entity);
+                            if (summaryLogs != null) {
+                                String deletedRecordString = String.format(
+                                        "detRowId:%s, supplierPoid:%s, name:%s, designation:%s, mobile:%s, email:%s, telephone:%s, remarks:%s",
+                                        entity.getId().getDetRowId(),
+                                        entity.getId().getSupplierPoid(),
+                                        entity.getName(),
+                                        entity.getDesignation(),
+                                        entity.getMobile(),
+                                        entity.getEmail(),
+                                        entity.getTelephone(),
+                                        entity.getRemarks()
+                                );
+                                String deleteSummaryMessage = String.format("Row Deleted %s", deletedRecordString);
+                                summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.DELETED, docId, docKeyPoid, deleteSummaryMessage));
+                            }
                         }
                     }
                 }
@@ -961,17 +1046,21 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                     continue;
                 }
                 case "iscreated" -> {
-                    SupplierMasterManagementDtlEntity newEntity = new SupplierMasterManagementDtlEntity();
-                    BeanUtils.copyProperties(managementDto, newEntity);
                     SupplierMasterMangementDtlKey id = new SupplierMasterMangementDtlKey();
                     id.setSupplierPoid(supplierPoid);
                     id.setDetRowId(nextDetRowId++);
+                    SupplierMasterManagementDtlEntity newEntity = new SupplierMasterManagementDtlEntity();
+                    BeanUtils.copyProperties(managementDto, newEntity);
                     newEntity.setId(id);
                     newEntity.setCreatedBy(currentUser);
                     newEntity.setCreatedDate(now);
                     newEntity.setLastModifiedBy(currentUser);
                     newEntity.setLastModifiedDate(now);
                     entitiesToSave.add(newEntity);
+                    if (summaryLogs != null) {
+                        String msg = String.format("Row Created on Supplier Master Management Detail with DetRowId: %s", id.getDetRowId());
+                        summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, msg));
+                    }
                 }
                 case "isupdated" -> {
                     if (managementDto.getDetRowId() != null) {
@@ -985,21 +1074,24 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                             entity.setLastModifiedDate(now);
                             entitiesToSave.add(entity);
                             
-                            String logDetail = String.format("KeyId =SUPPLIER_POID:%s DET_ROW_ID:%s", managementDto.getSupplierPoid() ,managementDto.getDetRowId());
+                            String logDetail = String.format("KeyId = SUPPLIER_POID:%s DET_ROW_ID:%s", entity.getId().getSupplierPoid(), managementDto.getDetRowId());
                             logRequests.add(new LogRequestDto<>(oldEntity, entity, SupplierMasterManagementDtlEntity.class, docId, docKeyPoid, logDetail));
                         } else {
-                            // Entity not found, treat as create - use nextDetRowId to avoid conflicts
-                            SupplierMasterManagementDtlEntity newEntity = new SupplierMasterManagementDtlEntity();
-                            BeanUtils.copyProperties(managementDto, newEntity);
                             SupplierMasterMangementDtlKey id = new SupplierMasterMangementDtlKey();
                             id.setSupplierPoid(supplierPoid);
                             id.setDetRowId(nextDetRowId++);
+                            SupplierMasterManagementDtlEntity newEntity = new SupplierMasterManagementDtlEntity();
+                            BeanUtils.copyProperties(managementDto, newEntity);
                             newEntity.setId(id);
                             newEntity.setCreatedBy(currentUser);
                             newEntity.setCreatedDate(now);
                             newEntity.setLastModifiedBy(currentUser);
                             newEntity.setLastModifiedDate(now);
                             entitiesToSave.add(newEntity);
+                            if (summaryLogs != null) {
+                                String msg = String.format("Row Created on Supplier Master Management Detail with DetRowId: %s", id.getDetRowId());
+                                summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, msg));
+                            }
                         }
                     }
                 }
@@ -1023,7 +1115,7 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
         }
     }
 
-    private void processServiceDtl(Long supplierPoid, List<SupplierMasterServiceDtlDto> serviceDtlList) {
+    private void processServiceDtl(Long supplierPoid, List<SupplierMasterServiceDtlDto> serviceDtlList, List<GlobalLogSummary> summaryLogs) {
         List<SupplierMasterServiceDtlEntity> entitiesToDelete = new ArrayList<>();
         List<SupplierMasterServiceDtlEntity> entitiesToSave = new ArrayList<>();
         List<LogRequestDto<SupplierMasterServiceDtlEntity>> logRequests = new ArrayList<>();
@@ -1047,6 +1139,8 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
             // Handle backward compatibility: if actionType is null, determine from detRowId
             if (actionType == null) {
                 actionType = (serviceDto.getDetRowId() == null) ? "isCreated" : "isUpdated";
+            } else if ("isupdated".equalsIgnoreCase(actionType) && serviceDto.getDetRowId() == null) {
+                actionType = "isCreated";
             }
 
             switch (actionType.toLowerCase()) {
@@ -1055,6 +1149,17 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                         SupplierMasterServiceDtlEntity entity = supplierMasterServiceDtlRepository.findBySupplierPoidAndDetRowId(supplierPoid, serviceDto.getDetRowId());
                         if (entity != null) {
                             entitiesToDelete.add(entity);
+                            if (summaryLogs != null) {
+                                String deletedRecordString = String.format(
+                                        "detRowId:%s, supplierPoid:%s, servicePoid:%s, remarks:%s",
+                                        entity.getId().getDetRowId(),
+                                        entity.getId().getSupplierPoid(),
+                                        entity.getServicePoid(),
+                                        entity.getRemarks()
+                                );
+                                String deleteSummaryMessage = String.format("Row Deleted %s", deletedRecordString);
+                                summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.DELETED, docId, docKeyPoid, deleteSummaryMessage));
+                            }
                         }
                     }
                 }
@@ -1063,17 +1168,21 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                     continue;
                 }
                 case "iscreated" -> {
-                    SupplierMasterServiceDtlEntity newEntity = new SupplierMasterServiceDtlEntity();
-                    BeanUtils.copyProperties(serviceDto, newEntity);
                     SupplierMasterServiceDtlKey id = new SupplierMasterServiceDtlKey();
                     id.setSupplierPoid(supplierPoid);
                     id.setDetRowId(nextDetRowId++);
+                    SupplierMasterServiceDtlEntity newEntity = new SupplierMasterServiceDtlEntity();
+                    BeanUtils.copyProperties(serviceDto, newEntity);
                     newEntity.setId(id);
                     newEntity.setCreatedBy(currentUser);
                     newEntity.setCreatedDate(now);
                     newEntity.setLastModifiedBy(currentUser);
                     newEntity.setLastModifiedDate(now);
                     entitiesToSave.add(newEntity);
+                    if (summaryLogs != null) {
+                        String msg = String.format("Row Created on Supplier Master Service Detail with DetRowId: %s", id.getDetRowId());
+                        summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, msg));
+                    }
                 }
                 case "isupdated" -> {
                     if (serviceDto.getDetRowId() != null) {
@@ -1090,18 +1199,21 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                             String logDetail = String.format("KeyId =SUPPLIER_POID:%s DET_ROW_ID:%s", oldEntity.getServicePoid(), serviceDto.getDetRowId());
                             logRequests.add(new LogRequestDto<>(oldEntity, entity, SupplierMasterServiceDtlEntity.class, docId, docKeyPoid, logDetail));
                         } else {
-                            // Entity not found, treat as create - use nextDetRowId to avoid conflicts
-                            SupplierMasterServiceDtlEntity newEntity = new SupplierMasterServiceDtlEntity();
-                            BeanUtils.copyProperties(serviceDto, newEntity);
                             SupplierMasterServiceDtlKey id = new SupplierMasterServiceDtlKey();
                             id.setSupplierPoid(supplierPoid);
                             id.setDetRowId(nextDetRowId++);
+                            SupplierMasterServiceDtlEntity newEntity = new SupplierMasterServiceDtlEntity();
+                            BeanUtils.copyProperties(serviceDto, newEntity);
                             newEntity.setId(id);
                             newEntity.setCreatedBy(currentUser);
                             newEntity.setCreatedDate(now);
                             newEntity.setLastModifiedBy(currentUser);
                             newEntity.setLastModifiedDate(now);
                             entitiesToSave.add(newEntity);
+                            if (summaryLogs != null) {
+                                String msg = String.format("Row Created on Supplier Master Service Detail with DetRowId: %s", id.getDetRowId());
+                                summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, msg));
+                            }
                         }
                     }
                 }
@@ -1125,7 +1237,7 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
         }
     }
 
-    private void processQuestionaries(Long supplierPoid, List<SupplierMasterQstnDtlDto> questionariesList) {
+    private void processQuestionaries(Long supplierPoid, List<SupplierMasterQstnDtlDto> questionariesList, List<GlobalLogSummary> summaryLogs) {
         List<SupplierMasterQstnDtlEntity> entitiesToDelete = new ArrayList<>();
         List<SupplierMasterQstnDtlEntity> entitiesToSave = new ArrayList<>();
         List<LogRequestDto<SupplierMasterQstnDtlEntity>> logRequests = new ArrayList<>();
@@ -1143,6 +1255,9 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
             // Handle backward compatibility: if actionType is null, determine from detRowId
             if (actionType == null) {
                 actionType = (qstnDto.getDetRowId() == null) ? "isCreated" : "isUpdated";
+            } else if ("isupdated".equalsIgnoreCase(actionType) && qstnDto.getDetRowId() == null) {
+                // UI sometimes sends isUpdated for new rows (detRowId is null) – treat it as create so save+logs happen
+                actionType = "isCreated";
             }
 
             switch (actionType.toLowerCase()) {
@@ -1151,6 +1266,18 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                         SupplierMasterQstnDtlEntity entity = supplierMasterQstnDtlRepository.findBySupplierPoidAndDetRowId(supplierPoid, qstnDto.getDetRowId());
                         if (entity != null) {
                             entitiesToDelete.add(entity);
+                            if (summaryLogs != null) {
+                                String deletedRecordString = String.format(
+                                        "detRowId:%s, supplierPoid:%s, questionaries:%s, answers:%s, remarks:%s",
+                                        entity.getId().getDetRowId(),
+                                        entity.getId().getSupplierPoid(),
+                                        entity.getQuestionaries(),
+                                        entity.getAnswers(),
+                                        entity.getRemarks()
+                                );
+                                String deleteSummaryMessage = String.format("Row Deleted %s", deletedRecordString);
+                                summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.DELETED, docId, docKeyPoid, deleteSummaryMessage));
+                            }
                         }
                     }
                 }
@@ -1159,17 +1286,21 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                     continue;
                 }
                 case "iscreated" -> {
-                    SupplierMasterQstnDtlEntity newEntity = new SupplierMasterQstnDtlEntity();
-                    BeanUtils.copyProperties(qstnDto, newEntity);
                     SupplierMasterQstnDtlKey id = new SupplierMasterQstnDtlKey();
                     id.setSupplierPoid(supplierPoid);
                     id.setDetRowId(nextDetRowId++);
+                    SupplierMasterQstnDtlEntity newEntity = new SupplierMasterQstnDtlEntity();
+                    BeanUtils.copyProperties(qstnDto, newEntity);
                     newEntity.setId(id);
                     newEntity.setCreatedBy(currentUser);
                     newEntity.setCreatedDate(now);
                     newEntity.setLastModifiedBy(currentUser);
                     newEntity.setLastModifiedDate(now);
                     entitiesToSave.add(newEntity);
+                    if (summaryLogs != null) {
+                        String msg = String.format("Row Created on Supplier Master Questionaries Detail with DetRowId: %s", id.getDetRowId());
+                        summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, msg));
+                    }
                 }
                 case "isupdated" -> {
                     if (qstnDto.getDetRowId() != null) {
@@ -1183,21 +1314,24 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                             entity.setLastModifiedDate(now);
                             entitiesToSave.add(entity);
                             
-                            String logDetail = String.format("KeyId =SUPPLIER_POID:%s DET_ROW_ID:%s", oldEntity.getId().getSupplierPoid(), qstnDto.getDetRowId());
+                            String logDetail = String.format("KeyId = SUPPLIER_POID:%s DET_ROW_ID:%s", oldEntity.getId().getSupplierPoid(), qstnDto.getDetRowId());
                             logRequests.add(new LogRequestDto<>(oldEntity, entity, SupplierMasterQstnDtlEntity.class, docId, docKeyPoid, logDetail));
                         } else {
-                            // Entity not found, treat as create - use nextDetRowId to avoid conflicts
-                            SupplierMasterQstnDtlEntity newEntity = new SupplierMasterQstnDtlEntity();
-                            BeanUtils.copyProperties(qstnDto, newEntity);
                             SupplierMasterQstnDtlKey id = new SupplierMasterQstnDtlKey();
                             id.setSupplierPoid(supplierPoid);
                             id.setDetRowId(nextDetRowId++);
+                            SupplierMasterQstnDtlEntity newEntity = new SupplierMasterQstnDtlEntity();
+                            BeanUtils.copyProperties(qstnDto, newEntity);
                             newEntity.setId(id);
                             newEntity.setCreatedBy(currentUser);
                             newEntity.setCreatedDate(now);
                             newEntity.setLastModifiedBy(currentUser);
                             newEntity.setLastModifiedDate(now);
                             entitiesToSave.add(newEntity);
+                            if (summaryLogs != null) {
+                                String msg = String.format("Row Created on Supplier Master Questionaries Detail with DetRowId: %s", id.getDetRowId());
+                                summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, msg));
+                            }
                         }
                     }
                 }
@@ -1314,5 +1448,19 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
 
     public Long getNextDetRowIdForQstnDtl(Long supplierPoid) {
         return Optional.ofNullable(supplierMasterQstnDtlRepository.findMaxDetRowIdBySupplierPoid(supplierPoid)).map(id -> id + 1).orElse(1L);
+    }
+
+    private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage) {
+        return createSummaryLogEntry(logDetailsEnum, docId, docKeyPoid, customMessage, null);
+    }
+
+    private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage, Timestamp logDateTime) {
+        GlobalLogSummary summary = new GlobalLogSummary();
+        summary.setLogUserPoid(UserContext.getUserPoid());
+        summary.setLogDateTime(logDateTime != null ? logDateTime : new Timestamp(System.currentTimeMillis()));
+        summary.setLogDocId(docId);
+        summary.setLogDocKeyPoid(docKeyPoid);
+        summary.setLogDetails(customMessage);
+        return summary;
     }
 }

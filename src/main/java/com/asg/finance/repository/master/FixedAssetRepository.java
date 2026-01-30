@@ -2,7 +2,10 @@ package com.asg.finance.repository.master;
 
 import com.asg.finance.entity.master.FixedAsset;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.util.Map;
 import java.util.Optional;
 
 public interface FixedAssetRepository extends JpaRepository<FixedAsset, Long> {

@@ -24,6 +24,8 @@ public class TaxPeriodHdrRequestDto {
     @NotNull(message = "Period To is mandatory")
     private LocalDate periodTo;
 
+    private LocalDate transactionDate;
+
     private List<TaxPeriodChargeDtlRequestDto> charges;
     private List<TaxPeriodStockDtlRequestDto> stocks;
 

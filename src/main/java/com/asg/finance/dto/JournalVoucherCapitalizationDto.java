@@ -13,6 +13,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class JournalVoucherCapitalizationDto {
     private Long sn;
+    private String actionType;
     private Long faPoid;
     private String faDescription;
     private Long faCategory;

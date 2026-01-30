@@ -336,6 +336,7 @@ public class JournalVoucherController {
     ) {
         try {
             JournalVoucherDetailResponse response = journalVoucherService.getJournalVoucherById(transactionPoid);
+            loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
             return success("Journal Voucher retrieved successfully", response);
         } catch (ResourceNotFoundException e) {
             return notFound(e.getMessage());

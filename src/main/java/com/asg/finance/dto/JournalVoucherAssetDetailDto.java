@@ -14,6 +14,7 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class JournalVoucherAssetDetailDto {
     private Long sn;
+    private String actionType;
     private Long faPoid;
     private Integer lifeYear;
     private LocalDate purchaseDate;

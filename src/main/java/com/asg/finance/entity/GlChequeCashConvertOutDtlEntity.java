@@ -1,5 +1,6 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.annotation.AuditIgnore;
 import com.asg.finance.entity.key.GlChequeCashConvertOutDtlKey;
 import jakarta.persistence.*;
 import lombok.Data;
@@ -13,6 +14,7 @@ import java.time.LocalDateTime;
 public class GlChequeCashConvertOutDtlEntity {
 
     @EmbeddedId
+    @AuditIgnore
     private GlChequeCashConvertOutDtlKey id;
 
     @Column(name = "PAYMENT_MAIN_POID")
@@ -31,9 +33,11 @@ public class GlChequeCashConvertOutDtlEntity {
     private LocalDateTime createdDate;
 
     @Column(name = "LASTMODIFIED_BY")
+    @AuditIgnore
     private String lastModifiedBy;
 
     @Column(name = "LASTMODIFIED_DATE")
+    @AuditIgnore
     private LocalDateTime lastModifiedDate;
 
     @Column(name = "BANK_POID")

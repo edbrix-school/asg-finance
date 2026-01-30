@@ -1,5 +1,6 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.annotation.AuditIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -19,17 +20,21 @@ import java.util.List;
 public class ArGenReceiptHdr {
 
     @Id
+    @AuditIgnore
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "TRANSACTION_POID", insertable = false, updatable = false)
     private Long transactionPoid;
 
     @Column(name = "TRANSACTION_DATE")
+    @AuditIgnore
     private LocalDate transactionDate;
 
     @Column(name = "GROUP_POID")
+    @AuditIgnore
     private Long groupPoid;
 
     @Column(name = "COMPANY_POID")
+    @AuditIgnore
     private Long companyPoid;
 
     @Column(name = "DOC_REF", length = 30, unique = true)
@@ -48,30 +53,38 @@ public class ArGenReceiptHdr {
     private String deleted;
 
     @Column(name = "CREATED_BY", length = 20)
+    @AuditIgnore
     private String createdBy;
 
     @Column(name = "CREATED_DATE")
+    @AuditIgnore
     private LocalDateTime createdDate;
 
     @Column(name = "LASTMODIFIED_BY", length = 20)
+    @AuditIgnore
     private String lastModifiedBy;
 
     @Column(name = "LASTMODIFIED_DATE")
+    @AuditIgnore
     private LocalDateTime lastModifiedDate;
 
     @Column(name = "BL_POID")
     private Long blPoid;
 
     @Column(name = "BL_RELEASE_TYPE", length = 20)
+    @AuditIgnore
     private String blReleaseType;
 
     @Column(name = "DATA_LOADED", length = 1)
+    @AuditIgnore
     private String dataLoaded;
 
     @Column(name = "RCVD_OTH_POID")
+    @AuditIgnore
     private Long rcvdOthPoid;
 
     @Column(name = "RCVD_TYPE", length = 20)
+    @AuditIgnore
     private String rcvdType;
 
     @Column(name = "GL_BALANCE")
@@ -81,6 +94,7 @@ public class ArGenReceiptHdr {
     private String rcvdFromDtlPrint;
 
     @Column(name = "REF_NUMBER", length = 20)
+    @AuditIgnore
     private String refNumber;
 
     @Column(name = "REF_TYPE", length = 20)
@@ -90,27 +104,35 @@ public class ArGenReceiptHdr {
     private String verified;
 
     @Column(name = "MULTICOMPANY", length = 1)
+    @AuditIgnore
     private String multicompany;
 
     @Column(name = "PRINT_DOC_COMP_ID")
+    @AuditIgnore
     private Long printDocCompId;
 
     @Column(name = "BANK_CHARGES")
+    @AuditIgnore
     private BigDecimal bankCharges;
 
     @Column(name = "EX_GAIN_LOSS")
+    @AuditIgnore
     private BigDecimal exGainLoss;
 
     @Column(name = "TT_BANK_POID")
+    @AuditIgnore
     private Long ttBankPoid;
 
     @Column(name = "ROUND_OFF")
+    @AuditIgnore
     private BigDecimal roundOff;
 
     @Column(name = "COST_CENTER_POID", length = 50)
+    @AuditIgnore
     private String costCenterPoid;
 
     @Column(name = "LINE_TYPE", length = 100)
+    @AuditIgnore
     private String lineType;
 
     @Column(name = "EXTRA_CHARGES", length = 1)
@@ -129,25 +151,31 @@ public class ArGenReceiptHdr {
     private BigDecimal invoiceAmount;
 
     @Column(name = "CLIENT_POID")
+    @AuditIgnore
     private Long clientPoid;
 
     @Column(name = "CLIENT_DEPOSIT_REQUEST_POID")
+    @AuditIgnore
     private Long clientDepositRequestPoid;
 
     @OneToMany(mappedBy = "receiptHdr", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
+    @AuditIgnore
     private List<ArGenReceiptPymtDetails> paymentDetails = new ArrayList<>();
 
     @OneToMany(mappedBy = "receiptHdr", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
+    @AuditIgnore
     private List<ArGenReceiptBillDtl> billDetails = new ArrayList<>();
 
     @OneToMany(mappedBy = "receiptHdr", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
+    @AuditIgnore
     private List<ArGenReceiptChargesDtl> chargesDetails = new ArrayList<>();
 
     @OneToMany(mappedBy = "receiptHdr", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
+    @AuditIgnore
     private List<ArGenReceiptAdvanceDtl> advanceDetails = new ArrayList<>();
 
     // Helper methods to manage bidirectional relationships

@@ -27,6 +27,8 @@ import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.FixedAssetService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import oracle.jdbc.OracleTypes;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,16 +37,23 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import javax.sql.DataSource;
+import java.sql.CallableStatement;
+import java.sql.Connection;
+import java.sql.ResultSet;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class FixedAssetServiceImpl implements FixedAssetService {
 
     private final FixedAssetRepository repository;
+    private final DataSource dataSource;
     @Autowired
     DocumentDeleteService documentDeleteService;
     @Autowired
@@ -87,6 +96,32 @@ public class FixedAssetServiceImpl implements FixedAssetService {
 
     private String getCurrentUser() {
         return UserContext.getUserId() != null ? String.valueOf(UserContext.getUserId()) : "SYSTEM";
+    }
+
+    private Map<String, Object> fetchFixedAssetPjDetails(Long faPoid) {
+        Map<String, Object> result = new HashMap<>();
+        try (Connection conn = dataSource.getConnection();
+             CallableStatement stmt = conn.prepareCall("{call PROC_FIXED_ASSET_PJ_DETAILS(?, ?, ?, ?, ?)}")) {
+            
+            stmt.setLong(1, UserContext.getGroupPoid());
+            stmt.setLong(2, UserContext.getCompanyPoid());
+            stmt.setLong(3, UserContext.getUserPoid());
+            stmt.setLong(4, faPoid);
+            stmt.registerOutParameter(5, OracleTypes.CURSOR);
+            stmt.execute();
+            
+            try (ResultSet rs = (ResultSet) stmt.getObject(5)) {
+                if (rs != null && rs.next()) {
+                    result.put("DOC_REF", rs.getObject("DOC_REF"));
+                    result.put("TRANSACTION_POID", rs.getObject("TRANSACTION_POID") != null ? rs.getLong("TRANSACTION_POID") : null);
+                    result.put("COMPANY_POID", rs.getObject("COMPANY_POID") != null ? rs.getLong("COMPANY_POID") : null);
+                    result.put("INV_NO", rs.getObject("INV_NO"));
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error fetching PJ details for FA: {}", faPoid, e);
+        }
+        return result;
     }
 
     private FixedAsset convertFromFixedAssetDtoToFixedAssetEntity(FixedAssetRequestDto requestDto) {
@@ -237,6 +272,7 @@ public class FixedAssetServiceImpl implements FixedAssetService {
         }
 
         // GeneralInfoDto mapping
+        Map<String, Object> pjDetails = fetchFixedAssetPjDetails(savedEntity.getFaPoid());
         GeneralInfoDto generalInfoDto = GeneralInfoDto.builder()
                 .faOwner(savedEntity.getFaOwner())
                 .employeePoid(savedEntity.getEmployeePoid())
@@ -259,6 +295,10 @@ public class FixedAssetServiceImpl implements FixedAssetService {
                 .contractExpiry(savedEntity.getContractExpiry())
                 .grossValue(savedEntity.getGrossValue())
                 .softwareDetails(savedEntity.getSoftwareDetails())
+                .pjDocRef((String) pjDetails.getOrDefault("DOC_REF", null))
+                .pjTransactionPoid((Long) pjDetails.getOrDefault("TRANSACTION_POID", null))
+                .pjCompanyPoid((Long) pjDetails.getOrDefault("COMPANY_POID", null))
+                .pjInvNo((String) pjDetails.getOrDefault("INV_NO", null))
                 .build();
 
                  //VehicleDetailsDto mapping

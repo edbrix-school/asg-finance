@@ -74,4 +74,9 @@ public class GeneralInfoDto {
     @Size(max = 100, message = "Brand must not exceed 100 characters")
     private String brand;
     private LocalDate makeDate;
+    
+    private String pjDocRef;
+    private Long pjTransactionPoid;
+    private Long pjCompanyPoid;
+    private String pjInvNo;
 }

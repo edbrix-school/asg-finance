@@ -525,7 +525,7 @@ public class GLMasterServiceImpl implements GLMasterService {
                         log.warn("Failed to fetch intermediary country details for ID: {}", pay.getIntermediaryCountryPoid());
                     }
                 }
-                pdto.setActive(entity.getActiveFlag());
+                pdto.setActive(pay.getActive());
                 pdto.setIsDefault(pay.getDefaults());
                 return pdto;
             }).toList());
@@ -1085,6 +1085,7 @@ public class GLMasterServiceImpl implements GLMasterService {
                             .lastModifiedBy(currentUser)
                             .lastModifiedDate(now)
                             .defaults(charge.getIsDefault())
+                            .active(charge.getActive())
                             .build();
                     toSave.add(newPaymentEntity);
                     break;
@@ -1115,6 +1116,7 @@ public class GLMasterServiceImpl implements GLMasterService {
                     existingCharge.setLastModifiedBy(currentUser);
                     existingCharge.setLastModifiedDate(now);
                     existingCharge.setDefaults(charge.getIsDefault());
+                    existingCharge.setActive(charge.getActive());
                     toUpdate.add(existingCharge);
 
                     String logDetail = String.format("KeyId = GL_POID:%s DET_ROW_ID:%s", existingCharge.getGlPoid() , existingCharge.getGlPoid());

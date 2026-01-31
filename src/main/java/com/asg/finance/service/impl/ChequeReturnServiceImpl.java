@@ -455,6 +455,11 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
             toDelete.forEach(id -> detailRepo.deleteById(new ChequeReturnDetailId(trnPoid, id)));
         }
         
+        // If no changes were made, return existing details from database
+        if (allDetails.isEmpty()) {
+            allDetails = detailRepo.findByChequeReturn_TransactionPoid(trnPoid);
+        }
+        
         return allDetails;
     }
 

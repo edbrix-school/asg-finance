@@ -231,9 +231,9 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
             throw new ResourceNotFoundException("Bank Purpose Code", "bankPurposePoid", request.getBankPurposePoid());
         }
 
-        if (headerRepository.existsByDocRefIgnoreCaseAndTransactionPoidNot(request.getDocRef(), transactionPoid)) {
-            throw new ResourceAlreadyExistsException("Doc Ref", request.getDocRef());
-        }
+//        if (headerRepository.existsByDocRefIgnoreCaseAndTransactionPoidNot(request.getDocRef(), transactionPoid)) {
+//            throw new ResourceAlreadyExistsException("Doc Ref", request.getDocRef());
+//        }
 
         runPreSaveProcedures(header);
 
@@ -701,7 +701,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         entity.setBankCharges(request.getBankCharges());
         entity.setTtSpecialRate(request.getTtSpecialRate());
         entity.setRateDealNo(request.getRateDealNo());
-        entity.setDocRef(request.getDocRef());
+//        entity.setDocRef(request.getDocRef());
         entity.setFileGenerated(request.getFileGenerated());
         entity.setFileName(request.getFileName());
         entity.setFileGeneratedDate(request.getFileGeneratedDate());

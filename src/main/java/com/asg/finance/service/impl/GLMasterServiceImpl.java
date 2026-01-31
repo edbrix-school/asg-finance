@@ -515,7 +515,7 @@ public class GLMasterServiceImpl implements GLMasterService {
                 // Populate intermediary country details
                 if (pay.getIntermediaryCountryPoid() != null && pay.getIntermediaryCountryPoid() > 0) {
                     try {
-                        LovGetListDto countryDetail = lovService.getDetailsByPoidAndLovName(pay.getBeneficiaryCountry(), "COUNTRY");
+                        LovGetListDto countryDetail = lovService.getDetailsByPoidAndLovName(pay.getIntermediaryCountryPoid(), "COUNTRY");
                         CountryInfoDto countryInfo = new CountryInfoDto();
                         countryInfo.setCountryPoid(countryDetail.getPoid());
                         countryInfo.setCountryCode(countryDetail.getCode());

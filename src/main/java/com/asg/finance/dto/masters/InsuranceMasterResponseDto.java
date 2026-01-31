@@ -43,4 +43,5 @@ public class InsuranceMasterResponseDto {
     private List<InsuranceEmployeeDetailResponseDto> employeeDetails;
     private List<InsurancePropertyDetailResponseDto> propertyDetails;
     private List<InsurancePicDetailResponseDto> picDetails;
+    private List<InsuranceRenewalLogResponseDto> renewalLogs;
 }

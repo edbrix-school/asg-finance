@@ -82,14 +82,18 @@ public class GlFavAcMasterController {
                                               "seqNo": 1,
                                               "active": "Y",
                                               "groupPoid": 1,
-                                              "userRolePoids": [1, 2],
+                                              "userRoles": [
+                                                { "detRowId": 1, "userRolePoid": 1, "actionType": "ISCREATED" }
+                                              ],
                                               "glAccounts": [
                                                 {
+                                                  "detRowId": 1,
                                                   "glAccountPoId": 10010001,
                                                   "companyPoId": 1,
                                                   "viewCategoryPoid": "BANK_ACC",
                                                   "seqNo": 1,
-                                                  "remarks": "Primary bank account"
+                                                  "remarks": "Primary bank account",
+                                                  "actionType": "ISCREATED"
                                                 }
                                               ]
                                             }
@@ -162,7 +166,7 @@ public class GlFavAcMasterController {
 
     @Operation(
             summary = "Get Favorite Account by ID",
-            description = "Retrieves a specific Favorite Account Group by its unique identifier along with its associated GL accounts and user roles.",
+            description = "Retrieves a specific Favorite Account Group by its unique identifier along with its associated GL accounts and user roles. GL accounts and user roles in the response are ordered by detRowId ascending.",
             responses = {
                     @ApiResponse(
                             responseCode = "200",

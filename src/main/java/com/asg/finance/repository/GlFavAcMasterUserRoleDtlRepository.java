@@ -17,6 +17,9 @@ import java.util.List;
 public interface GlFavAcMasterUserRoleDtlRepository extends JpaRepository<GlFavAcMasterUserRoleDtl, GlFavAcMasterUserRoleDtl.CompositeKey> {
     
     List<GlFavAcMasterUserRoleDtl> findByFavAcPoid(Long favAcPoid);
+
+    @Query("SELECT u FROM GlFavAcMasterUserRoleDtl u WHERE u.favAcPoid = :favAcPoid ORDER BY u.detRowId ASC")
+    List<GlFavAcMasterUserRoleDtl> findByFavAcPoidOrderByDetRowId(@Param("favAcPoid") Long favAcPoid);
     
     @Modifying
     @Query("DELETE FROM GlFavAcMasterUserRoleDtl u WHERE u.favAcPoid = :favAcPoid")

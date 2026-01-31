@@ -705,8 +705,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
         GlFavAcMasterResponse response = new GlFavAcMasterResponse();
         BeanUtils.copyProperties(master, response);
 
-        // Fetch and set GL account details
-        List<GlFavAcMasterGlAcDtl> glAcDtls = glAcDtlRepository.findByFavAcPoidOrderBySeqNo(favAcPoid);
+        List<GlFavAcMasterGlAcDtl> glAcDtls = glAcDtlRepository.findByFavAcPoidOrderByDetRowId(favAcPoid);
         List<GlAccountDetailResponse> glAccountResponses = glAcDtls.stream()
                 .map(this::mapToGlAccountDetailResponse)
                 .collect(Collectors.toList());
@@ -714,7 +713,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
         setViewCategoryDetails(glAccountResponses);
         response.setGlAccounts(glAccountResponses);
 
-        List<GlFavAcMasterUserRoleDtl> userRoleDtls = userRoleDtlRepository.findByFavAcPoid(favAcPoid);
+        List<GlFavAcMasterUserRoleDtl> userRoleDtls = userRoleDtlRepository.findByFavAcPoidOrderByDetRowId(favAcPoid);
         List<UserRoleDetailResponse> userRoleResponses = userRoleDtls.stream()
                 .map(this::mapToUserRoleDetailResponse)
                 .collect(Collectors.toList());

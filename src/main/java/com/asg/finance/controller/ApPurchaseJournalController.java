@@ -3,6 +3,8 @@ package com.asg.finance.controller;
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.security.util.UserContext;
@@ -44,6 +46,7 @@ public class ApPurchaseJournalController {
 
     private final ApPurchaseServiceJournal service;
     private final CreditNoteService creditNoteService;
+    private final LoggingService loggingService;
 
     @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/{transactionPoid}")
@@ -71,6 +74,7 @@ public class ApPurchaseJournalController {
             @PathVariable Long transactionPoid
     ) {
         ApPurchaseInvoiceHdrDto result = service.fetchApPurchaseInvoiceHdr(transactionPoid);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
         return success("AP Purchase Journal fetched successfully", result);
     }
 
@@ -315,7 +319,8 @@ public class ApPurchaseJournalController {
         }
 
         Map<String, Object> result = service.listOfRecordsAndGenericSearch(UserContext.getDocumentId(), filters, startDate, endDate, pageable);
-        return success("AP Purchase Journal list fetched successfully", result);
+
+            return success("AP Purchase Journal list fetched successfully", result);
     }
 
     @AllowedAction(UserRolesRightsEnum.CREATE)

@@ -3,6 +3,8 @@ package com.asg.finance.controller;
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.LoggingService;
 
 
 import com.asg.common.lib.dto.FilterRequestDto;
@@ -34,9 +36,11 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 @RequestMapping("/v1/tax-period")
 public class TaxPeriodHdrController {
     private final TaxPeriodHdrService taxPeriodHdrService;
+    private final LoggingService loggingService;
 
-    public TaxPeriodHdrController(TaxPeriodHdrService taxPeriodHdrService) {
+    public TaxPeriodHdrController(TaxPeriodHdrService taxPeriodHdrService, LoggingService loggingService) {
         this.taxPeriodHdrService = taxPeriodHdrService;
+        this.loggingService = loggingService;
     }
 
     @Operation(
@@ -182,6 +186,7 @@ public class TaxPeriodHdrController {
             @PathVariable Long transactionPoid) {
 
         TaxPeriodHdrResponseDto responseDto = taxPeriodHdrService.getTaxPeriodHdrById(transactionPoid);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
         return success("Tax Period fetched successfully", responseDto);
     }
 
@@ -433,6 +438,7 @@ public class TaxPeriodHdrController {
                                            @RequestParam(required = false) LocalDate periodTo) {
         try {
             Map<String, Object> data = taxPeriodHdrService.listTaxPeriod(UserContext.getDocumentId(), filters, pageable, periodFrom, periodTo);
+            
             return success("Tax Period successfully", data);
         } catch (Exception ex) {
             return internalServerError("Unable to fetch Tax Period list: " + ex.getMessage());

@@ -48,4 +48,6 @@ public class PurchaseOrderItemRequestDto {
     private Double convertedQty;
     private Double convertedUnit;
     private Double conversionValue;
+
+    private String actionType;
 }

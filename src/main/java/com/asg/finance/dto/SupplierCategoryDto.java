@@ -4,6 +4,8 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
+
 @Getter
 @Setter
 public class SupplierCategoryDto {
@@ -18,4 +20,6 @@ public class SupplierCategoryDto {
     private String seqNo;
     private String generalRemarks;
     private String deleted;
+    private LocalDateTime createdDate;
+    private String createdBy;
 }

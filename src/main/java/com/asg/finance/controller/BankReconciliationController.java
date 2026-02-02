@@ -1,16 +1,27 @@
 package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
+import com.asg.common.lib.dto.excel.ExcelFileData;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.ExcelExportService;
+import com.asg.common.lib.service.LoggingService;
 
 import static com.asg.common.lib.dto.response.ApiResponse.error;
 import static com.asg.common.lib.dto.response.ApiResponse.success;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.LoggingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -35,6 +46,7 @@ import com.asg.finance.dto.BankRenconciliationBankInfoDTO;
 import com.asg.finance.service.BankReconciliationService;
 
 import io.swagger.v3.oas.annotations.Parameter;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -45,6 +57,8 @@ import lombok.extern.slf4j.Slf4j;
 public class BankReconciliationController {
 
 	private final BankReconciliationService service;
+    private final LoggingService loggingService;
+    private final ExcelExportService excelExportService;
 
 	@AllowedAction(UserRolesRightsEnum.VIEW)
 	@GetMapping("/view")
@@ -77,6 +91,7 @@ public class BankReconciliationController {
 			@Parameter(description = "GL transaction POID", required = true, example = "5001") @PathVariable Long glPoid){
 		BankRenconciliationBankInfoDTO responses = service.getBankInfo(glPoid);
 
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), glPoid.toString());
 		if (responses.getBank() == null)
 			return error(String.format("No bank data found for POID: %s", glPoid), 404);
 
@@ -86,7 +101,7 @@ public class BankReconciliationController {
 	@AllowedAction(UserRolesRightsEnum.CREATE)
 	@PostMapping("/save")
 	public ResponseEntity<?> saveReconciliation(
-			@Parameter(description = "Bank Reconciliation request payload", required = true) @RequestBody List<BankReconciliationRequest> dto) {
+			@Parameter(description = "Bank Reconciliation request payload", required = true) @RequestBody @Valid List<BankReconciliationRequest> dto) {
 		String response = service.saveReconciliation(dto);
 		if (response.toLowerCase().startsWith("error"))
 			return error(response, 500);
@@ -98,7 +113,7 @@ public class BankReconciliationController {
 	@AllowedAction(UserRolesRightsEnum.EDIT)
 	@PostMapping("/hold")
 	public ResponseEntity<?> holdCheque(
-			@Parameter(description = "Bank Reconciliation request payload", required = true) @RequestBody List<BankReconcHoldAndUholdRequest> req) {
+			@Parameter(description = "Bank Reconciliation request payload", required = true) @RequestBody @Valid List<BankReconcHoldAndUholdRequest> req) {
 		String response = service.holdCheque(req);
 		if (response.toLowerCase().startsWith("error"))
 			return error(response, 500);
@@ -110,7 +125,7 @@ public class BankReconciliationController {
 	@AllowedAction(UserRolesRightsEnum.EDIT)
 	@PostMapping("/unhold")
 	public ResponseEntity<?> unholdCheque(
-			@Parameter(description = "Bank Reconciliation request payload", required = true) @RequestBody List<BankReconcHoldAndUholdRequest> req) {
+			@Parameter(description = "Bank Reconciliation request payload", required = true) @RequestBody @Valid List<BankReconcHoldAndUholdRequest> req) {
 		String response = service.unholdCheque(req);
 		if (response.toLowerCase().startsWith("error"))
 			return error(response, 500);
@@ -219,6 +234,34 @@ public class BankReconciliationController {
         } catch (Exception e) {
             log.error("Failed to generate PDF for Bank Reconciliation: {}", 1, e);
             return error("Failed to generate PDF: " + e.getMessage(), 500);
+        }
+    }
+
+	@AllowedAction(UserRolesRightsEnum.PRINT)
+    @Operation(summary = "Generate Excel for Bank Reconciliation")
+    @GetMapping("/excel")
+    public ResponseEntity<?> exportExcel(
+            @Parameter(description = "End date", required = true, example = "2025-12-05")
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate toDate,
+            @Parameter(description = "Bank POID", required = true, example = "181")
+            @RequestParam Long bankPoid,
+            @Parameter(description = "Balance as per bank", required = true, example = "1000.00")
+            @RequestParam BigDecimal balanceAsPerBank) {
+        try {
+            Map<String, Object> parameters = new HashMap<>();
+            parameters.put("P_DOC_TO_DATE", toDate);    //new SimpleDateFormat("dd-MMM-yyyy", Locale.ENGLISH).format(toDate)
+            parameters.put("P_BANK_POID", bankPoid);
+            parameters.put("P_LOGIN_COMP_POID", UserContext.getCompanyPoid());
+            parameters.put("P_BALANCE_BANK", balanceAsPerBank);
+            ExcelFileData data = excelExportService.generateExcel("400-150", null, parameters, "BankReconciliation.xlsx");
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=" + data.getFileName())
+                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .body(data.getContent());
+        } catch (Exception e) {
+            log.error("Failed to generate Excel for Bank Reconciliation", e);
+            return error("Failed to generate Excel: " + e.getMessage(), 500);
         }
     }
 }

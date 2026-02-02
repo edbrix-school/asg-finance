@@ -4,6 +4,8 @@ import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.finance.dto.ContraVoucherRequest;
 import com.asg.finance.dto.ContraVoucherFullResponse;
 import com.asg.finance.service.ContraVoucherService;
@@ -38,6 +40,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 public class ContraVoucherController {
 
     private final ContraVoucherService contraVoucherService;
+    private final LoggingService loggingService;
 
     @Operation(
             summary = "Get contra vouchers list",  
@@ -99,7 +102,7 @@ public class ContraVoucherController {
 
         log.info("listContraVouchers completed for groupPoid={}", UserContext.getGroupPoid());
 
-        return success("Contra vouchers fetched successfully", response);
+            return success("Contra vouchers fetched successfully", response);
     }
 
     @Operation(
@@ -228,6 +231,7 @@ public class ContraVoucherController {
                 transactionPoid, UserContext.getGroupPoid());
 
         ContraVoucherFullResponse response = contraVoucherService.getContraVoucherById(transactionPoid);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
 
         log.info("getContraVoucherById completed for transactionPoid={}", transactionPoid);
         
@@ -297,7 +301,6 @@ public class ContraVoucherController {
                 creditGlId, UserContext.getGroupPoid());
         
         String result = contraVoucherService.checkGlNature(creditGlId);
-        
         log.info("checkGlNature completed for creditGlId={}", creditGlId);
         
         return success("GL nature checked successfully", result);

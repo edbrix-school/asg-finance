@@ -3,6 +3,7 @@ package com.asg.finance.dto;
 import com.asg.common.lib.dto.LovGetListDto;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -29,7 +30,7 @@ public class BankPaymentVoucherResponse {
     private LocalDate chqDate;
     private String currencyCode;
     private Long currencyRate;
-    private Long currencyAmount;
+    private BigDecimal currencyAmount;
     private Long localAmount;
     private String shortNarration;
     private String longNarration;

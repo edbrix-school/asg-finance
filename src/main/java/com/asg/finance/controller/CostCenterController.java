@@ -2,8 +2,10 @@ package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.finance.dto.CostCenterListResponseDto;
 import com.asg.finance.dto.CostCenterRequestDTO;
 import com.asg.finance.dto.CostCenterResponseDTO;
@@ -34,6 +36,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 @RequiredArgsConstructor
 public class CostCenterController {
     private final CostCenterService costCenterServiceImpl;
+    private final LoggingService loggingService;
 
     @Operation(
             summary = "Create a new CostCenter",
@@ -225,6 +228,7 @@ public class CostCenterController {
             @Parameter(description = "costCenterPoid reference identifier", required = true)
             @PathVariable Long costCenterPoid) {
         CostCenterRequestDTO costCenterDto = costCenterServiceImpl.getCostCenterById(costCenterPoid);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), costCenterPoid.toString());
         return success("Cost Center fetched successfully", costCenterDto);
     }
 
@@ -300,7 +304,6 @@ public class CostCenterController {
                 return success("No Cost Center records found", new ArrayList<>());
             }
 
-            // Return the tree structure directly as an array
             return success("Cost Center tree structure retrieved successfully", treeNodes);
 
         } catch (Exception e) {

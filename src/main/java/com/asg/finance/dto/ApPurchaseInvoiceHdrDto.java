@@ -7,6 +7,8 @@ import lombok.Data;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 
 @Data
@@ -21,7 +23,7 @@ public class ApPurchaseInvoiceHdrDto {
     private String shipRef;
     private Long companyPoid;
     private String currencyCode;
-    private Long currencyRate;
+    private BigDecimal currencyRate;
     @NotNull(message = "Supplier Poid cannot be null")
     private Long supplierPoid;
     private Long locationPoid;
@@ -55,8 +57,8 @@ public class ApPurchaseInvoiceHdrDto {
     private String supplierInvRemark;
     private String mtaRef;
     private String multiCompany;
-    private Long bhdAmount;
-    private Long supplierInvAmount;
+    private BigDecimal bhdAmount;
+    private BigDecimal supplierInvAmount;
     private Long roundingAmount;
     private String billType;
     private String provisionalInvoice;
@@ -83,4 +85,15 @@ public class ApPurchaseInvoiceHdrDto {
     private ApPurchaseJournalResponseDto ffDetails;
     private ApPurchaseJournalResponseDto fdaDetails;
 
+    public void setCurrencyRate(BigDecimal currencyRate) {
+        this.currencyRate = currencyRate == null ? null : currencyRate.setScale(3, RoundingMode.HALF_UP);
+    }
+
+    public void setBhdAmount(BigDecimal bhdAmount) {
+        this.bhdAmount = bhdAmount == null ? null : bhdAmount.setScale(3, RoundingMode.HALF_UP);
+    }
+
+    public void setSupplierInvAmount(BigDecimal supplierInvAmount) {
+        this.supplierInvAmount = supplierInvAmount == null ? null : supplierInvAmount.setScale(3, RoundingMode.HALF_UP);
+    }
 }

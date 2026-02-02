@@ -4,8 +4,10 @@ import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.request.DocReleaseLockRequestDto;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.finance.dto.GLMasterRequestDto;
 import com.asg.finance.dto.GLMasterResponseDto;
 import com.asg.finance.dto.GlMasterTreeRequest;
@@ -17,7 +19,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.Valid;
 import jakarta.validation.Valid;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +40,9 @@ public class GLMasterController {
 
     @Autowired
     private GLMasterService glMasterService;
+    
+    @Autowired
+    private LoggingService loggingService;
 
     @Operation(
             summary = "Create GL Master",
@@ -80,6 +84,7 @@ public class GLMasterController {
             @Parameter(description = "GL Master POID", required = true) @PathVariable Long glPoid) {
 
         GLMasterResponseDto resp = glMasterService.getGLMaster(glPoid);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), glPoid.toString());
         return success("GL Master found", resp);
 
     }
@@ -92,6 +97,7 @@ public class GLMasterController {
     @GetMapping("/simple/{glPoid}")
     public ResponseEntity<?> getSimple(@PathVariable Long glPoid) {
         com.asg.common.lib.dto.GLMasterDto glMasterDto = glMasterService.getGLMasterDto(glPoid);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), glPoid.toString());
         return success("GL Master found", glMasterDto);
     }
 
@@ -128,7 +134,7 @@ public class GLMasterController {
             @Valid @RequestBody GLMasterRequestDto req) {
 
         GLMasterResponseDto resp = glMasterService.updateGLMaster(glPoid, req);
-        return success("GL Master found", resp);
+        return success("GL Master Updated Successfully.", resp);
     }
 
     @Operation(
@@ -203,6 +209,7 @@ public class GLMasterController {
             }
 
             // Return the tree structure directly as an array
+            loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), "TREE");
             return success("GL Master tree structure retrieved successfully", treeItems);
 
         } catch (Exception e) {
@@ -353,6 +360,36 @@ public class GLMasterController {
 
         } catch (Exception e) {
             return internalServerError("An error occurred while retrieving GL Master list: " + e.getMessage());
+        }
+    }
+
+    @Operation(
+            summary = "Get GL Account Type by subOf",
+            description = "Retrieves the GL_AC_TYPE (account type) from the parent GL Master record based on the provided subOf (GROUP_GL_POID). " +
+                    "This is useful when creating a new GL Master and you need to inherit the account type from the parent group.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Account type retrieved successfully",
+                            content = @Content(mediaType = "application/json",
+                                    examples = @ExampleObject(value = "{\"accountType\": \"ASSET\"}"))),
+                    @ApiResponse(responseCode = "400", description = "Bad Request - subOf parameter is required"),
+                    @ApiResponse(responseCode = "404", description = "GL Master not found with the provided subOf"),
+                    @ApiResponse(responseCode = "500", description = "Internal server error")
+            }
+    )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
+    @GetMapping("/account-type")
+    public ResponseEntity<?> getAccountTypeBySubOf(
+            @Parameter(description = "subOf (GROUP_GL_POID) - The parent GL POID to get account type from", required = true, example = "1000")
+            @RequestParam(required = true) Long subOf) {
+
+        try {
+            String accountType = glMasterService.getAccountTypeBySubOf(subOf);
+            Map<String, Object> response = Map.of("accountType", accountType != null ? accountType : "");
+            return success("Account type retrieved successfully", response);
+        } catch (RuntimeException e) {
+            return internalServerError(e.getMessage());
+        } catch (Exception e) {
+            return internalServerError("An error occurred while retrieving account type: " + e.getMessage());
         }
     }
 

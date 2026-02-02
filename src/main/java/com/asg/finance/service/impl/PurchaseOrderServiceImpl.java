@@ -1,6 +1,8 @@
 package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.*;
+import com.asg.common.lib.dto.request.LogRequestDto;
+import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
@@ -10,6 +12,7 @@ import com.asg.finance.dto.PurchaseOrderItemRequestDto;
 import com.asg.finance.dto.PurchaseOrderItemResponseDto;
 import com.asg.finance.dto.PurchaseOrderRequest;
 import com.asg.finance.dto.PurchaseOrderResponse;
+import com.asg.finance.entity.ChequeReturnDetail;
 import com.asg.finance.entity.PurchaseOrder;
 import com.asg.finance.entity.PurchaseOrderItem;
 import com.asg.finance.repository.PurchaseOrderItemRepository;
@@ -17,9 +20,12 @@ import com.asg.finance.repository.PurchaseOrderRepository;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.PurchaseOrderService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import net.sf.jasperreports.engine.JasperReport;
+import org.springframework.beans.BeanUtils;
 import org.springframework.transaction.annotation.Propagation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -51,6 +57,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     private final JdbcTemplate jdbcTemplate;
     private final PrintService printService;
     private final DataSource dataSource;
+    private final LoggingService loggingService;
     private final DocumentDeleteService documentDeleteService;
 
     @Override
@@ -77,6 +84,12 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                         savedItems = purchaseOrderItemRepository.saveAll(
                                 mapPurchaseOrderItems(request.getItems(), transactionPoid)
                         );
+                        
+                        // Log each item creation
+                        savedItems.forEach(item -> {
+                            String logDetail = String.format("Row Created on Purchase Order Item with detRowId: %s", item.getDetRowId());
+                            loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString(), logDetail);
+                        });
                     }
                 }
                 case "MTA" -> {
@@ -88,10 +101,13 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                         throw new IllegalArgumentException("Invalid RefType: " + refType);
             }
 
+            // Logging for create operation
+            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, documentId, savedPO.getTransactionPoid().toString());
+
             return mapToPurchaseOrderResponse(savedPO, savedItems);
 
         } catch (Exception ex) {
-            throw new RuntimeException("Error while creating Purchase Order: " + ex.getMessage(), ex);
+            throw new ValidationException("Error while creating Purchase Order: " + ex.getMessage());
         }
 
     }
@@ -102,7 +118,11 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                                                         PurchaseOrderRequest request) {
         try {
             PurchaseOrder existingPO = purchaseOrderRepository.findById(transactionPoid)
-                    .orElseThrow(() -> new RuntimeException("Purchase Order not found with ID: " + transactionPoid));
+                    .orElseThrow(() -> new ValidationException("Purchase Order not found with ID: " + transactionPoid));
+
+            // Create a copy of the existing entity for logging
+            PurchaseOrder oldEntity = new PurchaseOrder();
+            BeanUtils.copyProperties(existingPO, oldEntity);
 
             updatePurchaseOrderFields(existingPO, request);
 
@@ -126,13 +146,16 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                     callMtaDeleteProcedureInNewTransaction(transactionPoid);
                 }
 
-                default -> throw new RuntimeException("Invalid RefType for update: " + refType);
+                default -> throw new ValidationException("Invalid RefType for update: " + refType);
             }
+
+            // Logging for update operation
+            loggingService.logChanges(oldEntity, updatedPO, PurchaseOrder.class, documentId, updatedPO.getTransactionPoid().toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
             return mapToPurchaseOrderResponse(updatedPO, updatedItems);
 
         } catch (Exception e) {
-            throw new RuntimeException("Error during Purchase Order update: " + e.getMessage(), e);
+            throw new ValidationException("Error during Purchase Order update: " + e.getMessage());
         }
     }
 
@@ -141,7 +164,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     public PurchaseOrderResponse findById(Long transactionPoid) {
 
         PurchaseOrder po = purchaseOrderRepository.findById(transactionPoid)
-                .orElseThrow(() -> new RuntimeException("Purchase Order not found for POID: " + transactionPoid));
+                .orElseThrow(() -> new ValidationException("Purchase Order not found for POID: " + transactionPoid));
 
         List<PurchaseOrderItem> items = purchaseOrderItemRepository.findByTransactionPoid(transactionPoid);
 
@@ -209,7 +232,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
 
         } catch (Exception e) {
             log.error("Error calling PROC_AP_PO_CREATE_FROM_RFQ: {}", e.getMessage(), e);
-            throw new RuntimeException("Failed to execute PO creation from RFQ: " + e.getMessage(), e);
+            throw new ValidationException("Failed to execute PO creation from RFQ: " + e.getMessage());
         }
     }
 
@@ -281,13 +304,14 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             return items;
         }
 
+        Long intial = 1L;
         for (PurchaseOrderItemRequestDto dto : itemDtos) {
 
             PurchaseOrderItem item = PurchaseOrderItem.builder()
-                    .transactionPoid(transactionPoid)                     // FK to main PO
-                    .detRowId(dto.getDetRowId())
+                    .transactionPoid(transactionPoid)
+                    .detRowId(intial)
                     .stockPoid(dto.getStockPoid())
-                    .stockUnitPoid(dto.getStockUnitPoid())
+                    .stockUnitPoid(dto.getStockUnitPoid() != null && dto.getStockUnitPoid() != 0 ? dto.getStockUnitPoid() : null)
                     .qty(dto.getQty())
                     .price(dto.getPrice())
                     .discount(dto.getDiscount())
@@ -315,6 +339,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                     .build();
 
             items.add(item);
+            intial++;
         }
 
         return items;
@@ -420,11 +445,9 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                 .itemDiscountTotal(savedPO.getItemDiscountTotal())
                 .itemDiscountTotalPercentage(savedPO.getItemDiscountTotalPercentage())
                 .supplierDetails(mapLovDetails(savedPO.getSupplierPoid(), "SUPPLIER_MASTER", true))
-                .paymentTermsDetails(mapLovDetails(savedPO.getPaymentTerms(), "PO_PAYMENT_TYPE", false))
-                .deliveryMethodDetails(mapLovDetails(savedPO.getDeliveryMethod(), "DELIVERY_METHOD", false))
-
+                .paymentTermsDetails(mapLovDetailsWithFallback(savedPO.getPaymentTerms(), "PO_PAYMENT_TYPE"))
+                .deliveryMethodDetails(mapLovDetailsWithFallback(savedPO.getDeliveryMethod(), "DELIVERY_METHOD"))
                 .items(itemDtos)
-
                 .build();
     }
 
@@ -445,10 +468,27 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         }
     }
 
+    private LovGetListDto mapLovDetailsWithFallback(Object value, String lovName) {
+        if (value == null) return null;
+        
+        try {
+            Long poid = value instanceof Long ? (Long) value : Long.valueOf(value.toString());
+            return lovService.getDetailsByPoidAndLovName(poid, lovName);
+        } catch (Exception e) {
+            try {
+                String code = value.toString();
+                return lovService.getDetailsByCodeAndLovName(code, lovName);
+            } catch (Exception ex) {
+                log.warn("Failed to map LOV details for value: {}, lovName: {}", value, lovName, ex);
+                return null;
+            }
+        }
+    }
+
     private void updatePurchaseOrderFields(PurchaseOrder po, PurchaseOrderRequest request) {
 
         po.setTransactionDate(po.getTransactionDate());
-        po.setDocRef(request.getDocRef());
+       // po.setDocRef(request.getDocRef());
         po.setCurrencyCode(request.getCurrencyCode());
         po.setCurrencyRate(request.getCurrencyRate());
         po.setExpectedDate(request.getExpectedDate());
@@ -498,60 +538,129 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             Long transactionPoid,
             PurchaseOrderRequest request
     ) {
-
-        List<PurchaseOrderItem> existingItems =
-                purchaseOrderItemRepository.findByTransactionPoid(transactionPoid);
-
-        Map<Long, PurchaseOrderItem> existingMap = existingItems.stream()
-                .collect(Collectors.toMap(PurchaseOrderItem::getDetRowId, i -> i));
-
-        List<PurchaseOrderItem> mergedList = new ArrayList<>();
-
+        String currentUser = getCurrentUser();
+        LocalDateTime now = LocalDateTime.now();
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = transactionPoid.toString();
+        
+        List<PurchaseOrderItem> toSave = new ArrayList<>();
+        List<PurchaseOrderItem> toUpdate = new ArrayList<>();
+        List<Long> toDelete = new ArrayList<>();
+        List<LogRequestDto<PurchaseOrderItem>> logRequests = new ArrayList<>();
+        
         if (request.getItems() == null || request.getItems().isEmpty()) {
-            return mergedList;
+            return new ArrayList<>();
         }
-
+        
+        Long maxDetRowId = purchaseOrderItemRepository.findMaxDetRowIdByTransactionPoid(transactionPoid);
+        
         for (PurchaseOrderItemRequestDto dto : request.getItems()) {
-
-            PurchaseOrderItem entity =
-                    existingMap.getOrDefault(dto.getDetRowId(), new PurchaseOrderItem());
-
-
-            entity.setTransactionPoid(transactionPoid);
-
-            entity.setDetRowId(dto.getDetRowId());
-            entity.setStockPoid(dto.getStockPoid());
-            entity.setStockUnitPoid(dto.getStockUnitPoid());
-            entity.setQty(dto.getQty());
-            entity.setPrice(dto.getPrice());
-            entity.setDiscount(dto.getDiscount());
-            entity.setDiscountPercentage(dto.getDiscountPercentage());
-            entity.setTotal(dto.getTotal());
-            entity.setRemarks(dto.getRemarks());
-            entity.setRfqDetRowId(dto.getRfqDetRowId());
-            entity.setRfqPoid(dto.getRfqPoid());
-            entity.setPurReqDetRowId(dto.getPurReqDetRowId());
-            entity.setPurReqPoid(dto.getPurReqPoid());
-            entity.setTaxPoid(dto.getTaxPoid());
-            entity.setTaxPercentage(dto.getTaxPercentage());
-            entity.setTaxAmount(dto.getTaxAmount());
-            entity.setItemDtlReadOnly(dto.getItemDtlReadOnly());
-            entity.setPjDetRowId(dto.getPjDetRowId());
-            entity.setPjPoid(dto.getPjPoid());
-            entity.setBaseAmount(dto.getBaseAmount());
-            entity.setPoImpDetRowId(dto.getPoImpDetRowId());
-            entity.setLastPurPrice(dto.getLastPurPrice());
-            entity.setConvertedQty(dto.getConvertedQty());
-            entity.setConvertedUnit(dto.getConvertedUnit());
-            entity.setConversionValue(dto.getConversionValue());
-
-            entity.setLastModifiedBy(getCurrentUser());
-            entity.setLastModifiedDate(LocalDateTime.now());
-
-            mergedList.add(entity);
+            String action = dto.getActionType() != null ? dto.getActionType().toUpperCase() : "NOCHANGE";
+            switch (action) {
+                case "ISCREATED":
+                    toSave.add(PurchaseOrderItem.builder()
+                            .transactionPoid(transactionPoid)
+                            .detRowId(dto.getDetRowId() != null ? dto.getDetRowId() : ++maxDetRowId)
+                            .stockPoid(dto.getStockPoid())
+                            .stockUnitPoid(dto.getStockUnitPoid() != null && dto.getStockUnitPoid() != 0 ? dto.getStockUnitPoid() : null)
+                            .qty(dto.getQty())
+                            .price(dto.getPrice())
+                            .discount(dto.getDiscount())
+                            .discountPercentage(dto.getDiscountPercentage())
+                            .total(dto.getTotal())
+                            .remarks(dto.getRemarks())
+                            .rfqDetRowId(dto.getRfqDetRowId())
+                            .rfqPoid(dto.getRfqPoid())
+                            .purReqDetRowId(dto.getPurReqDetRowId())
+                            .purReqPoid(dto.getPurReqPoid())
+                            .taxPoid(dto.getTaxPoid())
+                            .taxPercentage(dto.getTaxPercentage())
+                            .taxAmount(dto.getTaxAmount())
+                            .itemDtlReadOnly(dto.getItemDtlReadOnly())
+                            .pjDetRowId(dto.getPjDetRowId())
+                            .pjPoid(dto.getPjPoid())
+                            .baseAmount(dto.getBaseAmount())
+                            .poImpDetRowId(dto.getPoImpDetRowId())
+                            .lastPurPrice(dto.getLastPurPrice())
+                            .convertedQty(dto.getConvertedQty())
+                            .convertedUnit(dto.getConvertedUnit())
+                            .conversionValue(dto.getConversionValue())
+                            .createdBy(currentUser)
+                            .createdDate(now)
+                            .build());
+                    break;
+                    
+                case "ISUPDATED":
+                    PurchaseOrderItem existingItem = purchaseOrderItemRepository
+                            .findByTransactionPoidAndDetRowId(transactionPoid, dto.getDetRowId())
+                            .orElseThrow(() -> new ValidationException("Purchase Order Item not found for detRowId: " + dto.getDetRowId()));
+                    
+                    PurchaseOrderItem oldItem = new PurchaseOrderItem();
+                    BeanUtils.copyProperties(existingItem, oldItem);
+                    
+                    existingItem.setStockPoid(dto.getStockPoid());
+                    existingItem.setStockUnitPoid(dto.getStockUnitPoid() != null && dto.getStockUnitPoid() != 0 ? dto.getStockUnitPoid() : null);
+                    existingItem.setQty(dto.getQty());
+                    existingItem.setPrice(dto.getPrice());
+                    existingItem.setDiscount(dto.getDiscount());
+                    existingItem.setDiscountPercentage(dto.getDiscountPercentage());
+                    existingItem.setTotal(dto.getTotal());
+                    existingItem.setRemarks(dto.getRemarks());
+                    existingItem.setRfqDetRowId(dto.getRfqDetRowId());
+                    existingItem.setRfqPoid(dto.getRfqPoid());
+                    existingItem.setPurReqDetRowId(dto.getPurReqDetRowId());
+                    existingItem.setPurReqPoid(dto.getPurReqPoid());
+                    existingItem.setTaxPoid(dto.getTaxPoid());
+                    existingItem.setTaxPercentage(dto.getTaxPercentage());
+                    existingItem.setTaxAmount(dto.getTaxAmount());
+                    existingItem.setItemDtlReadOnly(dto.getItemDtlReadOnly());
+                    existingItem.setPjDetRowId(dto.getPjDetRowId());
+                    existingItem.setPjPoid(dto.getPjPoid());
+                    existingItem.setBaseAmount(dto.getBaseAmount());
+                    existingItem.setPoImpDetRowId(dto.getPoImpDetRowId());
+                    existingItem.setLastPurPrice(dto.getLastPurPrice());
+                    existingItem.setConvertedQty(dto.getConvertedQty());
+                    existingItem.setConvertedUnit(dto.getConvertedUnit());
+                    existingItem.setConversionValue(dto.getConversionValue());
+                    existingItem.setLastModifiedBy(currentUser);
+                    existingItem.setLastModifiedDate(now);
+                    toUpdate.add(existingItem);
+                    
+                    String logDetailForUpdate = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", transactionPoid, dto.getDetRowId());
+                    logRequests.add(new LogRequestDto<>(oldItem, existingItem, PurchaseOrderItem.class, docId, docKeyPoid, logDetailForUpdate));
+                    break;
+                    
+                case "ISDELETED":
+                    toDelete.add(dto.getDetRowId());
+                    loggingService.logDelete(dto, docId, docKeyPoid);
+                    break;
+            }
+        }
+        
+        List<PurchaseOrderItem> allItems = new ArrayList<>();
+        
+        if (!toSave.isEmpty()) {
+            List<PurchaseOrderItem> savedItems = purchaseOrderItemRepository.saveAll(toSave);
+            allItems.addAll(savedItems);
+            savedItems.forEach(e -> {
+                String logDetail = String.format("Row Created on Purchase Order Item with detRowId: %s", e.getDetRowId());
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString(), logDetail);
+            });
         }
 
-        return purchaseOrderItemRepository.saveAll(mergedList);
+        if (!toUpdate.isEmpty()) {
+            List<PurchaseOrderItem> updatedItems = purchaseOrderItemRepository.saveAll(toUpdate);
+            allItems.addAll(updatedItems);
+            if (!logRequests.isEmpty()) {
+                loggingService.createLogBatch(logRequests);
+            }
+        }
+
+        if (!toDelete.isEmpty()) {
+            purchaseOrderItemRepository.deleteByTransactionPoidAndDetRowIdIn(transactionPoid, toDelete);
+        }
+        
+        return allItems;
     }
 
     private void validatePurchaseOrder(PurchaseOrderRequest request, Long transactionPoid, String documentId) {
@@ -578,13 +687,13 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         for (int i = 0; i < request.getItems().size(); i++) {
             PurchaseOrderItemRequestDto item = request.getItems().get(i);
             if (item.getTotal() == null || item.getTotal() == 0.0) {
-                throw new RuntimeException("Total amount is showing as zero. Please note the row number -" + (i + 1));
+                throw new ValidationException("Total amount is showing as zero. Please note the row number -" + (i + 1));
             }
             totalAmount = totalAmount.add(BigDecimal.valueOf(item.getTotal()));
         }
         
         if (totalAmount.compareTo(BigDecimal.ZERO) == 0) {
-            throw new RuntimeException("No total amounts found in this transaction.");
+            throw new ValidationException("No total amounts found in this transaction.");
         }
     }
 
@@ -613,13 +722,13 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                 
                 String status = cs.getString(8);
                 if (status != null && (status.contains("ERROR") || status.contains("WARNING"))) {
-                    throw new RuntimeException(status);
+                    throw new ValidationException(status);
                 }
                 
                 return null;
             });
         } catch (Exception e) {
-            throw new RuntimeException("Supplier VAT validation failed: " + e.getMessage(), e);
+            throw new ValidationException("Supplier VAT validation failed: " + e.getMessage());
         }
     }
 
@@ -640,13 +749,13 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                 
                 String status = cs.getString(7);
                 if (status != null && (status.contains("ERROR") || status.contains("WARNING"))) {
-                    throw new RuntimeException(status);
+                    throw new ValidationException(status);
                 }
                 
                 return null;
             });
         } catch (Exception e) {
-            throw new RuntimeException("Purchase request validation failed: " + e.getMessage(), e);
+            throw new ValidationException("Purchase request validation failed: " + e.getMessage());
         }
     }
 
@@ -672,7 +781,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                 String status = cs.getString(5);
                 if (status != null && status.contains("ERROR")) {
                     log.error("MTA procedure error: {}", status);
-                    throw new RuntimeException("MTA procedure failed: " + status);
+                    throw new ValidationException("MTA procedure failed: " + status);
                 } else {
                     log.info("MTA procedure completed successfully: {}", status);
                 }
@@ -681,7 +790,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             });
         } catch (Exception e) {
             log.error("Error calling MTA procedure for RFQ POID: {}", rfqPoid, e);
-            throw new RuntimeException("Failed to execute MTA procedure: " + e.getMessage(), e);
+            throw new ValidationException("Failed to execute MTA procedure: " + e.getMessage());
         }
     }
 
@@ -702,7 +811,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                 String status = cs.getString(5);
                 if (status != null && status.contains("ERROR")) {
                     log.error("MTA delete procedure error: {}", status);
-                    throw new RuntimeException("MTA delete procedure failed: " + status);
+                    throw new ValidationException("MTA delete procedure failed: " + status);
                 } else {
                     log.info("MTA delete procedure completed successfully: {}", status);
                 }
@@ -711,7 +820,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             });
         } catch (Exception e) {
             log.error("Error calling MTA delete procedure for Transaction POID: {}", transactionPoid, e);
-            throw new RuntimeException("Failed to execute MTA delete procedure: " + e.getMessage(), e);
+            throw new ValidationException("Failed to execute MTA delete procedure: " + e.getMessage());
         }
     }
 

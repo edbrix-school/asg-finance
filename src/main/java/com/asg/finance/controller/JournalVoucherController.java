@@ -4,6 +4,8 @@ import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.*;
@@ -35,6 +37,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 public class JournalVoucherController {
 
     private final JournalVoucherService journalVoucherService;
+    private final LoggingService loggingService;
 
     @Operation(
             summary = "Create Journal Voucher",
@@ -169,6 +172,8 @@ public class JournalVoucherController {
             return success("Journal Voucher created successfully", response);
         } catch (IllegalArgumentException e) {
             return badRequest(e.getMessage());
+        } catch (ResourceNotFoundException e) {
+            return notFound("Journal Voucher not found: " + e.getMessage());
         } catch (Exception e) {
             return internalServerError("Failed to create journal voucher: " + e.getMessage());
         }
@@ -215,7 +220,8 @@ public class JournalVoucherController {
             return badRequest("Both startDate and endDate should be specified or both dates should be empty.");
         }
         Map<String, Object> response = journalVoucherService.listJournalVouchers(UserContext.getDocumentId(), filters, startDate, endDate, pageable);
-        return success("Journal Vouchers list retrieved successfully", response);
+
+            return success("Journal Vouchers list retrieved successfully", response);
     }
 
     @Operation(
@@ -330,6 +336,7 @@ public class JournalVoucherController {
     ) {
         try {
             JournalVoucherDetailResponse response = journalVoucherService.getJournalVoucherById(transactionPoid);
+            loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
             return success("Journal Voucher retrieved successfully", response);
         } catch (ResourceNotFoundException e) {
             return notFound(e.getMessage());
@@ -508,33 +515,6 @@ public class JournalVoucherController {
             return internalServerError("Failed to update asset detail: " + e.getMessage());
         }
     }
-
-    @Operation(
-            summary = "Calculate Currency Conversion",
-            description = "Calculate BHD amount based on currency code, amount, and transaction date"
-    )
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Currency conversion calculated successfully"),
-            @ApiResponse(responseCode = "400", description = "Invalid currency code"),
-            @ApiResponse(responseCode = "401", description = "Unauthorized"),
-            @ApiResponse(responseCode = "404", description = "Currency rate not found"),
-            @ApiResponse(responseCode = "500", description = "Database error")
-    })
-    @AllowedAction(UserRolesRightsEnum.VIEW)
-    @PostMapping("/calculate-currency")
-    public ResponseEntity<?> calculateCurrencyConversion(
-            @Valid @RequestBody CurrencyConversionRequest request
-    ) {
-        try {
-            CurrencyConversionResponse response = journalVoucherService.calculateCurrencyConversion(request);
-            return success("Currency conversion calculated successfully", response);
-        } catch (IllegalArgumentException e) {
-            return badRequest(e.getMessage());
-        } catch (Exception e) {
-            return internalServerError("Failed to calculate currency conversion: " + e.getMessage());
-        }
-    }
-
     @AllowedAction(UserRolesRightsEnum.PRINT)
     @Operation(
             summary = "Generate PDF for Journal Voucher",

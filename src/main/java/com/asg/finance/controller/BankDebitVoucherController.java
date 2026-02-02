@@ -3,6 +3,8 @@ package com.asg.finance.controller;
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.BankDebitVoucherRequest;
 import com.asg.finance.dto.BankDebitVoucherResponse;
@@ -43,6 +45,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 public class BankDebitVoucherController {
 
     private final BankDebitVoucherService bankDebitVoucherService;
+    private final LoggingService loggingService;
 
     @Operation(summary = "Create Bank Debit Voucher")
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
@@ -158,6 +161,7 @@ public class BankDebitVoucherController {
     public ResponseEntity<?> getBankDebitVoucher(
             @PathVariable @NotNull @Min(1) Long transactionPoid) {
         BankDebitVoucherResponse response = bankDebitVoucherService.getBankDebitVoucher(transactionPoid, UserContext.getDocumentId());
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
         return success("Bank Debit Voucher retrieved successfully", response);
     }
 
@@ -196,7 +200,8 @@ public class BankDebitVoucherController {
             return badRequest("Both startDate and endDate should be specified or both dates should be empty.");
         }
         Map<String, Object> response = bankDebitVoucherService.listBankDebitVouchers(UserContext.getDocumentId(), filters, startDate, endDate, pageable);
-        return success("Bank Debit Vouchers list retrieved successfully", response);
+
+            return success("Bank Debit Vouchers list retrieved successfully", response);
     }
 
     @Operation(summary = "Update Bank Debit Voucher")
@@ -378,7 +383,7 @@ public class BankDebitVoucherController {
                     )
             )
     )
-    @AllowedAction(UserRolesRightsEnum.CREATE)
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/validate-paygl")
     public ResponseEntity<?> validatePayGL(
             @Valid @RequestBody PayGLValidationRequest request) {

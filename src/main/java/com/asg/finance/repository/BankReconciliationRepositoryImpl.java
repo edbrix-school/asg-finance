@@ -2,6 +2,8 @@ package com.asg.finance.repository;
 
 import java.math.BigDecimal;
 import java.sql.CallableStatement;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.Types;
 import java.util.Date;
 import java.util.List;
@@ -12,6 +14,7 @@ import org.apache.commons.math3.exception.InsufficientDataException;
 import org.hibernate.Session;
 import org.springframework.stereotype.Repository;
 
+import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.finance.dto.BankReconcHoldAndUholdRequest;
 import com.asg.finance.dto.BankReconcileReportRequest;
 import com.asg.finance.dto.BankReconcileReportResponse;
@@ -19,17 +22,22 @@ import com.asg.finance.dto.BankReconcileReportRow;
 import com.asg.finance.dto.BankReconciliationRequest;
 import com.asg.finance.dto.BankReconciliationResponse;
 import com.asg.finance.dto.BankRenconciliationBankInfoDTO;
+import com.asg.finance.entity.GlBankEntity;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.ParameterMode;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.StoredProcedureQuery;
+import lombok.RequiredArgsConstructor;
 
 @Repository
+@RequiredArgsConstructor
 public class BankReconciliationRepositoryImpl implements BankReconciliationRepository {
 
 	@PersistenceContext
 	private EntityManager em;
+
+	private final GlBankRepository bankRepository;
 
 	@Override
 	public List<BankReconciliationResponse> callReconcileView(Long groupPoid, Long companyPoid, Long bankPoid,
@@ -83,7 +91,7 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
 	@Override
 	public String saveReconciliation(List<BankReconciliationRequest> req) {
 		if (req == null || req.isEmpty()) {
-			throw new InsufficientDataException();
+			throw new RuntimeException("Insufficient Data");
 		}
 
 		StoredProcedureQuery sp = createSP("PRODUCTION.PROC_GL_BANK_RECONCILE_SAVE");
@@ -108,6 +116,15 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
 		String response = "Successfully Updated.";
 
 		for (BankReconciliationRequest dto : req) {
+
+			if (!existsByTransactionPoid(dto.getTransactionPoid())) {
+				throw new ResourceNotFoundException("Bank Reconciliation", "transaction poid",
+						dto.getTransactionPoid());
+			}
+
+			if (!existsByDocref(dto.getTransactionPoid(), dto.getDocRef())) {
+				throw new ResourceNotFoundException("Document Reference", "docRef", dto.getDocRef());
+			}
 
 			set(sp, "P_TRANSACTION_GROUP_POID", dto.getTransactionGroupPoid());
 			set(sp, "P_TRANSACTION_COMPANY_POID", dto.getTransactionCompanyPoid());
@@ -137,82 +154,105 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
 
 	@Override
 	public String holdCheque(List<BankReconcHoldAndUholdRequest> reqList) {
+		for (BankReconcHoldAndUholdRequest req : reqList) {
 
-	    for (BankReconcHoldAndUholdRequest req : reqList) {
+			if (!existsByTransactionPoid(req.getTransactionPoid())) {
+				throw new ResourceNotFoundException("Bank Reconciliation", "transaction poid",
+						req.getTransactionPoid());
+			}
+			if (!existsByDocref(req.getTransactionPoid(), req.getDocRef())) {
+				throw new ResourceNotFoundException("Document Reference", "docRef", req.getDocRef());
+			}
 
-	        StoredProcedureQuery sp =
-	                createSP("PRODUCTION.PROC_GL_BANK_RECONCILE_HOLD");
+			StoredProcedureQuery sp = createSP("PRODUCTION.PROC_GL_BANK_RECONCILE_HOLD");
 
-	        regIn(sp, "P_TRANSACTION_GROUP_POID", Long.class);
-	        regIn(sp, "P_TRANSACTION_COMPANY_POID", Long.class);
-	        regIn(sp, "P_LOGIN_USER_POID", Long.class);
-	        regIn(sp, "P_DOC_ID", String.class);
-	        regIn(sp, "P_TRANSACTION_POID", Long.class);
-	        regIn(sp, "P_DOC_REF", String.class);
-	        regOut(sp, "P_RESULT", String.class);
+			regIn(sp, "P_TRANSACTION_GROUP_POID", Long.class);
+			regIn(sp, "P_TRANSACTION_COMPANY_POID", Long.class);
+			regIn(sp, "P_LOGIN_USER_POID", Long.class);
+			regIn(sp, "P_DOC_ID", String.class);
+			regIn(sp, "P_TRANSACTION_POID", Long.class);
+			regIn(sp, "P_DOC_REF", String.class);
+			regOut(sp, "P_RESULT", String.class);
 
-	        set(sp, "P_TRANSACTION_GROUP_POID", req.getTransactionGroupPoid());
-	        set(sp, "P_TRANSACTION_COMPANY_POID", req.getTransactionCompanyPoid());
-	        set(sp, "P_LOGIN_USER_POID", req.getUserPoid());
-	        set(sp, "P_DOC_ID", req.getDocId());
-	        set(sp, "P_TRANSACTION_POID", req.getTransactionPoid());
-	        set(sp, "P_DOC_REF", req.getDocRef());
+			set(sp, "P_TRANSACTION_GROUP_POID", req.getTransactionGroupPoid());
+			set(sp, "P_TRANSACTION_COMPANY_POID", req.getTransactionCompanyPoid());
+			set(sp, "P_LOGIN_USER_POID", req.getUserPoid());
+			set(sp, "P_DOC_ID", req.getDocId());
+			set(sp, "P_TRANSACTION_POID", req.getTransactionPoid());
+			set(sp, "P_DOC_REF", req.getDocRef());
 
-	        sp.execute();
+			sp.execute();
 
-	        String result = outStr(sp, "P_RESULT");
+			String result = outStr(sp, "P_RESULT");
 
-	        if (result != null && result.toLowerCase().startsWith("error")) {
-	            return result;
-	        }
-	    }
+			if (result != null && result.toLowerCase().startsWith("error")) {
+				return result;
+			}
+		}
 
-	    return reqList.size()+" cheques hold successfully";
+		return reqList.size() + " cheques hold successfully";
 	}
 
 	@Override
 	public String unholdCheque(List<BankReconcHoldAndUholdRequest> reqList) {
 
-	    if (reqList == null || reqList.isEmpty()) {
-	        return "No cheques to unhold";
-	    }
+		if (reqList == null || reqList.isEmpty()) {
+			return "No cheques to unhold";
+		}
 
-	    return em.unwrap(Session.class).doReturningWork(connection -> {
+		return em.unwrap(Session.class).doReturningWork(connection -> {
 
-	        String sql = "{ call PROC_GL_BANK_RECONCILE_UNHOLD(?, ?, ?, ?, ?, ?, ?) }";
+			String sql = "{ call PROC_GL_BANK_RECONCILE_UNHOLD(?, ?, ?, ?, ?, ?, ?) }";
 
-	        try (CallableStatement cs = connection.prepareCall(sql)) {
+			try (CallableStatement cs = connection.prepareCall(sql)) {
 
-	            for (BankReconcHoldAndUholdRequest req : reqList) {
+				cs.registerOutParameter(7, Types.VARCHAR);
 
-	                cs.setLong(1, req.getTransactionGroupPoid());
-	                cs.setLong(2, req.getTransactionCompanyPoid());
-	                cs.setLong(3, req.getUserPoid());
-	                cs.setString(4, req.getDocId());
-	                cs.setLong(5, req.getTransactionPoid());
-	                cs.setString(6, req.getDocRef());
+				for (BankReconcHoldAndUholdRequest req : reqList) {
 
-	                cs.registerOutParameter(7, Types.VARCHAR);
+					if (!existsByTransactionPoid(req.getTransactionPoid())) {
+						throw new ResourceNotFoundException("Bank Reconciliation", "transaction poid",
+								req.getTransactionPoid());
+					}
 
-	                cs.execute();
+					if (!existsByDocref(req.getTransactionPoid(), req.getDocRef())) {
+						throw new ResourceNotFoundException("Document Reference", "docRef", req.getDocRef());
+					}
 
-	                String result = cs.getString(7);
+					cs.setLong(1, req.getTransactionGroupPoid());
+					cs.setLong(2, req.getTransactionCompanyPoid());
+					cs.setLong(3, req.getUserPoid());
+					cs.setString(4, req.getDocId());
+					cs.setLong(5, req.getTransactionPoid());
+					cs.setString(6, req.getDocRef());
 
-	                if (result.toLowerCase().startsWith("error")) {
-	                    return result;
-	                }
-	            }
+					cs.execute();
 
-	            return reqList.size()+" cheques unheld successfully";
+					String result = cs.getString(7);
 
-	        } catch (Exception e) {
-	            throw new RuntimeException("Error calling PROC_GL_BANK_RECONCILE_UNHOLD", e);
-	        }
-	    });
+					if (result != null && result.toLowerCase().startsWith("error")) {
+						return result;
+					}
+
+					cs.clearParameters();
+				}
+
+				return reqList.size() + " cheques unheld successfully";
+
+			} catch (ResourceNotFoundException e) {
+				throw e;
+			} catch (Exception e) {
+				throw new RuntimeException("Error calling PROC_GL_BANK_RECONCILE_UNHOLD", e);
+			}
+		});
 	}
 
 	@Override
 	public String updateStatementDate(Long companyPoid, Long postedBy, Long bankPoid, Date statementDate) {
+
+		if (!validateBank(bankPoid)) {
+			throw new ResourceNotFoundException("Bank", "bank poid", bankPoid);
+		}
 
 		StoredProcedureQuery sp = createSP("PROC_GL_BANK_RECON_STMT_DATE");
 
@@ -332,6 +372,39 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
 		resp.setExtraValue((String) sp.getOutputParameterValue("OUTDATA7"));
 
 		return resp;
+	}
+
+	private boolean existsByTransactionPoid(Long transactionPoid) {
+		String sql = "SELECT 1 FROM GL_BANK_RECONCILIATION_TABLE WHERE TRANSACTION_POID = ? FETCH FIRST 1 ROWS ONLY";
+
+		return em.unwrap(Session.class).doReturningWork(connection -> {
+			try (PreparedStatement ps = connection.prepareStatement(sql)) {
+				ps.setLong(1, transactionPoid);
+
+				try (ResultSet rs = ps.executeQuery()) {
+					return rs.next();
+				}
+			} catch (Exception e) {
+				throw new RuntimeException("Error checking transaction poid existence", e);
+			}
+		});
+	}
+
+	private boolean existsByDocref(Long transactionPoid, String docRef) {
+		String sql = "SELECT 1 FROM GL_BANK_RECONCILIATION_TABLE WHERE TRANSACTION_POID = ? AND DOC_REF = ? FETCH FIRST 1 ROWS ONLY";
+
+		return em.unwrap(Session.class).doReturningWork(connection -> {
+			try (PreparedStatement ps = connection.prepareStatement(sql)) {
+				ps.setLong(1, transactionPoid);
+				ps.setString(2, docRef);
+
+				try (ResultSet rs = ps.executeQuery()) {
+					return rs.next();
+				}
+			} catch (Exception e) {
+				throw new RuntimeException("Error checking transaction poid existence", e);
+			}
+		});
 	}
 
 	private BankReconciliationResponse mapRowToDtoView(Object[] row) {
@@ -469,6 +542,11 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
 				getDate(row, 4), getString(row, 5), getString(row, 6), getLong(row, 7), getString(row, 8),
 				getLong(row, 9), getLong(row, 10), getBigDecimal(row, 11), isFiltered ? null : getBigDecimal(row, 12),
 				getDate(row, 13 - offset), getString(row, 14 - offset), getString(row, 15 - offset));
+	}
+
+	private boolean validateBank(Long bankPoid) {
+		GlBankEntity bankEntity = bankRepository.findByBankPoid(bankPoid);
+		return bankEntity != null;
 	}
 
 }

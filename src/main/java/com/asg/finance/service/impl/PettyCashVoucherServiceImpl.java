@@ -6,13 +6,15 @@ import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
+import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.LoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.ShowPendingBillwiseBreakupResponseDto;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.finance.entity.GLMaster;
-import com.asg.finance.entity.StockMasterEntity;
 import com.asg.finance.repository.GLMasterRepository;
 import com.asg.finance.repository.TaxMasterRepository;
 import com.asg.common.lib.service.DocumentSearchService;
@@ -22,7 +24,6 @@ import com.asg.finance.entity.GlPettyCashChargeDtl;
 import com.asg.finance.entity.GlPettyCashPaymentDtl;
 import com.asg.finance.entity.GlPettyCashPaymentHdr;
 import com.asg.finance.entity.master.ShipChargeEntity;
-import com.asg.finance.entity.master.UnitMaster;
 import com.asg.finance.repository.*;
 import com.asg.finance.repository.master.ShipChargeRepository;
 import com.asg.common.lib.security.util.UserContext;
@@ -78,6 +79,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
     private final PrintService printService;
     private final DataSource dataSource;
+    private final LoggingService loggingService;
 
     @Override
     @Transactional
@@ -151,6 +153,12 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     var savedPaymentDtls = glPettyCashPaymentDtlRepository.saveAll(
                             mapPaymentDtls(requestDto, hdrPoid));
                     paymentDtls = mapPaymentResponse(savedPaymentDtls);
+                    
+                    // Log child record creation
+                    savedPaymentDtls.forEach(dtl -> {
+                        String logDetail = String.format("Row Created on Payment Detail with detRowId: %s", dtl.getDetRowId());
+                        loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
+                    });
 
                     // -----------------------------------------
                     // BILLWISE BREAKUP INSERTION FOR EACH GL ROW
@@ -267,10 +275,22 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                 case "FF JOBS", "FDA JOBS" -> {
                     var savedChargeDtls = glPettyCashChargeDtlRepository.saveAll(mapChargeDtls(requestDto, hdrPoid));
                     chargeDtls = mapChargeResponse(savedChargeDtls);
+                    
+                    // Log child record creation
+                    savedChargeDtls.forEach(dtl -> {
+                        String logDetail = String.format("Row Created on Charge Detail with detRowId: %s", dtl.getDetRowId());
+                        loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
+                    });
                 }
                 case "MTA RFQ" -> {
                     var savedItemDtls = glPettyCashItemDtlRepository.saveAll(mapItemDtls(requestDto, hdrPoid));
                     itemDtls = mapItemResponse(savedItemDtls);
+                    
+                    // Log child record creation
+                    savedItemDtls.forEach(dtl -> {
+                        String logDetail = String.format("Row Created on Item Detail with detRowId: %s", dtl.getDetRowId());
+                        loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
+                    });
                 }
                 default -> throw new IllegalArgumentException("Invalid RefType: " + refType);
             }
@@ -304,6 +324,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                 }
             }
 
+            // Logging for create operation
+            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), savedHeader.getTransactionPoid().toString());
             return mapToResponseDto(savedHeader, paymentDtls, chargeDtls, itemDtls);
 
         } catch (Exception e) {
@@ -415,39 +437,38 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     // Only process "ISCREATED", skip "NOCHANGES" and "ISDELETED" in CREATE
                     return "ISCREATED".equals(actionType);
                 })
-                .map(dtl -> GLPettyCashItemDtl.builder()
-                        .transactionPoid(hdrPoid)
-                        .detRowId(dtl.getDetRowId())
-                        .poQty(dtl.getPoQty())
-                        .dnQty(dtl.getDnQty())
-                        .qtyReceived(dtl.getQtyReceived())
-                        .price(dtl.getPrice())
-                        .discount(dtl.getDiscount())
-                        .total(dtl.getTotal())
-                        .remarks(dtl.getRemarks())
-                        .refDocId(dtl.getRefDocId())
-                        .refDocPoid(dtl.getRefDocPoid())
-                        .checkAll(dtl.getCheckAll())
-                        .refDetRowId(dtl.getRefDetRowId())
-                        .vatPartyName(dtl.getVatPartyName())
-                        .partyInvNumber(dtl.getPartyInvNumber())
-                        .partyInvDate(dtl.getPartyInvDate())
-                        .taxPoid(dtl.getTaxPoid())
+                .<GLPettyCashItemDtl>map(dtl -> {
+                    GLPettyCashItemDtl.GLPettyCashItemDtlBuilder builder = GLPettyCashItemDtl.builder()
+                            .transactionPoid(hdrPoid)
+                            .detRowId(dtl.getDetRowId())
+                            .poQty(dtl.getPoQty())
+                            .dnQty(dtl.getDnQty())
+                            .qtyReceived(dtl.getQtyReceived())
+                            .price(dtl.getPrice())
+                            .discount(dtl.getDiscount())
+                            .total(dtl.getTotal())
+                            .remarks(dtl.getRemarks())
+                            .refDocId(dtl.getRefDocId())
+                            .refDocPoid(dtl.getRefDocPoid())
+                            .checkAll(dtl.getCheckAll())
+                            .refDetRowId(dtl.getRefDetRowId())
+                            .vatPartyName(dtl.getVatPartyName())
+                            .partyInvNumber(dtl.getPartyInvNumber())
+                            .partyInvDate(dtl.getPartyInvDate())
+                            .taxPoid(dtl.getTaxPoid())
+                            .createdBy(getCurrentUser())
+                            .createdDate(LocalDateTime.now())
+                            .lastModifiedBy(getCurrentUser())
+                            .lastModifiedDate(LocalDateTime.now());
 
-                        // Relationships (if needed)
-                        .stockMaster(dtl.getStockPoid() != null ?
-                                StockMasterEntity.builder()
-                                        .stockPoid(dtl.getStockPoid())
-                                        .build() : null)
-                        .stockUnitMaster(dtl.getStockUnitPoid() != null ?
-                                UnitMaster.builder()
-                                        .unitPoid(dtl.getStockUnitPoid())
-                                        .build() : null)
-                        .createdBy(getCurrentUser())
-                        .createdDate(LocalDateTime.now())
-                        .lastModifiedBy(getCurrentUser())
-                        .lastModifiedDate(LocalDateTime.now())
-                        .build())
+                    GLPettyCashItemDtl entity = builder.build();
+
+                    // Set stockPoid and stockUnitPoid directly on the entity
+                    entity.setStockPoid(dtl.getStockPoid());
+                    entity.setStockUnitPoid(dtl.getStockUnitPoid());
+
+                    return entity;
+                })
                 .collect(Collectors.toList());
     }
 
@@ -625,7 +646,25 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                                 });
                     }
 
-                    return builder.build();
+                    GlPettyCashPaymentDtlResponseDto responseDto = builder.build();
+
+                    // Fetch and set taxPoidDtl if taxPoid exists
+                    if (dtl.getTaxPoid() != null) {
+                        taxMasterRepository.findByTaxPoid(dtl.getTaxPoid())
+                                .ifPresent(tax -> {
+                                    DetailsDto taxDetails = new DetailsDto(
+                                            tax.getTaxPoid(),
+                                            tax.getTaxCode(),
+                                            tax.getTaxName(),
+                                            tax.getGroupPoid(),
+                                            tax.getTaxName2(),
+                                            tax.getSeqNo()
+                                    );
+                                    responseDto.setTaxPoidDtl(taxDetails);
+                                });
+                    }
+
+                    return responseDto;
                 })
                 .toList();
     }
@@ -673,7 +712,25 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                                 });
                     }
 
-                    return builder.build();
+                    GlPettyCashChargeDtlResponseDto responseDto = builder.build();
+
+                    // Fetch and set taxPoidDtl if taxPoid exists
+                    if (dtl.getTaxPoid() != null) {
+                        taxMasterRepository.findByTaxPoid(dtl.getTaxPoid())
+                                .ifPresent(tax -> {
+                                    DetailsDto taxDetails = new DetailsDto(
+                                            tax.getTaxPoid(),
+                                            tax.getTaxCode(),
+                                            tax.getTaxName(),
+                                            tax.getGroupPoid(),
+                                            tax.getTaxName2(),
+                                            tax.getSeqNo()
+                                    );
+                                    responseDto.setTaxPoidDtl(taxDetails);
+                                });
+                    }
+
+                    return responseDto;
                 })
                 .toList();
     }
@@ -685,8 +742,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                             GLPettyCashItemDtlResponseDto.builder()
                                     .transactionPoid(dtl.getTransactionPoid())
                                     .detRowId(dtl.getDetRowId())
-                                    .stockPoid(dtl.getStockMaster() != null ? dtl.getStockMaster().getStockPoid() : null)
-                                    .stockUnitPoid(dtl.getStockUnitMaster() != null ? dtl.getStockUnitMaster().getUnitPoid() : null)
+                                    .stockPoid(dtl.getStockPoid())
+                                    .stockUnitPoid(dtl.getStockUnitPoid())
                                     .poQty(dtl.getPoQty())
                                     .dnQty(dtl.getDnQty())
                                     .qtyReceived(dtl.getQtyReceived())
@@ -707,8 +764,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                                     .partyInvDate(dtl.getPartyInvDate())
                                     .taxPoid(dtl.getTaxPoid());
 
-                    if (dtl.getStockMaster() != null && dtl.getStockMaster().getStockPoid() != null) {
-                        stockMasterRepository.findByStockPoid(dtl.getStockMaster().getStockPoid())
+                    if (dtl.getStockPoid() != null) {
+                        stockMasterRepository.findByStockPoid(dtl.getStockPoid())
                                 .ifPresent(stock -> {
                                     DetailsDto stockDetails = new DetailsDto(
                                             stock.getStockPoid(),
@@ -722,9 +779,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                                 });
                     }
 
-
-                    if (dtl.getStockUnitMaster() != null && dtl.getStockUnitMaster().getUnitPoid() != null) {
-                        unitMasterRepository.findByUnitPoid(dtl.getStockUnitMaster().getUnitPoid())
+                    if (dtl.getStockUnitPoid() != null) {
+                        unitMasterRepository.findByUnitPoid(dtl.getStockUnitPoid())
                                 .ifPresent(unit -> {
                                     DetailsDto unitDetails = new DetailsDto(
                                             unit.getUnitPoid(),
@@ -738,7 +794,25 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                                 });
                     }
 
-                    return builder.build();
+                    GLPettyCashItemDtlResponseDto responseDto = builder.build();
+
+                    // Fetch and set taxPoidDtl if taxPoid exists
+                    if (dtl.getTaxPoid() != null) {
+                        taxMasterRepository.findByTaxPoid(dtl.getTaxPoid())
+                                .ifPresent(tax -> {
+                                    DetailsDto taxDetails = new DetailsDto(
+                                            tax.getTaxPoid(),
+                                            tax.getTaxCode(),
+                                            tax.getTaxName(),
+                                            tax.getGroupPoid(),
+                                            tax.getTaxName2(),
+                                            tax.getSeqNo()
+                                    );
+                                    responseDto.setTaxPoidDtl(taxDetails);
+                                });
+                    }
+
+                    return responseDto;
                 })
                 .toList();
     }
@@ -752,6 +826,10 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             // Step 1: Fetch existing petty cash header
             GlPettyCashPaymentHdr existingHdr = glPettyCashPaymentHdrRepository.findByTransactionPoid(transactionPoid)
                     .orElseThrow(() -> new RuntimeException("Petty cash not found with ID: " + transactionPoid));
+
+            // Create copy of old entity for logging
+            GlPettyCashPaymentHdr oldEntity = new GlPettyCashPaymentHdr();
+            BeanUtils.copyProperties(existingHdr, oldEntity);
 
             StringBuilder oldRefType = new StringBuilder();
             StringBuilder oldRefPoid = new StringBuilder();
@@ -1002,6 +1080,10 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             }
 
             //  Step 8: Return the final response DTO
+            
+            // Logging for update operation
+            loggingService.logChanges(oldEntity, updatedHdr, GlPettyCashPaymentHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+            
             return mapToResponseDto(updatedHdr, paymentDtls, chargeDtls, itemDtls);
 
         } catch (Exception e) {
@@ -1055,6 +1137,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
         List<GlPettyCashPaymentDtl> toSave = new ArrayList<>();
         List<GlPettyCashPaymentDtl> toDelete = new ArrayList<>();
+        List<LogRequestDto<GlPettyCashPaymentDtl>> logRequests = new ArrayList<>();
+        String documentId = UserContext.getDocumentId();
 
         for (var dto : Optional.ofNullable(requestDto.getGlPettyCashPaymentDtlRequestDtos())
                 .orElse(Collections.emptyList())) {
@@ -1103,6 +1187,11 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     if (existingEntity == null) {
                         throw new RuntimeException("Payment detail not found with detRowId: " + dto.getDetRowId());
                     }
+                    
+                    // Create copy for logging
+                    GlPettyCashPaymentDtl oldEntity = new GlPettyCashPaymentDtl();
+                    BeanUtils.copyProperties(existingEntity, oldEntity);
+                    
                     existingEntity.setType(dto.getType());
                     existingEntity.setCompanyPoid(dto.getCompanyPoid());
                     existingEntity.setDrAmt(dto.getDrAmt());
@@ -1125,6 +1214,10 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                         existingEntity.setChargeMaster(ShipChargeEntity.builder().chargePoid(dto.getChargePoid()).build());
 
                     toSave.add(existingEntity);
+                    
+                    // Add to batch logging
+                    String logDetail = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", hdrPoid, dto.getDetRowId());
+                    logRequests.add(new LogRequestDto<>(oldEntity, existingEntity, GlPettyCashPaymentDtl.class, documentId, hdrPoid.toString(), logDetail));
                     break;
 
                 case "ISDELETED":
@@ -1132,6 +1225,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     GlPettyCashPaymentDtl paymentEntityToDelete = existingMap.get(dto.getDetRowId());
                     if (paymentEntityToDelete != null) {
                         toDelete.add(paymentEntityToDelete);
+                        // Log the deletion
+                        loggingService.logDelete(paymentEntityToDelete, documentId, hdrPoid.toString());
                     }
                     break;
 
@@ -1157,8 +1252,24 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
         if (!toDelete.isEmpty()) {
             glPettyCashPaymentDtlRepository.deleteAll(toDelete);
         }
+        
+        // Save all entities
+        List<GlPettyCashPaymentDtl> savedEntities = glPettyCashPaymentDtlRepository.saveAll(toSave);
+        
+        // Process batch logging for updates
+        if (!logRequests.isEmpty()) {
+            loggingService.createLogBatch(logRequests);
+        }
+        
+        // Log creation for new records
+        savedEntities.stream()
+            .filter(entity -> entity.getCreatedDate() != null && entity.getCreatedDate().isAfter(LocalDateTime.now().minusMinutes(1)))
+            .forEach(entity -> {
+                String logDetail = String.format("Row Created on Payment Detail with detRowId: %s", entity.getDetRowId());
+                loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
+            });
 
-        return toSave;
+        return savedEntities;
     }
 
     private List<GlPettyCashChargeDtl> mergeChargeDtls(List<GlPettyCashChargeDtl> existing,
@@ -1169,6 +1280,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
         List<GlPettyCashChargeDtl> toSave = new ArrayList<>();
         List<GlPettyCashChargeDtl> toDelete = new ArrayList<>();
+        List<LogRequestDto<GlPettyCashChargeDtl>> logRequests = new ArrayList<>();
+        String documentId = UserContext.getDocumentId();
 
         for (var dto : Optional.ofNullable(requestDto.getGlPettyCashChargeDtlRequestDtos())
                 .orElse(Collections.emptyList())) {
@@ -1216,6 +1329,11 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     if (existingEntity == null) {
                         throw new RuntimeException("Charge detail not found with detRowId: " + dto.getDetRowId());
                     }
+                    
+                    // Create copy for logging
+                    GlPettyCashChargeDtl oldEntity = new GlPettyCashChargeDtl();
+                    BeanUtils.copyProperties(existingEntity, oldEntity);
+                    
                     existingEntity.setDescription(dto.getDescription());
                     existingEntity.setRemarks(dto.getRemarks());
                     existingEntity.setChargeAmount(dto.getChargeAmount());
@@ -1237,6 +1355,10 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                         existingEntity.setShipChargeMaster(ShipChargeEntity.builder().chargePoid(dto.getChargePoid()).build());
 
                     toSave.add(existingEntity);
+                    
+                    // Add to batch logging
+                    String logDetail = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", hdrPoid, dto.getDetRowId());
+                    logRequests.add(new LogRequestDto<>(oldEntity, existingEntity, GlPettyCashChargeDtl.class, documentId, hdrPoid.toString(), logDetail));
                     break;
 
                 case "ISDELETED":
@@ -1244,6 +1366,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     GlPettyCashChargeDtl chargeEntityToDelete = existingMap.get(dto.getDetRowId());
                     if (chargeEntityToDelete != null) {
                         toDelete.add(chargeEntityToDelete);
+                        // Log the deletion
+                        loggingService.logDelete(chargeEntityToDelete, documentId, hdrPoid.toString());
                     }
                     break;
 
@@ -1269,8 +1393,24 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
         if (!toDelete.isEmpty()) {
             glPettyCashChargeDtlRepository.deleteAll(toDelete);
         }
+        
+        // Save all entities
+        List<GlPettyCashChargeDtl> savedEntities = glPettyCashChargeDtlRepository.saveAll(toSave);
+        
+        // Process batch logging for updates
+        if (!logRequests.isEmpty()) {
+            loggingService.createLogBatch(logRequests);
+        }
+        
+        // Log creation for new records
+        savedEntities.stream()
+            .filter(entity -> entity.getCreatedDate() != null && entity.getCreatedDate().isAfter(LocalDateTime.now().minusMinutes(1)))
+            .forEach(entity -> {
+                String logDetail = String.format("Row Created on Charge Detail with detRowId: %s", entity.getDetRowId());
+                loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
+            });
 
-        return toSave;
+        return savedEntities;
     }
 
     private List<GLPettyCashItemDtl> mergeItemDtls(List<GLPettyCashItemDtl> existing,
@@ -1281,6 +1421,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
         List<GLPettyCashItemDtl> toSave = new ArrayList<>();
         List<GLPettyCashItemDtl> toDelete = new ArrayList<>();
+        List<LogRequestDto<GLPettyCashItemDtl>> logRequests = new ArrayList<>();
+        String documentId = UserContext.getDocumentId();
 
         for (var dto : Optional.ofNullable(requestDto.getGlPettyCashItemDtlRequestDtos())
                 .orElse(Collections.emptyList())) {
@@ -1317,10 +1459,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     newEntity.setLastModifiedBy(getCurrentUser());
                     newEntity.setLastModifiedDate(LocalDateTime.now());
 
-                    if (dto.getStockPoid() != null)
-                        newEntity.setStockMaster(StockMasterEntity.builder().stockPoid(dto.getStockPoid()).build());
-                    if (dto.getStockUnitPoid() != null)
-                        newEntity.setStockUnitMaster(UnitMaster.builder().unitPoid(dto.getStockUnitPoid()).build());
+                    newEntity.setStockPoid(dto.getStockPoid());
+                    newEntity.setStockUnitPoid(dto.getStockUnitPoid());
 
                     toSave.add(newEntity);
                     break;
@@ -1331,6 +1471,11 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     if (existingEntity == null) {
                         throw new RuntimeException("Item detail not found with detRowId: " + dto.getDetRowId());
                     }
+                    
+                    // Create copy for logging
+                    GLPettyCashItemDtl oldEntity = new GLPettyCashItemDtl();
+                    BeanUtils.copyProperties(existingEntity, oldEntity);
+                    
                     existingEntity.setPoQty(dto.getPoQty());
                     existingEntity.setDnQty(dto.getDnQty());
                     existingEntity.setQtyReceived(dto.getQtyReceived());
@@ -1349,12 +1494,14 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     existingEntity.setLastModifiedBy(getCurrentUser());
                     existingEntity.setLastModifiedDate(LocalDateTime.now());
 
-                    if (dto.getStockPoid() != null)
-                        existingEntity.setStockMaster(StockMasterEntity.builder().stockPoid(dto.getStockPoid()).build());
-                    if (dto.getStockUnitPoid() != null)
-                        existingEntity.setStockUnitMaster(UnitMaster.builder().unitPoid(dto.getStockUnitPoid()).build());
+                    existingEntity.setStockPoid(dto.getStockPoid());
+                    existingEntity.setStockUnitPoid(dto.getStockUnitPoid());
 
                     toSave.add(existingEntity);
+                    
+                    // Add to batch logging
+                    String logDetail = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", hdrPoid, dto.getDetRowId());
+                    logRequests.add(new LogRequestDto<>(oldEntity, existingEntity, GLPettyCashItemDtl.class, documentId, hdrPoid.toString(), logDetail));
                     break;
 
                 case "ISDELETED":
@@ -1362,6 +1509,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     GLPettyCashItemDtl entityToDelete = existingMap.get(dto.getDetRowId());
                     if (entityToDelete != null) {
                         toDelete.add(entityToDelete);
+                        // Log the deletion
+                        loggingService.logDelete(entityToDelete, documentId, hdrPoid.toString());
                     }
                     break;
 
@@ -1387,8 +1536,24 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
         if (!toDelete.isEmpty()) {
             glPettyCashItemDtlRepository.deleteAll(toDelete);
         }
+        
+        // Save all entities
+        List<GLPettyCashItemDtl> savedEntities = glPettyCashItemDtlRepository.saveAll(toSave);
+        
+        // Process batch logging for updates
+        if (!logRequests.isEmpty()) {
+            loggingService.createLogBatch(logRequests);
+        }
+        
+        // Log creation for new records
+        savedEntities.stream()
+            .filter(entity -> entity.getCreatedDate() != null && entity.getCreatedDate().isAfter(LocalDateTime.now().minusMinutes(1)))
+            .forEach(entity -> {
+                String logDetail = String.format("Row Created on Item Detail with detRowId: %s", entity.getDetRowId());
+                loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
+            });
 
-        return toSave;
+        return savedEntities;
     }
 
 

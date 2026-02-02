@@ -1,5 +1,6 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.annotation.AuditIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,12 +21,14 @@ public class GLPaymentDetailsEntity {
 
     @Id
     @Column(name = "GL_POID", nullable = false)
+    @AuditIgnore
     private Long glPoid;
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "pymtDtlSeq")
     @SequenceGenerator(name = "pymtDtlSeq", sequenceName = "SEQ_GL_MASTER_PYMT_DTL", allocationSize = 1)
     @Column(name = "DET_ROW_ID", nullable = false)
+    @AuditIgnore
     private Long id;
 
     @Column(name = "BANK", length = 100)
@@ -68,6 +71,7 @@ public class GLPaymentDetailsEntity {
     private String intermediaryOth;
 
     @Column(name = "SPECIAL_INSTRUCTION", length = 250)
+    @AuditIgnore
     private String specialInstruction;
 
     @Column(name = "INTERMEDIARY_COUNTRY_POID")
@@ -80,21 +84,27 @@ public class GLPaymentDetailsEntity {
     private String active;
 
     @Column(name = "DEFAULTS", length = 1)
+    @AuditIgnore
     private String defaults;
 
     @Column(name = "CREATED_BY", length = 20)
+    @AuditIgnore
     private String createdBy;
 
     @Column(name = "CREATED_DATE")
+    @AuditIgnore
     private LocalDateTime createdDate;
 
     @Column(name = "LASTMODIFIED_BY", length = 20)
+    @AuditIgnore
     private String lastModifiedBy;
 
     @Column(name = "LASTMODIFIED_DATE")
+    @AuditIgnore
     private LocalDateTime lastModifiedDate;
 
     @Column(name = "REMARKS", length = 250)
+    @AuditIgnore
     private String remarks;
 
     @ManyToOne(fetch = FetchType.LAZY)

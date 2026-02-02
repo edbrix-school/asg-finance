@@ -6,6 +6,8 @@ import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.finance.dto.AssetInformationMasterRequest;
 import com.asg.finance.dto.AssetInformationMasterResponse;
 import com.asg.common.lib.dto.FilterRequestDto;
@@ -18,6 +20,7 @@ import com.asg.finance.utility.DatabaseErrorHandler;
 import com.asg.common.lib.utility.PaginationUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -40,6 +43,7 @@ public class AssetInformationServiceImpl implements AssetInformationService {
 
     private final AssetInformationRepository repository;
     private final DocumentSearchService documentService;
+    private final LoggingService loggingService;
     private final DocumentDeleteService documentDeleteService;
 
     @Override
@@ -89,6 +93,11 @@ public class AssetInformationServiceImpl implements AssetInformationService {
 
         try {
             AssetInformationMasterEntity savedEntity = repository.save(entity);
+            
+            // Log the creation
+            String key = savedEntity.getIaPoid().toString();
+            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), key);
+            
             return mapToResponse(savedEntity);
         } catch (DataAccessException ex) {
             log.error("Database error while creating asset information", ex);
@@ -105,6 +114,10 @@ public class AssetInformationServiceImpl implements AssetInformationService {
     public AssetInformationMasterResponse updateAssetInformation(Long iaPoid, AssetInformationMasterRequest request) {
         AssetInformationMasterEntity existing = repository.findByIaPoid(iaPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Information Asset Master", "iaPoid", iaPoid));
+
+        // Create a copy of the existing entity for logging
+        AssetInformationMasterEntity oldEntity = new AssetInformationMasterEntity();
+        BeanUtils.copyProperties(existing, oldEntity);
 
         // Only validate uniqueness if the values have changed
         if (request.getIaCode() != null && !request.getIaCode().equals(existing.getIaCode()) &&
@@ -148,6 +161,12 @@ public class AssetInformationServiceImpl implements AssetInformationService {
         try {
             // No need to call save() as the entity is already managed by JPA
             // The changes will be persisted automatically at the end of the transaction
+            
+            // Log the update
+            String key = existing.getIaPoid().toString();
+            loggingService.logChanges(oldEntity, existing, AssetInformationMasterEntity.class,
+                    UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "IA_POID");
+            
             return mapToResponse(existing);
         } catch (DataAccessException ex) {
             log.error("Database error while updating asset information", ex);
@@ -275,7 +294,7 @@ public class AssetInformationServiceImpl implements AssetInformationService {
 
             documentDeleteService.deleteDocument(
                     iaPoid,
-                    "ASSET_INFORMATION_MASTER",
+                    "INFORMATION_ASSET_MASTER",
                     "IA_POID",
                     deleteReasonDto,
                     null

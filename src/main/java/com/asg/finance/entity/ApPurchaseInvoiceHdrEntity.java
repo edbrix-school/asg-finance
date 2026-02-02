@@ -1,11 +1,12 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.annotation.AuditIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 @Data
 @Entity
@@ -13,13 +14,16 @@ import java.time.LocalDateTime;
 public class ApPurchaseInvoiceHdrEntity {
 
     @Id
+    @AuditIgnore
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "TRANSACTION_POID")
     private Long transactionPoid;
 
+    @AuditIgnore
     @Column(name = "TRANSACTION_DATE")
     private LocalDate transactionDate;
 
+    @AuditIgnore
     @Column(name = "GROUP_POID")
     private Long groupPoid;
 
@@ -29,36 +33,43 @@ public class ApPurchaseInvoiceHdrEntity {
     @Column(name = "PO_REF")
     private String poRef;
 
+    @AuditIgnore
     @Column(name = "FDA_REF")
     private String fdaRef;
 
+    @AuditIgnore
     @Column(name = "FF_REF")
     private String ffRef;
 
+    @AuditIgnore
     @Column(name = "SHIP_REF")
     private String shipRef;
 
+    @AuditIgnore
     @Column(name = "COMPANY_POID")
     private Long companyPoid;
 
     @Column(name = "CURRENCY_CODE")
     private String currencyCode;
 
-    @Column(name = "CURRENCY_RATE")
-    private Long currencyRate;
+    @Column(name = "CURRENCY_RATE", precision = 10, scale = 3)
+    private BigDecimal currencyRate;
 
     @Column(name = "SUPPLIER_POID")
     private Long supplierPoid;
 
+    @AuditIgnore
     @Column(name = "LOCATION_POID")
     private Long locationPoid;
 
     @Column(name = "SUB_TOTAL")
     private Long subTotal;
 
+    @AuditIgnore
     @Column(name = "DISCOUNT")
     private Long discount;
 
+    @AuditIgnore
     @Column(name = "EXPENSE_BY_SUPPLIER")
     private Long expenseBySupplier;
 
@@ -68,33 +79,41 @@ public class ApPurchaseInvoiceHdrEntity {
     @Column(name = "REMARKS")
     private String remarks;
 
+    @AuditIgnore
     @Column(name = "CREATED_BY")
     private String createdBy;
 
+    @AuditIgnore
     @Column(name = "CREATED_DATE")
     private LocalDateTime createdDate; // TIMESTAMP
 
+    @AuditIgnore
     @Column(name = "LASTMODIFIED_BY")
     private String lastModifiedBy;
 
+    @AuditIgnore
     @Column(name = "LASTMODIFIED_DATE")
     private LocalDateTime lastModifiedDate; // TIMESTAMP
 
     @Column(name = "DELETED")
     private String deleted;
 
+    @AuditIgnore
     @Column(name = "ITEM_TOTAL")
     private Long itemTotal;
 
+    @AuditIgnore
     @Column(name = "CHARGE_TOTAL")
     private Long chargeTotal;
 
+    @AuditIgnore
     @Column(name = "GL_TOTAL")
     private Long glTotal;
 
     @Column(name = "TYPE")
     private String type;
 
+    @AuditIgnore
     @Column(name = "DESCRIPTION")
     private String description;
 
@@ -104,15 +123,18 @@ public class ApPurchaseInvoiceHdrEntity {
     @Column(name = "DUE_DATE")
     private LocalDate dueDate; // DATE
 
+    @AuditIgnore
     @Column(name = "INVNO_OLD")
     private String invnoOld;
 
+    @AuditIgnore
     @Column(name = "MODCODE_OLD")
     private String modcodeOld;
 
     @Column(name = "REF_TYPE")
     private String refType;
 
+    @AuditIgnore
     @Column(name = "SALES_QTN_POID")
     private String salesQtnPoid;
 
@@ -131,14 +153,15 @@ public class ApPurchaseInvoiceHdrEntity {
     @Column(name = "MTA_REF")
     private String mtaRef;
 
+    @AuditIgnore
     @Column(name = "MULTI_COMPANY")
     private String multiCompany;
 
-    @Column(name = "BHD_AMOUNT")
-    private Long bhdAmount;
+    @Column(name = "BHD_AMOUNT", precision = 15, scale = 3)
+    private BigDecimal bhdAmount;
 
-    @Column(name = "SUPPLIER_INV_AMOUNT")
-    private Long supplierInvAmount;
+    @Column(name = "SUPPLIER_INV_AMOUNT", precision = 15, scale = 3)
+    private BigDecimal supplierInvAmount;
 
     @Column(name = "ROUNDING_AMOUNT")
     private Long roundingAmount;
@@ -155,12 +178,15 @@ public class ApPurchaseInvoiceHdrEntity {
     @Column(name = "GRN_SUPPLIER_POID")
     private Long grnSupplierPoid;
 
+    @AuditIgnore
     @Column(name = "PARTY_TIN_NUMBER")
     private String partyTinNumber;
 
+    @AuditIgnore
     @Column(name = "PAID_AGAINST")
     private String paidAgainst;
 
+    @AuditIgnore
     @Column(name = "FDA_COVERING_REF")
     private String fdaCoveringRef;
 }

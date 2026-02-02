@@ -16,7 +16,11 @@ import com.asg.finance.repository.PropertyCostCenterRepository;
 import com.asg.finance.repository.PropertyCostCenterTreeViewRepository;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.finance.service.IPropertyCostCenterService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.security.util.UserContext;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.asg.common.lib.utility.ASGHelperUtils.getCurrentUser;
 
@@ -42,6 +47,9 @@ public class PropertyCostCenterServiceImpl implements IPropertyCostCenterService
 
     @Autowired
     private LovDataService lovService;
+
+    @Autowired
+    private LoggingService loggingService;
 
     @Autowired
     private DocumentDeleteService documentDeleteService;
@@ -89,6 +97,10 @@ public class PropertyCostCenterServiceImpl implements IPropertyCostCenterService
         costCenter.setLastModifiedDate(LocalDateTime.now());
 
         PropertyCostCenter saved = repository.save(costCenter);
+        
+        // Logging for create operation
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), saved.getPropertyCostCenterPoid().toString());
+        
         return convertEntityToResponseDTO(saved);
     }
 
@@ -151,6 +163,10 @@ public class PropertyCostCenterServiceImpl implements IPropertyCostCenterService
         PropertyCostCenter entity = repository.findByPropertyCostCenterPoidAndDeleted(costCenterPoid, "N")
                 .orElseThrow(() -> new ResourceNotFoundException("Property Cost Center", "POID", costCenterPoid));
 
+        // Create a copy of the existing entity for logging
+        PropertyCostCenter oldEntity = new PropertyCostCenter();
+        BeanUtils.copyProperties(entity, oldEntity);
+
         validatePropertyType(request);
 
         if (request.getPropertyCostCenterName() != null) {
@@ -174,6 +190,9 @@ public class PropertyCostCenterServiceImpl implements IPropertyCostCenterService
         entity.setLastModifiedBy(getCurrentUser());
         entity.setLastModifiedDate(LocalDateTime.now());
         entity = repository.save(entity);
+
+        // Logging for update operation
+        loggingService.logChanges(oldEntity, entity, PropertyCostCenter.class, UserContext.getDocumentId(), entity.getPropertyCostCenterPoid().toString(), LogDetailsEnum.MODIFIED, "PROPERTY_COST_CENTER_POID");
 
         return convertEntityToResponseDTO(entity);
     }
@@ -364,10 +383,10 @@ public class PropertyCostCenterServiceImpl implements IPropertyCostCenterService
 
     // List functionality implementation
     @Override
-    public List<PropertyCostCenterResponse> getPropertyCostCenterList(String documentId, String actionRequested, Long parentPoid) {
+    public List<PropertyCostCenterResponse> getPropertyCostCenterList(String documentId, String actionRequested, Long parentPoid,String sort) {
         try {
-            log.info("Fetching Property Cost Center list for documentId: {}, actionRequested: {}, parentPoid: {}",
-                    documentId, actionRequested, parentPoid);
+            log.info("Fetching Property Cost Center list for documentId: {}, actionRequested: {}, parentPoid: {}, sort: {}",
+                    documentId, actionRequested, parentPoid, sort);
 
             // Get data directly from database using repository
             List<PropertyCostCenter> entities;
@@ -388,7 +407,7 @@ public class PropertyCostCenterServiceImpl implements IPropertyCostCenterService
             }
 
             // Convert entities to list items
-            List<PropertyCostCenterResponse> listItems = convertEntitiesToListItems(entities);
+            List<PropertyCostCenterResponse> listItems = convertEntitiesToListItems(entities, sort);
 
             log.info("Successfully retrieved Property Cost Center list with {} items for parentPoid: {}", listItems.size(), parentPoid);
             return listItems;
@@ -402,18 +421,17 @@ public class PropertyCostCenterServiceImpl implements IPropertyCostCenterService
     /**
      * Convert entities to list items
      */
-    private List<PropertyCostCenterResponse> convertEntitiesToListItems(List<PropertyCostCenter> entities) {
-        List<PropertyCostCenterResponse> listItems = new ArrayList<>();
-
-        for (PropertyCostCenter entity : entities) {
-            PropertyCostCenterResponse listItem = convertEntityToListItem(entity);
-            if (listItem != null) {
-                listItems.add(listItem);
-            }
+    private List<PropertyCostCenterResponse> convertEntitiesToListItems(List<PropertyCostCenter> entities, String sort) {
+        List<PropertyCostCenterResponse> listItems = entities.stream()
+                .map(this::convertEntityToListItem)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+        
+        // Apply sorting only if sort parameter is provided
+        if (sort != null && !sort.trim().isEmpty()) {
+            listItems.sort(getSortComparator(sort));
         }
-
-        // Sort the list items (additional sorting beyond repository)
-        sortListItems(listItems);
+        
         return listItems;
     }
 
@@ -458,24 +476,41 @@ public class PropertyCostCenterServiceImpl implements IPropertyCostCenterService
     }
 
     /**
-     * Sort list items by property cost center code (same pattern as Cost Center)
+     * Get sort comparator based on sort parameter
      */
-    private void sortListItems(List<PropertyCostCenterResponse> listItems) {
-        listItems.sort((a, b) -> {
-            // Sort by property cost center code (treat as numbers if possible, otherwise as strings)
-            String codeA = a.getPropertyCostCenterCode() != null ? a.getPropertyCostCenterCode() : "";
-            String codeB = b.getPropertyCostCenterCode() != null ? b.getPropertyCostCenterCode() : "";
+    private Comparator<PropertyCostCenterResponse> getSortComparator(String sort) {
+        String[] sortParts = sort.split(",");
+        String sortField = sortParts[0].trim();
+        boolean ascending = sortParts.length < 2 || "ASC".equalsIgnoreCase(sortParts[1].trim());
 
-            try {
-                // Try to sort as numbers
-                Long numA = Long.parseLong(codeA);
-                Long numB = Long.parseLong(codeB);
-                return numA.compareTo(numB);
-            } catch (NumberFormatException e) {
-                // Fall back to string sorting
-                return codeA.compareTo(codeB);
-            }
-        });
+        Comparator<PropertyCostCenterResponse> comparator;
+        
+        switch (sortField) {
+            case "propertyCostCenterCode":
+                comparator = (a, b) -> {
+                    String codeA = Optional.ofNullable(a.getPropertyCostCenterCode()).orElse("");
+                    String codeB = Optional.ofNullable(b.getPropertyCostCenterCode()).orElse("");
+                    try {
+                        return Long.compare(Long.parseLong(codeA), Long.parseLong(codeB));
+                    } catch (NumberFormatException e) {
+                        return codeA.compareToIgnoreCase(codeB);
+                    }
+                };
+                break;
+            case "propertyCostCenterName":
+                comparator = Comparator.comparing(
+                    item -> Optional.ofNullable(item.getPropertyCostCenterName()).orElse(""),
+                    String.CASE_INSENSITIVE_ORDER
+                );
+                break;
+            default:
+                comparator = Comparator.comparing(
+                    item -> Optional.ofNullable(item.getPropertyCostCenterCode()).orElse(""),
+                    String.CASE_INSENSITIVE_ORDER
+                );
+        }
+        
+        return ascending ? comparator : comparator.reversed();
     }
 
     /**

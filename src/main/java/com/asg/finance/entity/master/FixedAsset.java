@@ -1,5 +1,6 @@
 package com.asg.finance.entity.master;
 
+import com.asg.common.lib.annotation.AuditIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,12 +21,15 @@ public class FixedAsset {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "FA_POID", nullable = false)
+    @AuditIgnore
     private Long faPoid;
 
     @Column(name = "GROUP_POID")
+    @AuditIgnore
     private Long groupPoid;
 
     @Column(name = "FA_CODE", length = 20, unique = true)
+    @AuditIgnore
     private String faCode;
 
     @Column(name = "FA_DESCRIPTION", length = 100)
@@ -48,12 +52,14 @@ public class FixedAsset {
 
     @Lob
     @Column(name = "FA_PHOTO")
+    @AuditIgnore
     private byte[] faPhoto;
 
     @Column(name = "FA_OWNER", length = 100)
     private String faOwner;
 
     @Column(name = "HANDLED_BY", length = 100)
+    @AuditIgnore
     private String handledBy;
 
     @Column(name = "MODEL_NO", length = 100)
@@ -174,15 +180,19 @@ public class FixedAsset {
     private String costCenter;
 
     @Column(name = "CREATED_BY", length = 20)
+    @AuditIgnore
     private String createdBy;
 
     @Column(name = "CREATED_DATE")
+    @AuditIgnore
     private LocalDateTime createdDate;
 
     @Column(name = "LASTMODIFIED_BY", length = 20)
+    @AuditIgnore
     private String lastModifiedBy;
 
     @Column(name = "LASTMODIFIED_DATE")
+    @AuditIgnore
     private LocalDateTime lastModifiedDate;
 
     @Column(name = "ACTIVE", length = 1)
@@ -192,6 +202,7 @@ public class FixedAsset {
     private Integer seqNo;
 
     @Column(name = "DELETED", length = 1)
+    @AuditIgnore
     private String deleted;
 
     @Column(name = "COMPANY_POID")

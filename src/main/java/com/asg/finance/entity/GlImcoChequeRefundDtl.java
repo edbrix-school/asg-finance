@@ -1,6 +1,7 @@
 package com.asg.finance.entity;
 
 
+import com.asg.common.lib.annotation.AuditIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -22,14 +23,17 @@ import java.time.LocalDateTime;
 public class GlImcoChequeRefundDtl {
     
     @Id
+    @AuditIgnore
     @Column(name = "TRANSACTION_POID")
     private Long transactionPoid;
 
     @Id
+    @AuditIgnore
     @Column(name = "DET_ROW_ID")
     private Long detRowId;
     
     @Column(name = "CHO_POID")
+    @AuditIgnore
     private Long choPoid;
     
     @Column(name = "CHO_DATE")
@@ -42,6 +46,7 @@ public class GlImcoChequeRefundDtl {
     private Long refDocPoid;
     
     @Column(name = "PYMT_TYPE")
+    @AuditIgnore
     private String pymtType;
     
     @Column(name = "CHQ_CARDNO")
@@ -54,6 +59,7 @@ public class GlImcoChequeRefundDtl {
     private Long bankPoid;
     
     @Column(name = "ADDRESS_POID")
+    @AuditIgnore
     private Long addressPoid;
     
     @Column(name = "CHQ_AC_NAME")
@@ -66,12 +72,14 @@ public class GlImcoChequeRefundDtl {
     private BigDecimal amount;
     
     @Column(name = "STATUS")
+    @AuditIgnore
     private String status;
     
     @Column(name = "REMARKS")
     private String remarks;
     
     @Column(name = "OLD_RCPVNO")
+    @AuditIgnore
     private String oldRcpvno;
     
     @Column(name = "RCP_DATE")
@@ -81,21 +89,27 @@ public class GlImcoChequeRefundDtl {
     private String refDocRef;
     
     @Column(name = "CHO_DOC_ID")
+    @AuditIgnore
     private String choDocId;
     
     @Column(name = "PAYMENT_MAIN_POID")
+    @AuditIgnore
     private Long paymentMainPoid;
 
     @Column(name = "CREATED_BY")
+    @AuditIgnore
     private String createdBy;
 
     @Column(name = "CREATED_DATE")
+    @AuditIgnore
     private LocalDateTime createdDate;
 
     @Column(name = "LASTMODIFIED_BY")
+    @AuditIgnore
     private String lastModifiedBy;
 
     @Column(name = "LASTMODIFIED_DATE")
+    @AuditIgnore
     private LocalDateTime lastModifiedDate;
 
     @Data

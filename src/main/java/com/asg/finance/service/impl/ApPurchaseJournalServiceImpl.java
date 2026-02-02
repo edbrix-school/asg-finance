@@ -4,12 +4,15 @@ import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
+import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.finance.service.ApPurchaseServiceJournal;
 import com.asg.finance.service.BillwiseBreakupService;
 import com.asg.finance.service.CostCenterBreakupService;
@@ -28,6 +31,7 @@ import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -66,6 +70,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
     private final CostCenterBreakupService costCenterBreakupService;
     private final PrintService printService;
     private final DataSource dataSource;
+    private final LoggingService loggingService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -432,6 +437,10 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         saveAssetDetails(transactionPoid, apPurchaseInvoiceHdrDto);
         saveRjvDetails(transactionPoid, apPurchaseInvoiceHdrDto);
 
+        // Log the creation
+        String key = transactionPoid.toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, documentId, key);
+
         return fetchApPurchaseInvoiceHdr(transactionPoid);
     }
 
@@ -452,11 +461,11 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         for (ApPurchaseInvoiceItemDtlDto d : dto.getItemDtls()) {
             String actionTypeStr = d.getActionType();
             if (actionTypeStr == null || actionTypeStr.trim().isEmpty()) {
-                actionTypeStr = "isCreated";
+                continue;
             }
             String actionType = actionTypeStr.toUpperCase();
 
-            if (!"ISCREATED".equals(actionType)) {
+            if (!"ISCREATED".equalsIgnoreCase(actionType)) {
                 continue;
             }
 
@@ -497,6 +506,10 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         }
 
         apPurchaseInvoiceItemDtlRepository.saveAll(items);
+        items.forEach(e -> {
+            String logDetail = String.format("Row Created on Purchase Item with detRowId: %s", e.getId().getDetRowId());
+            loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString(), logDetail);
+        });
     }
 
     private void saveGlDetails(Long transactionPoid, ApPurchaseInvoiceHdrDto dto) {
@@ -518,11 +531,11 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         for (ApPurchaseInvoiceGlDtlDto g : dto.getGlDtls()) {
             String actionTypeStr = g.getActionType();
             if (actionTypeStr == null || actionTypeStr.trim().isEmpty()) {
-                actionTypeStr = "isCreated";
+                continue;
             }
             String actionType = actionTypeStr.toUpperCase();
 
-            if (!"ISCREATED".equals(actionType)) {
+            if (!"ISCREATED".equalsIgnoreCase(actionType)) {
                 continue;
             }
 
@@ -564,11 +577,11 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                 for (BillwiseBreakupPopupRequestDto popup : g.getBillwiseBreakupList()) {
                     String billActionTypeStr = popup.getActionType();
                     if (billActionTypeStr == null || billActionTypeStr.trim().isEmpty()) {
-                        billActionTypeStr = "isCreated";
+                        continue;
                     }
                     String billActionType = billActionTypeStr.toUpperCase();
 
-                    if (!"ISCREATED".equals(billActionType)) {
+                    if (!"ISCREATED".equalsIgnoreCase(billActionType)) {
                         continue;
                     }
 
@@ -595,11 +608,11 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                 for (CostCenterBreakupPopupRequestDto popup : g.getCostCenterBreakupList()) {
                     String costActionTypeStr = popup.getActionType();
                     if (costActionTypeStr == null || costActionTypeStr.trim().isEmpty()) {
-                        costActionTypeStr = "isCreated";
+                        continue;
                     }
                     String costActionType = costActionTypeStr.toUpperCase();
 
-                    if (!"ISCREATED".equals(costActionType)) {
+                    if (!"ISCREATED".equalsIgnoreCase(costActionType)) {
                         continue;
                     }
 
@@ -620,6 +633,10 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         }
 
         apPurchaseInvoiceGlDtlRepository.saveAll(list);
+        list.forEach(e -> {
+            String logDetail = String.format("Row Created on Purchase GL with detRowId: %s", e.getId().getDetRowId());
+            loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString(), logDetail);
+        });
 
         if (!billwiseList.isEmpty()) {
             billwiseBreakupService.insertBillwiseBreakup(billwiseList);
@@ -646,11 +663,11 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         for (PurchaseInvoiceChargeDtlRequestDto c : dto.getChargeDtls()) {
             String actionTypeStr = c.getActionType();
             if (actionTypeStr == null || actionTypeStr.trim().isEmpty()) {
-                actionTypeStr = "isCreated";
+                continue;
             }
             String actionType = actionTypeStr.toUpperCase();
 
-            if (!"ISCREATED".equals(actionType)) {
+            if (!"ISCREATED".equalsIgnoreCase(actionType)) {
                 continue;
             }
 
@@ -689,6 +706,10 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         }
 
         purchaseInvoiceChargeDtlRepository.saveAll(list);
+        list.forEach(e -> {
+            String logDetail = String.format("Row Created on Purchase Charge with detRowId: %s", e.getId().getDetRowId());
+            loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString(), logDetail);
+        });
     }
 
     private void saveAssetDetails(Long transactionPoid, ApPurchaseInvoiceHdrDto dto) {
@@ -709,11 +730,11 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         for (ApPurchaseInvoiceAssetDtlDto adto : dto.getAssetDtls()) {
             String actionTypeStr = adto.getActionType();
             if (actionTypeStr == null || actionTypeStr.trim().isEmpty()) {
-                actionTypeStr = "isCreated";
+                continue;
             }
             String actionType = actionTypeStr.toUpperCase();
 
-            if (!"ISCREATED".equals(actionType)) {
+            if (!"ISCREATED".equalsIgnoreCase(actionType)) {
                 continue;
             }
 
@@ -740,6 +761,10 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         }
 
         apPurchaseInvoiceAssetDtlRepository.saveAll(entities);
+        entities.forEach(e -> {
+            String logDetail = String.format("Row Created on Asset Detail with detRowId: %s", e.getId().getDetRowId());
+            loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString(), logDetail);
+        });
     }
 
     private void saveRjvDetails(Long transactionPoid, ApPurchaseInvoiceHdrDto dto) {
@@ -760,11 +785,11 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         for (ApPurchaseInvRjvDetailsDto rdto : dto.getRjvDtls()) {
             String actionTypeStr = rdto.getActionType();
             if (actionTypeStr == null || actionTypeStr.trim().isEmpty()) {
-                actionTypeStr = "isCreated";
+                continue;
             }
             String actionType = actionTypeStr.toUpperCase();
 
-            if (!"ISCREATED".equals(actionType)) {
+            if (!"ISCREATED".equalsIgnoreCase(actionType)) {
                 continue;
             }
 
@@ -795,6 +820,10 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         }
 
         apPurchaseInvRjvDetailsRepository.saveAll(entities);
+        entities.forEach(e -> {
+            String logDetail = String.format("Row Created on RJV Details with detRowId: %s", e.getId().getDetRowId());
+            loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString(), logDetail);
+        });
     }
 
     private String getCurrentUser() {
@@ -807,6 +836,10 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         ApPurchaseInvoiceHdrEntity apPurchaseInvoiceHdrEntity = repository.findById(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("ApPurchaseJournal", "transactionPoid", transactionPoid));
 
+        // Create a copy of the existing entity for logging
+
+        ApPurchaseInvoiceHdrEntity oldEntity = new ApPurchaseInvoiceHdrEntity();
+        BeanUtils.copyProperties(apPurchaseInvoiceHdrEntity, oldEntity);
 
         if (apPurchaseInvoiceHdrDto.getTransactionDate() != null)
             apPurchaseInvoiceHdrEntity.setTransactionDate(apPurchaseInvoiceHdrDto.getTransactionDate());
@@ -874,15 +907,22 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
                     List<BillwiseBreakupRequestDto> billwiseList = new ArrayList<>();
                     List<CostCenterBreakupRequestDto> costCenterList = new ArrayList<>();
+                    List<LogRequestDto<ApPurchaseInvoiceGlDtlEntity>> logRequests = new ArrayList<>();
 
                     for (ApPurchaseInvoiceGlDtlDto gdto : apPurchaseInvoiceHdrDto.getGlDtls()) {
                         String actionTypeStr = gdto.getActionType();
                         if (actionTypeStr == null || actionTypeStr.trim().isEmpty()) {
-                            actionTypeStr = "isCreated";
+                            continue;
                         }
                         String actionType = actionTypeStr.toUpperCase();
 
-                        if ("ISDELETED".equals(actionType) || "NOCHANGES".equals(actionType)) {
+                        if ("ISDELETED".equalsIgnoreCase(actionType)) {
+                            apPurchaseInvoiceGlDtlRepository.deleteById(new ApPurchaseInvoiceGlDtlKey(transactionPoid, gdto.getDetRowId()));
+                            loggingService.logDelete(gdto, UserContext.getDocumentId(), transactionPoid.toString());
+
+                            continue;
+                        }
+                        if ("NOCHANGES".equalsIgnoreCase(actionType)) {
                             continue;
                         }
 
@@ -914,16 +954,27 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
                         apPurchaseInvoiceGlDtlRepository.save(glDetails);
 
+                        if ("ISCREATED".equalsIgnoreCase(actionType)) {
+                            String logDetail = String.format("Row Created on Purchase GL with detRowId: %s", useDet);
+                            loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString(), logDetail);
+                        } else if ("ISUPDATED".equalsIgnoreCase(actionType)) {
+                            ApPurchaseInvoiceGlDtlEntity oldGlEntity = apPurchaseInvoiceGlDtlRepository.findById(new ApPurchaseInvoiceGlDtlKey(transactionPoid, useDet)).orElse(null);
+                            if (oldGlEntity != null) {
+                                String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", transactionPoid, useDet);
+                                logRequests.add(new LogRequestDto<>(oldGlEntity, glDetails, ApPurchaseInvoiceGlDtlEntity.class, UserContext.getDocumentId(), transactionPoid.toString(), logDetail));
+                            }
+                        }
+
                         // Process billwise breakup
                         if (gdto.getBillwiseBreakupList() != null && !gdto.getBillwiseBreakupList().isEmpty()) {
                             for (BillwiseBreakupPopupRequestDto popup : gdto.getBillwiseBreakupList()) {
                                 String billActionTypeStr = popup.getActionType();
                                 if (billActionTypeStr == null || billActionTypeStr.trim().isEmpty()) {
-                                    billActionTypeStr = "isCreated";
+                                    continue;
                                 }
                                 String billActionType = billActionTypeStr.toUpperCase();
 
-                                if ("NOCHANGES".equals(billActionType)) {
+                                if ("NOCHANGES".equalsIgnoreCase(billActionType)) {
                                     continue;
                                 }
 
@@ -950,11 +1001,11 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                             for (CostCenterBreakupPopupRequestDto popup : gdto.getCostCenterBreakupList()) {
                                 String costActionTypeStr = popup.getActionType();
                                 if (costActionTypeStr == null || costActionTypeStr.trim().isEmpty()) {
-                                    costActionTypeStr = "isCreated";
+                                    continue;
                                 }
                                 String costActionType = costActionTypeStr.toUpperCase();
 
-                                if ("NOCHANGES".equals(costActionType)) {
+                                if ("NOCHANGES".equalsIgnoreCase(costActionType)) {
                                     continue;
                                 }
 
@@ -980,6 +1031,9 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                     if (!costCenterList.isEmpty()) {
                         costCenterBreakupService.updateCostCenterBreakups(costCenterList, UserContext.getUserPoid());
                     }
+                    if (!logRequests.isEmpty()) {
+                        loggingService.createLogBatch(logRequests);
+                    }
 
                     updateBillwiseForGl(transactionPoid, apPurchaseInvoiceHdrDto.getGlDtls(), "200-103");
                     updateCostCenterForGl(transactionPoid, apPurchaseInvoiceHdrDto.getGlDtls(), "200-103");
@@ -991,6 +1045,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
             case "FF JOBS":
             case "FDA JOBS": {
+                List<LogRequestDto<PurchaseInvoiceChargeDtl>> chargeLogRequests = new ArrayList<>();
 
                 if (apPurchaseInvoiceHdrDto.getChargeDtls() != null
                         && !apPurchaseInvoiceHdrDto.getChargeDtls().isEmpty()) {
@@ -1003,11 +1058,16 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                     for (PurchaseInvoiceChargeDtlRequestDto cdto : apPurchaseInvoiceHdrDto.getChargeDtls()) {
                         String actionTypeStr = cdto.getActionType();
                         if (actionTypeStr == null || actionTypeStr.trim().isEmpty()) {
-                            actionTypeStr = "isCreated";
+                            continue;
                         }
                         String actionType = actionTypeStr.toUpperCase();
 
-                        if ("ISDELETED".equals(actionType) || "NOCHANGES".equals(actionType)) {
+                        if ("ISDELETED".equalsIgnoreCase(actionType)) {
+                            purchaseInvoiceChargeDtlRepository.deleteById(new PurchaseInvoiceChargeDtlId(transactionPoid, cdto.getDetRowId()));
+                            loggingService.logDelete(cdto, UserContext.getDocumentId(), transactionPoid.toString());
+                            continue;
+                        }
+                        if ("NOCHANGES".equalsIgnoreCase(actionType)) {
                             continue;
                         }
 
@@ -1043,13 +1103,29 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                                     ShipChargeEntity.builder().chargePoid(cdto.getChargePoid()).build());
                         }
                         purchaseInvoiceChargeDtlRepository.save(entity);
+
+                        if ("ISCREATED".equalsIgnoreCase(actionType)) {
+                            String logDetail = String.format("Row Created on Purchase Charge with detRowId: %s", useDet);
+                            loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString(), logDetail);
+                        } else if ("ISUPDATED".equalsIgnoreCase(actionType)) {
+                            PurchaseInvoiceChargeDtl oldChargeEntity = purchaseInvoiceChargeDtlRepository.findById(new PurchaseInvoiceChargeDtlId(transactionPoid, useDet)).orElse(null);
+                            if (oldChargeEntity != null) {
+                                String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", transactionPoid, useDet);
+                                chargeLogRequests.add(new LogRequestDto<>(oldChargeEntity, entity, PurchaseInvoiceChargeDtl.class, UserContext.getDocumentId(), transactionPoid.toString(), logDetail));
+                            }
+                        }
                     }
+                }
+
+                if (!chargeLogRequests.isEmpty()) {
+                    loggingService.createLogBatch(chargeLogRequests);
                 }
 
                 break;
             }
 
             case "MTA PO": {
+                List<LogRequestDto<ApPurchaseInvoiceItemDtlEntity>> itemLogRequests = new ArrayList<>();
 
                 if (apPurchaseInvoiceHdrDto.getItemDtls() != null && !apPurchaseInvoiceHdrDto.getItemDtls().isEmpty()) {
 
@@ -1059,11 +1135,16 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                     for (ApPurchaseInvoiceItemDtlDto idto : apPurchaseInvoiceHdrDto.getItemDtls()) {
                         String actionTypeStr = idto.getActionType();
                         if (actionTypeStr == null || actionTypeStr.trim().isEmpty()) {
-                            actionTypeStr = "isCreated";
+                            continue;
                         }
                         String actionType = actionTypeStr.toUpperCase();
 
-                        if ("ISDELETED".equals(actionType) || "NOCHANGES".equals(actionType)) {
+                        if ("ISDELETED".equalsIgnoreCase(actionType)) {
+                            apPurchaseInvoiceItemDtlRepository.deleteById(new ApPurchaseInvoiceItemDtlKey(transactionPoid, idto.getDetRowId()));
+                            loggingService.logDelete(idto, UserContext.getDocumentId(), transactionPoid.toString());
+                            continue;
+                        }
+                        if ("NOCHANGES".equalsIgnoreCase(actionType)) {
                             continue;
                         }
 
@@ -1098,7 +1179,22 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                         item.setBaseAmount(idto.getBaseAmount());
 
                         apPurchaseInvoiceItemDtlRepository.save(item);
+
+                        if ("ISCREATED".equalsIgnoreCase(actionType)) {
+                            String logDetail = String.format("Row Created on Purchase Item with detRowId: %s", useDet);
+                            loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString(), logDetail);
+                        } else if ("ISUPDATED".equalsIgnoreCase(actionType)) {
+                            ApPurchaseInvoiceItemDtlEntity oldItemEntity = apPurchaseInvoiceItemDtlRepository.findById(new ApPurchaseInvoiceItemDtlKey(transactionPoid, useDet)).orElse(null);
+                            if (oldItemEntity != null) {
+                                String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", transactionPoid, useDet);
+                                itemLogRequests.add(new LogRequestDto<>(oldItemEntity, item, ApPurchaseInvoiceItemDtlEntity.class, UserContext.getDocumentId(), transactionPoid.toString(), logDetail));
+                            }
+                        }
                     }
+                }
+
+                if (!itemLogRequests.isEmpty()) {
+                    loggingService.createLogBatch(itemLogRequests);
                 }
 
                 break;
@@ -1109,6 +1205,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                 break;
         }
 
+        List<LogRequestDto<ApPurchaseInvoiceAssetDtlEntity>> assetLogRequests = new ArrayList<>();
         if (apPurchaseInvoiceHdrDto.getAssetDtls() != null && !apPurchaseInvoiceHdrDto.getAssetDtls().isEmpty()) {
 
             Long maxAssetDet = apPurchaseInvoiceAssetDtlRepository.findMaxDetRowIdByTransactionPoid(transactionPoid);
@@ -1117,12 +1214,17 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
             for (ApPurchaseInvoiceAssetDtlDto adto : apPurchaseInvoiceHdrDto.getAssetDtls()) {
                 String actionTypeStr = adto.getActionType();
                 if (actionTypeStr == null || actionTypeStr.trim().isEmpty()) {
-                    actionTypeStr = "isCreated";
+                    continue;
                 }
                 String actionType = actionTypeStr.toUpperCase();
 
-                if ("ISDELETED".equals(actionType) || "NOCHANGES".equals(actionType)) {
+                if ("ISDELETED".equalsIgnoreCase(actionType)) {
+                    apPurchaseInvoiceItemDtlRepository.deleteById(new ApPurchaseInvoiceItemDtlKey(transactionPoid, adto.getDetRowId()));
+                    loggingService.logDelete(adto, UserContext.getDocumentId(), transactionPoid.toString());
                     continue;
+                }
+                if ("NOCHANGES".equalsIgnoreCase(actionType)) {
+                continue;
                 }
 
                 ApPurchaseInvoiceAssetDtlEntity asset = new ApPurchaseInvoiceAssetDtlEntity();
@@ -1144,10 +1246,26 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                 asset.setLastModifiedDate(LocalDateTime.now());
 
                 apPurchaseInvoiceAssetDtlRepository.save(asset);
+
+                if ("ISCREATED".equalsIgnoreCase(actionType)) {
+                    String logDetail = String.format("Row Created on Asset Detail with detRowId: %s", useDet);
+                    loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString(), logDetail);
+                } else if ("ISUPDATED".equalsIgnoreCase(actionType)) {
+                    ApPurchaseInvoiceAssetDtlEntity oldAssetEntity = apPurchaseInvoiceAssetDtlRepository.findById(new ApPurchaseInvoiceAssetDtlKey(transactionPoid, useDet)).orElse(null);
+                    if (oldAssetEntity != null) {
+                        String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", transactionPoid, useDet);
+                        assetLogRequests.add(new LogRequestDto<>(oldAssetEntity, asset, ApPurchaseInvoiceAssetDtlEntity.class, UserContext.getDocumentId(), transactionPoid.toString(), logDetail));
+                    }
+                }
             }
         }
 
+        if (!assetLogRequests.isEmpty()) {
+            loggingService.createLogBatch(assetLogRequests);
+        }
 
+
+        List<LogRequestDto<ApPurchaseInvRjvDetailsEntity>> rjvLogRequests = new ArrayList<>();
         if (apPurchaseInvoiceHdrDto.getRjvDtls() != null && !apPurchaseInvoiceHdrDto.getRjvDtls().isEmpty()) {
 
             Long maxRjvDet = apPurchaseInvRjvDetailsRepository.findMaxDetRowIdByTransactionPoid(transactionPoid);
@@ -1156,11 +1274,16 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
             for (ApPurchaseInvRjvDetailsDto rdto : apPurchaseInvoiceHdrDto.getRjvDtls()) {
                 String actionTypeStr = rdto.getActionType();
                 if (actionTypeStr == null || actionTypeStr.trim().isEmpty()) {
-                    actionTypeStr = "isCreated";
+                    continue;
                 }
                 String actionType = actionTypeStr.toUpperCase();
 
-                if ("ISDELETED".equals(actionType) || "NOCHANGES".equals(actionType)) {
+                if ("ISDELETED".equalsIgnoreCase(actionType)) {
+                    apPurchaseInvoiceItemDtlRepository.deleteById(new ApPurchaseInvoiceItemDtlKey(transactionPoid, rdto.getDetRowId()));
+                    loggingService.logDelete(rdto, UserContext.getDocumentId(), transactionPoid.toString());
+                    continue;
+                }
+                if ("NOCHANGES".equalsIgnoreCase(actionType)) {
                     continue;
                 }
 
@@ -1186,9 +1309,28 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                 rjv.setLastModifiedDate(LocalDateTime.now());
 
                 apPurchaseInvRjvDetailsRepository.save(rjv);
+
+                if ("ISCREATED".equalsIgnoreCase(actionType)) {
+                    String logDetail = String.format("Row Created on RJV Details with detRowId: %s", useDet);
+                    loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString(), logDetail);
+                } else if ("ISUPDATED".equalsIgnoreCase(actionType)) {
+                    ApPurchaseInvRjvDetailsEntity oldRjvEntity = apPurchaseInvRjvDetailsRepository.findById(new ApPurchaseInvRjvDetailsKey(transactionPoid, useDet)).orElse(null);
+                    if (oldRjvEntity != null) {
+                        String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", transactionPoid, useDet);
+                        rjvLogRequests.add(new LogRequestDto<>(oldRjvEntity, rjv, ApPurchaseInvRjvDetailsEntity.class, UserContext.getDocumentId(), transactionPoid.toString(), logDetail));
+                    }
+                }
             }
         }
 
+        if (!rjvLogRequests.isEmpty()) {
+            loggingService.createLogBatch(rjvLogRequests);
+        }
+
+        // Log the update
+        String key = savedEntity.getTransactionPoid().toString();
+        loggingService.logChanges(oldEntity, savedEntity, ApPurchaseInvoiceHdrEntity.class,
+                UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
         return fetchApPurchaseInvoiceHdr(savedEntity.getTransactionPoid());
     }
 

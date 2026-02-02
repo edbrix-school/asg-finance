@@ -12,6 +12,8 @@ import java.sql.Date;
 public class PdcChqBatchDtlRequestDto {
 
     private Long transactionPoid;   // Parent FK
+    private Long detRowId;
+    private String actionType;
     private Date pdcChqDate;
     private String chqNumber;
     private Double chqAmount;

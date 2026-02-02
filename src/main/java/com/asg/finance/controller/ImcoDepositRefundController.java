@@ -3,10 +3,11 @@ package com.asg.finance.controller;
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.LoggingService;
 
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.response.GlPostingViewResponseDto;
-import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.ImcoDepositRefundRequestDTO;
 import com.asg.finance.dto.ImcoDepositRefundResponseDTO;
@@ -43,6 +44,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 public class ImcoDepositRefundController {
 
     private final ImcoDepositRefundService service;
+    private final LoggingService loggingService;
 
     @Operation(
             summary = "Create IMCO Deposit Refund Record",
@@ -86,7 +88,7 @@ public class ImcoDepositRefundController {
             return success("IMCO Deposit Refund created successfully", response);
 
         } catch (ValidationException ex) {
-            return internalServerError(ex.getMessage());
+            throw ex;
         } catch (Exception ex) {
             return internalServerError("Failed to create IMCO deposit refund: " + ex.getMessage());
         }
@@ -129,6 +131,7 @@ public class ImcoDepositRefundController {
             @PathVariable Long transactionPoid) {
 
         ImcoDepositRefundResponseDTO responseDto = service.getImcoDepositRefundById(transactionPoid);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
         return success("IMCO Deposit Refund fetched successfully", responseDto);
     }
 
@@ -253,6 +256,7 @@ public class ImcoDepositRefundController {
                 return badRequest("Both startDate and endDate should be specified or both should be empty.");
             }
             Map<String, Object> data = service.listImcoDepositRefund(UserContext.getDocumentId(), filters, startDate, endDate, pageable);
+
             return success("IMCO Deposit Refund successfully", data);
         } catch (Exception ex) {
             return internalServerError("Unable to fetch IMCO Deposit Refund list: " + ex.getMessage());

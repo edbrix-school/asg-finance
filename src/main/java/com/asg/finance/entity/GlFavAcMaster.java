@@ -1,5 +1,6 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.annotation.AuditIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -30,6 +31,7 @@ public class GlFavAcMaster {
     private Long groupPoid;
 
     @Column(name = "FAV_AC_CODE", length = 20, nullable = false)
+    @AuditIgnore
     private String favAcCode;
 
     @Column(name = "DESCRIPTION", length = 100, nullable = false)

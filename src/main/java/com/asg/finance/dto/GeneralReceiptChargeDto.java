@@ -55,5 +55,8 @@ public class GeneralReceiptChargeDto {
 
     @Schema(description = "Remarks", example = "Bank processing charges")
     private String remarks;
+
+    @Schema(description = "Action type for update operations", example = "ISCREATED", allowableValues = {"ISCREATED", "ISUPDATED", "ISDELETED"})
+    private String actionType;
 }
 

@@ -1,5 +1,6 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.annotation.AuditIgnore;
 import com.asg.finance.entity.key.ApPurchaseInvoiceAssetDtlKey;
 import jakarta.persistence.Column;
 import jakarta.persistence.EmbeddedId;
@@ -19,6 +20,7 @@ import java.time.LocalDateTime;
 public class ApPurchaseInvoiceAssetDtlEntity {
 
     @EmbeddedId
+    @AuditIgnore
     private ApPurchaseInvoiceAssetDtlKey id;
 
     @Column(name = "FA_CODE")
@@ -27,6 +29,7 @@ public class ApPurchaseInvoiceAssetDtlEntity {
     @Column(name = "FA_DESCRIPTION")
     private String faDescription;
 
+    @AuditIgnore
     @Column(name = "FA_CATEGORY")
     private String faCategory;
 
@@ -39,15 +42,19 @@ public class ApPurchaseInvoiceAssetDtlEntity {
     @Column(name = "REMARKS")
     private String remarks;
 
+    @AuditIgnore
     @Column(name = "CREATED_BY")
     private String createdBy;
 
+    @AuditIgnore
     @Column(name = "CREATED_DATE")
     private LocalDateTime createdDate;
 
+    @AuditIgnore
     @Column(name = "LASTMODIFIED_BY")
     private String lastModifiedBy;
 
+    @AuditIgnore
     @Column(name = "LASTMODIFIED_DATE")
     private LocalDateTime lastModifiedDate;
 }

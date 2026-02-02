@@ -1,5 +1,6 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.annotation.AuditIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import java.util.Date;
@@ -15,18 +16,22 @@ import java.util.List;
 public class ChequeReturn {
 
     @Id
+    @AuditIgnore
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "TRANSACTION_POID")
     private Long transactionPoid;
 
+    @AuditIgnore
     @Temporal(TemporalType.DATE)
     @Column(name = "TRANSACTION_DATE")
     private Date transactionDate;
 
     @Column(name = "GROUP_POID")
+    @AuditIgnore
     private Long groupPoid;
 
     @Column(name = "COMPANY_POID")
+    @AuditIgnore
     private Long companyPoid;
 
     @Column(name = "DOC_REF")
@@ -45,25 +50,32 @@ public class ChequeReturn {
     private String deleted; // Y/N
 
     @Column(name = "CREATED_BY")
+    @AuditIgnore
     private String createdBy;
 
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "CREATED_DATE")
+    @AuditIgnore
     private Date createdDate;
 
     @Column(name = "LASTMODIFIED_BY")
+    @AuditIgnore
     private String lastModifiedBy;
 
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "LASTMODIFIED_DATE")
+    @AuditIgnore
     private Date lastModifiedDate;
 
     @Column(name = "CLOSE_DETAIL")
+    @AuditIgnore
     private String closeDetail;
 
     @OneToMany(mappedBy = "chequeReturn", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @AuditIgnore
     private List<ChequeReturnDetail> chequeDetails;
 
     @OneToMany(mappedBy = "chequeReturn", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @AuditIgnore
     private List<ChequeReturnGlDetail> glDetails;
 }

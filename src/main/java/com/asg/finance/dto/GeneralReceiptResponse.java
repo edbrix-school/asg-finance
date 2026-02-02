@@ -59,6 +59,9 @@ public class GeneralReceiptResponse {
     @Schema(description = "Reference type", example = "AGAINST")
     private String refType;
 
+    @Schema(description = "doc ref", example = "ASGGEN33472")
+    private String docRef;
+
     @Schema(description = "Narration", example = "Payment against invoice INV-0045")
     private String narration;
 
@@ -80,6 +83,9 @@ public class GeneralReceiptResponse {
     @Schema(description = "Created date", example = "2025-10-27T10:30:00")
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime createdDate;
+
+    @Schema(description = "printDocCompId", example = "123")
+    private Long printDocCompId;
 
     @Schema(description = "Payment details")
     private List<GeneralReceiptPaymentDto> payments;

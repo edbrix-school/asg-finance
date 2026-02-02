@@ -8,6 +8,8 @@ import com.asg.finance.dto.*;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.service.PettyCashVoucherService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -35,9 +37,11 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 public class PettyCashVoucherController {
 
     private final PettyCashVoucherService pettyCashVoucherService;
+    private final LoggingService loggingService;
 
-    public PettyCashVoucherController(PettyCashVoucherService pettyCashVoucherService) {
+    public PettyCashVoucherController(PettyCashVoucherService pettyCashVoucherService, LoggingService loggingService) {
         this.pettyCashVoucherService = pettyCashVoucherService;
+        this.loggingService = loggingService;
     }
 
     @Operation(
@@ -81,8 +85,9 @@ public class PettyCashVoucherController {
             @Valid @RequestBody PettyCashCreateRequestDto request
     ) {
         try {
-
             PettyCashResponseDto response = pettyCashVoucherService.createPettyCash(request, UserContext.getDocumentId());
+            
+            String key = response.getTransactionPoid().toString();
 
             return success("Petty cash voucher created successfully", response);
         } catch (ValidationException ex) {
@@ -152,6 +157,8 @@ public class PettyCashVoucherController {
                     requestDto,
                     UserContext.getDocumentId()
             );
+            
+            String key = transactionPoid.toString();
 
             return success("Petty Cash record updated successfully", response);
 
@@ -159,6 +166,7 @@ public class PettyCashVoucherController {
             return internalServerError(ex.getMessage());
 
         } catch (Exception ex) {
+            log.error("Error updating petty cash voucher ID {}: {}", transactionPoid, ex.getMessage(), ex);
             return internalServerError("Failed to update petty cash: " + ex.getMessage());
         }
     }
@@ -203,7 +211,7 @@ public class PettyCashVoucherController {
 
     ) {
         PettyCashResponseDto response = pettyCashVoucherService.findById(transactionPoid, UserContext.getDocumentId());
-
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
         return success("Petty cash details fetched successfully", response);
 
 

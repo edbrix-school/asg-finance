@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 
 @Data
 public class BankPaymentItemDetailRequest {
+
     private Long detRowId;
     private Long stockPoid;
     private Long stockUnitPoid;
@@ -18,4 +19,5 @@ public class BankPaymentItemDetailRequest {
     private String refDocId;
     private Long refDocPoid;
     private Long refDetRowId;
+    private String actionType;          // "isCreated", "isUpdated", "isDeleted", "noChanges"
 }

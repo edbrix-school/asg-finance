@@ -2,6 +2,8 @@ package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.LoggingService;
 
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.PropertyCostCenterRequest;
@@ -34,11 +36,13 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 public class PropertyCostCenterController {
 
     private final IPropertyCostCenterService propertyCostCenterService;
+    private final LoggingService loggingService;
     private static final Logger LOGGER = LoggerFactory.getLogger(PropertyCostCenterController.class);
 
     @Autowired
-    public PropertyCostCenterController(IPropertyCostCenterService propertyCostCenterService) {
+    public PropertyCostCenterController(IPropertyCostCenterService propertyCostCenterService, LoggingService loggingService) {
         this.propertyCostCenterService = propertyCostCenterService;
+        this.loggingService = loggingService;
     }
 
     // ------------------- CREATE -------------------
@@ -77,6 +81,7 @@ public class PropertyCostCenterController {
             @PathVariable Long costCenterPoid) {
 
         PropertyCostCenterResponse response = propertyCostCenterService.getPropertyCostCenterById(costCenterPoid);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), costCenterPoid.toString());
         return success("Property Cost Center found", response);
     }
 
@@ -281,10 +286,11 @@ public class PropertyCostCenterController {
     @GetMapping("/list")
     public ResponseEntity<?> getPropertyCostCenterList(
             @Parameter(description = "Parent Property Cost Center POID (null for main groups)", example = "1000")
-            @RequestParam(required = false) Long parentPoid) {
+            @RequestParam(required = false) Long parentPoid,
+             @RequestParam(required = false) String sort) {
 
         try {
-            var listItems = propertyCostCenterService.getPropertyCostCenterList(UserContext.getDocumentId(), UserContext.getActionRequested(), parentPoid);
+            var listItems = propertyCostCenterService.getPropertyCostCenterList(UserContext.getDocumentId(), UserContext.getActionRequested(), parentPoid,sort);
 
             if (listItems.isEmpty()) {
                 return success("No Property Cost Center records found", new java.util.ArrayList<>());

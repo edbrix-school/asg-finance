@@ -1,5 +1,6 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.annotation.AuditIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -17,13 +18,13 @@ import java.sql.Timestamp;
 public class GlAgeingMasterDtlEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "ageingDtlSeq")
-    @SequenceGenerator(name = "ageingDtlSeq", sequenceName = "GL_AGEING_MASTER_DTL_SEQ", allocationSize = 1)
     @Column(name = "DET_ROW_ID", nullable = false)
+    @AuditIgnore
     private Long detRowId;
 
     @Id
     @Column(name = "AGEING_POID", nullable = false)
+    @AuditIgnore
     private Long ageingPoid;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -40,15 +41,19 @@ public class GlAgeingMasterDtlEntity {
     private Integer breakupTo;
 
     @Column(name = "CREATED_BY", length = 20)
+    @AuditIgnore
     private String createdBy;
 
     @Column(name = "CREATED_DATE")
+    @AuditIgnore
     private Timestamp createdDate;
 
     @Column(name = "LASTMODIFIED_BY", length = 20)
+    @AuditIgnore
     private String lastModifiedBy;
 
     @Column(name = "LASTMODIFIED_DATE")
+    @AuditIgnore
     private Timestamp lastModifiedDate;
 
     @Data

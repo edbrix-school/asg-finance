@@ -2,9 +2,11 @@ package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.*;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.common.lib.utility.ASGHelperUtils;
@@ -69,6 +71,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
     private final PrintService printService;
     private final DataSource dataSource;
     private final DocumentDeleteService documentDeleteService;
+    private final LoggingService loggingService;
 
     @Value("${app.doc-id.debit-note:300-110}")
     private String debitNoteDocId;
@@ -99,6 +102,9 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         // Load breakups into response
         loadBreakups(result, savedEntity.getTransactionPoid());
 
+        // Log the creation
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), savedEntity.getTransactionPoid().toString());
+
         return result;
     }
 
@@ -108,15 +114,21 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         ArDebitNoteHdr existingEntity = debitNoteHdrRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("DebitNote", "transactionPoid", transactionPoid));
 
+        // Create a copy of the old entity for logging
+        ArDebitNoteHdr oldEntity = new ArDebitNoteHdr();
+        BeanUtils.copyProperties(existingEntity, oldEntity);
+
         validateDebitNoteInput(debitNoteDto);
         // Validate using stored procedure for Edit
-        debitNoteCustomRepository.validateDebitNote(
-                debitNoteDto.getRefType(),
-                debitNoteDto.getPartyType(),
-                debitNoteDto.getPartyPoid(),
-                debitNoteDto.getFdaRefPoid(),
-                debitNoteDto.getPoRef()
-        );
+
+        if (debitNoteDto.getRefType().equals("FDA JOBS") || debitNoteDto.getRefType().equals("FF JOBS"))
+            debitNoteCustomRepository.validateDebitNote(
+                    debitNoteDto.getRefType(),
+                    debitNoteDto.getPartyType(),
+                    debitNoteDto.getPartyPoid(),
+                    debitNoteDto.getFdaRefPoid(),
+                    debitNoteDto.getPoRef()
+            );
 
         applyBusinessLogic(debitNoteDto);
 
@@ -142,6 +154,9 @@ public class DebitNoteServiceImpl implements DebitNoteService {
 
         // Load breakups into response
        // loadBreakups(result, transactionPoid);
+
+        // Log the update
+        loggingService.logChanges(oldEntity, existingEntity, ArDebitNoteHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
         return result;
     }
@@ -712,6 +727,11 @@ public class DebitNoteServiceImpl implements DebitNoteService {
             if (detailsObj.getCode() == null) {
                 throw new ResourceNotFoundException("FDA Reference Poid Not Valid: " ,"FdaRefPoid", dto.getFdaRefPoid());
             }
+        }
+
+        if ("FDA_DIRECT".equalsIgnoreCase(dto.getRefType()) && dto.getFdaDirectRefPoid() == null)
+        {
+            throw new ValidationException("FdaDirectRefPoid is Mandatory for ref Type FDA_DIRECT");
         }
     }
 

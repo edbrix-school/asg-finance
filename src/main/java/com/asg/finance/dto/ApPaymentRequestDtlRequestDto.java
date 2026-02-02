@@ -21,4 +21,5 @@ public class ApPaymentRequestDtlRequestDto {
     private BigDecimal totalAmount;
 
     private String remarks;
+    private String actionType; // For tracking create/update/delete actions
 }

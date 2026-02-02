@@ -370,7 +370,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
 
         masterRepository.save(existing);
 
-        List<GlFavAcMasterGlAcDtl> oldGlAcDtls = glAcDtlRepository.findByFavAcPoidOrderBySeqNo(favAcPoid);
+        List<GlFavAcMasterGlAcDtl> oldGlAcDtls = glAcDtlRepository.findByFavAcPoidOrderByDetRowId(favAcPoid);
         Map<Long, GlFavAcMasterGlAcDtl> oldGlAcMap = oldGlAcDtls.stream()
                 .collect(Collectors.toMap(GlFavAcMasterGlAcDtl::getDetRowId, Function.identity(), (first, second) -> first));
         
@@ -517,7 +517,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
             glAcDtlRepository.deleteAll(toDelete);
         }
 
-        List<GlFavAcMasterUserRoleDtl> oldUserRoleDtls = userRoleDtlRepository.findByFavAcPoid(favAcPoid);
+        List<GlFavAcMasterUserRoleDtl> oldUserRoleDtls = userRoleDtlRepository.findByFavAcPoidOrderByDetRowId(favAcPoid);
         Map<Long, GlFavAcMasterUserRoleDtl> oldUserRoleMap = oldUserRoleDtls.stream()
                 .collect(Collectors.toMap(GlFavAcMasterUserRoleDtl::getDetRowId, Function.identity(), (first, second) -> first));
         
@@ -708,6 +708,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
         List<GlFavAcMasterGlAcDtl> glAcDtls = glAcDtlRepository.findByFavAcPoidOrderByDetRowId(favAcPoid);
         List<GlAccountDetailResponse> glAccountResponses = glAcDtls.stream()
                 .map(this::mapToGlAccountDetailResponse)
+                .sorted(Comparator.comparing(GlAccountDetailResponse::getDetRowId, Comparator.nullsLast(Comparator.naturalOrder())))
                 .collect(Collectors.toList());
         setCompanyDetails(glAccountResponses);
         setViewCategoryDetails(glAccountResponses);
@@ -716,6 +717,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
         List<GlFavAcMasterUserRoleDtl> userRoleDtls = userRoleDtlRepository.findByFavAcPoidOrderByDetRowId(favAcPoid);
         List<UserRoleDetailResponse> userRoleResponses = userRoleDtls.stream()
                 .map(this::mapToUserRoleDetailResponse)
+                .sorted(Comparator.comparing(UserRoleDetailResponse::getDetRowId, Comparator.nullsLast(Comparator.naturalOrder())))
                 .collect(Collectors.toList());
         response.setUserRoles(userRoleResponses);
 

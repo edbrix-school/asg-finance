@@ -4,6 +4,7 @@ import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
+import com.asg.common.lib.dto.ReconcileResultDto;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.LoadBillwiseBreakupResponseDto;
@@ -38,8 +39,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.nimbusds.oauth2.sdk.util.CollectionUtils;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.ParameterMode;
+import jakarta.persistence.StoredProcedureQuery;
+
 import javax.sql.DataSource;
 import java.math.BigDecimal;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -91,6 +98,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     @Autowired private DataSource dataSource;
     @Autowired private LoggingService loggingService;
     @Autowired private DocumentDeleteService documentDeleteService;
+    @Autowired private EntityManager entityManager;
 
     @Override
     @Transactional
@@ -1378,6 +1386,46 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
             mainReport = printService.load("Finance/BankPayments/BankPaymentVoucher_WithOutCheque.jrxml");
         }
         return printService.fillReportToPdf(mainReport, params, dataSource);
+    }
+
+    @Override
+    public ReconcileResultDto getReconciledDate(String documentId, Long transactionPoid) {
+        StoredProcedureQuery query = entityManager
+                .createStoredProcedureQuery("PROC_DEBIT_PAYMENT_RECON_DATE");
+
+        query.registerStoredProcedureParameter("P_LOGIN_GROUP_POID", Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("P_LOGIN_COMPANY_POID", Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("P_LOGIN_USER_POID", Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("P_DOC_ID", String.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("P_DOC_KEY_POID", Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("OUTDATA", void.class, ParameterMode.REF_CURSOR);
+
+        query.setParameter("P_LOGIN_GROUP_POID", UserContext.getGroupPoid());
+        query.setParameter("P_LOGIN_COMPANY_POID", UserContext.getCompanyPoid());
+        query.setParameter("P_LOGIN_USER_POID", UserContext.getUserPoid());
+        query.setParameter("P_DOC_ID", documentId);
+        query.setParameter("P_DOC_KEY_POID", transactionPoid);
+
+        query.execute();
+
+        Object cursor = query.getOutputParameterValue("OUTDATA");
+        return mapReconCursorToDto(cursor);
+    }
+
+    private ReconcileResultDto mapReconCursorToDto(Object cursor) {
+        try {
+            ResultSet rs = (ResultSet) cursor;
+            if (rs != null && rs.next()) {
+                return new ReconcileResultDto(
+                        rs.getString("RECONCILE_DATE"),
+                        rs.getString("HOLD")
+                );
+            }
+        } catch (SQLException e) {
+            log.error("Error reading PROC_DEBIT_PAYMENT_RECON_DATE cursor", e);
+            throw new RuntimeException("Error reading reconcile date result", e);
+        }
+        return new ReconcileResultDto(null, null);
     }
 
 }

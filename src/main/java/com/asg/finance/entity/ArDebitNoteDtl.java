@@ -1,5 +1,6 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.annotation.AuditIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -13,15 +14,18 @@ import java.time.LocalDateTime;
 public class ArDebitNoteDtl {
 
     @Id
+    @AuditIgnore
     @Column(name = "TRANSACTION_POID")
     private Long transactionPoid;
 
     @Id
+    @AuditIgnore
     @Column(name = "DET_ROW_ID")
     private Long detRowId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "TRANSACTION_POID", insertable = false, updatable = false)
+    @AuditIgnore
     private ArDebitNoteHdr debitNoteHdr;
 
     @Column(name = "TYPE", length = 20)
@@ -45,6 +49,7 @@ public class ArDebitNoteDtl {
     @Column(name = "REMARKS", length = 1000)
     private String remarks;
 
+    @AuditIgnore
     @Column(name = "TAX_POID")
     private Long taxPoid;
 
@@ -57,15 +62,19 @@ public class ArDebitNoteDtl {
     @Column(name = "TOTAL_AMOUNT")
     private BigDecimal totalAmount;
 
+    @AuditIgnore
     @Column(name = "CREATED_BY", length = 20)
     private String createdBy;
 
+    @AuditIgnore
     @Column(name = "CREATED_DATE")
     private LocalDateTime createdDate;
 
+    @AuditIgnore
     @Column(name = "LASTMODIFIED_BY", length = 20)
     private String lastModifiedBy;
 
+    @AuditIgnore
     @Column(name = "LASTMODIFIED_DATE")
     private LocalDateTime lastModifiedDate;
 }

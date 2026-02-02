@@ -1,5 +1,6 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.annotation.AuditIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -18,17 +19,21 @@ import java.time.LocalDateTime;
 public class GlChequeCashConvertHdrEntity {
 
     @Id
+    @AuditIgnore
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "TRANSACTION_POID")
     private Long transactionPoid;
 
     @Column(name = "TRANSACTION_DATE")
+    @AuditIgnore
     private LocalDate transactionDate;
 
     @Column(name = "GROUP_POID")
+    @AuditIgnore
     private Long groupPoid;
 
     @Column(name = "COMPANY_POID")
+    @AuditIgnore
     private Long companyPoid;
 
     @Column(name = "DOC_REF")
@@ -47,15 +52,19 @@ public class GlChequeCashConvertHdrEntity {
     private String remarks;
 
     @Column(name = "CREATED_BY")
+    @AuditIgnore
     private String createdBy;
 
     @Column(name = "CREATED_DATE")
+    @AuditIgnore
     private LocalDateTime createdDate;
 
     @Column(name = "LASTMODIFIED_BY")
+    @AuditIgnore
     private String lastModifiedBy;
 
     @Column(name = "LASTMODIFIED_DATE")
+    @AuditIgnore
     private LocalDateTime lastModifiedDate;
 
     @Column(name = "DELETED")
@@ -68,5 +77,6 @@ public class GlChequeCashConvertHdrEntity {
     private String chqCardNo;
 
     @Column(name = "ROUNDING_AMT")
+    @AuditIgnore
     private Long roundingAmt;
 }

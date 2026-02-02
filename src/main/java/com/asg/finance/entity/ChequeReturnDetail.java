@@ -1,4 +1,5 @@
 package com.asg.finance.entity;
+import com.asg.common.lib.annotation.AuditIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import java.util.Date;
@@ -13,14 +14,17 @@ import java.util.Date;
 public class ChequeReturnDetail {
 
     @EmbeddedId
+    @AuditIgnore
     private ChequeReturnDetailId id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @MapsId("transactionPoid") // 👈 This tells Hibernate to reuse the FK from the embedded ID
     @JoinColumn(name = "TRANSACTION_POID", nullable = false)
+    @AuditIgnore
     private ChequeReturn chequeReturn;
 
     @Column(name = "CHO_POID")
+    @AuditIgnore
     private Long choPoid;
 
     @Temporal(TemporalType.DATE)
@@ -34,6 +38,7 @@ public class ChequeReturnDetail {
     private Long refDocPoid;
 
     @Column(name = "PYMT_TYPE", length = 10)
+    @AuditIgnore
     private String pymtType;
 
     @Column(name = "CHQ_CARDNO", length = 50)
@@ -47,6 +52,7 @@ public class ChequeReturnDetail {
     private Long bankPoid;
 
     @Column(name = "ADDRESS_POID")
+    @AuditIgnore
     private Long addressPoid;
 
     @Column(name = "CHQ_AC_NAME", length = 100)
@@ -59,15 +65,18 @@ public class ChequeReturnDetail {
     private Double amount;
 
     @Column(name = "STATUS", length = 50)
+    @AuditIgnore
     private String status;
 
     @Column(name = "REMARKS", length = 200)
     private String remarks;
 
     @Column(name = "VOUCHER_TYPE")
+    @AuditIgnore
     private String voucherType;
 
     @Column(name = "PAYMENT_MAIN_POID")
+    @AuditIgnore
     private Long paymentMainPoid;
 
     @Temporal(TemporalType.DATE)
@@ -78,17 +87,22 @@ public class ChequeReturnDetail {
     private String refDocRef;
 
     @Column(name = "CHO_DOC_ID", length = 20)
+    @AuditIgnore
     private String choDocId;
 
     @Column(name = "CREATED_BY", length = 20)
+    @AuditIgnore
     private String createdBy;
 
     @Column(name = "CREATED_DATE")
+    @AuditIgnore
     private Date createdDate;
 
     @Column(name = "LASTMODIFIED_BY", length = 20)
+    @AuditIgnore
     private String lastModifiedBy;
 
     @Column(name = "LASTMODIFIED_DATE")
+    @AuditIgnore
     private Date lastModifiedDate;
 }

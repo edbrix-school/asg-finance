@@ -1,5 +1,6 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.annotation.AuditIgnore;
 import com.asg.finance.entity.key.ApPurchaseInvRjvDetailsKey;
 import jakarta.persistence.Column;
 import jakarta.persistence.EmbeddedId;
@@ -18,20 +19,24 @@ import java.time.LocalDateTime;
 public class ApPurchaseInvRjvDetailsEntity {
 
     @EmbeddedId
+    @AuditIgnore
     private ApPurchaseInvRjvDetailsKey id;
 
+    @AuditIgnore
     @Column(name = "DRILLDOWN_LINK_INFO")
     private String drilldownLinkInfo;
 
     @Column(name = "RJV_POID")
     private Long rjvPoid;
 
+    @AuditIgnore
     @Column(name = "RJV_TRN_DATE")
     private LocalDate rjvTrnDate;
 
     @Column(name = "RJV_DOC_REF")
     private String rjvDocRef;
 
+    @AuditIgnore
     @Column(name = "RJV_COMPANY_POID")
     private Long rjvCompanyPoid;
 
@@ -47,15 +52,19 @@ public class ApPurchaseInvRjvDetailsEntity {
     @Column(name = "REMARKS")
     private String remarks;
 
+    @AuditIgnore
     @Column(name = "CREATED_BY")
     private String createdBy;
 
+    @AuditIgnore
     @Column(name = "CREATED_DATE")
     private LocalDateTime createdDate;
 
+    @AuditIgnore
     @Column(name = "LASTMODIFIED_BY")
     private String lastModifiedBy;
 
+    @AuditIgnore
     @Column(name = "LASTMODIFIED_DATE")
     private LocalDateTime lastModifiedDate;
 }

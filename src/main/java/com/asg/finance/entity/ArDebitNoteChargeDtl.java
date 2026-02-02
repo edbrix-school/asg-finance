@@ -1,5 +1,6 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.annotation.AuditIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -13,15 +14,18 @@ import java.time.LocalDateTime;
 public class ArDebitNoteChargeDtl {
 
     @Id
+    @AuditIgnore
     @Column(name = "TRANSACTION_POID")
     private Long transactionPoid;
 
     @Id
+    @AuditIgnore
     @Column(name = "DET_ROW_ID")
     private Long detRowId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "TRANSACTION_POID", insertable = false, updatable = false)
+    @AuditIgnore
     private ArDebitNoteHdr debitNoteHdr;
 
     @Column(name = "CHARGE_POID")
@@ -30,24 +34,29 @@ public class ArDebitNoteChargeDtl {
     @Column(name = "CHARGE_AMOUNT")
     private BigDecimal chargeAmount;
 
+    @AuditIgnore
     @Column(name = "DESCRIPTION", length = 500)
     private String description;
 
     @Column(name = "REMARKS", length = 1250)
     private String remarks;
 
+    @AuditIgnore
     @Column(name = "REF_DOC_ID", length = 100)
     private String refDocId;
 
+    @AuditIgnore
     @Column(name = "REF_DOC_POID")
     private Long refDocPoid;
 
+    @AuditIgnore
     @Column(name = "FDA_DET_ROW_ID")
     private Long fdaDetRowId;
 
     @Column(name = "CHECK_ALL", length = 1)
     private String checkAll;
 
+    @AuditIgnore
     @Column(name = "PDA_AMOUNT")
     private BigDecimal pdaAmount;
 
@@ -63,36 +72,45 @@ public class ArDebitNoteChargeDtl {
     @Column(name = "TOTAL_AMOUNT")
     private BigDecimal totalAmount;
 
+    @AuditIgnore
     @Column(name = "CN_REF_DOC_ID", length = 100)
     private String cnRefDocId;
 
+    @AuditIgnore
     @Column(name = "CN_REF_DOC_POID", length = 300)
     private String cnRefDocPoid;
 
+    @AuditIgnore
     @Column(name = "CN_REF_DET_ROW_ID", length = 300)
     private String cnRefDetRowId;
 
     @Column(name = "COST_AMOUNT")
     private BigDecimal costAmount;
 
+    @AuditIgnore
     @Column(name = "COST_POID", length = 1000)
     private String costPoid;
 
+    @AuditIgnore
     @Column(name = "COST_GROUP", length = 1000)
     private String costGroup;
 
     @Column(name = "PRINT_SEQ_NO")
     private Integer printSeqNo;
 
+    @AuditIgnore
     @Column(name = "CREATED_BY", length = 20)
     private String createdBy;
 
+    @AuditIgnore
     @Column(name = "CREATED_DATE")
     private LocalDateTime createdDate;
 
+    @AuditIgnore
     @Column(name = "LASTMODIFIED_BY", length = 20)
     private String lastModifiedBy;
 
+    @AuditIgnore
     @Column(name = "LASTMODIFIED_DATE")
     private LocalDateTime lastModifiedDate;
 }

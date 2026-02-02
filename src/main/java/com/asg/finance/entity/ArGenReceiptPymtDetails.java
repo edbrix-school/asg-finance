@@ -1,5 +1,6 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.annotation.AuditIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -19,15 +20,18 @@ import java.time.LocalDateTime;
 public class ArGenReceiptPymtDetails {
 
     @Id
+    @AuditIgnore
     @Column(name = "TRANSACTION_POID", nullable = false)
     private Long transactionPoid;
 
     @Id
+    @AuditIgnore
     @Column(name = "DET_ROW_ID", nullable = false)
     private Long detRowId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "TRANSACTION_POID", nullable = false, insertable = false, updatable = false)
+    @AuditIgnore
     private ArGenReceiptHdr receiptHdr;
 
     @Column(name = "PYMT_TYPE", length = 100)
@@ -55,36 +59,46 @@ public class ArGenReceiptPymtDetails {
     private BigDecimal amount;
 
     @Column(name = "CREATED_BY", length = 20)
+    @AuditIgnore
     private String createdBy;
 
     @Column(name = "CREATED_DATE")
+    @AuditIgnore
     private LocalDateTime createdDate;
 
     @Column(name = "LASTMODIFIED_BY", length = 20)
+    @AuditIgnore
     private String lastModifiedBy;
 
     @Column(name = "LASTMODIFIED_DATE")
+    @AuditIgnore
     private LocalDateTime lastModifiedDate;
 
     @Column(name = "GL_POID")
+    @AuditIgnore
     private Long glPoid;
 
     @Column(name = "TT_BANK_POID")
     private Long ttBankPoid;
 
     @Column(name = "LINE_TYPE", length = 30)
+    @AuditIgnore
     private String lineType;
 
     @Column(name = "TT_REF", length = 500)
+    @AuditIgnore
     private String ttRef;
 
     @Column(name = "CREDIT_CARD_REF", length = 500)
+    @AuditIgnore
     private String creditCardRef;
 
     @Column(name = "CARD_TYPE", length = 500)
+    @AuditIgnore
     private String cardType;
 
     @Column(name = "CARD_POID")
+    @AuditIgnore
     private Long cardPoid;
 
     @Data

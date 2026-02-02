@@ -1,5 +1,6 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.annotation.AuditIgnore;
 import com.asg.finance.entity.key.ApPurchaseInvoiceGlDtlKey;
 import jakarta.persistence.Column;
 import jakarta.persistence.EmbeddedId;
@@ -19,11 +20,13 @@ import java.time.LocalDateTime;
 public class ApPurchaseInvoiceGlDtlEntity {
 
     @EmbeddedId
+    @AuditIgnore
     private ApPurchaseInvoiceGlDtlKey id;
 
     @Column(name = "TYPE")
     private String type;
 
+    @AuditIgnore
     @Column(name = "COMPANY_POID")
     private Long companyPoid;
 
@@ -36,33 +39,42 @@ public class ApPurchaseInvoiceGlDtlEntity {
     @Column(name = "CR_AMOUNT")
     private Long crAmount;
 
+    @AuditIgnore
     @Column(name = "REF_DOC_ID")
     private String refDocId;
 
+    @AuditIgnore
     @Column(name = "REF_DOC_POID")
     private Long refDocPoid;
 
+    @AuditIgnore
     @Column(name = "DESCRIPTION")
     private String description;
 
     @Column(name = "REMARKS")
     private String remarks;
 
+    @AuditIgnore
     @Column(name = "CREATED_BY")
     private String createdBy;
 
+    @AuditIgnore
     @Column(name = "CREATED_DATE")
     private LocalDateTime createdDate;
 
+    @AuditIgnore
     @Column(name = "LASTMODIFIED_BY")
     private String lastModifiedBy;
 
+    @AuditIgnore
     @Column(name = "LASTMODIFIED_DATE")
     private LocalDateTime lastModifiedDate;
 
+    @AuditIgnore
     @Column(name = "JOB_NO_OLD")
     private String jobNoOld;
 
+    @AuditIgnore
     @Column(name = "MOD_CODE_OLD")
     private String modCodeOld;
 

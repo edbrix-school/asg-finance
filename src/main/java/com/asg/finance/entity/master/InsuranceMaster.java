@@ -1,5 +1,6 @@
 package com.asg.finance.entity.master;
 
+import com.asg.common.lib.annotation.AuditIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import jakarta.validation.constraints.Pattern;
@@ -20,18 +21,22 @@ import java.util.List;
 @Builder
 public class InsuranceMaster {
     @Id
+    @AuditIgnore
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "insurance_seq")
     @SequenceGenerator(name = "insurance_seq", sequenceName = "GLOBAL_INSURANCE_MASTER_SEQ", allocationSize = 1)
     @Column(name = "TRANSACTION_POID")
     private Long transactionPoid;
 
     @Column(name = "GROUP_POID", nullable = false)
+    @AuditIgnore
     private Long groupPoid;
 
     @Column(name = "COMPANY_POID", nullable = false)
+    @AuditIgnore
     private Long companyPoid;
 
     @Column(name = "TRANSACTION_DATE")
+    @AuditIgnore
     private LocalDate transactionDate;
 
     @Column(name = "DOC_REF", length = 25)
@@ -65,6 +70,7 @@ public class InsuranceMaster {
     private Long currencyPoid;
 
     @Column(name = "EXCHANGE_RATE")
+    @AuditIgnore
     private BigDecimal exchangeRate;
 
     @Column(name = "INSURANCE_AMOUNT")
@@ -83,38 +89,49 @@ public class InsuranceMaster {
     private String description;
 
     @Column(name = "PJ_REF_POID")
+    @AuditIgnore
     private Long pjRefPoid;
 
     @Column(name = "CREATED_BY", length = 20)
+    @AuditIgnore
     private String createdBy;
 
     @Column(name = "CREATED_DATE")
+    @AuditIgnore
     private LocalDateTime createdDate;
 
     @Column(name = "LASTMODIFIED_BY", length = 20)
+    @AuditIgnore
     private String lastModifiedBy;
 
     @Column(name = "LASTMODIFIED_DATE")
+    @AuditIgnore
     private LocalDateTime lastModifiedDate;
 
     @Column(name = "DELETED", length = 1)
     private String deleted;
 
     @OneToMany(mappedBy = "insuranceMaster", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @AuditIgnore
     private List<InsuranceVehicleDetail> vehicleDetails;
 
     @OneToMany(mappedBy = "insuranceMaster", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @AuditIgnore
     private List<InsuranceEmployeeDetail> employeeDetails;
 
     @OneToMany(mappedBy = "insuranceMaster", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @AuditIgnore
     private List<InsurancePropertyDetail> propertyDetails;
 
     @OneToMany(mappedBy = "insuranceMaster", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @AuditIgnore
     private List<InsuranceDetail> insuranceDetails;
 
     @OneToMany(mappedBy = "insuranceMaster", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @AuditIgnore
     private List<InsurancePicDetail> picDetails;
 
     @OneToMany(mappedBy = "insuranceMaster", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @AuditIgnore
     private List<InsuranceRenewalLog> renewalLogs;
 }

@@ -12,6 +12,7 @@ import com.asg.finance.dto.PurchaseOrderItemRequestDto;
 import com.asg.finance.dto.PurchaseOrderItemResponseDto;
 import com.asg.finance.dto.PurchaseOrderRequest;
 import com.asg.finance.dto.PurchaseOrderResponse;
+import com.asg.finance.entity.ChequeReturnDetail;
 import com.asg.finance.entity.PurchaseOrder;
 import com.asg.finance.entity.PurchaseOrderItem;
 import com.asg.finance.repository.PurchaseOrderItemRepository;
@@ -487,7 +488,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     private void updatePurchaseOrderFields(PurchaseOrder po, PurchaseOrderRequest request) {
 
         po.setTransactionDate(po.getTransactionDate());
-        po.setDocRef(request.getDocRef());
+       // po.setDocRef(request.getDocRef());
         po.setCurrencyCode(request.getCurrencyCode());
         po.setCurrencyRate(request.getCurrencyRate());
         po.setExpectedDate(request.getExpectedDate());
@@ -554,7 +555,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         Long maxDetRowId = purchaseOrderItemRepository.findMaxDetRowIdByTransactionPoid(transactionPoid);
         
         for (PurchaseOrderItemRequestDto dto : request.getItems()) {
-            String action = dto.getActionType() != null ? dto.getActionType().toUpperCase() : "ISCREATED";
+            String action = dto.getActionType() != null ? dto.getActionType().toUpperCase() : "NOCHANGE";
             switch (action) {
                 case "ISCREATED":
                     toSave.add(PurchaseOrderItem.builder()

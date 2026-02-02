@@ -564,6 +564,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                 .employeeDetails(mapEmployeeDetails(entity.getEmployeeDetails()))
                 .propertyDetails(mapPropertyDetails(entity.getPropertyDetails()))
                 .picDetails(mapPicDetails(entity.getPicDetails()))
+                .renewalLogs(mapRenewalLogs(entity.getRenewalLogs()))
                 .build();
     }
 
@@ -615,6 +616,20 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                         .picPerson(e.getPicPerson())
                         .fromDate(e.getFromDate())
                         .toDate(e.getToDate())
+                        .build())
+                .toList();
+    }
+
+    private List<InsuranceRenewalLogResponseDto> mapRenewalLogs(List<InsuranceRenewalLog> entities) {
+        if (entities == null) return new ArrayList<>();
+        return entities.stream()
+                .map(e -> InsuranceRenewalLogResponseDto.builder()
+                        .detRowId(e.getDetRowId())
+                        .renewalDate(e.getRenewalDate())
+                        .fromDate(e.getFromDate())
+                        .expiryDate(e.getExpiryDate())
+                        .insuranceAmount(e.getInsuranceAmount())
+                        .premiumAmount(e.getPremiumAmount())
                         .build())
                 .toList();
     }

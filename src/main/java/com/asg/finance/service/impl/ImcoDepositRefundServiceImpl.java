@@ -16,9 +16,11 @@ import com.asg.common.lib.service.PrintService;
 import com.asg.finance.dto.ImcoDepositRefundRequestDTO;
 import com.asg.finance.dto.ImcoDepositRefundResponseDTO;
 import com.asg.finance.dto.ImcoRefundLoadResponseDto;
+import com.asg.finance.entity.GlobalLogSummary;
 import com.asg.finance.entity.GlImcoChequeBillDtl;
 import com.asg.finance.entity.GlImcoChequeRefundDtl;
 import com.asg.finance.entity.GlImcoChequeRefundHdr;
+import com.asg.finance.repository.GlobalLogSummaryRepository;
 import com.asg.finance.repository.*;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.util.UserContext;
@@ -37,6 +39,7 @@ import org.springframework.transaction.annotation.Transactional;
 import javax.sql.DataSource;
 import java.math.BigDecimal;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -59,6 +62,7 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
     private final PrintService printService;
     private final DataSource dataSource;
     private final LoggingService loggingService;
+    private final GlobalLogSummaryRepository globalLogSummaryRepository;
 
     
     @Override
@@ -137,8 +141,12 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
 
             callAfterSaveProcedure(savedHeader);
 
-            // Logging for create operation
-            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), savedHeader.getTransactionPoid().toString());
+            String docId = UserContext.getDocumentId();
+            String docKeyPoid = savedHeader.getTransactionPoid().toString();
+            Timestamp now = new Timestamp(System.currentTimeMillis());
+            String createdMessage = String.format("Created - - DOC:%s KEY:%s", docId, docKeyPoid);
+            GlobalLogSummary headerLog = createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, createdMessage, now);
+            globalLogSummaryRepository.save(headerLog);
 
             return buildResponse(savedHeader, refundDetails, billDetails);
         }catch (Exception ex) {
@@ -146,7 +154,7 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
             throw new ValidationException(errorMessage);
         }
     }
-    
+
     private void validateRequest(ImcoDepositRefundRequestDTO request) {
         BigDecimal totalBillAmount = request.getChequeBillDetails().stream()
                 .map(ImcoDepositRefundRequestDTO.ChequeBillDetailDTO::getBillAmount)
@@ -348,6 +356,16 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
         }
 
         return "Database validation failed: " + (message != null ? message : "Unknown error");
+    }
+
+    private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage, Timestamp logDateTime) {
+        GlobalLogSummary summary = new GlobalLogSummary();
+        summary.setLogUserPoid(UserContext.getUserPoid());
+        summary.setLogDateTime(logDateTime != null ? logDateTime : new Timestamp(System.currentTimeMillis()));
+        summary.setLogDocId(docId);
+        summary.setLogDocKeyPoid(docKeyPoid);
+        summary.setLogDetails(customMessage);
+        return summary;
     }
 
     @Override

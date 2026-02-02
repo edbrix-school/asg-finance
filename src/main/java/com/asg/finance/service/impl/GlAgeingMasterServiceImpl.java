@@ -399,10 +399,13 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
             
             for (GlAgeingMasterDtlEntity newlyCreated : newlyCreatedEntities) {
                 GlAgeingMasterDtlEntity savedEntity = savedEntities.stream()
-                        .filter(saved -> saved.getAgeingPoid().equals(newlyCreated.getAgeingPoid()) &&
-                                saved.getBreakupTitle().equals(newlyCreated.getBreakupTitle()) &&
-                                saved.getBreakupFrom().equals(newlyCreated.getBreakupFrom()) &&
-                                saved.getBreakupTo().equals(newlyCreated.getBreakupTo()))
+                        .filter(saved ->
+                                Objects.equals(saved.getAgeingPoid(), newlyCreated.getAgeingPoid()) &&
+                                        Objects.equals(saved.getBreakupTitle(), newlyCreated.getBreakupTitle()) &&
+                                        Objects.equals(saved.getBreakupFrom(), newlyCreated.getBreakupFrom()) &&
+                                        Objects.equals(saved.getBreakupTo(), newlyCreated.getBreakupTo())
+                        )
+
                         .findFirst()
                         .orElse(null);
                 

@@ -20,6 +20,9 @@ public interface GlFavAcMasterGlAcDtlRepository extends JpaRepository<GlFavAcMas
     
     @Query("SELECT g FROM GlFavAcMasterGlAcDtl g WHERE g.favAcPoid = :favAcPoid ORDER BY g.seqNo ASC")
     List<GlFavAcMasterGlAcDtl> findByFavAcPoidOrderBySeqNo(@Param("favAcPoid") Long favAcPoid);
+
+    @Query("SELECT g FROM GlFavAcMasterGlAcDtl g WHERE g.favAcPoid = :favAcPoid ORDER BY g.detRowId ASC")
+    List<GlFavAcMasterGlAcDtl> findByFavAcPoidOrderByDetRowId(@Param("favAcPoid") Long favAcPoid);
     
     @Modifying
     @Query("DELETE FROM GlFavAcMasterGlAcDtl g WHERE g.favAcPoid = :favAcPoid")

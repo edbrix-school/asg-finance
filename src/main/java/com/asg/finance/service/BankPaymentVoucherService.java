@@ -2,6 +2,7 @@ package com.asg.finance.service;
 
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
+import com.asg.common.lib.dto.ReconcileResultDto;
 import com.asg.finance.dto.*;
 import org.springframework.data.domain.Pageable;
 
@@ -38,6 +39,8 @@ public interface BankPaymentVoucherService {
     void resetChequeStatus(Long transactionPoid);
 
     String revertReconciliation(Long transactionPoid, String documentId);
+
+    ReconcileResultDto getReconciledDate(String documentId, Long transactionPoid);
 
     Map<String, Object> listBankPaymentVouchers(String documentId, FilterRequestDto filters, java.time.LocalDate startDateValue, java.time.LocalDate endDateValue, Pageable pageable);
 

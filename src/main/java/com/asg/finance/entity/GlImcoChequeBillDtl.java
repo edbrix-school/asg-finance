@@ -1,6 +1,7 @@
 package com.asg.finance.entity;
 
 
+import com.asg.common.lib.annotation.AuditIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -21,11 +22,13 @@ import java.time.LocalDateTime;
 public class GlImcoChequeBillDtl {
     
     @Id
+    @AuditIgnore
     @Column(name = "TRANSACTION_POID")
     private Long transactionPoid;
 
     @Id
     @Column(name = "DET_ROW_ID")
+    @AuditIgnore
     private Long detRowId;
 
     @Column(name = "BILL_REF")
@@ -38,15 +41,19 @@ public class GlImcoChequeBillDtl {
     private String remarks;
 
     @Column(name = "CREATED_BY")
+    @AuditIgnore
     private String createdBy;
 
     @Column(name = "CREATED_DATE")
+    @AuditIgnore
     private LocalDateTime createdDate;
 
     @Column(name = "LASTMODIFIED_BY")
+    @AuditIgnore
     private String lastModifiedBy;
 
     @Column(name = "LASTMODIFIED_DATE")
+    @AuditIgnore
     private LocalDateTime lastModifiedDate;
 
     @Data

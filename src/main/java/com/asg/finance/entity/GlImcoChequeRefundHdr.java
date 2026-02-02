@@ -1,5 +1,6 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.annotation.AuditIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,17 +20,21 @@ import java.time.LocalDateTime;
 public class GlImcoChequeRefundHdr {
 
     @Id
+    @AuditIgnore
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "TRANSACTION_POID")
     private Long transactionPoid;
 
     @Column(name = "TRANSACTION_DATE")
+    @AuditIgnore
     private LocalDate transactionDate;
     
     @Column(name = "GROUP_POID")
+    @AuditIgnore
     private Long groupPoid;
     
     @Column(name = "COMPANY_POID")
+    @AuditIgnore
     private Long companyPoid;
     
     @Column(name = "DOC_REF")
@@ -39,6 +44,7 @@ public class GlImcoChequeRefundHdr {
     private String remarks;
     
     @Column(name = "GRAND_TOTAL")
+    @AuditIgnore
     private BigDecimal grandTotal;
     
     @Column(name = "BL_NUMBER")
@@ -54,14 +60,18 @@ public class GlImcoChequeRefundHdr {
     private String deleted = "N";
     
     @Column(name = "CREATED_BY")
+    @AuditIgnore
     private String createdBy;
     
     @Column(name = "CREATED_DATE")
+    @AuditIgnore
     private LocalDateTime createdDate;
     
     @Column(name = "LASTMODIFIED_BY")
+    @AuditIgnore
     private String lastModifiedBy;
     
     @Column(name = "LASTMODIFIED_DATE")
+    @AuditIgnore
     private LocalDateTime lastModifiedDate;
 }

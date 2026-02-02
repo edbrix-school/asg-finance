@@ -499,7 +499,7 @@ public class GLMasterServiceImpl implements GLMasterService {
                         CountryInfoDto countryInfo = new CountryInfoDto();
                         countryInfo.setCountryPoid(countryDetail.getPoid());
                         countryInfo.setCountryCode(countryDetail.getCode());
-                        countryInfo.setCountryName(countryDetail.getLabel());
+                        countryInfo.setCountryName(countryDetail.getDescription());
                         pdto.setBeneficiaryCountryDetails(countryInfo);
                     } catch (Exception e) {
                         log.warn("Failed to fetch beneficiary country details for ID: {}", pay.getBeneficiaryCountry());
@@ -519,7 +519,7 @@ public class GLMasterServiceImpl implements GLMasterService {
                         CountryInfoDto countryInfo = new CountryInfoDto();
                         countryInfo.setCountryPoid(countryDetail.getPoid());
                         countryInfo.setCountryCode(countryDetail.getCode());
-                        countryInfo.setCountryName(countryDetail.getLabel());
+                        countryInfo.setCountryName(countryDetail.getDescription());
                         pdto.setIntermediaryCountryDetails(countryInfo);
                     } catch (Exception e) {
                         log.warn("Failed to fetch intermediary country details for ID: {}", pay.getIntermediaryCountryPoid());

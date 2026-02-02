@@ -26,5 +26,5 @@ public interface IPropertyCostCenterService {
     /**
      * Get Property Cost Center list view (flat structure with parent-child info)
      */
-    List<PropertyCostCenterResponse> getPropertyCostCenterList(String documentId, String actionRequested, Long parentPoid);
+    List<PropertyCostCenterResponse> getPropertyCostCenterList(String documentId, String actionRequested, Long parentPoid,String sort);
 }

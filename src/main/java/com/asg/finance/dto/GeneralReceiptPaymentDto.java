@@ -23,10 +23,10 @@ public class GeneralReceiptPaymentDto {
     private Long detRowId;
 
     @NotBlank(message = "Payment type is required")
-    @Pattern(regexp = "CASH|CHEQUE|TT|DIRECT_TRANSFER|CARD", 
-             message = "Payment type must be CASH, CHEQUE, TT, DIRECT_TRANSFER, or CARD")
+    @Pattern(regexp = "CASH|CHEQUE|TT|CARD|ROUNDOFF",
+             message = "Payment type must be CASH, CHEQUE, TT, CARD, or ROUNDOFF")
     @Schema(description = "Payment type", example = "CHEQUE", required = true, 
-            allowableValues = {"CASH", "CHEQUE", "TT", "DIRECT_TRANSFER", "CARD"})
+            allowableValues = {"CASH", "CHEQUE", "TT","CARD", "ROUNDOFF"})
     private String type;
 
     @NotNull(message = "Payment amount is required")
@@ -71,7 +71,7 @@ public class GeneralReceiptPaymentDto {
     @Schema(description = "Card POID (for card payments)", example = "300")
     private Long cardPoid;
 
-    @Schema(description = "Action type for frontend operations", example = "CREATE")
+    @Schema(description = "Action type for frontend operations", example = "ISCREATED", allowableValues = {"ISCREATED", "ISUPDATED", "ISDELETED"})
     private String actionType;
 }
 

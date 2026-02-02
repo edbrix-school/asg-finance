@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface GlBankFileDtlRepository extends JpaRepository<GlBankFileDtl, GlBankFileDtlKey> {
@@ -40,4 +41,11 @@ public interface GlBankFileDtlRepository extends JpaRepository<GlBankFileDtl, Gl
     
     @Query("SELECT d FROM GlBankFileDtl d WHERE d.transactionPoid = :transactionPoid AND d.debitCompanyPoid = :companyPoid AND d.deleted = :deleted")
     List<GlBankFileDtl> findByTransactionPoidCompanyAndDeleted(Long transactionPoid, Long companyPoid, String deleted);
+    
+    Optional<GlBankFileDtl> findByTransactionPoidAndDetRowId(Long transactionPoid, Long detRowId);
+    
+    void deleteByTransactionPoidAndDetRowId(Long transactionPoid, Long detRowId);
+    
+    @Query("SELECT MAX(d.detRowId) FROM GlBankFileDtl d WHERE d.transactionPoid = :transactionPoid")
+    Long findMaxDetRowIdByTransactionPoid(Long transactionPoid);
 }

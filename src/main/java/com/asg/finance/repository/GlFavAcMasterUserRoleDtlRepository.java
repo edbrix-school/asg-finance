@@ -14,14 +14,20 @@ import java.util.List;
  * Repository for user role detail records
  */
 @Repository
-public interface GlFavAcMasterUserRoleDtlRepository extends JpaRepository<GlFavAcMasterUserRoleDtl, Long> {
+public interface GlFavAcMasterUserRoleDtlRepository extends JpaRepository<GlFavAcMasterUserRoleDtl, GlFavAcMasterUserRoleDtl.CompositeKey> {
     
     List<GlFavAcMasterUserRoleDtl> findByFavAcPoid(Long favAcPoid);
+
+    @Query("SELECT u FROM GlFavAcMasterUserRoleDtl u WHERE u.favAcPoid = :favAcPoid ORDER BY u.detRowId ASC")
+    List<GlFavAcMasterUserRoleDtl> findByFavAcPoidOrderByDetRowId(@Param("favAcPoid") Long favAcPoid);
     
     @Modifying
     @Query("DELETE FROM GlFavAcMasterUserRoleDtl u WHERE u.favAcPoid = :favAcPoid")
     void deleteByFavAcPoid(@Param("favAcPoid") Long favAcPoid);
 
     List<GlFavAcMasterUserRoleDtl> findByUserRolePoid(Long userRolePoid);
+    
+    @Query("SELECT u FROM GlFavAcMasterUserRoleDtl u WHERE u.favAcPoid = :favAcPoid AND u.detRowId = :detRowId")
+    java.util.Optional<GlFavAcMasterUserRoleDtl> findByFavAcPoidAndDetRowId(@Param("favAcPoid") Long favAcPoid, @Param("detRowId") Long detRowId);
 }
 

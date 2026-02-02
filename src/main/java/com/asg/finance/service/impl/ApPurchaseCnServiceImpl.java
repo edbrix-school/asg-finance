@@ -231,21 +231,30 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
             for (ApPurchaseCnItemDtlDto itemDto : dto.getItemDetails()) {
                 String actionType = normalizeActionType(itemDto.getActionType());
                 if ("isdeleted".equals(actionType) && itemDto.getDetRowId() != null) {
+                    ApPurchaseCnItemDtl oldItem = itemDtlRepository.findById(new com.asg.finance.entity.key.ApPurchaseCnItemDtlKey(transactionPoid, itemDto.getDetRowId())).orElse(null);
+                    if (oldItem != null) {
+                        loggingService.logChanges(oldItem, null, ApPurchaseCnItemDtl.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.DELETED, "TRANSACTION_POID");
+                    }
                     itemDtlRepository.deleteById(new com.asg.finance.entity.key.ApPurchaseCnItemDtlKey(transactionPoid, itemDto.getDetRowId()));
                 } else if ("isupdated".equals(actionType) && itemDto.getDetRowId() != null) {
+                    ApPurchaseCnItemDtl oldItem = itemDtlRepository.findById(new com.asg.finance.entity.key.ApPurchaseCnItemDtlKey(transactionPoid, itemDto.getDetRowId())).orElse(null);
                     ApPurchaseCnItemDtl item = mapItemToEntity(itemDto);
                     item.setTransactionPoid(transactionPoid);
                     item.setDetRowId(itemDto.getDetRowId());
                     item.setLastModifiedBy(UserContext.getUserId());
                     item.setLastModifiedDate(Timestamp.valueOf(LocalDateTime.now()));
                     itemDtlRepository.save(item);
+                    if (oldItem != null) {
+                        loggingService.logChanges(oldItem, item, ApPurchaseCnItemDtl.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+                    }
                 } else if ("iscreated".equals(actionType)) {
                     ApPurchaseCnItemDtl item = mapItemToEntity(itemDto);
                     item.setTransactionPoid(transactionPoid);
-                    item.setDetRowId(itemDto.getDetRowId() != null ? itemDto.getDetRowId() : getNextItemRowId(transactionPoid));
+                    item.setDetRowId(getNextItemRowId(transactionPoid));
                     item.setCreatedBy(UserContext.getUserId());
                     item.setCreatedDate(Timestamp.valueOf(LocalDateTime.now()));
                     itemDtlRepository.save(item);
+                    loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString(), "Row Created on Supplier Credit Note Item Detail with detRowId: " + item.getDetRowId());
                 }
             }
         }
@@ -254,14 +263,22 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
             for (ApPurchaseCnChargeDtlDto chargeDto : dto.getChargeDetails()) {
                 String actionType = normalizeActionType(chargeDto.getActionType());
                 if ("isdeleted".equals(actionType) && chargeDto.getDetRowId() != null) {
+                    ApPurchaseCnChargeDtl oldCharge = chargeDtlRepository.findById(new com.asg.finance.entity.key.ApPurchaseCnChargeDtlKey(transactionPoid, chargeDto.getDetRowId())).orElse(null);
+                    if (oldCharge != null) {
+                        loggingService.logChanges(oldCharge, null, ApPurchaseCnChargeDtl.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.DELETED, "TRANSACTION_POID");
+                    }
                     chargeDtlRepository.deleteById(new com.asg.finance.entity.key.ApPurchaseCnChargeDtlKey(transactionPoid, chargeDto.getDetRowId()));
                 } else if ("isupdated".equals(actionType) && chargeDto.getDetRowId() != null) {
+                    ApPurchaseCnChargeDtl oldCharge = chargeDtlRepository.findById(new com.asg.finance.entity.key.ApPurchaseCnChargeDtlKey(transactionPoid, chargeDto.getDetRowId())).orElse(null);
                     ApPurchaseCnChargeDtl charge = mapChargeToEntity(chargeDto);
                     charge.setTransactionPoid(transactionPoid);
                     charge.setDetRowId(chargeDto.getDetRowId());
                     charge.setLastModifiedBy(UserContext.getUserId());
                     charge.setLastModifiedDate(Timestamp.valueOf(LocalDateTime.now()));
                     chargeDtlRepository.save(charge);
+                    if (oldCharge != null) {
+                        loggingService.logChanges(oldCharge, charge, ApPurchaseCnChargeDtl.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+                    }
                 } else if ("iscreated".equals(actionType)) {
                     ApPurchaseCnChargeDtl charge = mapChargeToEntity(chargeDto);
                     charge.setTransactionPoid(transactionPoid);
@@ -269,6 +286,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                     charge.setCreatedBy(UserContext.getUserId());
                     charge.setCreatedDate(Timestamp.valueOf(LocalDateTime.now()));
                     chargeDtlRepository.save(charge);
+                    loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString(), "Row Created on Supplier Credit Note Charge Detail with detRowId: " + charge.getDetRowId());
                 }
             }
         }
@@ -276,10 +294,14 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         if (dto.getGlDetails() != null) {
             for (ApPurchaseCnGlDtlDto glDto : dto.getGlDetails()) {
                 String actionType = normalizeActionType(glDto.getActionType());
-                Long dtRowId = null;
                 if ("isdeleted".equals(actionType) && glDto.getDetRowId() != null) {
+                    ApPurchaseCnGlDtl oldGl = glDtlRepository.findById(new com.asg.finance.entity.key.ApPurchaseCnGlDtlKey(transactionPoid, glDto.getDetRowId())).orElse(null);
+                    if (oldGl != null) {
+                        loggingService.logChanges(oldGl, null, ApPurchaseCnGlDtl.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.DELETED, "TRANSACTION_POID");
+                    }
                     glDtlRepository.deleteById(new com.asg.finance.entity.key.ApPurchaseCnGlDtlKey(transactionPoid, glDto.getDetRowId()));
                 } else if ("isupdated".equals(actionType) && glDto.getDetRowId() != null) {
+                    ApPurchaseCnGlDtl oldGl = glDtlRepository.findById(new com.asg.finance.entity.key.ApPurchaseCnGlDtlKey(transactionPoid, glDto.getDetRowId())).orElse(null);
                     ApPurchaseCnGlDtl gl = mapGlToEntity(glDto);
                     gl.setTransactionPoid(transactionPoid);
                     gl.setDetRowId(glDto.getDetRowId());
@@ -287,6 +309,9 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                     gl.setLastModifiedDate(Timestamp.valueOf(LocalDateTime.now()));
                     glDtlRepository.save(gl);
                     glDto.setDetRowId(gl.getDetRowId());
+                    if (oldGl != null) {
+                        loggingService.logChanges(oldGl, gl, ApPurchaseCnGlDtl.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+                    }
                 } else if ("iscreated".equals(actionType)) {
                     ApPurchaseCnGlDtl gl = mapGlToEntity(glDto);
                     gl.setTransactionPoid(transactionPoid);
@@ -295,6 +320,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                     gl.setCreatedDate(Timestamp.valueOf(LocalDateTime.now()));
                     glDtlRepository.save(gl);
                     glDto.setDetRowId(gl.getDetRowId());
+                    loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString(), "Row Created on Supplier Credit Note GL Detail with detRowId: " + gl.getDetRowId());
                 }
             }
             saveBillwiseForGl(transactionPoid, dto.getGlDetails().stream()
@@ -333,6 +359,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                 item.setCreatedBy(UserContext.getUserId());
                 item.setCreatedDate(Timestamp.valueOf(LocalDateTime.now()));
                 itemDtlRepository.save(item);
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString(), "Row Created on Supplier Credit Note Item Detail with detRowId: " + item.getDetRowId());
             }
             log.info("Saved {} item details for transactionPoid: {}", dto.getItemDetails().size(), transactionPoid);
         }
@@ -346,6 +373,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                 charge.setCreatedBy(UserContext.getUserId());
                 charge.setCreatedDate(Timestamp.valueOf(LocalDateTime.now()));
                 chargeDtlRepository.save(charge);
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString(), "Row Created on Supplier Credit Note Charge Detail with detRowId: " + charge.getDetRowId());
             }
             log.info("Saved {} charge details for transactionPoid: {}", dto.getChargeDetails().size(), transactionPoid);
         }
@@ -360,6 +388,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                 gl.setCreatedDate(Timestamp.valueOf(LocalDateTime.now()));
                 glDtlRepository.save(gl);
                 glDto.setDetRowId(gl.getDetRowId());
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString(), "Row Created on Supplier Credit Note GL Detail with detRowId: " + gl.getDetRowId());
             }
             log.info("Saved {} GL details for transactionPoid: {}", dto.getGlDetails().size(), transactionPoid);
             

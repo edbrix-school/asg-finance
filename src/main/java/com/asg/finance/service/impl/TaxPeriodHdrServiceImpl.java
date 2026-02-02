@@ -97,7 +97,7 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
 
             chargeEntities.forEach(chargeDtlEntity -> {
                 String logDetail = String.format("Row Created on Tax Charge with detRowId: %s", chargeDtlEntity.getDetRowId());
-                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), docId , logDetail);
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString() , logDetail);
             });
         }
 
@@ -120,7 +120,7 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
            globalTaxPeriodStockDtlRepository.saveAll(stockDtlEntities);
            stockDtlEntities.forEach(stockDtlEntity -> {
                 String logDetail = String.format("Row Created on Tax stock with detRowId: %s", stockDtlEntity.getDetRowId());
-                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), docId , logDetail);
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString() , logDetail);
             });
         }
 
@@ -146,7 +146,11 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
 
         updatedEntity.setDocRef(existingEntity.getDocRef());
         updatedEntity.setTransactionPoid(existingEntity.getTransactionPoid());
-        updatedEntity.setTransactionDate(LocalDate.now());
+        if (request.getTransactionDate() != null) {
+            updatedEntity.setTransactionDate(request.getTransactionDate());
+        } else {
+            updatedEntity.setTransactionDate(existingEntity.getTransactionDate() != null ? existingEntity.getTransactionDate() : LocalDate.now());
+        }
         TaxPeriodHdr savedEntity = taxPeriodHdrRepository.save(updatedEntity);
         //Update Stocks & Charges
         if (request.getCharges() != null && !request.getCharges().isEmpty()) {
@@ -194,7 +198,7 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
         TaxPeriodHdr taxPeriodHdr = new TaxPeriodHdr();
         taxPeriodHdr.setGroupPoid(UserContext.getGroupPoid());
         taxPeriodHdr.setCompanyPoid(UserContext.getCompanyPoid());
-        taxPeriodHdr.setTransactionDate(LocalDate.now());
+        taxPeriodHdr.setTransactionDate(request.getTransactionDate() != null ? request.getTransactionDate() : LocalDate.now());
         taxPeriodHdr.setDescription(request.getDescription());
         taxPeriodHdr.setPeriodFrom(request.getPeriodFrom());
         taxPeriodHdr.setPeriodTo(request.getPeriodTo());
@@ -207,7 +211,7 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
     private TaxPeriodHdrResponseDto convertFromTaxPeriodHdrEntityToTaxPeriodHdrDto(TaxPeriodHdr taxPeriodHdr) {
         TaxPeriodHdrResponseDto responseDto = new TaxPeriodHdrResponseDto();
         responseDto.setTransactionPoid(taxPeriodHdr.getTransactionPoid());
-        responseDto.setTransactionDate(LocalDate.now());
+        responseDto.setTransactionDate(taxPeriodHdr.getTransactionDate());
         responseDto.setGroupPoid(taxPeriodHdr.getGroupPoid());
         responseDto.setCompanyPoid(taxPeriodHdr.getCompanyPoid());
         responseDto.setDocRef(taxPeriodHdr.getDocRef());
@@ -536,7 +540,7 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
             globalTaxPeriodChargeDtlRepository.saveAll(toSave);
             toSave.forEach(e -> {
                 String logDetailForCreated = String.format("Row Created on Tax Charge with detRowId: %s", e.getDetRowId());
-                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), UserContext.getDocumentId(), logDetailForCreated);
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString(), logDetailForCreated);
             });
         }
 
@@ -617,7 +621,7 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
             toSave.forEach(e ->
             {
                 String logDetailForCreated = String.format("Row Created on Tax Stock with detRowId: %s", e.getDetRowId());
-                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), UserContext.getDocumentId(), logDetailForCreated);
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString(), logDetailForCreated);
             });
         }
 

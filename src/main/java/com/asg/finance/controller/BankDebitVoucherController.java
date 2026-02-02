@@ -383,7 +383,7 @@ public class BankDebitVoucherController {
                     )
             )
     )
-    @AllowedAction(UserRolesRightsEnum.CREATE)
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/validate-paygl")
     public ResponseEntity<?> validatePayGL(
             @Valid @RequestBody PayGLValidationRequest request) {

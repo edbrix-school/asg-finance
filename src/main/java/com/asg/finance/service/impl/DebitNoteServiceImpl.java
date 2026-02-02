@@ -120,13 +120,15 @@ public class DebitNoteServiceImpl implements DebitNoteService {
 
         validateDebitNoteInput(debitNoteDto);
         // Validate using stored procedure for Edit
-        debitNoteCustomRepository.validateDebitNote(
-                debitNoteDto.getRefType(),
-                debitNoteDto.getPartyType(),
-                debitNoteDto.getPartyPoid(),
-                debitNoteDto.getFdaRefPoid(),
-                debitNoteDto.getPoRef()
-        );
+
+        if (debitNoteDto.getRefType().equals("FDA JOBS") || debitNoteDto.getRefType().equals("FF JOBS"))
+            debitNoteCustomRepository.validateDebitNote(
+                    debitNoteDto.getRefType(),
+                    debitNoteDto.getPartyType(),
+                    debitNoteDto.getPartyPoid(),
+                    debitNoteDto.getFdaRefPoid(),
+                    debitNoteDto.getPoRef()
+            );
 
         applyBusinessLogic(debitNoteDto);
 
@@ -725,6 +727,11 @@ public class DebitNoteServiceImpl implements DebitNoteService {
             if (detailsObj.getCode() == null) {
                 throw new ResourceNotFoundException("FDA Reference Poid Not Valid: " ,"FdaRefPoid", dto.getFdaRefPoid());
             }
+        }
+
+        if ("FDA_DIRECT".equalsIgnoreCase(dto.getRefType()) && dto.getFdaDirectRefPoid() == null)
+        {
+            throw new ValidationException("FdaDirectRefPoid is Mandatory for ref Type FDA_DIRECT");
         }
     }
 

@@ -18,8 +18,6 @@ import java.sql.Timestamp;
 public class GlAgeingMasterDtlEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "ageingDtlSeq")
-    @SequenceGenerator(name = "ageingDtlSeq", sequenceName = "GL_AGEING_MASTER_DTL_SEQ", allocationSize = 1)
     @Column(name = "DET_ROW_ID", nullable = false)
     @AuditIgnore
     private Long detRowId;

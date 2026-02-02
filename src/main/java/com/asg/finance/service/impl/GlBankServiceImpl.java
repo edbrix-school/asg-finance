@@ -326,7 +326,7 @@ public class GlBankServiceImpl implements GlBankService {
         entitiesToSave.add(newEntity);
         
         String logDetail = String.format("Row Created on Bank Cheque Detail with detRowId: %s", dto.getDetRowId());
-        loggingService.createLogSummaryEntry(UserContext.getDocumentId(), UserContext.getDocumentId(), logDetail);
+        loggingService.createLogSummaryEntry(UserContext.getDocumentId(), bankPoid.toString(), logDetail);
     }
 
     private void updateExistingGlBankChequeDtlEntity(GlBankChequeDtlEntity entity, GlBankChequeDtlDto dto, List<GlBankChequeDtlEntity> entities) {
@@ -441,7 +441,7 @@ public class GlBankServiceImpl implements GlBankService {
         entitiesToSave.add(newEntity);
         
         String logDetail = String.format("Row Created on Bank Commission Detail with detRowId: %s", dto.getDetRowId());
-        loggingService.createLogSummaryEntry(UserContext.getDocumentId(), UserContext.getDocumentId(), logDetail);
+        loggingService.createLogSummaryEntry(UserContext.getDocumentId(), bankPoid.toString(), logDetail);
     }
 
     private void updateExistingGlBankCommissionDtlEntity(GlBankCommissionDtlEntity entity, GlBankCommissionDtlDto dto, List<GlBankCommissionDtlEntity> entities) {

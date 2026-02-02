@@ -88,6 +88,9 @@ public class InsuranceMaster {
     @Column(name = "DESCRIPTION", length = 200)
     private String description;
 
+    @Column(name = "FA_POID")
+    private Long faPoid;
+
     @Column(name = "PJ_REF_POID")
     @AuditIgnore
     private Long pjRefPoid;

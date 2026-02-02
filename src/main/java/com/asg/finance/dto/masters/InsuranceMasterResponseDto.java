@@ -32,6 +32,7 @@ public class InsuranceMasterResponseDto {
     private String paymentFrequency;
     private String oneTime;
     private String description;
+    private Long faPoid;
     private Long pjRefPoid;
     //private String active;
     private String deleted;

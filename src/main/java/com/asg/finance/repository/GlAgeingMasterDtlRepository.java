@@ -2,6 +2,8 @@ package com.asg.finance.repository;
 
 import com.asg.finance.entity.GlAgeingMasterDtlEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -16,6 +18,13 @@ public interface GlAgeingMasterDtlRepository extends JpaRepository<GlAgeingMaste
     Optional<GlAgeingMasterDtlEntity> findByAgeingMaster_AgeingPoidAndDetRowId(Long ageingPoid, Long detRowId);
     void deleteByAgeingPoidAndDetRowIdIn(Long ageingPoid, List<Long> detRowIds);
     void deleteByAgeingMaster_AgeingPoid(Long ageingPoid);
+    @Query("""
+        SELECT COALESCE(MAX(d.detRowId), 0)
+        FROM GlAgeingMasterDtlEntity d
+        WHERE d.ageingPoid = :ageingPoid
+    """)
+    Long findMaxDetRowIdByAgeingPoid(@Param("ageingPoid") Long ageingPoid);
 
-   }
+
+}
 

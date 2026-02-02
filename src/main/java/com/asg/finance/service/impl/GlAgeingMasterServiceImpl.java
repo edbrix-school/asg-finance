@@ -184,12 +184,13 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
     private void saveAgeingDetails(List<GlAgeingMasterDtlDto> detailDtos, GlAgeingMasterEntity masterEntity) {
         List<GlAgeingMasterDtlEntity> detailEntities = new ArrayList<>();
 
-        for (GlAgeingMasterDtlDto dto : detailDtos) {
 
+        for (GlAgeingMasterDtlDto dto : detailDtos) {
+            Long detRowId = dto.getDetRowId() != null ? dto.getDetRowId() : getNextDetRowIdForGl(masterEntity.getAgeingPoid());
             GlAgeingMasterDtlEntity entity = GlAgeingMasterDtlEntity.builder()
                     .ageingMaster(masterEntity)
                     .ageingPoid(masterEntity.getAgeingPoid())
-                    .detRowId(dto.getDetRowId())
+                    .detRowId(detRowId)
                     .breakupTitle(dto.getBreakupTitle())
                     .breakupFrom(dto.getBreakupFrom())
                     .breakupTo(dto.getBreakupTo())
@@ -203,6 +204,13 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
         }
 
         ageingMasterDtlRepository.saveAll(detailEntities);
+    }
+
+    private Long getNextDetRowIdForGl(Long ageingPoid) {
+        Long maxDetRowId = ageingMasterDtlRepository
+                .findMaxDetRowIdByAgeingPoid(ageingPoid);
+
+        return maxDetRowId + 1;
     }
 
     private void updateAgeingMasterFields(GlAgeingMasterEntity entity, GlAgeingMasterDto dto) {

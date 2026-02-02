@@ -29,6 +29,8 @@ import java.time.LocalDateTime;
     private String cardType;
     private String creditCardRef;
 
+    private String actionType;
+
     private LovGetListDto bankDet;
     private LovGetListDto chequeCompanyDet;
     private LovGetListDto paymentMainDet;

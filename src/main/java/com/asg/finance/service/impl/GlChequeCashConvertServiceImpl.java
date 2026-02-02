@@ -4,6 +4,7 @@ import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
+import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.security.util.UserContext;
@@ -12,6 +13,7 @@ import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
+import com.asg.finance.entity.GlobalLogSummary;
 import com.asg.finance.dto.GlChequeCashConvertHdrDto;
 import com.asg.finance.dto.GlChequeCashConvertInDtlDto;
 import com.asg.finance.dto.GlChequeCashConvertOutDtlDto;
@@ -21,6 +23,7 @@ import com.asg.finance.entity.GlChequeCashConvertInDtlEntity;
 import com.asg.finance.entity.GlChequeCashConvertOutDtlEntity;
 import com.asg.finance.entity.key.GlChequeCashConvertInDtlKey;
 import com.asg.finance.entity.key.GlChequeCashConvertOutDtlKey;
+import com.asg.finance.repository.GlobalLogSummaryRepository;
 import com.asg.finance.repository.GlChequeCashConvertHdrRepository;
 import com.asg.finance.repository.GlChequeCashConvertInDtlRepository;
 import com.asg.finance.repository.GlChequeCashConvertOutDtlRepository;
@@ -42,13 +45,14 @@ import org.springframework.stereotype.Service;
 
 
 import javax.sql.DataSource;
+import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
+import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.concurrent.atomic.AtomicLong;
 
 import static com.asg.common.lib.utility.ASGHelperUtils.getCurrentUser;
 
@@ -67,6 +71,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
     private final DataSource dataSource;
     private final DocumentDeleteService documentDeleteService;
     private final LoggingService loggingService;
+    private final GlobalLogSummaryRepository globalLogSummaryRepository;
 
     @Override
     public GlChequeCashConvertHdrDto getGlChequeCashConvert(Long transactionPoid) {
@@ -168,7 +173,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
     @Transactional
     @Override
     public void softDeleteByTransactionPoid(Long transactionPoid, DeleteReasonDto deleteReasonDto) {
-        GlChequeCashConvertHdrEntity entity = glChequeCashConvertHdrRepository.findById(transactionPoid)
+        glChequeCashConvertHdrRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("ChequeAndCashConvert", "transactionPoid", transactionPoid));
 
         // Use DocumentDeleteService for consistent soft delete handling
@@ -236,16 +241,13 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         }
 
         if (dto.getInDtls() != null && !dto.getInDtls().isEmpty()) {
+            Long transactionPoid = savedHdr.getTransactionPoid();
             List<GlChequeCashConvertInDtlEntity> inDtlEntities = dto.getInDtls().stream().map(inDto -> {
                 GlChequeCashConvertInDtlEntity inEntity = new GlChequeCashConvertInDtlEntity();
                 GlChequeCashConvertInDtlKey key = new GlChequeCashConvertInDtlKey();
-                Long transactionPoid = savedHdr.getTransactionPoid();
-                Long maxDetRowId = glChequeCashConvertInDtlRepository.findMaxDetRowIdByTransactionPoid(transactionPoid);
-                log.info("maxDetRowId : {}", maxDetRowId);
                 key.setTransactionPoid(transactionPoid);
-                key.setDetRowId(maxDetRowId);
+                key.setDetRowId(inDto.getDetRowId());
                 inEntity.setId(key);
-                log.info("key: {}", key);
                 inEntity.setBankPoid(inDto.getBankPoid());
                 inEntity.setChqAcName(inDto.getChqAcName());
                 inEntity.setChqCardNo(inDto.getChqCardNo());
@@ -272,17 +274,13 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         }
 
         if (dto.getOutDtls() != null && !dto.getOutDtls().isEmpty()) {
+            Long transactionPoid = savedHdr.getTransactionPoid();
             List<GlChequeCashConvertOutDtlEntity> outDtlEntities = dto.getOutDtls().stream().map(outDto -> {
                 GlChequeCashConvertOutDtlEntity outEntity = new GlChequeCashConvertOutDtlEntity();
                 GlChequeCashConvertOutDtlKey outDtlKey = new GlChequeCashConvertOutDtlKey();
-                Long transactionPoid = savedHdr.getTransactionPoid();
-                log.info("TransactionPoid : {}", transactionPoid);
                 outDtlKey.setTransactionPoid(transactionPoid);
-                Long maxDetRowId = glChequeCashConvertOutDtlRepository.findMaxDetRowIdByTransactionPoid(transactionPoid);
-                log.info(" out det RowId : {}", maxDetRowId);
-                outDtlKey.setDetRowId(maxDetRowId);
+                outDtlKey.setDetRowId(outDto.getDetRowId());
                 outEntity.setId(outDtlKey);
-                log.info("out key: {}", outDtlKey);
                 outEntity.setPaymentMainPoid(outDto.getPaymentMainPoid());
                 outEntity.setAmount(outDto.getAmount());
                 outEntity.setRemarks(outDto.getRemarks());
@@ -302,8 +300,11 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
             glChequeCashConvertOutDtlRepository.saveAll(outDtlEntities);
         }
 
-        // Log the creation
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), savedHdr.getTransactionPoid().toString());
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = savedHdr.getTransactionPoid().toString();
+        String createdMessage = String.format("Created - - DOC:%s KEY:%s", docId, docKeyPoid);
+        GlobalLogSummary headerLog = createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, createdMessage);
+        globalLogSummaryRepository.save(headerLog);
 
         return getGlChequeCashConvert(savedHdr.getTransactionPoid());
         } catch (Exception ex) {
@@ -341,75 +342,29 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
 
         GlChequeCashConvertHdrEntity savedHdr = glChequeCashConvertHdrRepository.save(existingHdr);
 
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = transactionPoid.toString();
+        List<GlobalLogSummary> subTableSummaryLogs = new ArrayList<>();
+        List<LogRequestDto<GlChequeCashConvertHdrEntity>> headerLogRequests = new ArrayList<>();
+
         if (dto.getInDtls() != null && !dto.getInDtls().isEmpty()) {
-            AtomicLong nextInDetRowId = new AtomicLong(glChequeCashConvertInDtlRepository.findMaxDetRowIdByTransactionPoid(transactionPoid));
-            List<GlChequeCashConvertInDtlEntity> inDtlEntities = dto.getInDtls().stream().map(inDto -> {
-                GlChequeCashConvertInDtlEntity inEntity = new GlChequeCashConvertInDtlEntity();
-                GlChequeCashConvertInDtlKey key = new GlChequeCashConvertInDtlKey();
-                key.setTransactionPoid(transactionPoid);
-                Long detRowId = inDto.getDetRowId();
-                if (detRowId == null || detRowId <= 0) {
-                    detRowId = nextInDetRowId.getAndIncrement();
-                }
-                key.setDetRowId(detRowId);
-                inEntity.setId(key);
-                inEntity.setBankPoid(inDto.getBankPoid());
-                inEntity.setChqAcName(inDto.getChqAcName());
-                inEntity.setChqCardNo(inDto.getChqCardNo());
-                inEntity.setChqDate(inDto.getChqDate());
-                inEntity.setAmount(inDto.getAmount());
-                inEntity.setRemarks(inDto.getRemarks());
-                inEntity.setVoucherType(inDto.getVoucherType());
-                inEntity.setChequeCompanyPoid(inDto.getChequeCompanyPoid());
-                inEntity.setPaymentMainPoid(inDto.getPaymentMainPoid());
-                inEntity.setLineType(inDto.getLineType());
-                inEntity.setPymtType(inDto.getPymtType());
-                inEntity.setTtBankPoid(inDto.getTtBankPoid());
-                inEntity.setTtRef(inDto.getTtRef());
-                inEntity.setCardPoid(inDto.getCardPoid());
-                inEntity.setCardType(inDto.getCardType());
-                inEntity.setCreditCardRef(inDto.getCreditCardRef());
-                inEntity.setCreatedBy(getCurrentUser());
-                inEntity.setCreatedDate(LocalDateTime.now());
-                return inEntity;
-            }).collect(Collectors.toList());
-
-            glChequeCashConvertInDtlRepository.saveAll(inDtlEntities);
+            updateInDtls(dto.getInDtls(), transactionPoid, docId, docKeyPoid, subTableSummaryLogs);
         }
-
         if (dto.getOutDtls() != null && !dto.getOutDtls().isEmpty()) {
-            AtomicLong nextOutDetRowId = new AtomicLong(glChequeCashConvertOutDtlRepository.findMaxDetRowIdByTransactionPoid(transactionPoid));
-            List<GlChequeCashConvertOutDtlEntity> outDtlEntities = dto.getOutDtls().stream().map(outDto -> {
-                GlChequeCashConvertOutDtlEntity outEntity = new GlChequeCashConvertOutDtlEntity();
-                GlChequeCashConvertOutDtlKey outDtlKey = new GlChequeCashConvertOutDtlKey();
-                outDtlKey.setTransactionPoid(transactionPoid);
-                Long detRowId = outDto.getDetRowId();
-                if (detRowId == null || detRowId <= 0) {
-                    detRowId = nextOutDetRowId.getAndIncrement();
-                }
-                outDtlKey.setDetRowId(detRowId);
-                outEntity.setId(outDtlKey);
-                outEntity.setPaymentMainPoid(outDto.getPaymentMainPoid());
-                outEntity.setAmount(outDto.getAmount());
-                outEntity.setRemarks(outDto.getRemarks());
-                outEntity.setBankPoid(outDto.getBankPoid());
-                outEntity.setChqAcName(outDto.getChqAcName());
-                outEntity.setChqAcNo(outDto.getChqAcNo());
-                outEntity.setChqCardNo(outDto.getChqCardNo());
-                outEntity.setChqDate(outDto.getChqDate());
-                outEntity.setSelected(outDto.getSelected());
-                outEntity.setVoucherType(outDto.getVoucherType());
-                outEntity.setLineType(outDto.getLineType());
-                outEntity.setCreatedBy(getCurrentUser());
-                outEntity.setCreatedDate(LocalDateTime.now());
-                return outEntity;
-            }).collect(Collectors.toList());
-
-            glChequeCashConvertOutDtlRepository.saveAll(outDtlEntities);
+            updateOutDtls(dto.getOutDtls(), transactionPoid, docId, docKeyPoid, subTableSummaryLogs);
         }
 
-        // Log the update
-        loggingService.logChanges(oldEntity, savedHdr, GlChequeCashConvertHdrEntity.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+        String modifiedMessage = String.format("Modified - - DOC:%s KEY:%s", docId, docKeyPoid);
+        subTableSummaryLogs.add(createSummaryLogEntry(LogDetailsEnum.MODIFIED, docId, docKeyPoid, modifiedMessage));
+        String headerLogDetail = String.format("KeyId = TRANSACTION_POID:%s", docKeyPoid);
+        headerLogRequests.add(new LogRequestDto<>(oldEntity, savedHdr, GlChequeCashConvertHdrEntity.class, docId, docKeyPoid, headerLogDetail));
+
+        if (!subTableSummaryLogs.isEmpty()) {
+            globalLogSummaryRepository.saveAll(subTableSummaryLogs);
+        }
+        if (!headerLogRequests.isEmpty()) {
+            loggingService.createLogBatch(headerLogRequests);
+        }
 
         return getGlChequeCashConvert(savedHdr.getTransactionPoid());
         } catch (Exception ex) {
@@ -487,6 +442,238 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         if (transactionDate != null && transactionDate.isAfter(LocalDate.now())) {
             throw new ValidationException("Transaction date cannot be in future");
         }
+    }
+
+    private void updateInDtls(List<GlChequeCashConvertInDtlDto> inDtls, Long transactionPoid, String docId, String docKeyPoid,
+                            List<GlobalLogSummary> summaryLogs) {
+        String currentUser = getCurrentUser();
+        LocalDateTime now = LocalDateTime.now();
+        List<GlChequeCashConvertInDtlEntity> toSave = new ArrayList<>();
+        List<GlChequeCashConvertInDtlEntity> newlyCreatedEntities = new ArrayList<>();
+        List<Long> toDelete = new ArrayList<>();
+        List<LogRequestDto<GlChequeCashConvertInDtlEntity>> logRequests = new ArrayList<>();
+
+        List<GlChequeCashConvertInDtlEntity> existingDetails = glChequeCashConvertInDtlRepository.findByIdTransactionPoid(transactionPoid);
+        Map<Long, GlChequeCashConvertInDtlEntity> existingMap = existingDetails.stream()
+                .collect(Collectors.toMap(e -> e.getId().getDetRowId(), Function.identity(), (a, b) -> a));
+
+        for (GlChequeCashConvertInDtlDto inDto : inDtls) {
+            String actionType = inDto.getActionType() == null ? "NOCHANGE" : inDto.getActionType().toUpperCase();
+            switch (actionType) {
+                case "ISCREATED":
+                    GlChequeCashConvertInDtlEntity newInEntity = buildInDtlEntity(inDto, transactionPoid, currentUser, now);
+                    toSave.add(newInEntity);
+                    newlyCreatedEntities.add(newInEntity);
+                    break;
+
+                case "ISUPDATED":
+                    GlChequeCashConvertInDtlEntity existingIn = glChequeCashConvertInDtlRepository
+                            .findByIdTransactionPoidAndIdDetRowId(transactionPoid, inDto.getDetRowId())
+                            .orElseThrow(() -> new ResourceNotFoundException("Cheque Cash Convert In Detail", "detRowId", inDto.getDetRowId()));
+
+                    GlChequeCashConvertInDtlEntity oldIn = new GlChequeCashConvertInDtlEntity();
+                    BeanUtils.copyProperties(existingIn, oldIn);
+                    GlChequeCashConvertInDtlKey oldInKey = new GlChequeCashConvertInDtlKey();
+                    oldInKey.setTransactionPoid(existingIn.getId().getTransactionPoid());
+                    oldInKey.setDetRowId(existingIn.getId().getDetRowId());
+                    oldIn.setId(oldInKey);
+
+                    mapInDtoToEntity(inDto, existingIn, currentUser, now);
+                    toSave.add(existingIn);
+
+                    String inLogDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", docKeyPoid, oldIn.getId().getDetRowId());
+                    logRequests.add(new LogRequestDto<>(oldIn, existingIn, GlChequeCashConvertInDtlEntity.class, docId, docKeyPoid, inLogDetail));
+                    summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.MODIFIED, docId, docKeyPoid,
+                            String.format("Modified - - DOC:%s KEY:%s", docId, docKeyPoid)));
+                    break;
+
+                case "ISDELETED":
+                    toDelete.add(inDto.getDetRowId());
+                    GlChequeCashConvertInDtlEntity oldInForDelete = existingMap.get(inDto.getDetRowId());
+                    if (oldInForDelete != null) {
+                        String deletedRecordString = String.format("detRowId:%s, transactionPoid:%s, bankPoid:%s, amount:%s, remarks:%s",
+                                oldInForDelete.getId().getDetRowId(), transactionPoid, oldInForDelete.getBankPoid(), oldInForDelete.getAmount(), oldInForDelete.getRemarks());
+                        summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.DELETED, docId, docKeyPoid, "Row Deleted " + deletedRecordString));
+                    }
+                    break;
+
+                case "NOCHANGE":
+                default:
+                    break;
+            }
+        }
+
+        if (!toSave.isEmpty()) {
+            List<GlChequeCashConvertInDtlEntity> savedEntities = glChequeCashConvertInDtlRepository.saveAll(toSave);
+            for (GlChequeCashConvertInDtlEntity newlyCreated : newlyCreatedEntities) {
+                GlChequeCashConvertInDtlEntity savedEntity = savedEntities.stream()
+                        .filter(s -> s.getId().getTransactionPoid().equals(newlyCreated.getId().getTransactionPoid())
+                                && s.getId().getDetRowId().equals(newlyCreated.getId().getDetRowId()))
+                        .findFirst().orElse(null);
+                if (savedEntity != null && savedEntity.getId().getDetRowId() != null) {
+                    summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid,
+                            String.format("Row Created on Cheque Cash Convert In Detail with DetRowId: %s", savedEntity.getId().getDetRowId())));
+                }
+            }
+        }
+        if (!toDelete.isEmpty()) {
+            glChequeCashConvertInDtlRepository.deleteByIdTransactionPoidAndIdDetRowIdIn(transactionPoid, toDelete);
+        }
+        if (!logRequests.isEmpty()) {
+            loggingService.createLogBatch(logRequests);
+        }
+    }
+
+    private void updateOutDtls(List<GlChequeCashConvertOutDtlDto> outDtls, Long transactionPoid, String docId, String docKeyPoid,
+                              List<GlobalLogSummary> summaryLogs) {
+        String currentUser = getCurrentUser();
+        LocalDateTime now = LocalDateTime.now();
+        List<GlChequeCashConvertOutDtlEntity> toSave = new ArrayList<>();
+        List<GlChequeCashConvertOutDtlEntity> newlyCreatedEntities = new ArrayList<>();
+        List<Long> toDelete = new ArrayList<>();
+        List<LogRequestDto<GlChequeCashConvertOutDtlEntity>> logRequests = new ArrayList<>();
+
+        List<GlChequeCashConvertOutDtlEntity> existingDetails = glChequeCashConvertOutDtlRepository.findByIdTransactionPoid(transactionPoid);
+        Map<Long, GlChequeCashConvertOutDtlEntity> existingMap = existingDetails.stream()
+                .collect(Collectors.toMap(e -> e.getId().getDetRowId(), Function.identity(), (a, b) -> a));
+
+        for (GlChequeCashConvertOutDtlDto outDto : outDtls) {
+            String actionType = outDto.getActionType() == null ? "NOCHANGE" : outDto.getActionType().toUpperCase();
+            switch (actionType) {
+                case "ISCREATED":
+                    GlChequeCashConvertOutDtlEntity newOutEntity = buildOutDtlEntity(outDto, transactionPoid, currentUser, now);
+                    toSave.add(newOutEntity);
+                    newlyCreatedEntities.add(newOutEntity);
+                    break;
+
+                case "ISUPDATED":
+                    GlChequeCashConvertOutDtlEntity existingOut = glChequeCashConvertOutDtlRepository
+                            .findByIdTransactionPoidAndIdDetRowId(transactionPoid, outDto.getDetRowId())
+                            .orElseThrow(() -> new ResourceNotFoundException("Cheque Cash Convert Out Detail", "detRowId", outDto.getDetRowId()));
+
+                    GlChequeCashConvertOutDtlEntity oldOut = new GlChequeCashConvertOutDtlEntity();
+                    BeanUtils.copyProperties(existingOut, oldOut);
+                    GlChequeCashConvertOutDtlKey oldOutKey = new GlChequeCashConvertOutDtlKey();
+                    oldOutKey.setTransactionPoid(existingOut.getId().getTransactionPoid());
+                    oldOutKey.setDetRowId(existingOut.getId().getDetRowId());
+                    oldOut.setId(oldOutKey);
+
+                    mapOutDtoToEntity(outDto, existingOut, currentUser, now);
+                    toSave.add(existingOut);
+
+                    String outLogDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", docKeyPoid, oldOut.getId().getDetRowId());
+                    logRequests.add(new LogRequestDto<>(oldOut, existingOut, GlChequeCashConvertOutDtlEntity.class, docId, docKeyPoid, outLogDetail));
+                    summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.MODIFIED, docId, docKeyPoid,
+                            String.format("Modified - - DOC:%s KEY:%s", docId, docKeyPoid)));
+                    break;
+
+                case "ISDELETED":
+                    toDelete.add(outDto.getDetRowId());
+                    GlChequeCashConvertOutDtlEntity oldOutForDelete = existingMap.get(outDto.getDetRowId());
+                    if (oldOutForDelete != null) {
+                        String deletedRecordString = String.format("detRowId:%s, transactionPoid:%s, paymentMainPoid:%s, amount:%s, remarks:%s",
+                                oldOutForDelete.getId().getDetRowId(), transactionPoid, oldOutForDelete.getPaymentMainPoid(), oldOutForDelete.getAmount(), oldOutForDelete.getRemarks());
+                        summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.DELETED, docId, docKeyPoid, "Row Deleted " + deletedRecordString));
+                    }
+                    break;
+
+                case "NOCHANGE":
+                default:
+                    break;
+            }
+        }
+
+        if (!toSave.isEmpty()) {
+            List<GlChequeCashConvertOutDtlEntity> savedEntities = glChequeCashConvertOutDtlRepository.saveAll(toSave);
+            for (GlChequeCashConvertOutDtlEntity newlyCreated : newlyCreatedEntities) {
+                GlChequeCashConvertOutDtlEntity savedEntity = savedEntities.stream()
+                        .filter(s -> s.getId().getTransactionPoid().equals(newlyCreated.getId().getTransactionPoid())
+                                && s.getId().getDetRowId().equals(newlyCreated.getId().getDetRowId()))
+                        .findFirst().orElse(null);
+                if (savedEntity != null && savedEntity.getId().getDetRowId() != null) {
+                    summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid,
+                            String.format("Row Created on Cheque Cash Convert Out Detail with DetRowId: %s", savedEntity.getId().getDetRowId())));
+                }
+            }
+        }
+        if (!toDelete.isEmpty()) {
+            glChequeCashConvertOutDtlRepository.deleteByIdTransactionPoidAndIdDetRowIdIn(transactionPoid, toDelete);
+        }
+        if (!logRequests.isEmpty()) {
+            loggingService.createLogBatch(logRequests);
+        }
+    }
+
+    private GlChequeCashConvertInDtlEntity buildInDtlEntity(GlChequeCashConvertInDtlDto inDto, Long transactionPoid, String currentUser, LocalDateTime now) {
+        GlChequeCashConvertInDtlKey key = new GlChequeCashConvertInDtlKey();
+        key.setTransactionPoid(transactionPoid);
+        key.setDetRowId(inDto.getDetRowId());
+        GlChequeCashConvertInDtlEntity entity = new GlChequeCashConvertInDtlEntity();
+        entity.setId(key);
+        mapInDtoToEntity(inDto, entity, currentUser, now);
+        return entity;
+    }
+
+    private void mapInDtoToEntity(GlChequeCashConvertInDtlDto inDto, GlChequeCashConvertInDtlEntity entity, String currentUser, LocalDateTime now) {
+        entity.setBankPoid(inDto.getBankPoid());
+        entity.setChqAcName(inDto.getChqAcName());
+        entity.setChqAcNo(inDto.getChqAcNo());
+        entity.setChqCardNo(inDto.getChqCardNo());
+        entity.setChqDate(inDto.getChqDate());
+        entity.setAmount(inDto.getAmount());
+        entity.setRemarks(inDto.getRemarks());
+        entity.setVoucherType(inDto.getVoucherType());
+        entity.setChequeCompanyPoid(inDto.getChequeCompanyPoid());
+        entity.setPaymentMainPoid(inDto.getPaymentMainPoid());
+        entity.setLineType(inDto.getLineType());
+        entity.setPymtType(inDto.getPymtType());
+        entity.setTtBankPoid(inDto.getTtBankPoid());
+        entity.setTtRef(inDto.getTtRef());
+        entity.setCardPoid(inDto.getCardPoid());
+        entity.setCardType(inDto.getCardType());
+        entity.setCreditCardRef(inDto.getCreditCardRef());
+        entity.setCreatedBy(currentUser);
+        entity.setCreatedDate(now);
+        entity.setLastModifiedBy(currentUser);
+        entity.setLastModifiedDate(now);
+    }
+
+    private GlChequeCashConvertOutDtlEntity buildOutDtlEntity(GlChequeCashConvertOutDtlDto outDto, Long transactionPoid, String currentUser, LocalDateTime now) {
+        GlChequeCashConvertOutDtlKey key = new GlChequeCashConvertOutDtlKey();
+        key.setTransactionPoid(transactionPoid);
+        key.setDetRowId(outDto.getDetRowId());
+        GlChequeCashConvertOutDtlEntity entity = new GlChequeCashConvertOutDtlEntity();
+        entity.setId(key);
+        mapOutDtoToEntity(outDto, entity, currentUser, now);
+        return entity;
+    }
+
+    private void mapOutDtoToEntity(GlChequeCashConvertOutDtlDto outDto, GlChequeCashConvertOutDtlEntity entity, String currentUser, LocalDateTime now) {
+        entity.setPaymentMainPoid(outDto.getPaymentMainPoid());
+        entity.setAmount(outDto.getAmount());
+        entity.setRemarks(outDto.getRemarks());
+        entity.setBankPoid(outDto.getBankPoid());
+        entity.setChqAcName(outDto.getChqAcName());
+        entity.setChqAcNo(outDto.getChqAcNo());
+        entity.setChqCardNo(outDto.getChqCardNo());
+        entity.setChqDate(outDto.getChqDate());
+        entity.setSelected(outDto.getSelected());
+        entity.setVoucherType(outDto.getVoucherType());
+        entity.setLineType(outDto.getLineType());
+        entity.setCreatedBy(currentUser);
+        entity.setCreatedDate(now);
+        entity.setLastModifiedBy(currentUser);
+        entity.setLastModifiedDate(now);
+    }
+
+    private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage) {
+        GlobalLogSummary summary = new GlobalLogSummary();
+        summary.setLogUserPoid(UserContext.getUserPoid());
+        summary.setLogDateTime(new Timestamp(System.currentTimeMillis()));
+        summary.setLogDocId(docId);
+        summary.setLogDocKeyPoid(docKeyPoid);
+        summary.setLogDetails(customMessage);
+        return summary;
     }
 
     @Override

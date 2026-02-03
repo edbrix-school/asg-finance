@@ -32,5 +32,7 @@ public class ExpenseReallocationXlDetailRequest {
 
     @Size(max = 100, message = "Remarks must not exceed 100 characters")
     private String remarks;
+    
+    private String actionType; // For tracking create/update/delete actions
 }
 

@@ -8,6 +8,7 @@ import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.PropertyCostCenterRequest;
 import com.asg.finance.dto.PropertyCostCenterResponse;
+import com.asg.finance.dto.PropertyCostCenterTreeNodeDto;
 import com.asg.finance.dto.PropertyCostCenterTreeRequest;
 import com.asg.finance.service.PropertyCostCenterService;
 import com.asg.common.lib.dto.DeleteReasonDto;
@@ -205,11 +206,14 @@ public class PropertyCostCenterController {
 
             var treeNodes = propertyCostCenterService.getPropertyCostCenterTree(UserContext.getDocumentId(), UserContext.getActionRequested(), request);
 
-            if (treeNodes.isEmpty()) {
-                return success("No Property Cost Center records found", new java.util.ArrayList<>());
-            }
+            int totalCount = countAllNodes(treeNodes);
+            
+            Map<String, Object> response = Map.of(
+                "content", treeNodes,
+                "totalElements", totalCount
+            );
 
-            return success("Property Cost Center tree retrieved successfully", treeNodes);
+            return success("Property Cost Center tree retrieved successfully", response);
 
         } catch (Exception e) {
             return ResponseEntity.internalServerError()
@@ -341,6 +345,17 @@ public class PropertyCostCenterController {
         }
 
         return null;
+    }
+
+    private int countAllNodes(java.util.List<PropertyCostCenterTreeNodeDto> nodes) {
+        if (nodes == null || nodes.isEmpty()) {
+            return 0;
+        }
+        int count = nodes.size();
+        for (var node : nodes) {
+            count += countAllNodes(node.getChildren());
+        }
+        return count;
     }
 
 }

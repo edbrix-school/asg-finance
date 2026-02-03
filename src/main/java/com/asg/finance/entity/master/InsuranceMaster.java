@@ -114,15 +114,15 @@ public class InsuranceMaster {
     @Column(name = "DELETED", length = 1)
     private String deleted;
 
-    @OneToMany(mappedBy = "insuranceMaster", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "insuranceMaster", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @AuditIgnore
     private List<InsuranceVehicleDetail> vehicleDetails;
 
-    @OneToMany(mappedBy = "insuranceMaster", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "insuranceMaster", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @AuditIgnore
     private List<InsuranceEmployeeDetail> employeeDetails;
 
-    @OneToMany(mappedBy = "insuranceMaster", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "insuranceMaster", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @AuditIgnore
     private List<InsurancePropertyDetail> propertyDetails;
 
@@ -130,7 +130,7 @@ public class InsuranceMaster {
     @AuditIgnore
     private List<InsuranceDetail> insuranceDetails;
 
-    @OneToMany(mappedBy = "insuranceMaster", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "insuranceMaster", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @AuditIgnore
     private List<InsurancePicDetail> picDetails;
 

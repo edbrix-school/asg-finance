@@ -209,7 +209,7 @@ public class PropertyCostCenterController {
             int totalCount = countAllNodes(treeNodes);
             
             Map<String, Object> response = Map.of(
-                "content", treeNodes,
+                "contents", treeNodes,
                 "totalElements", totalCount
             );
 

@@ -104,7 +104,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
             dto.setItemDetails(itemDtlRepository.findByTransactionPoid(transactionPoid).stream()
                     .map(this::mapItemToDto).collect(Collectors.toList()));
             dto.setChargeDetails(chargeDtlRepository.findByTransactionPoid(transactionPoid).stream()
-                    .map(this::mapChargeToDto).collect(Collectors.toList()));
+                    .map(e -> mapChargeToDto(e, hdr.getRefType())).collect(Collectors.toList()));
             dto.setGlDetails(glDtlRepository.findByTransactionPoid(transactionPoid).stream()
                     .map(dtl -> mapGlToDto(dtl, dto)).collect(Collectors.toList()));
             
@@ -744,6 +744,17 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         dto.setTaxAmount(entity.getTaxAmount());
         dto.setAmount(entity.getAmount());
         dto.setBaseAmount(entity.getBaseAmount());
+        
+        if (entity.getStockPoid() != null) {
+            dto.setStockDet(lovService.getDetailsByPoidAndLovName(entity.getStockPoid(), "STOCK_MASTER"));
+        }
+        if (entity.getStockUnitPoid() != null) {
+            dto.setStockUnitDet(lovService.getDetailsByPoidAndLovName(entity.getStockUnitPoid(), "STOCK_UNIT6"));
+        }
+        if (entity.getTaxPoid() != null) {
+            dto.setTaxDet(lovService.getDetailsByPoidAndLovName(entity.getTaxPoid(), "INPUT_TAX_MASTER"));
+        }
+        
         return dto;
     }
 
@@ -766,7 +777,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                 .build();
     }
 
-    private ApPurchaseCnChargeDtlDto mapChargeToDto(ApPurchaseCnChargeDtl entity) {
+    private ApPurchaseCnChargeDtlDto mapChargeToDto(ApPurchaseCnChargeDtl entity, String refType) {
         ApPurchaseCnChargeDtlDto dto = new ApPurchaseCnChargeDtlDto();
         dto.setDetRowId(entity.getDetRowId());
         dto.setChargePoid(entity.getChargePoid());
@@ -783,6 +794,23 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         dto.setChargeBaseAmount(entity.getChargeBaseAmount());
         dto.setChargeFrom(entity.getChargeFrom());
         dto.setSupplierPoidFf(entity.getSupplierPoidFf());
+        
+        if (entity.getChargePoid() != null && refType != null) {
+            if ("FDA".equals(refType)) {
+                dto.setChargeDet(lovService.getDetailsByPoidAndLovName(entity.getChargePoid(), "FDA_CHARGE_MASTER_PJ"));
+            } else if ("FF".equals(refType)) {
+                dto.setChargeDet(lovService.getDetailsByPoidAndLovName(entity.getChargePoid(), "FF_CHARGE_MASTER_PJ"));
+            }
+        }
+        
+        if (entity.getTaxPoid() != null) {
+            dto.setTaxDet(lovService.getDetailsByPoidAndLovName(entity.getTaxPoid(), "INPUT_TAX_MASTER"));
+        }
+        
+        if (entity.getRefDocPoid() != null && "FF".equals(refType)) {
+            dto.setRefDocDet(lovService.getDetailsByPoidAndLovName(entity.getRefDocPoid(), "FF_JOBNO"));
+        }
+        
         return dto;
     }
 
@@ -820,6 +848,19 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         dto.setTaxPercentage(entity.getTaxPercentage());
         dto.setTaxAmount(entity.getTaxAmount());
         dto.setTotalAmount(entity.getTotalAmount());
+        
+        if (entity.getCompanyPoid() != null) {
+            dto.setCompanyDet(lovService.getDetailsByPoidAndLovName(entity.getCompanyPoid(), "COMPANY"));
+        }
+        if (entity.getGlPoid() != null) {
+            dto.setGlDet(lovService.getDetailsByPoidAndLovName(entity.getGlPoid(), "GL_MASTER_LEDGERS_PJ"));
+        }
+        if (entity.getType() != null) {
+            dto.setTypeDet(lovService.getDetailsByCodeAndLovName(entity.getType(), "ACC_TYPE_SHORT"));
+        }
+        if (entity.getTaxPoid() != null) {
+            dto.setTaxDet(lovService.getDetailsByPoidAndLovName(entity.getTaxPoid(), "PJ_GL_INPUT_TAX"));
+        }
         
         // Load breakup lists
         loadBreakupLists(entity.getTransactionPoid(), entity.getDetRowId(), dto, headerDto);

@@ -1,5 +1,6 @@
 package com.asg.finance.dto;
 
+import com.asg.common.lib.dto.LovGetListDto;
 import lombok.Getter;
 import lombok.Setter;
 import java.math.BigDecimal;
@@ -27,4 +28,9 @@ public class ApPurchaseCnItemDtlDto {
     
     // Action type field
     private String actionType; // isCreated, isUpdated, isDeleted
+    
+    // LOV details
+    private LovGetListDto stockDet;
+    private LovGetListDto stockUnitDet;
+    private LovGetListDto taxDet;
 }

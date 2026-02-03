@@ -8,8 +8,9 @@ import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.PropertyCostCenterRequest;
 import com.asg.finance.dto.PropertyCostCenterResponse;
+import com.asg.finance.dto.PropertyCostCenterTreeNodeDto;
 import com.asg.finance.dto.PropertyCostCenterTreeRequest;
-import com.asg.finance.service.IPropertyCostCenterService;
+import com.asg.finance.service.PropertyCostCenterService;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -17,7 +18,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,12 +35,12 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 @RequestMapping("/v1/property-cost-centers")
 public class PropertyCostCenterController {
 
-    private final IPropertyCostCenterService propertyCostCenterService;
+    private final PropertyCostCenterService propertyCostCenterService;
     private final LoggingService loggingService;
     private static final Logger LOGGER = LoggerFactory.getLogger(PropertyCostCenterController.class);
 
     @Autowired
-    public PropertyCostCenterController(IPropertyCostCenterService propertyCostCenterService, LoggingService loggingService) {
+    public PropertyCostCenterController(PropertyCostCenterService propertyCostCenterService, LoggingService loggingService) {
         this.propertyCostCenterService = propertyCostCenterService;
         this.loggingService = loggingService;
     }
@@ -206,11 +206,14 @@ public class PropertyCostCenterController {
 
             var treeNodes = propertyCostCenterService.getPropertyCostCenterTree(UserContext.getDocumentId(), UserContext.getActionRequested(), request);
 
-            if (treeNodes.isEmpty()) {
-                return success("No Property Cost Center records found", new java.util.ArrayList<>());
-            }
+            int totalCount = countAllNodes(treeNodes);
+            
+            Map<String, Object> response = Map.of(
+                "contents", treeNodes,
+                "totalElements", totalCount
+            );
 
-            return success("Property Cost Center tree retrieved successfully", treeNodes);
+            return success("Property Cost Center tree retrieved successfully", response);
 
         } catch (Exception e) {
             return ResponseEntity.internalServerError()
@@ -290,16 +293,11 @@ public class PropertyCostCenterController {
              @RequestParam(required = false) String sort) {
 
         try {
-            var listItems = propertyCostCenterService.getPropertyCostCenterList(UserContext.getDocumentId(), UserContext.getActionRequested(), parentPoid,sort);
-
-            if (listItems.isEmpty()) {
-                return success("No Property Cost Center records found", new java.util.ArrayList<>());
-            }
-
-            // Create response with list and count
-            Map<String, Object> response = Map.of(
-                "content", listItems,
-                "totalElements", listItems.size()
+            Map<String, Object> response = propertyCostCenterService.getPropertyCostCenterList(
+                UserContext.getDocumentId(),
+                UserContext.getActionRequested(),
+                parentPoid,
+                sort
             );
             return success("Property Cost Center list retrieved successfully", response);
 
@@ -347,6 +345,17 @@ public class PropertyCostCenterController {
         }
 
         return null;
+    }
+
+    private int countAllNodes(java.util.List<PropertyCostCenterTreeNodeDto> nodes) {
+        if (nodes == null || nodes.isEmpty()) {
+            return 0;
+        }
+        int count = nodes.size();
+        for (var node : nodes) {
+            count += countAllNodes(node.getChildren());
+        }
+        return count;
     }
 
 }

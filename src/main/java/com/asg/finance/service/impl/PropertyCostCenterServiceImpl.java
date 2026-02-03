@@ -15,7 +15,7 @@ import com.asg.finance.repository.CostCenterRepository;
 import com.asg.finance.repository.PropertyCostCenterRepository;
 import com.asg.finance.repository.PropertyCostCenterTreeViewRepository;
 import com.asg.common.lib.exception.ValidationException;
-import com.asg.finance.service.IPropertyCostCenterService;
+import com.asg.finance.service.PropertyCostCenterService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.security.util.UserContext;
@@ -34,7 +34,7 @@ import static com.asg.common.lib.utility.ASGHelperUtils.getCurrentUser;
 
 @Service
 @Slf4j
-public class PropertyCostCenterServiceImpl implements IPropertyCostCenterService {
+public class PropertyCostCenterServiceImpl implements PropertyCostCenterService {
 
     @Autowired
     private PropertyCostCenterRepository repository;
@@ -383,34 +383,27 @@ public class PropertyCostCenterServiceImpl implements IPropertyCostCenterService
 
     // List functionality implementation
     @Override
-    public List<PropertyCostCenterResponse> getPropertyCostCenterList(String documentId, String actionRequested, Long parentPoid,String sort) {
+    public Map<String, Object> getPropertyCostCenterList(String documentId, String actionRequested, Long parentPoid, String sort) {
         try {
             log.info("Fetching Property Cost Center list for documentId: {}, actionRequested: {}, parentPoid: {}, sort: {}",
                     documentId, actionRequested, parentPoid, sort);
+            Long count = repository.countByPropertyTypeNotNull();
 
-            // Get data directly from database using repository
             List<PropertyCostCenter> entities;
-
             if (parentPoid == null) {
-                // Get main groups (records with no parent)
-                entities = repository.findMainGroups(
-                    false, // Always exclude deleted records
-                    null   // No group filtering needed
-                );
+                entities = repository.findMainGroups(false, null);
             } else {
-                // Get direct children of the specified parent
-                entities = repository.findDirectChildren(
-                    parentPoid,
-                    false, // Always exclude deleted records
-                    null   // No group filtering needed
-                );
+                entities = repository.findDirectChildren(parentPoid, false, null);
             }
 
-            // Convert entities to list items
             List<PropertyCostCenterResponse> listItems = convertEntitiesToListItems(entities, sort);
 
             log.info("Successfully retrieved Property Cost Center list with {} items for parentPoid: {}", listItems.size(), parentPoid);
-            return listItems;
+
+            return Map.of(
+                "content", listItems,
+                "totalElements", count
+            );
 
         } catch (Exception e) {
             log.error("Error fetching Property Cost Center list", e);

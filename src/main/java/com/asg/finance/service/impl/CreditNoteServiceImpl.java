@@ -2,6 +2,7 @@ package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.*;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
+import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.LoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.enums.LogDetailsEnum;
@@ -18,10 +19,12 @@ import com.asg.finance.dto.*;
 import com.asg.finance.entity.ArCreditNoteHdr;
 import com.asg.finance.entity.ArCreditNoteDtl;
 import com.asg.finance.entity.ArCreditNoteChargeDtl;
+import com.asg.finance.entity.GlobalLogSummary;
 import com.asg.finance.repository.ArCreditNoteChargeDtlRepository;
 import com.asg.finance.repository.ArCreditNoteDtlRepository;
 import com.asg.finance.repository.ArCreditNoteHdrRepository;
 import com.asg.finance.repository.BankPaymentVoucherSpRepository;
+import com.asg.finance.repository.GlobalLogSummaryRepository;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.BillwiseBreakupService;
@@ -46,6 +49,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.function.Function;
 
 import oracle.jdbc.OracleTypes;
 import com.asg.common.lib.exception.ValidationException;
@@ -100,6 +104,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     
     @Autowired
     private LoggingService loggingService;
+
+    @Autowired
+    private GlobalLogSummaryRepository globalLogSummaryRepository;
 
     @Override
     @Transactional(propagation = Propagation.REQUIRED)
@@ -174,6 +181,10 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
             // Log the creation
             loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), transactionPoid.toString());
+            List<GlobalLogSummary> detailCreateLogs = buildCreateDetailSummaryLogs(creditNoteDto, transactionPoid);
+            if (!detailCreateLogs.isEmpty()) {
+                globalLogSummaryRepository.saveAll(detailCreateLogs);
+            }
 
             return result;
 
@@ -246,15 +257,13 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
             existing = creditNoteHdrRepository.save(existing);
 
+            List<GlobalLogSummary> detailSummaryLogs = new ArrayList<>();
             if (creditNoteDto.getGlDetails() != null) {
-                String issueType = creditNoteDto.getIssueType() != null ? creditNoteDto.getIssueType() : "Y";
-                creditNoteDtlRepository.deleteByTransactionPoid(transactionPoid);
-                saveGLDetailsWithIssueType(transactionPoid, creditNoteDto.getGlDetails(), issueType);
+                updateGLDetailsWithLogging(transactionPoid, creditNoteDto.getGlDetails(), detailSummaryLogs);
             }
 
             if (creditNoteDto.getChargeDetails() != null) {
-                creditNoteChargeDtlRepository.deleteByTransactionPoid(transactionPoid);
-                saveChargeDetails(transactionPoid, creditNoteDto.getChargeDetails());
+                updateChargeDetailsWithLogging(transactionPoid, creditNoteDto.getChargeDetails(), detailSummaryLogs);
                 // Recalculate tax if charge amount changed
                 executeChargeTaxCalculation(transactionPoid, creditNoteDto.getPartyType(), creditNoteDto.getPartyPoid());
             }
@@ -273,6 +282,10 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             
             // Log the update
             loggingService.logChanges(oldEntity, existing, ArCreditNoteHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+            loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), transactionPoid.toString());
+            if (!detailSummaryLogs.isEmpty()) {
+                globalLogSummaryRepository.saveAll(detailSummaryLogs);
+            }
             return result;
         } catch (SQLException e) {
             log.error("Database error updating credit note", e);
@@ -1174,16 +1187,39 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     ) {
         log.info("Saving {} GL rows for txn: {} issueType: {}", glDetails.size(), transactionPoid, issueType);
         creditNoteDtlRepository.deleteByTransactionPoid(transactionPoid);
-        long detRowId = 1L;
+        long detRowId = 0L;
         for (CreditNoteGLDetailDto glDto : glDetails) {
             if (glDto == null) continue;
+            String actionType = glDto.getActionType();
+            if (actionType == null || actionType.trim().isEmpty()) {
+                actionType = "ISCREATED";
+            } else {
+                actionType = actionType.trim().toUpperCase();
+            }
+            if ("NOCHANGES".equals(actionType)) {
+                actionType = "NOCHANGE";
+            }
+            if ("ISUPDATED".equals(actionType) && glDto.getDetRowId() == null) {
+                actionType = "ISCREATED";
+            }
+            if (!"ISCREATED".equals(actionType)) {
+                continue;
+            }
+
+            Long incomingDetRowId = glDto.getDetRowId();
+            if (incomingDetRowId == null) {
+                throw new ValidationException("detRowId is required");
+            }
+            detRowId = Math.max(detRowId, incomingDetRowId);
+            glDto.setDetRowId(incomingDetRowId);
+
             if ("N".equalsIgnoreCase(issueType)) {
                 // Normal + Reversal (SRS requirement)
-                saveNormalGLEntry(transactionPoid, glDto, detRowId++, UserContext.getCompanyPoid());
+                saveNormalGLEntry(transactionPoid, glDto, incomingDetRowId, UserContext.getCompanyPoid());
                 //saveReversalGLEntry(transactionPoid, glDto, detRowId++, UserContext.getCompanyPoid());
             } else {
                 // Issue Type = YES → Normal + Additional
-                saveNormalGLEntry(transactionPoid, glDto, detRowId++, UserContext.getCompanyPoid());
+                saveNormalGLEntry(transactionPoid, glDto, incomingDetRowId, UserContext.getCompanyPoid());
                 //saveAdditionalGLEntry(transactionPoid, glDto, detRowId++, UserContext.getCompanyPoid());
             }
         }
@@ -1279,12 +1315,35 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     }
 
     private void saveChargeDetails(Long transactionPoid, List<UniversalChargeDetailDto> chargeDetails) {
-        long detRowId = 1L;
+        long detRowId = 0L;
         for (UniversalChargeDetailDto dto : chargeDetails) {
             if (dto == null) continue;
+            String actionType = dto.getActionType();
+            if (actionType == null || actionType.trim().isEmpty()) {
+                actionType = "ISCREATED";
+            } else {
+                actionType = actionType.trim().toUpperCase();
+            }
+            if ("NOCHANGES".equals(actionType)) {
+                actionType = "NOCHANGE";
+            }
+            if ("ISUPDATED".equals(actionType) && dto.getDetRowId() == null) {
+                actionType = "ISCREATED";
+            }
+            if (!"ISCREATED".equals(actionType)) {
+                continue;
+            }
+
+            Long incomingDetRowId = dto.getDetRowId();
+            if (incomingDetRowId == null) {
+                throw new ValidationException("detRowId is required");
+            }
+            detRowId = Math.max(detRowId, incomingDetRowId);
+            dto.setDetRowId(incomingDetRowId);
+
             ArCreditNoteChargeDtl entity = new ArCreditNoteChargeDtl();
             entity.setTransactionPoid(transactionPoid);
-            entity.setDetRowId(detRowId++);
+            entity.setDetRowId(incomingDetRowId);
             entity.setChargePoid(dto.getChargePoid());
             entity.setChargeAmount(dto.getChargeAmount());
             entity.setChargeCostAmount(dto.getChargeCostAmount());
@@ -1300,6 +1359,362 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
             creditNoteChargeDtlRepository.save(entity);
         }
+    }
+
+    private List<GlobalLogSummary> buildCreateDetailSummaryLogs(CreditNoteHeaderDto creditNoteDto, Long transactionPoid) {
+        List<GlobalLogSummary> summaryLogs = new ArrayList<>();
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = transactionPoid.toString();
+
+        if (creditNoteDto.getGlDetails() != null) {
+            for (CreditNoteGLDetailDto gl : creditNoteDto.getGlDetails()) {
+                if (gl == null) continue;
+                String actionType = gl.getActionType();
+                if (actionType == null || actionType.trim().isEmpty()) {
+                    actionType = "ISCREATED";
+                } else {
+                    actionType = actionType.trim().toUpperCase();
+                }
+                if ("NOCHANGES".equals(actionType)) {
+                    actionType = "NOCHANGE";
+                }
+            if ("ISUPDATED".equals(actionType) && gl.getDetRowId() == null) {
+                throw new ValidationException("detRowId is required");
+            }
+            if (!"ISCREATED".equals(actionType) || gl.getDetRowId() == null) {
+                continue;
+            }
+                String summaryMessage = String.format("Row Created on Credit Note GL Detail with DetRowId: %s", gl.getDetRowId());
+                summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, summaryMessage));
+            }
+        }
+
+        if (creditNoteDto.getChargeDetails() != null) {
+            for (UniversalChargeDetailDto charge : creditNoteDto.getChargeDetails()) {
+                if (charge == null) continue;
+                String actionType = charge.getActionType();
+                if (actionType == null || actionType.trim().isEmpty()) {
+                    actionType = "ISCREATED";
+                } else {
+                    actionType = actionType.trim().toUpperCase();
+                }
+                if ("NOCHANGES".equals(actionType)) {
+                    actionType = "NOCHANGE";
+                }
+            if ("ISUPDATED".equals(actionType) && charge.getDetRowId() == null) {
+                throw new ValidationException("detRowId is required");
+            }
+            if (!"ISCREATED".equals(actionType) || charge.getDetRowId() == null) {
+                continue;
+            }
+                String summaryMessage = String.format("Row Created on Credit Note Charge Detail with DetRowId: %s", charge.getDetRowId());
+                summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, summaryMessage));
+            }
+        }
+
+        return summaryLogs;
+    }
+
+    private void updateGLDetailsWithLogging(Long transactionPoid, List<CreditNoteGLDetailDto> glDetails,
+                                            List<GlobalLogSummary> summaryLogs) {
+        if (glDetails == null || glDetails.isEmpty()) return;
+
+        String currentUser = ASGHelperUtils.getCurrentUser();
+        Timestamp now = Timestamp.from(Instant.now());
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = transactionPoid.toString();
+
+        List<ArCreditNoteDtl> toSave = new ArrayList<>();
+        List<ArCreditNoteDtl> newlyCreated = new ArrayList<>();
+        List<Long> toDelete = new ArrayList<>();
+        List<LogRequestDto<ArCreditNoteDtl>> logRequests = new ArrayList<>();
+
+        List<ArCreditNoteDtl> existingDetails = creditNoteDtlRepository.findByTransactionPoidOrderByDetRowId(transactionPoid);
+        Map<Long, ArCreditNoteDtl> existingMap = existingDetails.stream()
+                .collect(Collectors.toMap(ArCreditNoteDtl::getDetRowId, Function.identity(), (a, b) -> a));
+
+        long nextDetRowId = existingDetails.stream()
+                .map(ArCreditNoteDtl::getDetRowId)
+                .filter(Objects::nonNull)
+                .max(Long::compareTo)
+                .orElse(0L);
+
+        for (CreditNoteGLDetailDto dto : glDetails) {
+            if (dto == null) continue;
+            String actionType = dto.getActionType();
+            if (actionType == null || actionType.trim().isEmpty()) {
+                actionType = (dto.getDetRowId() == null) ? "ISCREATED" : "ISUPDATED";
+            } else {
+                actionType = actionType.trim().toUpperCase();
+            }
+            if ("NOCHANGES".equals(actionType)) {
+                actionType = "NOCHANGE";
+            }
+            if ("ISUPDATED".equals(actionType) && dto.getDetRowId() == null) {
+                actionType = "ISCREATED";
+            }
+
+            switch (actionType) {
+                case "ISCREATED": {
+                    Long detRowId = dto.getDetRowId();
+                    if (detRowId == null) {
+                        throw new ValidationException("detRowId is required");
+                    }
+                    if (detRowId > nextDetRowId) {
+                        nextDetRowId = detRowId;
+                    }
+
+                    ArCreditNoteDtl newEntity = new ArCreditNoteDtl();
+                    mapGlDtoToEntity(dto, newEntity, transactionPoid);
+                    newEntity.setDetRowId(detRowId);
+                    newEntity.setCreatedBy(currentUser);
+                    newEntity.setCreatedDate(now);
+                    newEntity.setLastModifiedBy(currentUser);
+                    newEntity.setLastModifiedDate(now);
+                    toSave.add(newEntity);
+                    newlyCreated.add(newEntity);
+                    break;
+                }
+                case "ISUPDATED": {
+                    Long detRowId = dto.getDetRowId();
+                    if (detRowId == null) {
+                        throw new ValidationException("detRowId is required");
+                    }
+                    ArCreditNoteDtl existing = existingMap.get(detRowId);
+                    if (existing == null) {
+                        Long newDetRowId = detRowId;
+                        if (newDetRowId > nextDetRowId) {
+                            nextDetRowId = newDetRowId;
+                        }
+                        ArCreditNoteDtl newEntity = new ArCreditNoteDtl();
+                        mapGlDtoToEntity(dto, newEntity, transactionPoid);
+                        newEntity.setDetRowId(newDetRowId);
+                        newEntity.setCreatedBy(currentUser);
+                        newEntity.setCreatedDate(now);
+                        newEntity.setLastModifiedBy(currentUser);
+                        newEntity.setLastModifiedDate(now);
+                        toSave.add(newEntity);
+                        newlyCreated.add(newEntity);
+                        break;
+                    }
+
+                    ArCreditNoteDtl oldEntity = new ArCreditNoteDtl();
+                    BeanUtils.copyProperties(existing, oldEntity);
+                    mapGlDtoToEntity(dto, existing, transactionPoid);
+                    existing.setLastModifiedBy(currentUser);
+                    existing.setLastModifiedDate(now);
+                    toSave.add(existing);
+
+                    String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", docKeyPoid, detRowId);
+                    logRequests.add(new LogRequestDto<>(oldEntity, existing, ArCreditNoteDtl.class, docId, docKeyPoid, logDetail));
+                    break;
+                }
+                case "ISDELETED": {
+                    Long detRowId = dto.getDetRowId();
+                    if (detRowId == null) {
+                        throw new ValidationException("detRowId is required");
+                    }
+                    toDelete.add(detRowId);
+                    ArCreditNoteDtl oldEntityForDelete = existingMap.get(detRowId);
+                    if (oldEntityForDelete != null) {
+                        String deletedRecordString = String.format("detRowId:%s, transactionPoid:%s, glPoid:%s, drAmt:%s, crAmt:%s, remarks:%s",
+                                oldEntityForDelete.getDetRowId(), transactionPoid, oldEntityForDelete.getGlPoid(),
+                                oldEntityForDelete.getDrAmt(), oldEntityForDelete.getCrAmt(), oldEntityForDelete.getRemarks());
+                        String deleteSummaryMessage = String.format("Row Deleted %s", deletedRecordString);
+                        summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.DELETED, docId, docKeyPoid, deleteSummaryMessage));
+                    }
+                    break;
+                }
+                case "NOCHANGE":
+                default:
+                    break;
+            }
+        }
+
+        if (!toSave.isEmpty()) {
+            creditNoteDtlRepository.saveAll(toSave);
+            for (ArCreditNoteDtl newlyCreatedEntity : newlyCreated) {
+                if (newlyCreatedEntity.getDetRowId() != null) {
+                    String summaryMessage = String.format("Row Created on Credit Note GL Detail with DetRowId: %s", newlyCreatedEntity.getDetRowId());
+                    summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, summaryMessage));
+                }
+            }
+        }
+        if (!toDelete.isEmpty()) {
+            creditNoteDtlRepository.deleteByTransactionPoidAndDetRowIdIn(transactionPoid, toDelete);
+        }
+        if (!logRequests.isEmpty()) {
+            loggingService.createLogBatch(logRequests);
+        }
+    }
+
+    private void updateChargeDetailsWithLogging(Long transactionPoid, List<UniversalChargeDetailDto> chargeDetails,
+                                                List<GlobalLogSummary> summaryLogs) {
+        if (chargeDetails == null || chargeDetails.isEmpty()) return;
+
+        String currentUser = ASGHelperUtils.getCurrentUser();
+        Timestamp now = Timestamp.from(Instant.now());
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = transactionPoid.toString();
+
+        List<ArCreditNoteChargeDtl> toSave = new ArrayList<>();
+        List<ArCreditNoteChargeDtl> newlyCreated = new ArrayList<>();
+        List<Long> toDelete = new ArrayList<>();
+        List<LogRequestDto<ArCreditNoteChargeDtl>> logRequests = new ArrayList<>();
+
+        List<ArCreditNoteChargeDtl> existingDetails = creditNoteChargeDtlRepository.findByTransactionPoidOrderByDetRowId(transactionPoid);
+        Map<Long, ArCreditNoteChargeDtl> existingMap = existingDetails.stream()
+                .collect(Collectors.toMap(ArCreditNoteChargeDtl::getDetRowId, Function.identity(), (a, b) -> a));
+
+        long nextDetRowId = existingDetails.stream()
+                .map(ArCreditNoteChargeDtl::getDetRowId)
+                .filter(Objects::nonNull)
+                .max(Long::compareTo)
+                .orElse(0L);
+
+        for (UniversalChargeDetailDto dto : chargeDetails) {
+            if (dto == null) continue;
+            String actionType = dto.getActionType();
+            if (actionType == null || actionType.trim().isEmpty()) {
+                actionType = (dto.getDetRowId() == null) ? "ISCREATED" : "ISUPDATED";
+            } else {
+                actionType = actionType.trim().toUpperCase();
+            }
+            if ("NOCHANGES".equals(actionType)) {
+                actionType = "NOCHANGE";
+            }
+            if ("ISUPDATED".equals(actionType) && dto.getDetRowId() == null) {
+                actionType = "ISCREATED";
+            }
+
+            switch (actionType) {
+                case "ISCREATED": {
+                    Long detRowId = dto.getDetRowId();
+                    if (detRowId == null) {
+                        throw new ValidationException("detRowId is required");
+                    }
+                    if (detRowId > nextDetRowId) {
+                        nextDetRowId = detRowId;
+                    }
+
+                    ArCreditNoteChargeDtl newEntity = new ArCreditNoteChargeDtl();
+                    mapChargeDtoToEntity(dto, newEntity, transactionPoid);
+                    newEntity.setDetRowId(detRowId);
+                    newEntity.setCreatedBy(currentUser);
+                    newEntity.setCreatedDate(now);
+                    newEntity.setLastModifiedBy(currentUser);
+                    newEntity.setLastModifiedDate(now);
+                    toSave.add(newEntity);
+                    newlyCreated.add(newEntity);
+                    break;
+                }
+                case "ISUPDATED": {
+                    Long detRowId = dto.getDetRowId();
+                    if (detRowId == null) {
+                        throw new ValidationException("detRowId is required");
+                    }
+                    ArCreditNoteChargeDtl existing = existingMap.get(detRowId);
+                    if (existing == null) {
+                        Long newDetRowId = detRowId;
+                        if (newDetRowId > nextDetRowId) {
+                            nextDetRowId = newDetRowId;
+                        }
+                        ArCreditNoteChargeDtl newEntity = new ArCreditNoteChargeDtl();
+                        mapChargeDtoToEntity(dto, newEntity, transactionPoid);
+                        newEntity.setDetRowId(newDetRowId);
+                        newEntity.setCreatedBy(currentUser);
+                        newEntity.setCreatedDate(now);
+                        newEntity.setLastModifiedBy(currentUser);
+                        newEntity.setLastModifiedDate(now);
+                        toSave.add(newEntity);
+                        newlyCreated.add(newEntity);
+                        break;
+                    }
+
+                    ArCreditNoteChargeDtl oldEntity = new ArCreditNoteChargeDtl();
+                    BeanUtils.copyProperties(existing, oldEntity);
+                    mapChargeDtoToEntity(dto, existing, transactionPoid);
+                    existing.setLastModifiedBy(currentUser);
+                    existing.setLastModifiedDate(now);
+                    toSave.add(existing);
+
+                    String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", docKeyPoid, detRowId);
+                    logRequests.add(new LogRequestDto<>(oldEntity, existing, ArCreditNoteChargeDtl.class, docId, docKeyPoid, logDetail));
+                    break;
+                }
+                case "ISDELETED": {
+                    Long detRowId = dto.getDetRowId();
+                    if (detRowId == null) {
+                        throw new ValidationException("detRowId is required");
+                    }
+                    toDelete.add(detRowId);
+                    ArCreditNoteChargeDtl oldEntityForDelete = existingMap.get(detRowId);
+                    if (oldEntityForDelete != null) {
+                        String deletedRecordString = String.format("detRowId:%s, transactionPoid:%s, chargePoid:%s, chargeAmount:%s, remarks:%s",
+                                oldEntityForDelete.getDetRowId(), transactionPoid, oldEntityForDelete.getChargePoid(),
+                                oldEntityForDelete.getChargeAmount(), oldEntityForDelete.getRemarks());
+                        String deleteSummaryMessage = String.format("Row Deleted %s", deletedRecordString);
+                        summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.DELETED, docId, docKeyPoid, deleteSummaryMessage));
+                    }
+                    break;
+                }
+                case "NOCHANGE":
+                default:
+                    break;
+            }
+        }
+
+        if (!toSave.isEmpty()) {
+            creditNoteChargeDtlRepository.saveAll(toSave);
+            for (ArCreditNoteChargeDtl newlyCreatedEntity : newlyCreated) {
+                if (newlyCreatedEntity.getDetRowId() != null) {
+                    String summaryMessage = String.format("Row Created on Credit Note Charge Detail with DetRowId: %s", newlyCreatedEntity.getDetRowId());
+                    summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, summaryMessage));
+                }
+            }
+        }
+        if (!toDelete.isEmpty()) {
+            creditNoteChargeDtlRepository.deleteByTransactionPoidAndDetRowIdIn(transactionPoid, toDelete);
+        }
+        if (!logRequests.isEmpty()) {
+            loggingService.createLogBatch(logRequests);
+        }
+    }
+
+    private void mapGlDtoToEntity(CreditNoteGLDetailDto dto, ArCreditNoteDtl entity, Long transactionPoid) {
+        entity.setTransactionPoid(transactionPoid);
+        entity.setType(dto.getType());
+        entity.setCompanyPoid(dto.getCompanyPoid() != null ? dto.getCompanyPoid() : UserContext.getCompanyPoid());
+        entity.setGlPoid(dto.getGlPoid());
+        entity.setDrAmt(dto.getDrAmt());
+        entity.setCrAmt(dto.getCrAmt());
+        entity.setRemarks(dto.getRemarks());
+        entity.setTaxPoid(dto.getTaxPoid());
+        entity.setTaxPercentage(dto.getTaxPercentage());
+        entity.setTaxAmount(dto.getTaxAmount());
+        entity.setTotalAmount(dto.getTotalAmount());
+    }
+
+    private void mapChargeDtoToEntity(UniversalChargeDetailDto dto, ArCreditNoteChargeDtl entity, Long transactionPoid) {
+        entity.setTransactionPoid(transactionPoid);
+        entity.setChargePoid(dto.getChargePoid());
+        entity.setChargeAmount(dto.getChargeAmount());
+        entity.setChargeCostAmount(dto.getChargeCostAmount());
+        entity.setRemarks(dto.getRemarks());
+        entity.setTaxAmount(dto.getTaxAmount());
+        entity.setTotalAmount(dto.getTotalAmount());
+        entity.setIssueInvoice(dto.getIssueInvoice());
+        entity.setRefDocId("300-111");
+    }
+
+    private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage) {
+        GlobalLogSummary summary = new GlobalLogSummary();
+        summary.setLogUserPoid(UserContext.getUserPoid());
+        summary.setLogDateTime(new Timestamp(System.currentTimeMillis()));
+        summary.setLogDocId(docId);
+        summary.setLogDocKeyPoid(docKeyPoid);
+        summary.setLogDetails(customMessage);
+        return summary;
     }
 
     private ArCreditNoteHdr mapToEntity(CreditNoteHeaderDto dto) {

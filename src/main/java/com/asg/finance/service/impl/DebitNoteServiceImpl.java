@@ -2,6 +2,7 @@ package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.*;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
+import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentDeleteService;
@@ -14,6 +15,7 @@ import com.asg.finance.dto.*;
 import com.asg.finance.entity.ArDebitNoteChargeDtl;
 import com.asg.finance.entity.ArDebitNoteDtl;
 import com.asg.finance.entity.ArDebitNoteHdr;
+import com.asg.finance.entity.GlobalLogSummary;
 import com.asg.finance.entity.SupplierMasterEntity;
 import com.asg.finance.repository.*;
 import com.asg.common.lib.exception.ValidationException;
@@ -39,6 +41,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.function.Function;
 
 /**
  * DebitNoteServiceImpl updated to support:
@@ -72,6 +75,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
     private final DataSource dataSource;
     private final DocumentDeleteService documentDeleteService;
     private final LoggingService loggingService;
+    private final GlobalLogSummaryRepository globalLogSummaryRepository;
 
     @Value("${app.doc-id.debit-note:300-110}")
     private String debitNoteDocId;
@@ -141,8 +145,9 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         existingEntity.setLastModifiedDate(LocalDateTime.now());
         debitNoteHdrRepository.save(existingEntity);
 
-        deleteExistingDetails(transactionPoid);
-        saveDetails(debitNoteDto, transactionPoid);
+        List<GlobalLogSummary> detailSummaryLogs = new ArrayList<>();
+        updateGlDetailsWithLogging(debitNoteDto.getGlDetails(), transactionPoid, detailSummaryLogs);
+        updateChargeDetailsWithLogging(debitNoteDto.getChargeDetails(), transactionPoid, detailSummaryLogs);
 
         // --- UPDATE BILLWISE & COST CENTER BREAKUPS ---
         updateBillwiseBreakups(debitNoteDto, existingEntity.getTransactionPoid(), existingEntity.getGroupPoid(), existingEntity.getCompanyPoid());
@@ -157,6 +162,10 @@ public class DebitNoteServiceImpl implements DebitNoteService {
 
         // Log the update
         loggingService.logChanges(oldEntity, existingEntity, ArDebitNoteHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), transactionPoid.toString());
+        if (!detailSummaryLogs.isEmpty()) {
+            globalLogSummaryRepository.saveAll(detailSummaryLogs);
+        }
 
         return result;
     }
@@ -244,6 +253,266 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         }
     }
 
+    private void updateGlDetailsWithLogging(List<DebitNoteGlDetailDto> glDetails, Long transactionPoid, List<GlobalLogSummary> summaryLogs) {
+        if (glDetails == null || glDetails.isEmpty()) return;
+
+        String currentUser = ASGHelperUtils.getCurrentUser();
+        LocalDateTime now = LocalDateTime.now();
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = transactionPoid.toString();
+
+        List<ArDebitNoteDtl> toSave = new ArrayList<>();
+        List<ArDebitNoteDtl> newlyCreated = new ArrayList<>();
+        List<Long> toDelete = new ArrayList<>();
+        List<LogRequestDto<ArDebitNoteDtl>> logRequests = new ArrayList<>();
+
+        List<ArDebitNoteDtl> existingDetails = debitNoteDtlRepository.findByTransactionPoid(transactionPoid);
+        Map<Long, ArDebitNoteDtl> existingMap = existingDetails.stream()
+                .collect(Collectors.toMap(ArDebitNoteDtl::getDetRowId, Function.identity(), (a, b) -> a));
+
+        Long nextDetRowId = debitNoteDtlRepository.findMaxDetRowIdByTransactionPoid(transactionPoid);
+        if (nextDetRowId == null) {
+            nextDetRowId = 0L;
+        }
+
+        for (DebitNoteGlDetailDto dto : glDetails) {
+            String actionType = dto.getActionType();
+            if (actionType == null || actionType.trim().isEmpty()) {
+                actionType = (dto.getDetRowId() == null) ? "ISCREATED" : "ISUPDATED";
+            } else {
+                actionType = actionType.trim().toUpperCase();
+            }
+            if ("NOCHANGES".equals(actionType)) {
+                actionType = "NOCHANGE";
+            }
+            if ("ISUPDATED".equals(actionType) && dto.getDetRowId() == null) {
+                actionType = "ISCREATED";
+            }
+
+            switch (actionType) {
+                case "ISCREATED": {
+                    Long detRowId = dto.getDetRowId();
+                    if (detRowId == null) {
+                        detRowId = ++nextDetRowId;
+                        dto.setDetRowId(detRowId);
+                    } else if (detRowId > nextDetRowId) {
+                        nextDetRowId = detRowId;
+                    }
+
+                    ArDebitNoteDtl newEntity = new ArDebitNoteDtl();
+                    mapGlDtoToEntity(dto, newEntity, transactionPoid);
+                    newEntity.setDetRowId(detRowId);
+                    newEntity.setCreatedBy(currentUser);
+                    newEntity.setCreatedDate(now);
+                    newEntity.setLastModifiedBy(currentUser);
+                    newEntity.setLastModifiedDate(now);
+                    toSave.add(newEntity);
+                    newlyCreated.add(newEntity);
+                    break;
+                }
+                case "ISUPDATED": {
+                    Long detRowId = dto.getDetRowId();
+                    if (detRowId == null) {
+                        break;
+                    }
+                    ArDebitNoteDtl existing = existingMap.get(detRowId);
+                    if (existing == null) {
+                        Long newDetRowId = detRowId;
+                        if (newDetRowId > nextDetRowId) {
+                            nextDetRowId = newDetRowId;
+                        }
+                        ArDebitNoteDtl newEntity = new ArDebitNoteDtl();
+                        mapGlDtoToEntity(dto, newEntity, transactionPoid);
+                        newEntity.setDetRowId(newDetRowId);
+                        newEntity.setCreatedBy(currentUser);
+                        newEntity.setCreatedDate(now);
+                        newEntity.setLastModifiedBy(currentUser);
+                        newEntity.setLastModifiedDate(now);
+                        toSave.add(newEntity);
+                        newlyCreated.add(newEntity);
+                        break;
+                    }
+
+                    ArDebitNoteDtl oldEntity = new ArDebitNoteDtl();
+                    BeanUtils.copyProperties(existing, oldEntity);
+                    mapGlDtoToEntity(dto, existing, transactionPoid);
+                    existing.setLastModifiedBy(currentUser);
+                    existing.setLastModifiedDate(now);
+                    toSave.add(existing);
+
+                    String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", docKeyPoid, detRowId);
+                    logRequests.add(new LogRequestDto<>(oldEntity, existing, ArDebitNoteDtl.class, docId, docKeyPoid, logDetail));
+                    break;
+                }
+                case "ISDELETED": {
+                    Long detRowId = dto.getDetRowId();
+                    if (detRowId == null) {
+                        break;
+                    }
+                    toDelete.add(detRowId);
+                    ArDebitNoteDtl oldEntityForDelete = existingMap.get(detRowId);
+                    if (oldEntityForDelete != null) {
+                        String deletedRecordString = String.format("detRowId:%s, transactionPoid:%s, glPoid:%s, drAmt:%s, crAmt:%s, remarks:%s",
+                                oldEntityForDelete.getDetRowId(), transactionPoid, oldEntityForDelete.getGlPoid(),
+                                oldEntityForDelete.getDrAmt(), oldEntityForDelete.getCrAmt(), oldEntityForDelete.getRemarks());
+                        String deleteSummaryMessage = String.format("Row Deleted %s", deletedRecordString);
+                        summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.DELETED, docId, docKeyPoid, deleteSummaryMessage));
+                    }
+                    break;
+                }
+                case "NOCHANGE":
+                default:
+                    break;
+            }
+        }
+
+        if (!toSave.isEmpty()) {
+            debitNoteDtlRepository.saveAll(toSave);
+            for (ArDebitNoteDtl newlyCreatedEntity : newlyCreated) {
+                if (newlyCreatedEntity.getDetRowId() != null) {
+                    String summaryMessage = String.format("Row Created on Debit Note GL Detail with DetRowId: %s", newlyCreatedEntity.getDetRowId());
+                    summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, summaryMessage));
+                }
+            }
+        }
+        if (!toDelete.isEmpty()) {
+            debitNoteDtlRepository.deleteByTransactionPoidAndDetRowIdIn(transactionPoid, toDelete);
+        }
+        if (!logRequests.isEmpty()) {
+            loggingService.createLogBatch(logRequests);
+        }
+    }
+
+    private void updateChargeDetailsWithLogging(List<DebitNoteChargeDetailDto> chargeDetails, Long transactionPoid, List<GlobalLogSummary> summaryLogs) {
+        if (chargeDetails == null || chargeDetails.isEmpty()) return;
+
+        String currentUser = ASGHelperUtils.getCurrentUser();
+        LocalDateTime now = LocalDateTime.now();
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = transactionPoid.toString();
+
+        List<ArDebitNoteChargeDtl> toSave = new ArrayList<>();
+        List<ArDebitNoteChargeDtl> newlyCreated = new ArrayList<>();
+        List<Long> toDelete = new ArrayList<>();
+        List<LogRequestDto<ArDebitNoteChargeDtl>> logRequests = new ArrayList<>();
+
+        List<ArDebitNoteChargeDtl> existingDetails = debitNoteChargeDtlRepository.findByTransactionPoid(transactionPoid);
+        Map<Long, ArDebitNoteChargeDtl> existingMap = existingDetails.stream()
+                .collect(Collectors.toMap(ArDebitNoteChargeDtl::getDetRowId, Function.identity(), (a, b) -> a));
+
+        Long nextDetRowId = debitNoteChargeDtlRepository.findMaxDetRowIdByTransactionPoid(transactionPoid);
+        if (nextDetRowId == null) {
+            nextDetRowId = 0L;
+        }
+
+        for (DebitNoteChargeDetailDto dto : chargeDetails) {
+            String actionType = dto.getActionType();
+            if (actionType == null || actionType.trim().isEmpty()) {
+                actionType = (dto.getDetRowId() == null) ? "ISCREATED" : "ISUPDATED";
+            } else {
+                actionType = actionType.trim().toUpperCase();
+            }
+            if ("NOCHANGES".equals(actionType)) {
+                actionType = "NOCHANGE";
+            }
+            if ("ISUPDATED".equals(actionType) && dto.getDetRowId() == null) {
+                actionType = "ISCREATED";
+            }
+
+            switch (actionType) {
+                case "ISCREATED": {
+                    Long detRowId = dto.getDetRowId();
+                    if (detRowId == null) {
+                        detRowId = ++nextDetRowId;
+                        dto.setDetRowId(detRowId);
+                    } else if (detRowId > nextDetRowId) {
+                        nextDetRowId = detRowId;
+                    }
+
+                    ArDebitNoteChargeDtl newEntity = new ArDebitNoteChargeDtl();
+                    mapChargeDtoToEntity(dto, newEntity, transactionPoid);
+                    newEntity.setDetRowId(detRowId);
+                    newEntity.setCreatedBy(currentUser);
+                    newEntity.setCreatedDate(now);
+                    newEntity.setLastModifiedBy(currentUser);
+                    newEntity.setLastModifiedDate(now);
+                    toSave.add(newEntity);
+                    newlyCreated.add(newEntity);
+                    break;
+                }
+                case "ISUPDATED": {
+                    Long detRowId = dto.getDetRowId();
+                    if (detRowId == null) {
+                        break;
+                    }
+                    ArDebitNoteChargeDtl existing = existingMap.get(detRowId);
+                    if (existing == null) {
+                        Long newDetRowId = detRowId;
+                        if (newDetRowId > nextDetRowId) {
+                            nextDetRowId = newDetRowId;
+                        }
+                        ArDebitNoteChargeDtl newEntity = new ArDebitNoteChargeDtl();
+                        mapChargeDtoToEntity(dto, newEntity, transactionPoid);
+                        newEntity.setDetRowId(newDetRowId);
+                        newEntity.setCreatedBy(currentUser);
+                        newEntity.setCreatedDate(now);
+                        newEntity.setLastModifiedBy(currentUser);
+                        newEntity.setLastModifiedDate(now);
+                        toSave.add(newEntity);
+                        newlyCreated.add(newEntity);
+                        break;
+                    }
+
+                    ArDebitNoteChargeDtl oldEntity = new ArDebitNoteChargeDtl();
+                    BeanUtils.copyProperties(existing, oldEntity);
+                    mapChargeDtoToEntity(dto, existing, transactionPoid);
+                    existing.setLastModifiedBy(currentUser);
+                    existing.setLastModifiedDate(now);
+                    toSave.add(existing);
+
+                    String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", docKeyPoid, detRowId);
+                    logRequests.add(new LogRequestDto<>(oldEntity, existing, ArDebitNoteChargeDtl.class, docId, docKeyPoid, logDetail));
+                    break;
+                }
+                case "ISDELETED": {
+                    Long detRowId = dto.getDetRowId();
+                    if (detRowId == null) {
+                        break;
+                    }
+                    toDelete.add(detRowId);
+                    ArDebitNoteChargeDtl oldEntityForDelete = existingMap.get(detRowId);
+                    if (oldEntityForDelete != null) {
+                        String deletedRecordString = String.format("detRowId:%s, transactionPoid:%s, chargePoid:%s, chargeAmount:%s, remarks:%s",
+                                oldEntityForDelete.getDetRowId(), transactionPoid, oldEntityForDelete.getChargePoid(),
+                                oldEntityForDelete.getChargeAmount(), oldEntityForDelete.getRemarks());
+                        String deleteSummaryMessage = String.format("Row Deleted %s", deletedRecordString);
+                        summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.DELETED, docId, docKeyPoid, deleteSummaryMessage));
+                    }
+                    break;
+                }
+                case "NOCHANGE":
+                default:
+                    break;
+            }
+        }
+
+        if (!toSave.isEmpty()) {
+            debitNoteChargeDtlRepository.saveAll(toSave);
+            for (ArDebitNoteChargeDtl newlyCreatedEntity : newlyCreated) {
+                if (newlyCreatedEntity.getDetRowId() != null) {
+                    String summaryMessage = String.format("Row Created on Debit Note Charge Detail with DetRowId: %s", newlyCreatedEntity.getDetRowId());
+                    summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, summaryMessage));
+                }
+            }
+        }
+        if (!toDelete.isEmpty()) {
+            debitNoteChargeDtlRepository.deleteByTransactionPoidAndDetRowIdIn(transactionPoid, toDelete);
+        }
+        if (!logRequests.isEmpty()) {
+            loggingService.createLogBatch(logRequests);
+        }
+    }
+
     private void deleteExistingDetails(Long transactionPoid) {
         debitNoteDtlRepository.deleteByTransactionPoid(transactionPoid);
         debitNoteChargeDtlRepository.deleteByTransactionPoid(transactionPoid);
@@ -266,27 +535,17 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         String user = ASGHelperUtils.getCurrentUser();
 
         for (DebitNoteGlDetailDto dto : glDetails) {
-            detRowId++;
+            Long incomingDetRowId = dto.getDetRowId();
+            if (incomingDetRowId != null) {
+                detRowId = Math.max(detRowId, incomingDetRowId);
+            } else {
+                detRowId++;
+                incomingDetRowId = detRowId;
+            }
 
             ArDebitNoteDtl entity = new ArDebitNoteDtl();
-            entity.setTransactionPoid(transactionPoid);
-            entity.setDetRowId(detRowId);
-            entity.setType(dto.getType());
-            entity.setCompanyPoid(UserContext.getCompanyPoid());
-            entity.setGlPoid(dto.getGlId());
-            entity.setDrAmt(dto.getDebitAmount());
-            entity.setCrAmt(dto.getCreditAmount());
-            entity.setRemarks(dto.getRemarks());
-            entity.setTaxPoid(dto.getTaxId());
-            entity.setTaxPercentage(dto.getTaxPercentage());
-            entity.setTaxAmount(dto.getTaxAmount());
-            if (dto.getTotalAmount() != null) {
-                entity.setTotalAmount(dto.getTotalAmount());
-            } else {
-                BigDecimal dr = dto.getDebitAmount() == null ? BigDecimal.ZERO : dto.getDebitAmount();
-                BigDecimal cr = dto.getCreditAmount() == null ? BigDecimal.ZERO : dto.getCreditAmount();
-                entity.setTotalAmount(dr.add(cr));
-            }
+            mapGlDtoToEntity(dto, entity, transactionPoid);
+            entity.setDetRowId(incomingDetRowId);
             entity.setCreatedBy(user);
             entity.setCreatedDate(LocalDateTime.now());
 
@@ -301,24 +560,64 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         String user = ASGHelperUtils.getCurrentUser();
 
         for (DebitNoteChargeDetailDto dto : chargeDetails) {
-            detRowId++;
+            Long incomingDetRowId = dto.getDetRowId();
+            if (incomingDetRowId != null) {
+                detRowId = Math.max(detRowId, incomingDetRowId);
+            } else {
+                detRowId++;
+                incomingDetRowId = detRowId;
+            }
 
             ArDebitNoteChargeDtl entity = new ArDebitNoteChargeDtl();
-            entity.setTransactionPoid(transactionPoid);
-            entity.setDetRowId(detRowId);
-            entity.setChargePoid(dto.getChargeId());
-            entity.setChargeAmount(dto.getChargeAmount());
-            entity.setRemarks(dto.getRemarks());
-            entity.setTaxPoid(dto.getTaxId());
-            entity.setTaxPercentage(dto.getTaxPercentage());
-            entity.setTaxAmount(dto.getTaxAmount());
-            entity.setCostAmount(dto.getCostAmount());
-            entity.setPrintSeqNo(dto.getSeqNo());
+            mapChargeDtoToEntity(dto, entity, transactionPoid);
+            entity.setDetRowId(incomingDetRowId);
             entity.setCreatedBy(user);
             entity.setCreatedDate(LocalDateTime.now());
 
             debitNoteChargeDtlRepository.save(entity);
         }
+    }
+
+    private void mapGlDtoToEntity(DebitNoteGlDetailDto dto, ArDebitNoteDtl entity, Long transactionPoid) {
+        entity.setTransactionPoid(transactionPoid);
+        entity.setType(dto.getType());
+        entity.setCompanyPoid(UserContext.getCompanyPoid());
+        entity.setGlPoid(dto.getGlId());
+        entity.setDrAmt(dto.getDebitAmount());
+        entity.setCrAmt(dto.getCreditAmount());
+        entity.setRemarks(dto.getRemarks());
+        entity.setTaxPoid(dto.getTaxId());
+        entity.setTaxPercentage(dto.getTaxPercentage());
+        entity.setTaxAmount(dto.getTaxAmount());
+        if (dto.getTotalAmount() != null) {
+            entity.setTotalAmount(dto.getTotalAmount());
+        } else {
+            BigDecimal dr = dto.getDebitAmount() == null ? BigDecimal.ZERO : dto.getDebitAmount();
+            BigDecimal cr = dto.getCreditAmount() == null ? BigDecimal.ZERO : dto.getCreditAmount();
+            entity.setTotalAmount(dr.add(cr));
+        }
+    }
+
+    private void mapChargeDtoToEntity(DebitNoteChargeDetailDto dto, ArDebitNoteChargeDtl entity, Long transactionPoid) {
+        entity.setTransactionPoid(transactionPoid);
+        entity.setChargePoid(dto.getChargeId());
+        entity.setChargeAmount(dto.getChargeAmount());
+        entity.setRemarks(dto.getRemarks());
+        entity.setTaxPoid(dto.getTaxId());
+        entity.setTaxPercentage(dto.getTaxPercentage());
+        entity.setTaxAmount(dto.getTaxAmount());
+        entity.setCostAmount(dto.getCostAmount());
+        entity.setPrintSeqNo(dto.getSeqNo());
+    }
+
+    private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage) {
+        GlobalLogSummary summary = new GlobalLogSummary();
+        summary.setLogUserPoid(UserContext.getUserPoid());
+        summary.setLogDateTime(new java.sql.Timestamp(System.currentTimeMillis()));
+        summary.setLogDocId(docId);
+        summary.setLogDocKeyPoid(docKeyPoid);
+        summary.setLogDetails(customMessage);
+        return summary;
     }
 
     private ArDebitNoteHdr mapToEntity(DebitNoteHeaderDto dto) {

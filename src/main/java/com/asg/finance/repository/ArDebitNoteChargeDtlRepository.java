@@ -15,6 +15,8 @@ public interface ArDebitNoteChargeDtlRepository extends JpaRepository<ArDebitNot
 
     void deleteByTransactionPoid(Long transactionPoid);
 
+    void deleteByTransactionPoidAndDetRowIdIn(Long transactionPoid, List<Long> detRowIds);
+
     @Query("SELECT MAX(d.detRowId) FROM ArDebitNoteChargeDtl d WHERE d.transactionPoid = :transactionPoid")
     Long findMaxDetRowIdByTransactionPoid(Long transactionPoid);
 }

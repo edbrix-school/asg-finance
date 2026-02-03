@@ -32,6 +32,8 @@ public class CreditNoteGLDetailDto {
     private BigDecimal totalAmount;
     private String remarks;
 
+    private String actionType; 
+
     private List<BillwiseBreakupPopupRequestDto> breakupList;
     private List<CostCenterBreakupPopupRequestDto> costCenterList;
 }

@@ -13,6 +13,7 @@ import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.dto.*;
 import com.asg.finance.entity.*;
@@ -59,6 +60,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
     private final DocumentSearchService documentSearchService;
     private final LoggingService loggingService;
     private final DocumentDeleteService documentDeleteService;
+    private final LovDataService lovService;
 
     @Override
     @Transactional
@@ -195,7 +197,6 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
             GlVoucherCostCenterBreakupResponseDto cCResponse = costCenterBreakupService.loadCostCenterData("200-103", pjPoid, UserContext.getGroupPoid(), UserContext.getCompanyPoid(), UserContext.getUserPoid());
             mapBillwiseAndCostCenterBreakup(result, blResponse, cCResponse);
             log.info("Successfully fetched PJ reference details for pjPoid: {}", pjPoid);
-
             return result;
         } catch (Exception e) {
             log.error("Error fetching PJ reference details for pjPoid {}: {}", pjPoid, e.getMessage(), e);
@@ -902,11 +903,90 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
             List<Map<String, Object>> lineItems = (List<Map<String, Object>>) params.getOrDefault("lineItems", null);
             if (CollectionUtils.isNotEmpty(lineItems)) {
                 for (Map<String, Object> lineItem : lineItems) {
-                    Long detRowId = ((Number) lineItem.getOrDefault("GL_POID", null)).longValue();
-                    List<BillwiseBreakupPopupRequestDto> billwiseList = filterBillwiseBreakup(billResponse, detRowId);
-                    List<CostCenterBreakupPopupRequestDto> costCenterList = filterCostCenterBreakup(costResponse, detRowId);
+                    Long companyPoid = ((Number) lineItem.getOrDefault("COMPANY_POID", null)).longValue();
+                    lineItem.put("companyDet", lovService.getDetailsByPoidAndLovName(companyPoid, "COMPANY"));
+                    
+                    Long glPoid = ((Number) lineItem.getOrDefault("GL_POID", null)).longValue();
+                    lineItem.put("glDet", lovService.getDetailsByPoidAndLovName(glPoid, "GL_MASTER_LEDGERS_PJ"));
+
+                    String type = (String) lineItem.get("TYPE");
+                    if (type != null) {
+                        lineItem.put("typeDet", lovService.getDetailsByCodeAndLovName(type, "ACC_TYPE_SHORT"));
+                    }
+                    
+                    Object taxPoidObj = lineItem.get("TAX_POID");
+                    if (taxPoidObj != null) {
+                        Long taxPoid = ((Number) taxPoidObj).longValue();
+                        lineItem.put("taxDet", lovService.getDetailsByPoidAndLovName(taxPoid, "PJ_GL_INPUT_TAX"));
+                    }
+                    
+                    List<BillwiseBreakupPopupRequestDto> billwiseList = filterBillwiseBreakup(billResponse, glPoid);
+                    List<CostCenterBreakupPopupRequestDto> costCenterList = filterCostCenterBreakup(costResponse, glPoid);
                     lineItem.put("BILL_WISE_BREAK_UP_LIST", billwiseList);
                     lineItem.put("COST_CENTER_BREAK_UP_LIST", costCenterList);
+                }
+            }
+        } else if ("FDA".equals(refTye)) {
+            List<Map<String, Object>> lineItems = (List<Map<String, Object>>) params.getOrDefault("lineItems", null);
+            if (CollectionUtils.isNotEmpty(lineItems)) {
+                for (Map<String, Object> lineItem : lineItems) {
+                    Object chargePoidObj = lineItem.get("CHARGE_POID");
+                    if (chargePoidObj != null) {
+                        Long chargePoid = ((Number) chargePoidObj).longValue();
+                        lineItem.put("chargeDet", lovService.getDetailsByPoidAndLovName(chargePoid, "FDA_CHARGE_MASTER_PJ"));
+                    }
+                    
+                    Object taxPoidObj = lineItem.get("TAX_POID");
+                    if (taxPoidObj != null) {
+                        Long taxPoid = ((Number) taxPoidObj).longValue();
+                        lineItem.put("taxDet", lovService.getDetailsByPoidAndLovName(taxPoid, "INPUT_TAX_MASTER"));
+                    }
+                }
+            }
+        } else if ("FF".equals(refTye)) {
+            List<Map<String, Object>> lineItems = (List<Map<String, Object>>) params.getOrDefault("lineItems", null);
+            if (CollectionUtils.isNotEmpty(lineItems)) {
+                for (Map<String, Object> lineItem : lineItems) {
+                    Object chargePoidObj = lineItem.get("CHARGE_POID");
+                    if (chargePoidObj != null) {
+                        Long chargePoid = ((Number) chargePoidObj).longValue();
+                        lineItem.put("chargeDet", lovService.getDetailsByPoidAndLovName(chargePoid, "FF_CHARGE_MASTER_PJ"));
+                    }
+                    
+                    Object taxPoidObj = lineItem.get("TAX_POID");
+                    if (taxPoidObj != null) {
+                        Long taxPoid = ((Number) taxPoidObj).longValue();
+                        lineItem.put("taxDet", lovService.getDetailsByPoidAndLovName(taxPoid, "INPUT_TAX_MASTER"));
+                    }
+                    
+                    Object refDocPoidObj = lineItem.get("REF_DOC_POID");
+                    if (refDocPoidObj != null) {
+                        Long refDocPoid = ((Number) refDocPoidObj).longValue();
+                        lineItem.put("refDocDet", lovService.getDetailsByPoidAndLovName(refDocPoid, "FF_JOBNO"));
+                    }
+                }
+            }
+        } else if ("MTA_PO".equals(refTye)) {
+            List<Map<String, Object>> lineItems = (List<Map<String, Object>>) params.getOrDefault("lineItems", null);
+            if (CollectionUtils.isNotEmpty(lineItems)) {
+                for (Map<String, Object> lineItem : lineItems) {
+                    Object stockPoidObj = lineItem.get("STOCK_POID");
+                    if (stockPoidObj != null) {
+                        Long stockPoid = ((Number) stockPoidObj).longValue();
+                        lineItem.put("stockDet", lovService.getDetailsByPoidAndLovName(stockPoid, "STOCK_MASTER"));
+                    }
+                    
+                    Object stockUnitPoidObj = lineItem.get("STOCK_UNIT_POID");
+                    if (stockUnitPoidObj != null) {
+                        Long stockUnitPoid = ((Number) stockUnitPoidObj).longValue();
+                        lineItem.put("stockUnitDet", lovService.getDetailsByPoidAndLovName(stockUnitPoid, "STOCK_UNIT6"));
+                    }
+                    
+                    Object taxPoidObj = lineItem.get("TAX_POID");
+                    if (taxPoidObj != null) {
+                        Long taxPoid = ((Number) taxPoidObj).longValue();
+                        lineItem.put("taxDet", lovService.getDetailsByPoidAndLovName(taxPoid, "INPUT_TAX_MASTER"));
+                    }
                 }
             }
         }

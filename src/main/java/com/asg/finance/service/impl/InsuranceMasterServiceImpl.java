@@ -187,6 +187,8 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
 
 
             return mapToResponseDto(finalSaved);
+        } catch (ValidationException e) {
+            throw e; // Re-throw validation exceptions without wrapping
         } catch (Exception e) {
             throw new RuntimeException("Failed to create Insurance Master: " + e.getMessage(), e);
         }
@@ -288,9 +290,30 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         existing.setLastModifiedBy(getCurrentUser());
         existing.setLastModifiedDate(LocalDateTime.now());
 
+        // Clear and rebuild child details (don't replace collections, modify them)
+        existing.getEmployeeDetails().clear();
+        existing.getPropertyDetails().clear();
+        existing.getPicDetails().clear();
+        if (existing.getVehicleDetails() != null) {
+            existing.getVehicleDetails().clear();
+        }
         
-        // Add updated child details
-        buildAndSetChildDetails(request, existing);
+        // Add new child details to existing collections
+        if (request.getEmployeeDetails() != null) {
+            existing.getEmployeeDetails().addAll(buildEmployeeDetails(request.getEmployeeDetails(), existing));
+        }
+        if (request.getPropertyDetails() != null) {
+            existing.getPropertyDetails().addAll(buildPropertyDetails(request.getPropertyDetails(), existing));
+        }
+        if (request.getPicDetails() != null) {
+            existing.getPicDetails().addAll(buildPicDetails(request.getPicDetails(), existing));
+        }
+        if (request.getVehicleNumber() != null && !request.getVehicleNumber().isBlank()) {
+            if (existing.getVehicleDetails() == null) {
+                existing.setVehicleDetails(new ArrayList<>());
+            }
+            existing.getVehicleDetails().addAll(buildVehicleDetails(request.getVehicleNumber(), request.getInsuranceAmount(), existing));
+        }
         if (existing.getPjRefPoid() != null) {
             existing.setPjRefPoid(existing.getPjRefPoid());
         } else {
@@ -422,13 +445,14 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
     }
 
     private void buildAndSetChildDetails(InsuranceMasterRequestDto request, InsuranceMaster savedParent) {
-        if (request.getEmployeeDetails() != null && !request.getEmployeeDetails().isEmpty()) {
+        // Always process lists to handle both additions and deletions
+        if (request.getEmployeeDetails() != null) {
             savedParent.setEmployeeDetails(buildEmployeeDetails(request.getEmployeeDetails(), savedParent));
         }
-        if (request.getPropertyDetails() != null && !request.getPropertyDetails().isEmpty()) {
+        if (request.getPropertyDetails() != null) {
             savedParent.setPropertyDetails(buildPropertyDetails(request.getPropertyDetails(), savedParent));
         }
-        if (request.getPicDetails() != null && !request.getPicDetails().isEmpty()) {
+        if (request.getPicDetails() != null) {
             savedParent.setPicDetails(buildPicDetails(request.getPicDetails(), savedParent));
         }
         if (request.getVehicleNumber() != null && !request.getVehicleNumber().isBlank()) {

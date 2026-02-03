@@ -184,13 +184,13 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
     private void saveAgeingDetails(List<GlAgeingMasterDtlDto> detailDtos, GlAgeingMasterEntity masterEntity) {
         List<GlAgeingMasterDtlEntity> detailEntities = new ArrayList<>();
 
+        Long detRowId =  getNextDetRowIdForGl(masterEntity.getAgeingPoid());
 
         for (GlAgeingMasterDtlDto dto : detailDtos) {
-            Long detRowId = dto.getDetRowId() != null ? dto.getDetRowId() : getNextDetRowIdForGl(masterEntity.getAgeingPoid());
             GlAgeingMasterDtlEntity entity = GlAgeingMasterDtlEntity.builder()
                     .ageingMaster(masterEntity)
                     .ageingPoid(masterEntity.getAgeingPoid())
-                    .detRowId(detRowId)
+                    .detRowId(detRowId ++)
                     .breakupTitle(dto.getBreakupTitle())
                     .breakupFrom(dto.getBreakupFrom())
                     .breakupTo(dto.getBreakupTo())

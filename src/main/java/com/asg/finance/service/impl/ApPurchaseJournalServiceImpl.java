@@ -1740,6 +1740,24 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         return list;
     }
 
+    public String supplierPoidFromPo(String pOPoid) {
+        return apPurchaseJournalRepositoryImpl.getSupplierPoidFromPo(
+                UserContext.getGroupPoid(),
+                UserContext.getCompanyPoid(),
+                UserContext.getUserPoid(), // loginUserPoid
+                pOPoid
+        );
+    }
+
+    public String validateOutstandingPo(Long supplierPoid) {
+        return apPurchaseJournalRepositoryImpl.checkOutstandingPo(
+                UserContext.getGroupPoid(),
+                UserContext.getCompanyPoid(),
+                UserContext.getUserPoid(), // loginUserPoid
+                supplierPoid
+        );
+    }
+
     
     @Override
     public byte[] print(Long transactionPoid) throws Exception {

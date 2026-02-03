@@ -447,6 +447,27 @@ public class ApPurchaseJournalController {
         return success("MTA PO Booking details updated successfully", response);
     }
 
+
+    @AllowedAction(UserRolesRightsEnum.VIEW)
+    @GetMapping("/check-supplier-po")
+    public ResponseEntity<?> validateOutstandingPo(
+            @Parameter(description = "SUPPLIER POID", required = true, example = "7890")
+            @RequestParam Long supplierPoid
+    ) {
+        String response = service.validateOutstandingPo(supplierPoid);
+        return success("Supplier Poid details fetch successfully", response);
+    }
+
+    @AllowedAction(UserRolesRightsEnum.VIEW)
+    @GetMapping("/general-po")
+    public ResponseEntity<?> supplierPoidFromPo(
+            @Parameter(description = "PO POID", required = true, example = "7890")
+            @RequestParam String pOPoid
+    ) {
+        String response = service.supplierPoidFromPo(pOPoid);
+        return success("General PO Poid details fetch successfully", response);
+    }
+
     @AllowedAction(UserRolesRightsEnum.VIEW)
     @Operation(
             summary = "Get Default Supplier Values",

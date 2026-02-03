@@ -927,6 +927,50 @@ public class ApPurchaseJournalRepositoryImpl implements ApPurchaseJournalReposit
         return output;
     }
 
+    @Override
+    public String checkOutstandingPo(
+            Long loginGroupPoid,
+            Long loginCompanyPoid,
+            Long loginUserPoid,
+            Long supplierPoid) {
+
+        String result;
+
+        try {
+            StoredProcedureQuery query =
+                    entityManager.createStoredProcedureQuery(
+                            "PRODUCTION.PROC_AP_PI_CHECK_OUTSTAND_PO");
+
+            query.registerStoredProcedureParameter("P_LOGIN_GROUP_POID", Long.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("P_LOGIN_COMPANY_POID", Long.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("P_LOGIN_USER_POID", Long.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("P_SUPPLIER_POID", Long.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("P_RESULT", String.class, ParameterMode.OUT);
+
+            query.setParameter("P_LOGIN_GROUP_POID", loginGroupPoid);
+            query.setParameter("P_LOGIN_COMPANY_POID", loginCompanyPoid);
+            query.setParameter("P_LOGIN_USER_POID", loginUserPoid);
+            query.setParameter("P_SUPPLIER_POID", supplierPoid);
+
+            query.execute();
+
+            result = (String) query.getOutputParameterValue("P_RESULT");
+
+            // 🔥 FIX: handle NULL from procedure
+            if (result == null || result.trim().isEmpty()) {
+                result = "No outstanding General PO found for this supplier.";
+            }
+
+            log.info("Outstanding PO check result: {}", result);
+
+        } catch (Exception e) {
+            log.error("Error executing PROC_AP_PI_CHECK_OUTSTAND_PO", e);
+            throw new RuntimeException("Failed to check outstanding PO", e);
+        }
+
+        return result;
+    }
+
     private Long getLong(ResultSet rs, String col) throws SQLException {
         long v = rs.getLong(col);
         return rs.wasNull() ? null : v;

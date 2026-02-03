@@ -268,6 +268,9 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
                 deleteReasonDto,
                 header.getTransactionDate().toLocalDateTime().toLocalDate()
         );
+        
+        // Log the deletion
+        loggingService.createLogSummaryEntry(LogDetailsEnum.DELETED, UserContext.getDocumentId(), transactionPoid.toString());
 
 
         log.info("deleteTaxSubmission completed for transactionPoid={}", transactionPoid);

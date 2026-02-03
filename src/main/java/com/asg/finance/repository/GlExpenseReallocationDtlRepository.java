@@ -2,6 +2,7 @@ package com.asg.finance.repository;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -15,6 +16,8 @@ public interface GlExpenseReallocationDtlRepository
 		extends JpaRepository<GlExpenseReallocationDtl, GlExpenseReallocationDtl.CompositeKey> {
 
 	List<GlExpenseReallocationDtl> findByTransactionPoid(Long transactionPoid);
+	
+	Optional<GlExpenseReallocationDtl> findByTransactionPoidAndDetRowId(Long transactionPoid, Long detRowId);
 
 	@Query(value = "SELECT COALESCE(SUM(d.SH), 0) FROM GL_EXPENSE_REALLOCATION_DTL d WHERE D.TRANSACTION_POID = :transactionPoid", nativeQuery = true)
 	BigDecimal getTotalShByTransactionPoid(@Param("transactionPoid") Long transactionPoid);

@@ -18,6 +18,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
+import com.asg.finance.dto.*;
 import org.apache.poi.ss.usermodel.BorderStyle;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
@@ -40,22 +41,13 @@ import org.springframework.web.multipart.MultipartFile;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
+import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.utility.PaginationUtil;
-import com.asg.finance.dto.ComputeTotalsRequest;
-import com.asg.finance.dto.ComputeTotalsResponse;
-import com.asg.finance.dto.CreateExpenseReallocationRequest;
-import com.asg.finance.dto.ExpenseReallocationConfigResponse;
-import com.asg.finance.dto.ExpenseReallocationDetailRequest;
-import com.asg.finance.dto.ExpenseReallocationDetailResponse;
-import com.asg.finance.dto.ExpenseReallocationResponse;
-import com.asg.finance.dto.ExpenseReallocationXlDetailResponse;
-import com.asg.finance.dto.UpdateExpenseReallocationRequest;
-import com.asg.finance.dto.ValidateAllocationResponse;
 import com.asg.finance.entity.GlExpenseReallocationDtl;
 import com.asg.finance.entity.GlExpenseReallocationHdr;
 import com.asg.finance.entity.GlExpenseReallocationXlDtl;
@@ -112,6 +104,12 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 				.toList();
 
 		dtlRepository.saveAll(dtlEntities);
+		
+		// Log child record creation for details
+		dtlEntities.forEach(detail -> {
+			String logDetail = String.format("Row Created on Expense Reallocation Detail with detRowId: %s", detail.getDetRowId());
+			loggingService.createLogSummaryEntry(UserContext.getDocumentId(), hdrPoid.toString(), logDetail);
+		});
 
 		Long maxXlDetRowId = xlDtlRepository.findMaxDetRowIdByTransactionPoid(hdrPoid);
 		AtomicLong xlDtlDetRowIdSeq = new AtomicLong(maxXlDetRowId != null ? maxXlDetRowId + 1 : 1);
@@ -125,6 +123,12 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 				.toList();
 
 		xlDtlRepository.saveAll(xlDtlEntities);
+		
+		// Log child record creation for XL details
+		xlDtlEntities.forEach(xlDetail -> {
+			String logDetail = String.format("Row Created on Expense Reallocation XL Detail with detRowId: %s", xlDetail.getDetRowId());
+			loggingService.createLogSummaryEntry(UserContext.getDocumentId(), hdrPoid.toString(), logDetail);
+		});
 		log.info("createExpenseReallocation completed for transactionPoid={}", savedHdr.getTransactionPoid());
 		loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), hdrPoid.toString());
 		return buildResponse(savedHdr);
@@ -186,31 +190,12 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 
 		GlExpenseReallocationHdr savedHeader = hdrRepository.save(header);
 
-		dtlRepository.deleteByTransactionPoid(transactionPoid);
-		List<GlExpenseReallocationDtl> detailEntities = request.getDetails().stream()
-				.map(dto -> GlExpenseReallocationDtl.builder().transactionPoid(transactionPoid)
-						.detRowId(dto.getDetRowId() != null ? dto.getDetRowId() : 1).company(dto.getCompany())
-						.companyName(dto.getCompanyName()).sh(dto.getSh()).ff(dto.getFf()).ffs(dto.getFfs())
-						.ffp(dto.getFfp()).properties(dto.getProperties()).mta(dto.getMta()).pda(dto.getPda())
-						.admin(dto.getAdmin()).total(dto.getTotal()).remarks(dto.getRemarks()).createdBy(userId)
-						.createdDate(Timestamp.valueOf(LocalDateTime.now())).lastmodifiedBy(userId)
-						.lastmodifiedDate(Timestamp.valueOf(LocalDateTime.now())).build())
-				.toList();
-
-		dtlRepository.saveAll(detailEntities);
-
-		xlDtlRepository.deleteByTransactionPoid(transactionPoid);
+		// Process details based on actionType
+		processDetails(transactionPoid, request.getDetails(), userId);
+		
+		// Process XL details based on actionType
 		if (request.getXlDetails() != null && !request.getXlDetails().isEmpty()) {
-			List<GlExpenseReallocationXlDtl> xlDetailEntities = request.getXlDetails().stream()
-					.map(dto -> GlExpenseReallocationXlDtl.builder().transactionPoid(transactionPoid)
-							.detRowId(dto.getDetRowId() != null ? dto.getDetRowId() : 1).company(dto.getCompany())
-							.companyCode(dto.getCompanyCode()).costCentre(dto.getCostCentre()).percent(dto.getPercent())
-							.remarks(dto.getRemarks()).createdBy(userId)
-							.createdDate(Timestamp.valueOf(LocalDateTime.now())).lastmodifiedBy(userId)
-							.lastmodifiedDate(Timestamp.valueOf(LocalDateTime.now())).build())
-					.toList();
-
-			xlDtlRepository.saveAll(xlDetailEntities);
+			processXlDetails(transactionPoid, request.getXlDetails(), userId);
 		}
 
 		log.info("updateExpenseReallocation completed for transactionPoid={}", transactionPoid);
@@ -828,5 +813,139 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 				.filter(name -> !List.of("TRANSACTION_POID", "DET_ROW_ID", "COMPANY", "COMPANY_NAME", "TOTAL",
 						"REMARKS", "CREATED_BY", "CREATED_DATE", "LASTMODIFIED_BY", "LASTMODIFIED_DATE").contains(name))
 				.toList();
+	}
+	
+	private void processDetails(Long transactionPoid, List<ExpenseReallocationDetailRequest> details, String userId) {
+		List<LogRequestDto<GlExpenseReallocationDtl>> logRequests = new ArrayList<>();
+		String docId = UserContext.getDocumentId();
+		
+		for (ExpenseReallocationDetailRequest detail : details) {
+			String actionType = detail.getActionType() != null ? detail.getActionType().toUpperCase() : "ISCREATED";
+			
+			switch (actionType) {
+				case "ISCREATED" -> {
+					GlExpenseReallocationDtl entity = GlExpenseReallocationDtl.builder()
+							.transactionPoid(transactionPoid)
+							.detRowId(detail.getDetRowId())
+							.company(detail.getCompany())
+							.companyName(detail.getCompanyName())
+							.sh(detail.getSh())
+							.ff(detail.getFf())
+							.ffs(detail.getFfs())
+							.ffp(detail.getFfp())
+							.properties(detail.getProperties())
+							.mta(detail.getMta())
+							.pda(detail.getPda())
+							.admin(detail.getAdmin())
+							.total(detail.getTotal())
+							.remarks(detail.getRemarks())
+							.createdBy(userId)
+							.createdDate(Timestamp.valueOf(LocalDateTime.now()))
+							.lastmodifiedBy(userId)
+							.lastmodifiedDate(Timestamp.valueOf(LocalDateTime.now()))
+							.build();
+					dtlRepository.save(entity);
+					String logDetail = String.format("Row Created on Expense Reallocation Detail with detRowId: %s", entity.getDetRowId());
+					loggingService.createLogSummaryEntry(docId, transactionPoid.toString(), logDetail);
+				}
+				case "ISUPDATED" -> {
+					GlExpenseReallocationDtl existing = dtlRepository.findByTransactionPoidAndDetRowId(transactionPoid, detail.getDetRowId())
+							.orElseThrow(() -> new ResourceNotFoundException("Expense Reallocation Detail", "detRowId", detail.getDetRowId()));
+					
+					GlExpenseReallocationDtl oldEntity = new GlExpenseReallocationDtl();
+					BeanUtils.copyProperties(existing, oldEntity);
+					
+					existing.setCompany(detail.getCompany());
+					existing.setCompanyName(detail.getCompanyName());
+					existing.setSh(detail.getSh());
+					existing.setFf(detail.getFf());
+					existing.setFfs(detail.getFfs());
+					existing.setFfp(detail.getFfp());
+					existing.setProperties(detail.getProperties());
+					existing.setMta(detail.getMta());
+					existing.setPda(detail.getPda());
+					existing.setAdmin(detail.getAdmin());
+					existing.setTotal(detail.getTotal());
+					existing.setRemarks(detail.getRemarks());
+					existing.setLastmodifiedBy(userId);
+					existing.setLastmodifiedDate(Timestamp.valueOf(LocalDateTime.now()));
+					dtlRepository.save(existing);
+					
+					String logDetailForUpdate = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", transactionPoid, detail.getDetRowId());
+					logRequests.add(new LogRequestDto<>(oldEntity, existing, GlExpenseReallocationDtl.class, docId, transactionPoid.toString(), logDetailForUpdate));
+				}
+				case "ISDELETED" -> {
+					dtlRepository.findByTransactionPoidAndDetRowId(transactionPoid, detail.getDetRowId())
+							.ifPresent(entity -> {
+								dtlRepository.delete(entity);
+								loggingService.logDelete(detail, docId, transactionPoid.toString());
+							});
+				}
+			}
+		}
+		
+		if (!logRequests.isEmpty()) {
+			loggingService.createLogBatch(logRequests);
+		}
+	}
+	
+	private void processXlDetails(Long transactionPoid, List<ExpenseReallocationXlDetailRequest> xlDetails, String userId) {
+		List<LogRequestDto<GlExpenseReallocationXlDtl>> logRequests = new ArrayList<>();
+		String docId = UserContext.getDocumentId();
+		
+		for (ExpenseReallocationXlDetailRequest xlDetail : xlDetails) {
+			String actionType = xlDetail.getActionType() != null ? xlDetail.getActionType().toUpperCase() : "ISCREATED";
+			
+			switch (actionType) {
+				case "ISCREATED" -> {
+					GlExpenseReallocationXlDtl entity = GlExpenseReallocationXlDtl.builder()
+							.transactionPoid(transactionPoid)
+							.detRowId(xlDetail.getDetRowId())
+							.company(xlDetail.getCompany())
+							.companyCode(xlDetail.getCompanyCode())
+							.costCentre(xlDetail.getCostCentre())
+							.percent(xlDetail.getPercent())
+							.remarks(xlDetail.getRemarks())
+							.createdBy(userId)
+							.createdDate(Timestamp.valueOf(LocalDateTime.now()))
+							.lastmodifiedBy(userId)
+							.lastmodifiedDate(Timestamp.valueOf(LocalDateTime.now()))
+							.build();
+					xlDtlRepository.save(entity);
+					String logDetail = String.format("Row Created on Expense Reallocation XL Detail with detRowId: %s", entity.getDetRowId());
+					loggingService.createLogSummaryEntry(docId, transactionPoid.toString(), logDetail);
+				}
+				case "ISUPDATED" -> {
+					GlExpenseReallocationXlDtl existing = xlDtlRepository.findByTransactionPoidAndDetRowId(transactionPoid, xlDetail.getDetRowId())
+							.orElseThrow(() -> new ResourceNotFoundException("Expense Reallocation XL Detail", "detRowId", xlDetail.getDetRowId()));
+					
+					GlExpenseReallocationXlDtl oldEntity = new GlExpenseReallocationXlDtl();
+					BeanUtils.copyProperties(existing, oldEntity);
+					
+					existing.setCompany(xlDetail.getCompany());
+					existing.setCompanyCode(xlDetail.getCompanyCode());
+					existing.setCostCentre(xlDetail.getCostCentre());
+					existing.setPercent(xlDetail.getPercent());
+					existing.setRemarks(xlDetail.getRemarks());
+					existing.setLastmodifiedBy(userId);
+					existing.setLastmodifiedDate(Timestamp.valueOf(LocalDateTime.now()));
+					xlDtlRepository.save(existing);
+					
+					String logDetailForUpdate = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", transactionPoid, xlDetail.getDetRowId());
+					logRequests.add(new LogRequestDto<>(oldEntity, existing, GlExpenseReallocationXlDtl.class, docId, transactionPoid.toString(), logDetailForUpdate));
+				}
+				case "ISDELETED" -> {
+					xlDtlRepository.findByTransactionPoidAndDetRowId(transactionPoid, xlDetail.getDetRowId())
+							.ifPresent(entity -> {
+								xlDtlRepository.delete(entity);
+								loggingService.logDelete(xlDetail, docId, transactionPoid.toString());
+							});
+				}
+			}
+		}
+		
+		if (!logRequests.isEmpty()) {
+			loggingService.createLogBatch(logRequests);
+		}
 	}
 }

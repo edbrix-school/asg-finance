@@ -47,4 +47,10 @@ public interface PropertyCostCenterRepository extends JpaRepository<PropertyCost
             @Param("parentPoid") Long parentPoid,
             @Param("includeDeleted") Boolean includeDeleted,
             @Param("groupPoid") Long groupPoid);
+
+    /**
+     * Count all records where propertyType is not null
+     */
+    @Query("SELECT COUNT(p) FROM PropertyCostCenter p WHERE p.propertyType IS NOT NULL")
+    long countByPropertyTypeNotNull();
 }

@@ -1,5 +1,6 @@
 package com.asg.finance.dto;
 
+import com.asg.common.lib.dto.LovGetListDto;
 import lombok.Getter;
 import lombok.Setter;
 import java.math.BigDecimal;
@@ -29,4 +30,10 @@ public class ApPurchaseCnGlDtlDto {
 
     private List<BillwiseBreakupPopupRequestDto> breakupList;
     private List<CostCenterBreakupPopupRequestDto> costCenterList;
+    
+    // LOV details
+    private LovGetListDto companyDet;
+    private LovGetListDto glDet;
+    private LovGetListDto typeDet;
+    private LovGetListDto taxDet;
 }

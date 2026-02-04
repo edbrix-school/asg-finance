@@ -14,6 +14,8 @@ import java.math.BigDecimal;
 public class ApPiFaDefaultDetailsDto {
     private String faDescription;
     private Long faCategoryPoid;
+    private String categoryDescription;
     private String assetType;
     private BigDecimal grossValue;
+
 }

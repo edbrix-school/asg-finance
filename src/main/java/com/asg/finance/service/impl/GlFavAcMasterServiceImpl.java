@@ -164,7 +164,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                                 glAcDtlRepository.save(existingEntity);
 
                                 String createSummaryMessage = String.format(
-                                        "Row Created on Favorite Account Master Detail with DetRowId: %s",
+                                        "Row Created on Favorite Account Master GL Account Detail with DetRowId: %s",
                                         existingEntity.getDetRowId());
                                 detailSummaryLogs.add(createSummaryLogEntry(
                                         LogDetailsEnum.CREATED, docId, docKeyPoid, createSummaryMessage, now));
@@ -185,7 +185,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                                 glAcDtlRepository.save(glAcDtl);
 
                                 String createSummaryMessage = String.format(
-                                        "Row Created on Favorite Account Master Detail with DetRowId: %s",
+                                        "Row Created on Favorite Account Master GL Account Detail  with DetRowId: %s",
                                         glAcDtl.getDetRowId());
                                 detailSummaryLogs.add(createSummaryLogEntry(
                                         LogDetailsEnum.CREATED, docId, docKeyPoid, createSummaryMessage, now));
@@ -213,7 +213,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                             glAcDtlRepository.save(existingGlAcDtl);
 
                             String createSummaryMessage = String.format(
-                                    "Row Created on Favorite Account Master Detail with DetRowId: %s",
+                                    "Row Created on Favorite Account Master GL Account Detail with DetRowId: %s",
                                     existingGlAcDtl.getDetRowId());
                             detailSummaryLogs.add(createSummaryLogEntry(
                                     LogDetailsEnum.CREATED, docId, docKeyPoid, createSummaryMessage, now));
@@ -234,7 +234,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                             glAcDtlRepository.save(glAcDtl);
 
                             String createSummaryMessage = String.format(
-                                    "Row Created on Favorite Account Master Detail with DetRowId: %s",
+                                    "Row Created on Favorite Account Master GL Account Detail with DetRowId: %s",
                                     glAcDtl.getDetRowId());
                             detailSummaryLogs.add(createSummaryLogEntry(
                                     LogDetailsEnum.CREATED, docId, docKeyPoid, createSummaryMessage, now));

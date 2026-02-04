@@ -731,6 +731,7 @@ public class ApPurchaseJournalRepositoryImpl implements ApPurchaseJournalReposit
 
             dto.setFaDescription(rs.getString("FA_DESCRIPTION"));
             dto.setFaCategoryPoid(rs.getLong("FA_CATEGORY_POID"));
+            dto.setCategoryDescription(rs.getString("CATEGORY_DESCRIPTION"));
             dto.setAssetType(rs.getString("ASSET_TYPE"));
             dto.setGrossValue(rs.getBigDecimal("GROSS_VALUE"));
 

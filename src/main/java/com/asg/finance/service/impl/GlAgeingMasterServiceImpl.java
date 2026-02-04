@@ -183,14 +183,18 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
 
     private void saveAgeingDetails(List<GlAgeingMasterDtlDto> detailDtos, GlAgeingMasterEntity masterEntity) {
         List<GlAgeingMasterDtlEntity> detailEntities = new ArrayList<>();
+        List<GlAgeingMasterDtlEntity> newlyCreatedEntities = new ArrayList<>();
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = masterEntity.getAgeingPoid().toString();
+        List<GlobalLogSummary> summaryLogs = new ArrayList<>();
 
-        Long detRowId =  getNextDetRowIdForGl(masterEntity.getAgeingPoid());
+        Long detRowId = getNextDetRowIdForGl(masterEntity.getAgeingPoid());
 
         for (GlAgeingMasterDtlDto dto : detailDtos) {
             GlAgeingMasterDtlEntity entity = GlAgeingMasterDtlEntity.builder()
                     .ageingMaster(masterEntity)
                     .ageingPoid(masterEntity.getAgeingPoid())
-                    .detRowId(detRowId ++)
+                    .detRowId(detRowId++)
                     .breakupTitle(dto.getBreakupTitle())
                     .breakupFrom(dto.getBreakupFrom())
                     .breakupTo(dto.getBreakupTo())
@@ -201,9 +205,32 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
                     .build();
 
             detailEntities.add(entity);
+            newlyCreatedEntities.add(entity);
         }
-
-        ageingMasterDtlRepository.saveAll(detailEntities);
+        
+        List<GlAgeingMasterDtlEntity> savedEntities = ageingMasterDtlRepository.saveAll(detailEntities);
+        
+        for (GlAgeingMasterDtlEntity newlyCreated : newlyCreatedEntities) {
+            GlAgeingMasterDtlEntity savedEntity = savedEntities.stream()
+                    .filter(saved ->
+                            Objects.equals(saved.getAgeingPoid(), newlyCreated.getAgeingPoid()) &&
+                            Objects.equals(saved.getBreakupTitle(), newlyCreated.getBreakupTitle()) &&
+                            Objects.equals(saved.getBreakupFrom(), newlyCreated.getBreakupFrom()) &&
+                            Objects.equals(saved.getBreakupTo(), newlyCreated.getBreakupTo())
+                    )
+                    .findFirst()
+                    .orElse(null);
+            
+            if (savedEntity != null && savedEntity.getDetRowId() != null) {
+                String summaryMessage = String.format("Row Created on Ageing Master Detail with DetRowId: %s", savedEntity.getDetRowId());
+                GlobalLogSummary summaryLog = createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, summaryMessage);
+                summaryLogs.add(summaryLog);
+            }
+        }
+        
+        if (!summaryLogs.isEmpty()) {
+            globalLogSummaryRepository.saveAll(summaryLogs);
+        }
     }
 
     private Long getNextDetRowIdForGl(Long ageingPoid) {

@@ -43,6 +43,7 @@ public class TaxMasterRequestDTO {
     private String taxCategory;
 
     @Size(max = 1, message = "active must be at most 1 character")
+    @Pattern(regexp = "Y|N", message = "Active must be Y or N")
     private String active = "Y";
 
     @Min(value = 0, message = "Sequence number cannot be negative")

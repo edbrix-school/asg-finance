@@ -23,6 +23,8 @@ public class GlChequeCashConvertOutDtlDto {
     private String voucherType;
     private String lineType;
 
+    private String actionType;
+
     private LovGetListDto paymentMainDet;
     private LovGetListDto bankDet;
 }

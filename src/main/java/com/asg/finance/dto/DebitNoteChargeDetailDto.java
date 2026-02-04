@@ -27,4 +27,6 @@ public class DebitNoteChargeDetailDto {
     private Integer seqNo;
     
     private Boolean selected = false;
+
+    private String actionType; 
 }

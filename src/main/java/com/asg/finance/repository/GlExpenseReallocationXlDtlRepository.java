@@ -1,6 +1,7 @@
 package com.asg.finance.repository;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -13,6 +14,8 @@ public interface GlExpenseReallocationXlDtlRepository
 		extends JpaRepository<GlExpenseReallocationXlDtl, GlExpenseReallocationXlDtl.CompositeKey> {
 
 	List<GlExpenseReallocationXlDtl> findByTransactionPoid(Long transactionPoid);
+	
+	Optional<GlExpenseReallocationXlDtl> findByTransactionPoidAndDetRowId(Long transactionPoid, Long detRowId);
 
 	void deleteByTransactionPoid(Long transactionPoid);
 

@@ -141,5 +141,12 @@ public interface ApPurchaseJournalRepository {
             Long partyPoid
     );
 
+    String checkOutstandingPo(
+            Long loginGroupPoid,
+            Long loginCompanyPoid,
+            Long loginUserPoid,
+            Long supplierPoid
+    );
+
 
 }

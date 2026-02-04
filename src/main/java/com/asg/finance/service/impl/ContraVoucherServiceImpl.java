@@ -5,6 +5,7 @@ import com.asg.common.lib.dto.LovGetListDto;
 import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.DeleteReasonDto;
+import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.entity.Company;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.LovDataService;
@@ -250,6 +251,10 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
                     detail.setRemarks(detailRequest.getRemarks());
                     detail.setCreatedBy(ASGHelperUtils.getCurrentUser());
                     dtlRepository.save(detail);
+                    
+                    // Log child record creation
+                    String logDetail = String.format("Row Created on Contra Voucher Detail with detRowId: %s", detail.getDetRowId());
+                    loggingService.createLogSummaryEntry(UserContext.getDocumentId(), savedHeader.getTransactionPoid().toString(), logDetail);
                 }
             }
         }
@@ -315,6 +320,7 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
                     .orElse(0L);
 
             Long nextDetRowId = maxDetRowId + 1;
+            List<LogRequestDto<GlContraVoucherDtl>> logRequests = new ArrayList<>();
 
             for (ContraVoucherDetailRequest detailRequest : request.getDetails()) {
                 String actionType = detailRequest.getActionType();
@@ -332,6 +338,11 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
                     detail.setRemarks(detailRequest.getRemarks());
                     detail.setCreatedBy(ASGHelperUtils.getCurrentUser());
                     dtlRepository.save(detail);
+                    
+                    // Log child record creation
+                    String logDetail = String.format("Row Created on Contra Voucher Detail with detRowId: %s", detail.getDetRowId());
+                    loggingService.createLogSummaryEntry(UserContext.getDocumentId(), savedHeader.getTransactionPoid().toString(), logDetail);
+                    
                 } else if ("isUpdated".equalsIgnoreCase(actionType)) {
                     // Update existing detail with request data
                     if (detailRequest.getDetRowId() == null) {
@@ -340,6 +351,10 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
                     GlContraVoucherDtl detail = dtlRepository
                             .findByTransactionPoidAndDetRowId(savedHeader.getTransactionPoid(), detailRequest.getDetRowId())
                             .orElseThrow(() -> new RuntimeException("Detail not found with detRowId: " + detailRequest.getDetRowId()));
+                    
+                    // Create a copy of the existing detail for logging
+                    GlContraVoucherDtl oldDetail = new GlContraVoucherDtl();
+                    BeanUtils.copyProperties(detail, oldDetail);
                     
                     // Update with request values
                     if (detailRequest.getType() != null) {
@@ -361,15 +376,30 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
                         detail.setRemarks(detailRequest.getRemarks());
                     }
                     dtlRepository.save(detail);
+                    
+                    // Collect log request for batch processing
+                    String logDetailForUpdate = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", detail.getTransactionPoid(), detail.getDetRowId());
+                    logRequests.add(new LogRequestDto<>(oldDetail, detail, GlContraVoucherDtl.class, 
+                            UserContext.getDocumentId(), savedHeader.getTransactionPoid().toString(), logDetailForUpdate));
+                    
                 } else if ("isDeleted".equalsIgnoreCase(actionType)) {
                     // Delete detail
                     if (detailRequest.getDetRowId() == null) {
                         throw new IllegalArgumentException("detRowId is required for delete operation");
                     }
                     dtlRepository.findByTransactionPoidAndDetRowId(savedHeader.getTransactionPoid(), detailRequest.getDetRowId())
-                            .ifPresent(dtlRepository::delete);
+                            .ifPresent(detail -> {
+                                dtlRepository.delete(detail);
+                                // Log child record deletion
+                                loggingService.logDelete(detailRequest, UserContext.getDocumentId(), savedHeader.getTransactionPoid().toString());
+                            });
                 }
                 // noChange/noChanges - do nothing
+            }
+            
+            // Batch process all update logs
+            if (!logRequests.isEmpty()) {
+                loggingService.createLogBatch(logRequests);
             }
         }
 

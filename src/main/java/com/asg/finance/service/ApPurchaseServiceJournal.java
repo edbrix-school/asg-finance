@@ -41,6 +41,10 @@ public interface ApPurchaseServiceJournal {
 
     List<ApPiFaDefaultDetailsDto> getFaDefaultDetails(String faPoid);
 
+    String validateOutstandingPo(Long supplierPoid);
+
+    String supplierPoidFromPo(String poPoid);
+
     byte[] print(Long transactionPoid) throws Exception;
 
 }

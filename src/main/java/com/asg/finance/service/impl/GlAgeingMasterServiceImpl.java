@@ -184,12 +184,13 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
     private void saveAgeingDetails(List<GlAgeingMasterDtlDto> detailDtos, GlAgeingMasterEntity masterEntity) {
         List<GlAgeingMasterDtlEntity> detailEntities = new ArrayList<>();
 
-        for (GlAgeingMasterDtlDto dto : detailDtos) {
+        Long detRowId =  getNextDetRowIdForGl(masterEntity.getAgeingPoid());
 
+        for (GlAgeingMasterDtlDto dto : detailDtos) {
             GlAgeingMasterDtlEntity entity = GlAgeingMasterDtlEntity.builder()
                     .ageingMaster(masterEntity)
                     .ageingPoid(masterEntity.getAgeingPoid())
-                    .detRowId(dto.getDetRowId())
+                    .detRowId(detRowId ++)
                     .breakupTitle(dto.getBreakupTitle())
                     .breakupFrom(dto.getBreakupFrom())
                     .breakupTo(dto.getBreakupTo())
@@ -203,6 +204,13 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
         }
 
         ageingMasterDtlRepository.saveAll(detailEntities);
+    }
+
+    private Long getNextDetRowIdForGl(Long ageingPoid) {
+        Long maxDetRowId = ageingMasterDtlRepository
+                .findMaxDetRowIdByAgeingPoid(ageingPoid);
+
+        return maxDetRowId + 1;
     }
 
     private void updateAgeingMasterFields(GlAgeingMasterEntity entity, GlAgeingMasterDto dto) {
@@ -334,10 +342,10 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
             String actionType = charge.getActionType() == null ? "NOCHANGE" : charge.getActionType().toUpperCase();
             switch (actionType) {
                 case "ISCREATED":
-                
+
                     GlAgeingMasterDtlEntity newEntity = GlAgeingMasterDtlEntity.builder()
                             .ageingPoid(ageingPoid)
-                            .detRowId(charge.getDetRowId())
+                            .detRowId(charge.getDetRowId() != null ? charge.getDetRowId() : getNextDetRowIdForGl(ageingPoid))
                             .breakupTitle(charge.getBreakupTitle())
                             .breakupFrom(charge.getBreakupFrom())
                             .breakupTo(charge.getBreakupTo())
@@ -354,10 +362,10 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
                     GlAgeingMasterDtlEntity existingCharge = ageingMasterDtlRepository
                             .findByAgeingPoidAndDetRowId(ageingPoid, charge.getDetRowId())
                             .orElseThrow(() -> new ResourceNotFoundException("Ageing not found", "detRowId", charge.getDetRowId()));
-                    
+
                     GlAgeingMasterDtlEntity oldCharge = new GlAgeingMasterDtlEntity();
                     BeanUtils.copyProperties(existingCharge, oldCharge);
-                    oldCharge.setDetRowId(existingCharge.getDetRowId());
+                    oldCharge.setDetRowId(existingCharge.getDetRowId() != null ? existingCharge.getDetRowId() : getNextDetRowIdForGl(ageingPoid));
                     oldCharge.setAgeingPoid(existingCharge.getAgeingPoid());
                     oldCharge.setAgeingMaster(existingCharge.getAgeingMaster());
                     

@@ -729,6 +729,12 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
     }
 
     private ChequeReturnResponse toResponse(ChequeReturn header, ChequeReturnRequest request, String msg) {
+        // Update the request header with saved entity's audit fields
+        request.getChequeHeader().setCreatedBy(header.getCreatedBy());
+        request.getChequeHeader().setCreatedDate(header.getCreatedDate());
+        request.getChequeHeader().setLastModifiedBy(header.getLastModifiedBy());
+        request.getChequeHeader().setLastModifiedDate(header.getLastModifiedDate());
+        
         return ChequeReturnResponse.builder()
                 .chequeHeader(request.getChequeHeader())
                 .chequeDetails(request.getChequeDetails())

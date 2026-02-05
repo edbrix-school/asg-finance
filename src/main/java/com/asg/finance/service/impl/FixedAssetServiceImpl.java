@@ -488,6 +488,11 @@ public class FixedAssetServiceImpl implements FixedAssetService {
         }
 
         List<FixedAsset> savedCopies = repository.saveAll(copies);
+        savedCopies.forEach(copy -> {
+            String logDetail = String.format("Created-(batch creation from %s)",original.getFaCode());
+            loggingService.createLogSummaryEntry(UserContext.getDocumentId(), copy.getFaPoid().toString(), logDetail);
+        });
+
         return savedCopies.stream().map(FixedAsset::getFaPoid).toList();
     }
 

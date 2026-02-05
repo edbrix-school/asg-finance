@@ -9,6 +9,7 @@ import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.PrintService;
+import com.asg.finance.entity.*;
 import com.asg.finance.repository.GLMasterRepository;
 import com.asg.finance.repository.TaxMasterRepository;
 import com.asg.common.lib.service.DocumentDeleteService;
@@ -16,10 +17,6 @@ import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.utility.ASGHelperUtils;
 import com.asg.finance.dto.*;
-import com.asg.finance.entity.ArCreditNoteHdr;
-import com.asg.finance.entity.ArCreditNoteDtl;
-import com.asg.finance.entity.ArCreditNoteChargeDtl;
-import com.asg.finance.entity.GlobalLogSummary;
 import com.asg.finance.repository.ArCreditNoteChargeDtlRepository;
 import com.asg.finance.repository.ArCreditNoteDtlRepository;
 import com.asg.finance.repository.ArCreditNoteHdrRepository;
@@ -376,7 +373,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     dto.setIssueInvoice("N");
 
                     dto.setChargeDet(lovService.getDetailsByPoidAndLovName(dto.getChargePoid(), "CHARGE_MASTER_IN_CN_FOR_FF"));
-                    dto.setTaxDet(lovService.getDetailsByPoidAndLovName(dto.getTaxPoid(), "CR_TAX_MASTER"));
+                    dto.setTaxDet(taxMasterRepository.findByTaxPoid(dto.getTaxPoid())
+                            .map(tm -> new LovGetListDto(tm.getTaxPoid(), tm.getTaxCode(), tm.getTaxName(), tm.getTaxPoid(), tm.getTaxName(), tm.getSeqNo(), null))
+                            .orElse(null));
                     charges.add(dto);
                 }
             }
@@ -423,7 +422,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     dto.setIssueInvoice("N");
 
                     dto.setChargeDet(lovService.getDetailsByPoidAndLovName(dto.getChargePoid(), "CHARGE_MASTER_IN_CN_FOR_SH"));
-                    dto.setTaxDet(lovService.getDetailsByPoidAndLovName(dto.getTaxPoid(), "CR_TAX_MASTER"));
+                    dto.setTaxDet(taxMasterRepository.findByTaxPoid(dto.getTaxPoid())
+                            .map(tm -> new LovGetListDto(tm.getTaxPoid(), tm.getTaxCode(), tm.getTaxName(), tm.getTaxPoid(), tm.getTaxName(), tm.getSeqNo(), null))
+                            .orElse(null));
                     charges.add(dto);
                 }
             }
@@ -491,7 +492,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     dto.setRemarks(rs.getString("REMARKS"));
                     dto.setIssueInvoice("N");
                     dto.setChargeDet(lovService.getDetailsByPoidAndLovName(dto.getChargePoid(), "CHARGE_MASTER_IN_CN_FOR_DN"));
-                    dto.setTaxDet(lovService.getDetailsByPoidAndLovName(dto.getTaxPoid(), "CR_TAX_MASTER"));
+                    dto.setTaxDet(taxMasterRepository.findByTaxPoid(dto.getTaxPoid())
+                            .map(tm -> new LovGetListDto(tm.getTaxPoid(), tm.getTaxCode(), tm.getTaxName(), tm.getTaxPoid(), tm.getTaxName(), tm.getSeqNo(), null))
+                            .orElse(null));
                     charges.add(dto);
                 }
             }
@@ -1833,6 +1836,8 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         dto.setTaxPercentage(entity.getTaxPercentage());
         dto.setTaxAmount(entity.getTaxAmount());
         dto.setTotalAmount(entity.getTotalAmount());
+        dto.setCompanyPoid(entity.getCompanyPoid());
+        dto.setCompanyDet(lovService.getDetailsByPoidAndLovName(entity.getCompanyPoid(), "COMPANY"));
         return dto;
     }
 
@@ -1847,7 +1852,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         dto.setTotalAmount(entity.getTotalAmount());
         dto.setRemarks(entity.getRemarks());
         dto.setTaxPoid(entity.getTaxPoid());
-        dto.setTaxDet(lovService.getDetailsByPoidAndLovName(entity.getTaxPoid(), "CR_TAX_MASTER"));
+        dto.setTaxDet(taxMasterRepository.findByTaxPoid(entity.getTaxPoid())
+                .map(tm -> new LovGetListDto(tm.getTaxPoid(), tm.getTaxCode(), tm.getTaxName(), tm.getTaxPoid(), tm.getTaxName(), tm.getSeqNo(), null))
+                .orElse(null));
         dto.setTaxAmount(entity.getTaxAmount());
         dto.setTaxPercentage(entity.getTaxPercentage());
         dto.setIssueInvoice(entity.getIssueInvoice());

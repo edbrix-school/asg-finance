@@ -459,6 +459,16 @@ public class ApPurchaseJournalController {
     }
 
     @AllowedAction(UserRolesRightsEnum.VIEW)
+    @GetMapping("/rjv-details")
+    public ResponseEntity<?> getRjvDefaultDetails(
+            @Parameter(description = "RJV POID ", required = true, example = "7890")
+            @RequestParam String rjvPoid
+    ) {
+        List<ApPurchaseInvRjvDefaultDto> response = service.getRjvDefaultDetails(rjvPoid);
+        return success("RJV Poid details fetch successfully", response);
+    }
+
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/general-po")
     public ResponseEntity<?> supplierPoidFromPo(
             @Parameter(description = "PO POID", required = true, example = "7890")

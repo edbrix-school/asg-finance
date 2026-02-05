@@ -242,7 +242,14 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
 
         if (dto.getInDtls() != null && !dto.getInDtls().isEmpty()) {
             Long transactionPoid = savedHdr.getTransactionPoid();
-            List<GlChequeCashConvertInDtlEntity> inDtlEntities = dto.getInDtls().stream().map(inDto -> {
+            long detRowIdCounter = 1;
+            List<GlChequeCashConvertInDtlEntity> inDtlEntities = new ArrayList<>();
+            
+            for (GlChequeCashConvertInDtlDto inDto : dto.getInDtls()) {
+                if (inDto.getDetRowId() == null) {
+                    inDto.setDetRowId(detRowIdCounter++);
+                }
+                
                 GlChequeCashConvertInDtlEntity inEntity = new GlChequeCashConvertInDtlEntity();
                 GlChequeCashConvertInDtlKey key = new GlChequeCashConvertInDtlKey();
                 key.setTransactionPoid(transactionPoid);
@@ -267,15 +274,22 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
                 inEntity.setCreditCardRef(inDto.getCreditCardRef());
                 inEntity.setCreatedBy(getCurrentUser());
                 inEntity.setCreatedDate(LocalDateTime.now());
-                return inEntity;
-            }).collect(Collectors.toList());
+                inDtlEntities.add(inEntity);
+            }
 
             glChequeCashConvertInDtlRepository.saveAll(inDtlEntities);
         }
 
         if (dto.getOutDtls() != null && !dto.getOutDtls().isEmpty()) {
             Long transactionPoid = savedHdr.getTransactionPoid();
-            List<GlChequeCashConvertOutDtlEntity> outDtlEntities = dto.getOutDtls().stream().map(outDto -> {
+            long detRowIdCounter = 1;
+            List<GlChequeCashConvertOutDtlEntity> outDtlEntities = new ArrayList<>();
+            
+            for (GlChequeCashConvertOutDtlDto outDto : dto.getOutDtls()) {
+                if (outDto.getDetRowId() == null) {
+                    outDto.setDetRowId(detRowIdCounter++);
+                }
+                
                 GlChequeCashConvertOutDtlEntity outEntity = new GlChequeCashConvertOutDtlEntity();
                 GlChequeCashConvertOutDtlKey outDtlKey = new GlChequeCashConvertOutDtlKey();
                 outDtlKey.setTransactionPoid(transactionPoid);
@@ -294,8 +308,8 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
                 outEntity.setLineType(outDto.getLineType());
                 outEntity.setCreatedBy(getCurrentUser());
                 outEntity.setCreatedDate(LocalDateTime.now());
-                return outEntity;
-            }).collect(Collectors.toList());
+                outDtlEntities.add(outEntity);
+            }
 
             glChequeCashConvertOutDtlRepository.saveAll(outDtlEntities);
         }
@@ -457,10 +471,18 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         Map<Long, GlChequeCashConvertInDtlEntity> existingMap = existingDetails.stream()
                 .collect(Collectors.toMap(e -> e.getId().getDetRowId(), Function.identity(), (a, b) -> a));
 
+        Long maxDetRowId = existingDetails.stream()
+                .map(e -> e.getId().getDetRowId())
+                .max(Long::compareTo)
+                .orElse(0L);
+
         for (GlChequeCashConvertInDtlDto inDto : inDtls) {
             String actionType = inDto.getActionType() == null ? "NOCHANGE" : inDto.getActionType().toUpperCase();
             switch (actionType) {
                 case "ISCREATED":
+                    if (inDto.getDetRowId() == null) {
+                        inDto.setDetRowId(++maxDetRowId);
+                    }
                     GlChequeCashConvertInDtlEntity newInEntity = buildInDtlEntity(inDto, transactionPoid, currentUser, now);
                     toSave.add(newInEntity);
                     newlyCreatedEntities.add(newInEntity);
@@ -537,10 +559,18 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         Map<Long, GlChequeCashConvertOutDtlEntity> existingMap = existingDetails.stream()
                 .collect(Collectors.toMap(e -> e.getId().getDetRowId(), Function.identity(), (a, b) -> a));
 
+        Long maxDetRowId = existingDetails.stream()
+                .map(e -> e.getId().getDetRowId())
+                .max(Long::compareTo)
+                .orElse(0L);
+
         for (GlChequeCashConvertOutDtlDto outDto : outDtls) {
             String actionType = outDto.getActionType() == null ? "NOCHANGE" : outDto.getActionType().toUpperCase();
             switch (actionType) {
                 case "ISCREATED":
+                    if (outDto.getDetRowId() == null) {
+                        outDto.setDetRowId(++maxDetRowId);
+                    }
                     GlChequeCashConvertOutDtlEntity newOutEntity = buildOutDtlEntity(outDto, transactionPoid, currentUser, now);
                     toSave.add(newOutEntity);
                     newlyCreatedEntities.add(newOutEntity);

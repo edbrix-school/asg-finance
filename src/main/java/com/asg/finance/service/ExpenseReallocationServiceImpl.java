@@ -819,14 +819,22 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 		List<LogRequestDto<GlExpenseReallocationDtl>> logRequests = new ArrayList<>();
 		String docId = UserContext.getDocumentId();
 		
+		// Auto-generate detRowId for new records
+		Long maxDetRowId = dtlRepository.findMaxDetRowIdByTransactionPoid(transactionPoid);
+		AtomicLong detRowIdSeq = new AtomicLong(maxDetRowId != null ? maxDetRowId + 1 : 1);
+		
 		for (ExpenseReallocationDetailRequest detail : details) {
 			String actionType = detail.getActionType() != null ? detail.getActionType().toUpperCase() : "ISCREATED";
 			
 			switch (actionType) {
 				case "ISCREATED" -> {
+					// Auto-generate detRowId for new records
+					Long newDetRowId = detRowIdSeq.getAndIncrement();
+					detail.setDetRowId(newDetRowId); // Set back to DTO
+					
 					GlExpenseReallocationDtl entity = GlExpenseReallocationDtl.builder()
 							.transactionPoid(transactionPoid)
-							.detRowId(detail.getDetRowId())
+							.detRowId(newDetRowId) // Use auto-generated ID
 							.company(detail.getCompany())
 							.companyName(detail.getCompanyName())
 							.sh(detail.getSh())
@@ -893,14 +901,22 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 		List<LogRequestDto<GlExpenseReallocationXlDtl>> logRequests = new ArrayList<>();
 		String docId = UserContext.getDocumentId();
 		
+		// Auto-generate detRowId for new records
+		Long maxDetRowId = xlDtlRepository.findMaxDetRowIdByTransactionPoid(transactionPoid);
+		AtomicLong detRowIdSeq = new AtomicLong(maxDetRowId != null ? maxDetRowId + 1 : 1);
+		
 		for (ExpenseReallocationXlDetailRequest xlDetail : xlDetails) {
 			String actionType = xlDetail.getActionType() != null ? xlDetail.getActionType().toUpperCase() : "ISCREATED";
 			
 			switch (actionType) {
 				case "ISCREATED" -> {
+					// Auto-generate detRowId for new records
+					Long newDetRowId = detRowIdSeq.getAndIncrement();
+					xlDetail.setDetRowId(newDetRowId); // Set back to DTO
+					
 					GlExpenseReallocationXlDtl entity = GlExpenseReallocationXlDtl.builder()
 							.transactionPoid(transactionPoid)
-							.detRowId(xlDetail.getDetRowId())
+							.detRowId(newDetRowId) // Use auto-generated ID
 							.company(xlDetail.getCompany())
 							.companyCode(xlDetail.getCompanyCode())
 							.costCentre(xlDetail.getCostCentre())

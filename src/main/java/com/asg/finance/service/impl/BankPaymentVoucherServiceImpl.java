@@ -539,6 +539,11 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         List<GlBankPaymentChargeDtlEntity> toDelete = new ArrayList<>();
         List<LogRequestDto<GlBankPaymentChargeDtlEntity>> logRequests = new ArrayList<>();
         String documentId = UserContext.getDocumentId();
+        
+        // Auto-generate detRowId for new records
+        Long maxDetRowId = existing.stream()
+                .mapToLong(GlBankPaymentChargeDtlEntity::getDetRowId)
+                .max().orElse(0L);
 
         for (BankPaymentChargeDetailRequest detail : chargeDetails) {
             // Handle null, empty string, or whitespace as "noChanges"
@@ -550,8 +555,9 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
             switch (actionType) {
                 case "ISCREATED":
-                    // Create new record
+                    // Create new record with auto-generated detRowId
                     GlBankPaymentChargeDtlEntity newEntity = new GlBankPaymentChargeDtlEntity();
+                    detail.setDetRowId(++maxDetRowId); // Auto-generate detRowId
                     mapChargeFields(newEntity, detail, transactionPoid);
                     newEntity.setCreatedBy(UserContext.getCurrentUser().getUserName());
                     newEntity.setCreatedDate(LocalDateTime.now());
@@ -650,6 +656,11 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         List<GlBankPaymentItemDtlEntity> toDelete = new ArrayList<>();
         List<LogRequestDto<GlBankPaymentItemDtlEntity>> logRequests = new ArrayList<>();
         String documentId = UserContext.getDocumentId();
+        
+        // Auto-generate detRowId for new records
+        Long maxDetRowId = existing.stream()
+                .mapToLong(GlBankPaymentItemDtlEntity::getDetRowId)
+                .max().orElse(0L);
 
         for (BankPaymentItemDetailRequest detail : itemDetails) {
             // Handle null, empty string, or whitespace as "noChanges"
@@ -661,8 +672,9 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
             switch (actionType) {
                 case "ISCREATED":
-                    // Create new record
+                    // Create new record with auto-generated detRowId
                     GlBankPaymentItemDtlEntity newEntity = new GlBankPaymentItemDtlEntity();
+                    detail.setDetRowId(++maxDetRowId); // Auto-generate detRowId
                     mapItemFields(newEntity, detail, transactionPoid);
                     newEntity.setCreatedBy(UserContext.getCurrentUser().getUserName());
                     newEntity.setCreatedDate(LocalDateTime.now());
@@ -1105,6 +1117,11 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         List<GLPaymentVoucherDtlGLEntity> toSave = new ArrayList<>();
         List<GLPaymentVoucherDtlGLEntity> toDelete = new ArrayList<>();
         List<LogRequestDto<GLPaymentVoucherDtlGLEntity>> logRequests = new ArrayList<>();
+        
+        // Auto-generate detRowId for new records
+        Long maxDetRowId = existing.stream()
+                .mapToLong(GLPaymentVoucherDtlGLEntity::getDetRowId)
+                .max().orElse(0L);
 
         for (BankPaymentGLDetailRequest detail : glDetails) {
             // Handle null, empty string, or whitespace as "noChanges"
@@ -1116,8 +1133,9 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
             switch (actionType) {
                 case "ISCREATED":
-                    // Create new record
+                    // Create new record with auto-generated detRowId
                     GLPaymentVoucherDtlGLEntity newEntity = new GLPaymentVoucherDtlGLEntity();
+                    detail.setDetRowId(++maxDetRowId); // Auto-generate detRowId
                     mapGLFields(newEntity, detail, transactionPoid);
                     newEntity.setCreatedBy(Objects.requireNonNull(UserContext.getCurrentUser()).getUserName());
                     newEntity.setCreatedDate(LocalDateTime.now());

@@ -18,4 +18,11 @@ public interface ApPurchaseInvoiceGlDtlRepository extends JpaRepository<ApPurcha
      Long findMaxDetRowIdByTransactionPoid(@Param("transactionPoid") Long transactionPoid);
 
      void deleteByIdTransactionPoid(Long transactionPoid);
+
+    @Query("""
+    select g.id.detRowId
+    from ApPurchaseInvoiceGlDtlEntity g
+    where g.id.transactionPoid = :transactionPoid
+""")
+    List<Long> findDetRowIdsByTransactionPoid(@Param("transactionPoid") Long transactionPoid);
 }

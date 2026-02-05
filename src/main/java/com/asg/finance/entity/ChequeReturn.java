@@ -34,6 +34,9 @@ public class ChequeReturn {
     @AuditIgnore
     private Long companyPoid;
 
+    @Column(name = "RECEIPT_NUMBER")
+    private String receiptNumber;
+
     @Column(name = "DOC_REF")
     private String docRef;
 

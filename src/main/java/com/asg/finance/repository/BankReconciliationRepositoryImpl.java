@@ -43,7 +43,7 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
 	public List<BankReconciliationResponse> callReconcileView(Long groupPoid, Long companyPoid, Long bankPoid,
 			Date dateFrom, Date dateTill, String chequeNo, String reconcileCheque, String brType) {
 
-		StoredProcedureQuery sp = createSP("PRODUCTION.PROC_GL_BANK_RECONCILE_VIEW");
+		StoredProcedureQuery sp = createSP("PROC_GL_BANK_RECONCILE_VIEW");
 
 		regIn(sp, "P_GROUP_POID", Long.class);
 		regIn(sp, "P_COMPANY_POID", Long.class);
@@ -76,7 +76,7 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
 
 	@Override
 	public BankRenconciliationBankInfoDTO getBankPoid(Long glPoid) {
-		StoredProcedureQuery sp = createSP("PRODUCTION.PROC_GL_BANK_REC_GET_BANK_POID");
+		StoredProcedureQuery sp = createSP("PROC_GL_BANK_REC_GET_BANK_POID");
 		regIn(sp, "P_GL_POID", Long.class);
 		regOut(sp, "P_BANK", String.class);
 		regOut(sp, "P_COMPANY", String.class);
@@ -94,7 +94,7 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
 			throw new RuntimeException("Insufficient Data");
 		}
 
-		StoredProcedureQuery sp = createSP("PRODUCTION.PROC_GL_BANK_RECONCILE_SAVE");
+		StoredProcedureQuery sp = createSP("PROC_GL_BANK_RECONCILE_SAVE");
 		regIn(sp, "P_TRANSACTION_GROUP_POID", Long.class);
 		regIn(sp, "P_TRANSACTION_COMPANY_POID", Long.class);
 		regIn(sp, "P_DOC_ID", String.class);
@@ -164,7 +164,7 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
 				throw new ResourceNotFoundException("Document Reference", "docRef", req.getDocRef());
 			}
 
-			StoredProcedureQuery sp = createSP("PRODUCTION.PROC_GL_BANK_RECONCILE_HOLD");
+			StoredProcedureQuery sp = createSP("PROC_GL_BANK_RECONCILE_HOLD");
 
 			regIn(sp, "P_TRANSACTION_GROUP_POID", Long.class);
 			regIn(sp, "P_TRANSACTION_COMPANY_POID", Long.class);
@@ -275,7 +275,7 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
 	@Override
 	public String pollAutoRefresh(String userId, Long companyPoid, String loginUrl) {
 
-		StoredProcedureQuery sp = createSP("PRODUCTION.PROC_BANK_REC_POLL_AUTOREFRESH");
+		StoredProcedureQuery sp = createSP("PROC_BANK_REC_POLL_AUTOREFRESH");
 
 		regIn(sp, "P_USER_ID", String.class);
 		regIn(sp, "P_LOGIN_COMPANY_POID", Long.class);
@@ -294,7 +294,7 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
 	public String revertReconciliation(String docId, String transactionPoid, Long loginUserPoid, Long loginGroupPoid,
 			Long loginCompanyPoid, String mailAlert) {
 
-		StoredProcedureQuery sp = createSP("PRODUCTION.PROC_GL_BANK_RECONCILE_REVERT");
+		StoredProcedureQuery sp = createSP("PROC_GL_BANK_RECONCILE_REVERT");
 
 		regIn(sp, "P_LOGIN_GROUP_POID", Long.class);
 		regIn(sp, "P_LOGIN_COMPANY_POID", Long.class);

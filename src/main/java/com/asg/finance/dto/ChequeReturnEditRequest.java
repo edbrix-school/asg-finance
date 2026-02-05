@@ -20,4 +20,6 @@ public class ChequeReturnEditRequest {
     @NotBlank(message = "closeDetail is required")
     private String closeDetail;
 
+    private String receiptNumber;
+
 }

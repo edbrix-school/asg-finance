@@ -45,6 +45,8 @@ public interface ApPurchaseServiceJournal {
 
     String supplierPoidFromPo(String poPoid);
 
+    List<ApPurchaseInvRjvDefaultDto> getRjvDefaultDetails(String rjvPoid);
+
     byte[] print(Long transactionPoid) throws Exception;
 
 }

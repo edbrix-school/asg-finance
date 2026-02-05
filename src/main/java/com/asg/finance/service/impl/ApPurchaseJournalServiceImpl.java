@@ -1800,6 +1800,15 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         );
     }
 
+    public List<ApPurchaseInvRjvDefaultDto> getRjvDefaultDetails(String rjvPoid) {
+        return apPurchaseJournalRepositoryImpl.fetchRjvDefaultDetails(
+                        UserContext.getGroupPoid(),
+                        UserContext.getCompanyPoid(),
+                        UserContext.getUserPoid(),
+                        rjvPoid
+        );
+    }
+
     
     @Override
     public byte[] print(Long transactionPoid) throws Exception {

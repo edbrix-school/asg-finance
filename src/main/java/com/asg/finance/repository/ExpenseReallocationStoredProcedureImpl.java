@@ -82,7 +82,7 @@ public class ExpenseReallocationStoredProcedureImpl implements ExpenseReallocati
 
 		em.unwrap(Session.class).doWork(connection -> {
 
-			final String sql = "{ call PRODUCTION.PROC_DYN_EXPENSE_ALLOCATN_XL_RPT(?, ?, ?, ?, ?) }";
+			final String sql = "{ call PROC_DYN_EXPENSE_ALLOCATN_XL_RPT(?, ?, ?, ?, ?) }";
 
 			try (CallableStatement cs = connection.prepareCall(sql)) {
 

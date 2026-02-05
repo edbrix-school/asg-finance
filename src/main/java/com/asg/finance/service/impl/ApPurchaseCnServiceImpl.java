@@ -412,6 +412,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                 break;
                 
             case "FF":
+            case "FF_JOB":
                 // FF reference type requires charge details
                 if (dto.getChargeDetails() == null || dto.getChargeDetails().isEmpty()) {
                     throw new ValidationException("At least one charge detail is required for reference type: FF");
@@ -426,7 +427,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                 
             case "PJ_REVERSAL":
                 // Check PJ Reversal Ref Type for FF Jobs
-                if ("FF".equalsIgnoreCase(dto.getPjReversalRefType()) || "FDA".equalsIgnoreCase(dto.getPjReversalRefType())) {
+                if ("FF".equalsIgnoreCase(dto.getPjReversalRefType()) || "FDA".equalsIgnoreCase(dto.getPjReversalRefType()) || "FF_JOB".equalsIgnoreCase(dto.getPjReversalRefType())) {
                     if (dto.getChargeDetails() == null || dto.getChargeDetails().isEmpty()) {
                         throw new ValidationException("At least one charge detail is required for PJ Type 'FF Jobs or FDA jobs'");
                     }
@@ -798,7 +799,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         if (entity.getChargePoid() != null && refType != null) {
             if ("FDA".equals(refType)) {
                 dto.setChargeDet(lovService.getDetailsByPoidAndLovName(entity.getChargePoid(), "FDA_CHARGE_MASTER_PJ"));
-            } else if ("FF".equals(refType)) {
+            } else if ("FF".equals(refType) || "FF_JOB".equals(refType)) {
                 dto.setChargeDet(lovService.getDetailsByPoidAndLovName(entity.getChargePoid(), "FF_CHARGE_MASTER_PJ"));
             }
         }
@@ -807,7 +808,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
             dto.setTaxDet(lovService.getDetailsByPoidAndLovName(entity.getTaxPoid(), "INPUT_TAX_MASTER"));
         }
         
-        if (entity.getRefDocPoid() != null && "FF".equals(refType)) {
+        if (entity.getRefDocPoid() != null && ("FF".equals(refType) || "FF_JOB".equals(refType))) {
             dto.setRefDocDet(lovService.getDetailsByPoidAndLovName(entity.getRefDocPoid(), "FF_JOBNO"));
         }
         
@@ -984,7 +985,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                     }
                 }
             }
-        } else if ("FF".equals(refTye)) {
+        } else if ("FF".equals(refTye) || "FF_JOB".equals(refTye)) {
             List<Map<String, Object>> lineItems = (List<Map<String, Object>>) params.getOrDefault("lineItems", null);
             if (CollectionUtils.isNotEmpty(lineItems)) {
                 for (Map<String, Object> lineItem : lineItems) {

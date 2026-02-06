@@ -39,6 +39,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -1520,13 +1521,24 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         // Fetch Credit GL details
         CreditGlDto creditGL = null;
         if (header.getRcvdOthPoid() != null) {
-            creditGL = glMastersRepository.findById(header.getRcvdOthPoid())
-                    .map(gl -> CreditGlDto.builder()
-                            .glPoid(gl.getGlPoid())
-                            .glCode(gl.getGlCode())
-                            .glDescription(gl.getDescription())
-                            .build())
-                    .orElse(null);
+            Optional<GLMasterEntity> glOptional = glMastersRepository.findById(header.getRcvdOthPoid());
+            if (glOptional.isPresent()) {
+                GLMasterEntity gl = glOptional.get();
+                String glDescription = gl.getDescription();
+                try {
+                    LovGetListDto lovDetails = lovService.getDetailsByPoidAndLovName(gl.getGlPoid(), "GEN_RECEIPT_CREDIT_GL");
+                    if (lovDetails != null && lovDetails.getDescription() != null) {
+                        glDescription = lovDetails.getDescription();
+                    }
+                } catch (Exception e) {
+                    log.warn("Failed to fetch LOV description for GL poid {}: {}", gl.getGlPoid(), e.getMessage());
+                }
+                creditGL = CreditGlDto.builder()
+                        .glPoid(gl.getGlPoid())
+                        .glCode(gl.getGlCode())
+                        .glDescription(glDescription)
+                        .build();
+            }
         }
 
         // Fetch Print Title (Company Name) from LOV

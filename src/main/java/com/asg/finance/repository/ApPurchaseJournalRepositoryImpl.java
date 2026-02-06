@@ -536,39 +536,56 @@ public class ApPurchaseJournalRepositoryImpl implements ApPurchaseJournalReposit
             StoredProcedureQuery query =
                     entityManager.createStoredProcedureQuery("PROC_AP_PI_CREATE_FROM_PO");
 
-            // IN params
             query.registerStoredProcedureParameter("P_LOGIN_GROUP_POID", Long.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("P_LOGIN_COMPANY_POID", Long.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("P_LOGIN_USER_POID", Long.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("P_PO_POID", String.class, ParameterMode.IN);
 
-            // OUT params
             query.registerStoredProcedureParameter("P_RESULT", String.class, ParameterMode.OUT);
-            query.registerStoredProcedureParameter("OUTDATA", ResultSet.class, ParameterMode.REF_CURSOR);
+            query.registerStoredProcedureParameter("OUTDATA", void.class, ParameterMode.REF_CURSOR);
 
-            // Set input values
             query.setParameter("P_LOGIN_GROUP_POID", loginGroupPoid);
             query.setParameter("P_LOGIN_COMPANY_POID", loginCompanyPoid);
             query.setParameter("P_LOGIN_USER_POID", loginUserPoid);
             query.setParameter("P_PO_POID", poPoid);
 
-            // Execute
             query.execute();
 
-            // P_RESULT
             String result = (String) query.getOutputParameterValue("P_RESULT");
-            if (resultMsg != null) resultMsg.append(result);
+            if (resultMsg != null) {
+                resultMsg.append(result);
+            }
 
-            // OUTDATA
-            ResultSet rs = (ResultSet) query.getOutputParameterValue("OUTDATA");
+            // 🔑 THIS LINE FIXES EVERYTHING
+            @SuppressWarnings("unchecked")
+            List<Object[]> rows = query.getResultList();
 
-            responseList = mapToPoDto(rs);
+            for (Object[] row : rows) {
+                responseList.add(
+                        ApPiFromPoResponseDto.builder()
+                                .stockPoid(row[0] != null ? ((Number) row[0]).longValue() : null)
+                                .stockUnitPoid(row[1] != null ? ((Number) row[1]).longValue() : null)
+                                .poQty((BigDecimal) row[2])
+                                .price((BigDecimal) row[3])
+                                .discount((BigDecimal) row[4])
+                                .baseAmount((BigDecimal) row[5])
+                                .taxPoid(row[6] != null ? ((Number) row[6]).longValue() : null)
+                                .taxPercentage((BigDecimal) row[7])
+                                .taxAmount((BigDecimal) row[8])
+                                .amount((BigDecimal) row[9])
+                                .remarks((String) row[10])
+                                .refDocId((String) row[11])
+                                .refDocPoid((String) row[12])
+                                .refDetRowId(row[13] != null ? ((Number) row[13]).longValue() : null)
+                                .build()
+                );
+            }
 
-            log.info("PROC_AP_PI_CREATE_FROM_PO executed successfully. Result={}", result);
+            log.info("PROC_AP_PI_CREATE_FROM_PO executed. Result={}, rows={}", result, responseList.size());
 
         } catch (Exception e) {
-            log.error("Error executing PROC_AP_PI_CREATE_FROM_PO: {}", e.getMessage(), e);
-            throw new RuntimeException("Failed to create PI items from PO: " + e.getMessage(), e);
+            log.error("Error executing PROC_AP_PI_CREATE_FROM_PO", e);
+            throw new RuntimeException("Failed to create PI items from PO", e);
         }
 
         return responseList;

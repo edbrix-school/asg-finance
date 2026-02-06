@@ -281,6 +281,8 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         existing.setInsuranceProvider(request.getInsuranceProvider());
         existing.setFromDate(request.getFromDate());
         existing.setExpiryDate(request.getExpiryDate());
+        existing.setCurrencyPoid(request.getCurrency());
+        existing.setExchangeRate(request.getRate());
         existing.setInsuranceAmount(request.getInsuranceAmount());
         existing.setPremiumAmount(request.getPremiumAmount());
         existing.setPaymentFrequency(request.getPaymentFrequency());
@@ -674,7 +676,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
     public DetailsDto getRoleDetails(Long rolePoid) {
         RoleDto roleDto = roleServiceClient.findById(rolePoid);
         if (roleDto == null) {
-            throw new ResourceNotFoundException("Global User Role", "userRolePoid", rolePoid);
+            throw new ValidationException("Please select a valid User Role in PIC Details");
         }
         return new DetailsDto(
                 roleDto.getUserRolePoid(),     // poid

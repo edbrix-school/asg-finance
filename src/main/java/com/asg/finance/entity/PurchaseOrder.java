@@ -20,13 +20,7 @@ import java.time.LocalDateTime;
 public class PurchaseOrder {
 
     @Id
-    @AuditIgnore
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "po_hdr_seq_gen")
-    @SequenceGenerator(
-            name = "po_hdr_seq_gen",
-            sequenceName = "PO_HDR_SEQ",
-            allocationSize = 1
-    )
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "TRANSACTION_POID", nullable = false)
     private Long transactionPoid;
 

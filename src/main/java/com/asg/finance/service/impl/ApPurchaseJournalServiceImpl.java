@@ -36,10 +36,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.math.BigDecimal;
 
@@ -902,6 +899,29 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
             case "GENERAL PO": {
                 if (apPurchaseInvoiceHdrDto.getGlDtls() != null && !apPurchaseInvoiceHdrDto.getGlDtls().isEmpty()) {
 
+                    List<Long> existingDetRowIds =
+                            apPurchaseInvoiceGlDtlRepository
+                                    .findDetRowIdsByTransactionPoid(transactionPoid);
+
+                    // 2️⃣ Payload ke detRowIds
+                    Set<Long> incomingDetRowIds =
+                            apPurchaseInvoiceHdrDto.getGlDtls().stream()
+                                    .map(ApPurchaseInvoiceGlDtlDto::getDetRowId)
+                                    .filter(id -> id != null && id > 0)
+                                    .collect(Collectors.toSet());
+
+                    // 3️⃣ DB me jo hai but payload me nahi → DELETE
+                    for (Long dbDetRowId : existingDetRowIds) {
+                        if (!incomingDetRowIds.contains(dbDetRowId)) {
+
+                            ApPurchaseInvoiceGlDtlKey key =
+                                    new ApPurchaseInvoiceGlDtlKey(transactionPoid, dbDetRowId);
+
+                            apPurchaseInvoiceGlDtlRepository.deleteById(key);
+
+                        }
+                    }
+
                     Long maxGlDet = apPurchaseInvoiceGlDtlRepository.findMaxDetRowIdByTransactionPoid(transactionPoid);
                     long nextGlDet = (maxGlDet != null ? maxGlDet : 0L) + 1L;
 
@@ -1207,6 +1227,28 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
         List<LogRequestDto<ApPurchaseInvoiceAssetDtlEntity>> assetLogRequests = new ArrayList<>();
         if (apPurchaseInvoiceHdrDto.getAssetDtls() != null && !apPurchaseInvoiceHdrDto.getAssetDtls().isEmpty()) {
+
+            List<Long> existingAssetDetRowIds =
+                    apPurchaseInvoiceAssetDtlRepository
+                            .findDetRowIdsByTransactionPoid(transactionPoid);
+
+            Set<Long> incomingAssetDetRowIds =
+                    apPurchaseInvoiceHdrDto.getAssetDtls().stream()
+                            .map(ApPurchaseInvoiceAssetDtlDto::getDetRowId)
+                            .filter(id -> id != null && id > 0)
+                            .collect(Collectors.toSet());
+
+            for (Long dbDetRowId : existingAssetDetRowIds) {
+                if (!incomingAssetDetRowIds.contains(dbDetRowId)) {
+
+                    ApPurchaseInvoiceAssetDtlKey key =
+                            new ApPurchaseInvoiceAssetDtlKey(transactionPoid, dbDetRowId);
+
+                    apPurchaseInvoiceAssetDtlRepository.deleteById(key);
+
+                }
+            }
+
 
             Long maxAssetDet = apPurchaseInvoiceAssetDtlRepository.findMaxDetRowIdByTransactionPoid(transactionPoid);
             long nextAssetDet = (maxAssetDet != null ? maxAssetDet : 0L) + 1L;
@@ -1755,6 +1797,15 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                 UserContext.getCompanyPoid(),
                 UserContext.getUserPoid(), // loginUserPoid
                 supplierPoid
+        );
+    }
+
+    public List<ApPurchaseInvRjvDefaultDto> getRjvDefaultDetails(String rjvPoid) {
+        return apPurchaseJournalRepositoryImpl.fetchRjvDefaultDetails(
+                        UserContext.getGroupPoid(),
+                        UserContext.getCompanyPoid(),
+                        UserContext.getUserPoid(),
+                        rjvPoid
         );
     }
 

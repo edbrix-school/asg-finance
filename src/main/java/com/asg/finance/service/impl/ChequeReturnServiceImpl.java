@@ -71,6 +71,7 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
         ChequeReturn header = ChequeReturn.builder()
                 .status(defaultStatus(request.getChequeHeader().getStatus()))
                 .remarks(request.getChequeHeader().getRemarks())
+                .receiptNumber(request.getChequeHeader().getReceiptNumber())
                 .groupPoid(UserContext.getGroupPoid())
                 .companyPoid(UserContext.getCompanyPoid())
                 .transactionDate(
@@ -130,6 +131,7 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
         // 🔹 3. Normalize and update status + remarks
         String status = request.getStatus() != null ? request.getStatus().trim().toUpperCase() : "OPEN";
         header.setStatus(status);
+        header.setReceiptNumber(request.getReceiptNumber());
         header.setCloseDetail(request.getCloseDetail());
         header.setLastModifiedDate(getCurrentDbDate());
         header.setLastModifiedBy(UserContext.getUserId());
@@ -174,6 +176,7 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
                         : header.getTransactionDate()
         );
         header.setChequeNumber(request.getChequeHeader().getChequeNumber());
+        header.setReceiptNumber(request.getChequeHeader().getReceiptNumber());
         header.setCloseDetail(request.getChequeHeader().getCloseDetail());
         header.setLastModifiedDate(dbDate);
         header.setLastModifiedBy(UserContext.getUserId());
@@ -729,6 +732,12 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
     }
 
     private ChequeReturnResponse toResponse(ChequeReturn header, ChequeReturnRequest request, String msg) {
+        // Update the request header with saved entity's audit fields
+        request.getChequeHeader().setCreatedBy(header.getCreatedBy());
+        request.getChequeHeader().setCreatedDate(header.getCreatedDate());
+        request.getChequeHeader().setLastModifiedBy(header.getLastModifiedBy());
+        request.getChequeHeader().setLastModifiedDate(header.getLastModifiedDate());
+        
         return ChequeReturnResponse.builder()
                 .chequeHeader(request.getChequeHeader())
                 .chequeDetails(request.getChequeDetails())

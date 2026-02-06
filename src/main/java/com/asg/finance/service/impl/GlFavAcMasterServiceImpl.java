@@ -122,6 +122,10 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
 
         GlFavAcMaster savedMaster = masterRepository.save(master);
         
+        List<GlobalLogSummary> detailSummaryLogs = new ArrayList<>();
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = savedMaster.getFavAcPoid().toString();
+
         if (request.getGlAccounts() != null && !request.getGlAccounts().isEmpty()) {
             for (GlAccountDetailRequest glAccountRequest : request.getGlAccounts()) {
                 String rawAction = glAccountRequest.getActionType();
@@ -158,6 +162,12 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                                 existingEntity.setLastModifiedBy(currentUser);
                                 existingEntity.setLastModifiedDate(now);
                                 glAcDtlRepository.save(existingEntity);
+
+                                String createSummaryMessage = String.format(
+                                        "Row Created on Favorite Account Master GL Account Detail with DetRowId: %s",
+                                        existingEntity.getDetRowId());
+                                detailSummaryLogs.add(createSummaryLogEntry(
+                                        LogDetailsEnum.CREATED, docId, docKeyPoid, createSummaryMessage, now));
                             } else {
                                 GlFavAcMasterGlAcDtl glAcDtl = GlFavAcMasterGlAcDtl.builder()
                                         .favAcPoid(savedMaster.getFavAcPoid())
@@ -173,6 +183,12 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                                         .lastModifiedDate(now)
                                         .build();
                                 glAcDtlRepository.save(glAcDtl);
+
+                                String createSummaryMessage = String.format(
+                                        "Row Created on Favorite Account Master GL Account Detail  with DetRowId: %s",
+                                        glAcDtl.getDetRowId());
+                                detailSummaryLogs.add(createSummaryLogEntry(
+                                        LogDetailsEnum.CREATED, docId, docKeyPoid, createSummaryMessage, now));
                             }
                         } else {
                             throw new ValidationException("DetRowId is required for create operation");
@@ -195,6 +211,12 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                             existingGlAcDtl.setLastModifiedBy(currentUser);
                             existingGlAcDtl.setLastModifiedDate(now);
                             glAcDtlRepository.save(existingGlAcDtl);
+
+                            String createSummaryMessage = String.format(
+                                    "Row Created on Favorite Account Master GL Account Detail with DetRowId: %s",
+                                    existingGlAcDtl.getDetRowId());
+                            detailSummaryLogs.add(createSummaryLogEntry(
+                                    LogDetailsEnum.CREATED, docId, docKeyPoid, createSummaryMessage, now));
                         } else {
                             GlFavAcMasterGlAcDtl glAcDtl = GlFavAcMasterGlAcDtl.builder()
                                     .favAcPoid(savedMaster.getFavAcPoid())
@@ -210,6 +232,12 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                                     .lastModifiedDate(now)
                                     .build();
                             glAcDtlRepository.save(glAcDtl);
+
+                            String createSummaryMessage = String.format(
+                                    "Row Created on Favorite Account Master GL Account Detail with DetRowId: %s",
+                                    glAcDtl.getDetRowId());
+                            detailSummaryLogs.add(createSummaryLogEntry(
+                                    LogDetailsEnum.CREATED, docId, docKeyPoid, createSummaryMessage, now));
                         }
                     }
                 }
@@ -249,6 +277,12 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                                 existingEntity.setLastModifiedBy(currentUser);
                                 existingEntity.setLastModifiedDate(now);
                                 userRoleDtlRepository.save(existingEntity);
+
+                                String createSummaryMessage = String.format(
+                                        "Row Created on Favorite Account Master User Role Detail with DetRowId: %s",
+                                        existingEntity.getDetRowId());
+                                detailSummaryLogs.add(createSummaryLogEntry(
+                                        LogDetailsEnum.CREATED, docId, docKeyPoid, createSummaryMessage, now));
                             } else {
                                 GlFavAcMasterUserRoleDtl userRoleDtl = GlFavAcMasterUserRoleDtl.builder()
                                         .favAcPoid(savedMaster.getFavAcPoid())
@@ -260,6 +294,12 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                                         .lastModifiedDate(now)
                                         .build();
                                 userRoleDtlRepository.save(userRoleDtl);
+
+                                String createSummaryMessage = String.format(
+                                        "Row Created on Favorite Account Master User Role Detail with DetRowId: %s",
+                                        userRoleDtl.getDetRowId());
+                                detailSummaryLogs.add(createSummaryLogEntry(
+                                        LogDetailsEnum.CREATED, docId, docKeyPoid, createSummaryMessage, now));
                             }
                         } else {
                             throw new ValidationException("DetRowId is required for create operation");
@@ -278,6 +318,12 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                             existingUserRoleDtl.setLastModifiedBy(currentUser);
                             existingUserRoleDtl.setLastModifiedDate(now);
                             userRoleDtlRepository.save(existingUserRoleDtl);
+
+                            String createSummaryMessage = String.format(
+                                    "Row Created on Favorite Account Master User Role Detail with DetRowId: %s",
+                                    existingUserRoleDtl.getDetRowId());
+                            detailSummaryLogs.add(createSummaryLogEntry(
+                                    LogDetailsEnum.CREATED, docId, docKeyPoid, createSummaryMessage, now));
                         } else {
                             GlFavAcMasterUserRoleDtl userRoleDtl = GlFavAcMasterUserRoleDtl.builder()
                                     .favAcPoid(savedMaster.getFavAcPoid())
@@ -289,6 +335,12 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                                     .lastModifiedDate(now)
                                     .build();
                             userRoleDtlRepository.save(userRoleDtl);
+
+                            String createSummaryMessage = String.format(
+                                    "Row Created on Favorite Account Master User Role Detail with DetRowId: %s",
+                                    userRoleDtl.getDetRowId());
+                            detailSummaryLogs.add(createSummaryLogEntry(
+                                    LogDetailsEnum.CREATED, docId, docKeyPoid, createSummaryMessage, now));
                         }
                     }
                 }
@@ -296,8 +348,10 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
             }
         }
 
-        String docId = UserContext.getDocumentId();
-        String docKeyPoid = savedMaster.getFavAcPoid().toString();
+        if (!detailSummaryLogs.isEmpty()) {
+            globalLogSummaryRepository.saveAll(detailSummaryLogs);
+        }
+
         String createdMessage = String.format("Created - - DOC:%s KEY:%s", docId, docKeyPoid);
         GlobalLogSummary headerLog = createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, createdMessage, now);
         globalLogSummaryRepository.save(headerLog);

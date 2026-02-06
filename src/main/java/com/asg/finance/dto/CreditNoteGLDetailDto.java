@@ -15,6 +15,7 @@ public class CreditNoteGLDetailDto {
 
     @NotNull(message = "Company Poid is mandatory")
     private Long companyPoid;
+    private LovGetListDto companyDet;
 
     private Long glPoid;
     private LovGetListDto glDet;

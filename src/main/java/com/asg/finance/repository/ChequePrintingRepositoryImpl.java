@@ -24,7 +24,7 @@ public class ChequePrintingRepositoryImpl implements ChequePrintingRepository {
 	@Override
 	@SuppressWarnings("unchecked")
 	public List<PendingChequeResponse> fetchPendingCheques() {
-		StoredProcedureQuery sp = em.createStoredProcedureQuery("PRODUCTION.PROC_BANK_PENDING_CHEQUE_VIEW");
+		StoredProcedureQuery sp = em.createStoredProcedureQuery("PROC_BANK_PENDING_CHEQUE_VIEW");
 		sp.registerStoredProcedureParameter("OUTDATA", void.class, ParameterMode.REF_CURSOR);
 		sp.execute();
 		List<Object[]> rows = sp.getResultList();
@@ -52,7 +52,7 @@ public class ChequePrintingRepositoryImpl implements ChequePrintingRepository {
 	@Override
 	@SuppressWarnings("unchecked")
 	public List<ChequeStockResponse> fetchChequeStock(String bankCode, String signType) {
-		StoredProcedureQuery sp = em.createStoredProcedureQuery("PRODUCTION.PROC_CHEQUE_STOCK_DETAIL_VIEW");
+		StoredProcedureQuery sp = em.createStoredProcedureQuery("PROC_CHEQUE_STOCK_DETAIL_VIEW");
 		sp.registerStoredProcedureParameter("P_BANK_CODE", String.class, ParameterMode.IN);
 		sp.registerStoredProcedureParameter("P_SIGN_TYPE", String.class, ParameterMode.IN);
 		sp.registerStoredProcedureParameter("OUTDATA", void.class, ParameterMode.REF_CURSOR);

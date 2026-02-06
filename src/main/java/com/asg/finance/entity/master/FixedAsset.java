@@ -223,6 +223,7 @@ public class FixedAsset {
     @Column(name = "MAIL_ALERT", length = 1)
     private String mailAlert;
 
+    @AuditIgnore
     @Column(name = "BATCH_CREATION_REF", length = 100)
     private String batchCreationRef;
 

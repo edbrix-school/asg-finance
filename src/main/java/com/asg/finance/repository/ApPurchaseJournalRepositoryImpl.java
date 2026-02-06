@@ -1,9 +1,6 @@
 package com.asg.finance.repository;
 
-import com.asg.finance.dto.ApPiFaDefaultDetailsDto;
-import com.asg.finance.dto.ApPiFromGeneralPoResponseDto;
-import com.asg.finance.dto.ApPiFromPoResponseDto;
-import com.asg.finance.dto.ApPurchaseJournalResponseDto;
+import com.asg.finance.dto.*;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.ParameterMode;
 import jakarta.persistence.PersistenceContext;
@@ -14,6 +11,7 @@ import org.springframework.stereotype.Repository;
 import com.asg.common.lib.security.util.UserContext;
 
 import javax.sql.DataSource;
+import java.math.BigDecimal;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -731,6 +729,7 @@ public class ApPurchaseJournalRepositoryImpl implements ApPurchaseJournalReposit
 
             dto.setFaDescription(rs.getString("FA_DESCRIPTION"));
             dto.setFaCategoryPoid(rs.getLong("FA_CATEGORY_POID"));
+            dto.setCategoryDescription(rs.getString("CATEGORY_DESCRIPTION"));
             dto.setAssetType(rs.getString("ASSET_TYPE"));
             dto.setGrossValue(rs.getBigDecimal("GROSS_VALUE"));
 
@@ -939,7 +938,7 @@ public class ApPurchaseJournalRepositoryImpl implements ApPurchaseJournalReposit
         try {
             StoredProcedureQuery query =
                     entityManager.createStoredProcedureQuery(
-                            "PRODUCTION.PROC_AP_PI_CHECK_OUTSTAND_PO");
+                            "PROC_AP_PI_CHECK_OUTSTAND_PO");
 
             query.registerStoredProcedureParameter("P_LOGIN_GROUP_POID", Long.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("P_LOGIN_COMPANY_POID", Long.class, ParameterMode.IN);
@@ -966,6 +965,66 @@ public class ApPurchaseJournalRepositoryImpl implements ApPurchaseJournalReposit
         } catch (Exception e) {
             log.error("Error executing PROC_AP_PI_CHECK_OUTSTAND_PO", e);
             throw new RuntimeException("Failed to check outstanding PO", e);
+        }
+
+        return result;
+    }
+
+    @Override
+    public List<ApPurchaseInvRjvDefaultDto> fetchRjvDefaultDetails(
+            Long groupPoid,
+            Long companyPoid,
+            Long userPoid,
+            String rjvPoid) {
+
+        StoredProcedureQuery query =
+                entityManager.createStoredProcedureQuery(
+                        "PROC_AP_PI_RJV_DEFAULT_DTLS");
+
+        // IN params
+        query.registerStoredProcedureParameter(
+                "P_LOGIN_GROUP_POID", Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(
+                "P_LOGIN_COMPANY_POID", Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(
+                "P_LOGIN_USER_POID", Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(
+                "P_RJV_POID", String.class, ParameterMode.IN);
+
+        // OUT REF CURSOR
+        query.registerStoredProcedureParameter(
+                "OUTDATA", void.class, ParameterMode.REF_CURSOR);
+
+        query.setParameter("P_LOGIN_GROUP_POID", groupPoid);
+        query.setParameter("P_LOGIN_COMPANY_POID", companyPoid);
+        query.setParameter("P_LOGIN_USER_POID", userPoid);
+        query.setParameter("P_RJV_POID", rjvPoid);
+
+        query.execute();
+
+        @SuppressWarnings("unchecked")
+        List<Object[]> rows =
+                query.getResultList();
+
+        List<ApPurchaseInvRjvDefaultDto> result = new ArrayList<>();
+
+        for (Object[] row : rows) {
+            ApPurchaseInvRjvDefaultDto dto =
+                    new ApPurchaseInvRjvDefaultDto();
+
+            dto.setDrilldownLinkInfo((String) row[0]);
+            dto.setRjvTrnDate(
+                    row[1] != null
+                            ? ((Timestamp) row[1]).toLocalDateTime()
+                            : null);
+            dto.setRjvDocRef((String) row[2]);
+            dto.setRjvCompanyPoid(
+                    row[3] != null ? ((Number) row[3]).longValue() : null);
+            dto.setRjvRefType((String) row[4]);
+            dto.setRjvAmount((BigDecimal) row[5]);
+            dto.setRjvRemarks((String) row[6]);
+
+            result.add(dto);
         }
 
         return result;

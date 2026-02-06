@@ -40,6 +40,9 @@ public class ChequeReturnRequest {
         private String closeDetail;
         private String createdBy;
         private Date createdDate;
+        private Date lastModifiedDate;
+        private String lastModifiedBy;
+        private String receiptNumber;
 
     }
 

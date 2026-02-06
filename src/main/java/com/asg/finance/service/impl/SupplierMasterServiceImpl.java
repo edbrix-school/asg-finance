@@ -284,9 +284,6 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
             globalLogSummaryRepository.saveAll(subTableSummaryLogs);
         }
 
-        String modifiedMessage = String.format("Modified - - DOC:%s KEY:%s", docId, docKeyPoid);
-        globalLogSummaryRepository.save(createSummaryLogEntry(LogDetailsEnum.MODIFIED, docId, docKeyPoid, modifiedMessage));
-
         callSupplierValidationProcedure(UserContext.getGroupPoid(),
                 supplierMasterDto.getCustomerPoid(),
                 UserContext.getUserPoid(),
@@ -296,6 +293,22 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
      
         loggingService.logChanges(oldEntity, updatedEntity, SupplierMasterEntity.class,
                 docId, docKeyPoid, LogDetailsEnum.MODIFIED, "SUPPLIER_POID");
+
+        if (!Objects.equals(oldEntity.getAddressPoid(), updatedEntity.getAddressPoid())) {
+            SupplierMasterEntity oldAddressOnly = new SupplierMasterEntity();
+            oldAddressOnly.setSupplierPoid(oldEntity.getSupplierPoid());
+            oldAddressOnly.setAddressPoid(oldEntity.getAddressPoid());
+
+            SupplierMasterEntity newAddressOnly = new SupplierMasterEntity();
+            newAddressOnly.setSupplierPoid(updatedEntity.getSupplierPoid());
+            newAddressOnly.setAddressPoid(updatedEntity.getAddressPoid());
+
+            String logDetail = String.format("KeyId = SUPPLIER_POID:%s", docKeyPoid);
+            List<LogRequestDto<SupplierMasterEntity>> addressLogRequests = new ArrayList<>();
+            addressLogRequests.add(new LogRequestDto<>(oldAddressOnly, newAddressOnly, SupplierMasterEntity.class,
+                    docId, docKeyPoid, logDetail));
+            loggingService.createLogBatch(addressLogRequests);
+        }
         
         return getSupplierMaster(supplierPoid);
     }

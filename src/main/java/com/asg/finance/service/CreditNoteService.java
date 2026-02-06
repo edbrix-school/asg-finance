@@ -3,6 +3,7 @@ package com.asg.finance.service;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.finance.dto.CreditNoteHeaderDto;
 import com.asg.finance.dto.DefaultCreditValuesDto;
+import com.asg.finance.dto.FdaRefResponseDto;
 import com.asg.finance.dto.UniversalChargeDetailDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import org.springframework.data.domain.Pageable;
@@ -36,5 +37,7 @@ public interface CreditNoteService {
     Long getPartyGLPoid(Long partyPoid, String partyType);
 
     byte[] print(Long transactionPoid) throws Exception;
+
+    FdaRefResponseDto getFdaRefForCreditNote(Long docKeyPoid, String lovName, Long lovValue);
 
 }

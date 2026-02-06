@@ -97,8 +97,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     @Autowired
     private LovDataService lovService;
 
-    @Autowired private PrintService printService;
-    
+    @Autowired
+    private PrintService printService;
+
     @Autowired
     private LoggingService loggingService;
 
@@ -276,7 +277,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             List<CreditNoteGLDetailDto> glDetailDtos = glDetails.stream().map(this::mapGLToDto).collect(Collectors.toList());
             loadBillwiseAndCostCenterBreakup(glDetailDtos, transactionPoid, "300-111");
             result.setGlDetails(glDetailDtos);
-            
+
             // Log the update
             loggingService.logChanges(oldEntity, existing, ArCreditNoteHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
             loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), transactionPoid.toString());
@@ -299,7 +300,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         try {
             ArCreditNoteHdr existing = creditNoteHdrRepository.findById(transactionPoid)
                     .orElseThrow(() -> new ResourceNotFoundException("Credit Note", "transactionPoid", transactionPoid));
-            
+
             documentDeleteService.deleteDocument(
                     transactionPoid,
                     "AR_CREDIT_NOTE_HDR",
@@ -339,7 +340,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         }
     }
 
-    private List<UniversalChargeDetailDto> executeFFChargesFetchSP(Long refNo,Long partyPoid) throws SQLException {
+    private List<UniversalChargeDetailDto> executeFFChargesFetchSP(Long refNo, Long partyPoid) throws SQLException {
 
         String sql = "BEGIN PROC_AR_CREDIT_NT_FROM_FF_INV(?, ?, ?, ?, ?, ?, ?); END;";
         List<UniversalChargeDetailDto> charges = new ArrayList<>();
@@ -781,10 +782,10 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     private void executeFFCreateSP(Long transactionPoid, Long ffInvoicePoid) throws SQLException {
         String sql = "BEGIN PROC_CR_NOTE_CREATE_FROM_FF(?, ?, ?, ?, ?, ?); END;";
         try (Connection conn = dataSource.getConnection();
-            CallableStatement cs = conn.prepareCall(sql)) {
+             CallableStatement cs = conn.prepareCall(sql)) {
             Long groupPoid = 1L;
             Long companyPoid = 3L;
-            Long userPoid =UserContext.getUserPoid();
+            Long userPoid = UserContext.getUserPoid();
 
             cs.setLong(1, groupPoid); // P_LOGIN_GROUP_POID
             cs.setLong(2, companyPoid); // P_LOGIN_COMPANY_POID
@@ -799,10 +800,10 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     private void executeSHCreateSP(Long transactionPoid, Long shInvoicePoid, Long partyPoid) throws SQLException {
         String sql = "BEGIN PROC_AR_CREDIT_NT_FROM_SH_INV(?, ?, ?, ?, ?, ?, ?); END;";
         try (Connection conn = dataSource.getConnection();
-            CallableStatement cs = conn.prepareCall(sql)) {
+             CallableStatement cs = conn.prepareCall(sql)) {
             Long groupPoid = 1L;
             Long companyPoid = 3L;
-            Long userPoid =UserContext.getUserPoid();
+            Long userPoid = UserContext.getUserPoid();
             cs.setLong(1, groupPoid); // P_LOGIN_GROUP_POID
             cs.setLong(2, companyPoid); // P_LOGIN_COMPANY_POID
             cs.setLong(3, userPoid); // P_LOGIN_USER_POID
@@ -817,7 +818,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     private void executeDNCreateSP(Long transactionPoid, Long dnInvoicePoid, Long partyPoid) throws SQLException {
         String sql = "BEGIN PROC_AR_CN_CREATE_FROM_DN(?, ?, ?, ?, ?, ?, ?); END;";
         try (Connection conn = dataSource.getConnection();
-            CallableStatement cs = conn.prepareCall(sql)) {
+             CallableStatement cs = conn.prepareCall(sql)) {
             Long groupPoid = 1L;
             Long companyPoid = 3L;
             Long userPoid = UserContext.getUserPoid();
@@ -836,7 +837,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     private void executeFDACreateSP(Long transactionPoid, String fdaRef, Long partyPoid) throws SQLException {
         String sql = "BEGIN PROC_AR_CREDIT_CREATE_FROM_FDA(?, ?, ?, ?, ?, ?, ?); END;";
         try (Connection conn = dataSource.getConnection();
-            CallableStatement cs = conn.prepareCall(sql)) {
+             CallableStatement cs = conn.prepareCall(sql)) {
             Long groupPoid = 1L;
             Long companyPoid = 3L;
             Long userPoid = UserContext.getUserPoid();
@@ -1009,10 +1010,10 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     private void executeGLVoucherValidation(CreditNoteHeaderDto dto) throws SQLException {
         String sql = "BEGIN PROC_GL_VOUCHERS_VALIDATIONS(?, ?, ?, ?, ?, ?, ?); END;";
         try (Connection conn = dataSource.getConnection();
-            CallableStatement cs = conn.prepareCall(sql)) {
+             CallableStatement cs = conn.prepareCall(sql)) {
             Long groupPoid = 1L;
             Long companyPoid = 3L;
-            Long userPoid =UserContext.getUserPoid();
+            Long userPoid = UserContext.getUserPoid();
 
             cs.setLong(1, groupPoid); // P_LOGIN_GROUP_POID
             cs.setLong(2, userPoid); // P_LOGIN_USER_POID
@@ -1086,10 +1087,10 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     private void executeGLBillRefUpdate(Long transactionPoid, String refType) throws SQLException {
         String sql = "BEGIN PROC_DR_CR_BILL_REF_UPDATE(?, ?, ?, ?, ?, ?, ?, ?); END;";
         try (Connection conn = dataSource.getConnection();
-            CallableStatement cs = conn.prepareCall(sql)) {
+             CallableStatement cs = conn.prepareCall(sql)) {
             Long groupPoid = 1L;
             Long companyPoid = 3L;
-            Long userPoid =UserContext.getUserPoid();
+            Long userPoid = UserContext.getUserPoid();
 
             // Get credit note header to get doc ref and party type
             ArCreditNoteHdr header = creditNoteHdrRepository.findById(transactionPoid).orElse(null);
@@ -1183,7 +1184,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         }
     }
 
-    private void  saveGLDetailsWithIssueType(
+    private void saveGLDetailsWithIssueType(
             Long transactionPoid,
             List<CreditNoteGLDetailDto> glDetails,
             String issueType
@@ -1381,12 +1382,12 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                 if ("NOCHANGES".equals(actionType)) {
                     actionType = "NOCHANGE";
                 }
-            if ("ISUPDATED".equals(actionType) && gl.getDetRowId() == null) {
-                throw new ValidationException("detRowId is required");
-            }
-            if (!"ISCREATED".equals(actionType) || gl.getDetRowId() == null) {
-                continue;
-            }
+                if ("ISUPDATED".equals(actionType) && gl.getDetRowId() == null) {
+                    throw new ValidationException("detRowId is required");
+                }
+                if (!"ISCREATED".equals(actionType) || gl.getDetRowId() == null) {
+                    continue;
+                }
                 String summaryMessage = String.format("Row Created on Credit Note GL Detail with DetRowId: %s", gl.getDetRowId());
                 summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, summaryMessage));
             }
@@ -1404,12 +1405,12 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                 if ("NOCHANGES".equals(actionType)) {
                     actionType = "NOCHANGE";
                 }
-            if ("ISUPDATED".equals(actionType) && charge.getDetRowId() == null) {
-                throw new ValidationException("detRowId is required");
-            }
-            if (!"ISCREATED".equals(actionType) || charge.getDetRowId() == null) {
-                continue;
-            }
+                if ("ISUPDATED".equals(actionType) && charge.getDetRowId() == null) {
+                    throw new ValidationException("detRowId is required");
+                }
+                if (!"ISCREATED".equals(actionType) || charge.getDetRowId() == null) {
+                    continue;
+                }
                 String summaryMessage = String.format("Row Created on Credit Note Charge Detail with DetRowId: %s", charge.getDetRowId());
                 summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, summaryMessage));
             }
@@ -2105,5 +2106,46 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         params.put("SUB_ITEM", printService.load("Finance/AR/CrdeitNoteItemSubreport.jrxml"));
         JasperReport mainReport = printService.load("Finance/AR/CreditNote.jrxml");
         return printService.fillReportToPdf(mainReport, params, dataSource);
+    }
+
+    @Override
+    public FdaRefResponseDto getFdaRefForCreditNote(Long docKeyPoid, String lovName, Long lovValue) {
+        try {
+            return executeFdaRefProcedure(docKeyPoid, lovName, lovValue);
+        } catch (SQLException e) {
+            log.error("Error fetching FDA reference for docKeyPoid: {}, lovName: {}, lovValue: {}", docKeyPoid, lovName, lovValue, e);
+            throw new RuntimeException("Failed to fetch FDA reference: " + e.getMessage(), e);
+        }
+    }
+
+    private FdaRefResponseDto executeFdaRefProcedure(Long docKeyPoid, String lovName, Long lovValue) throws SQLException {
+        String sql = "BEGIN PROC_AR_CN_SET_FDAREF(?, ?, ?, ?, ?, ?, ?, ?); END;";
+
+        try (Connection conn = dataSource.getConnection();
+             CallableStatement cs = conn.prepareCall(sql)) {
+
+            cs.setLong(1, UserContext.getGroupPoid());
+            cs.setLong(2, UserContext.getCompanyPoid());
+            cs.setLong(3, UserContext.getUserPoid());
+            cs.setString(4, UserContext.getDocumentId());
+            cs.setLong(5, docKeyPoid != null ? docKeyPoid : 0);
+            cs.setString(6, lovName);
+            cs.setLong(7, lovValue != null ? lovValue : 0);
+            cs.registerOutParameter(8, OracleTypes.CURSOR);
+
+            cs.execute();
+
+            try (ResultSet rs = (ResultSet) cs.getObject(8)) {
+                if (rs != null && rs.next()) {
+                    Long fdaRefPoid = rs.getLong("FDA_REF_POID");
+                    return FdaRefResponseDto.builder()
+                            .fdaRefPoid(fdaRefPoid)
+                            .fdaRefDet(lovService.getDetailsByPoidAndLovName(fdaRefPoid, "DN_FDA_REF_FOR_CN"))
+                            .build();
+                }
+            }
+
+            return FdaRefResponseDto.builder().build();
+        }
     }
 }

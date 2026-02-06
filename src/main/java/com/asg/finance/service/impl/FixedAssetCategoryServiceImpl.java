@@ -149,13 +149,22 @@ public class FixedAssetCategoryServiceImpl implements FixedAssetCategoryService 
         fixedAssetCategoryResponseDto.setFaAccumulationAccount(Long.valueOf(fixedAssetCategory.getFaAccumulationAccount()));
         fixedAssetCategoryResponseDto.setFaDepreciationAccount(Long.valueOf(fixedAssetCategory.getFaDepreciationAccount()));
         
-        if(fixedAssetCategory.getCostCenter()!=null) {
-        	CostCenter costCenter = costCenterRepository.findByCostCenterPoid(Long.valueOf(fixedAssetCategory.getCostCenter()));
-	        DetailsDto detailsDto = new DetailsDto(costCenter.getCostCenterPoid(), costCenter.getCostCenterCode(),
-	                costCenter.getCostCenterDescription(), costCenter.getCostCenterPoid(), costCenter.getCostCenterDescription(), costCenter.getSeqNo());
-	        fixedAssetCategoryResponseDto.setCostCenterDet(detailsDto);
-	        fixedAssetCategoryResponseDto.setCostCenter(Long.valueOf(fixedAssetCategory.getCostCenter()));
+        Long costCenterPoid = fixedAssetCategory.getCostCenter() == null ? null : Long.valueOf(fixedAssetCategory.getCostCenter());
+        if (costCenterPoid != null) {
+        	fixedAssetCategoryResponseDto.setCostCenter(costCenterPoid);
+
+            costCenterRepository.findById(costCenterPoid)
+                    .ifPresent(cc -> fixedAssetCategoryResponseDto.setCostCenterDet(
+                    		new DetailsDto(
+                    				cc.getCostCenterPoid(), 
+                    				cc.getCostCenterCode(),
+                	                cc.getCostCenterDescription(), 
+                	                cc.getCostCenterPoid(), 
+                	                cc.getCostCenterDescription(), 
+                	                cc.getSeqNo()
+                	                )));
         }
+        
         Set<Long> glPoids = new HashSet<>(Arrays.asList(
                 Long.valueOf(fixedAssetCategory.getFaGlAccount()),
                 Long.valueOf(fixedAssetCategory.getFaAccumulationAccount()),

@@ -140,6 +140,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
 
         existingEntity.setGroupPoid(UserContext.getGroupPoid());
         existingEntity.setCompanyPoid(UserContext.getCompanyPoid());
+        existingEntity.setOtherCurrAmount(debitNoteDto.getOtherCurrAmount());
 
         existingEntity.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
         existingEntity.setLastModifiedDate(LocalDateTime.now());
@@ -634,6 +635,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         entity.setCurrencyRate(dto.getCurrencyRate());
         entity.setPartyType(dto.getPartyType());
         entity.setPartyPoid(dto.getPartyPoid());
+        entity.setOtherCurrAmount(dto.getOtherCurrAmount());
         entity.setRefType(dto.getRefType());
         entity.setDrTotal(dto.getDrTotal());
         entity.setCrTotal(dto.getCrTotal());
@@ -683,6 +685,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         dto.setBankPoid(entity.getBankPoid());
         dto.setTinNumber(entity.getTinNumber());
         dto.setBhdAmount(entity.getBhdAmount());
+        dto.setOtherCurrAmount(entity.getOtherCurrAmount());
         dto.setVoucherType(entity.getVoucherType());
         dto.setCostRefNumber(entity.getCostRefNumber());
         dto.setPrintDivisionPoid(entity.getPrintDivisionPoid());

@@ -8,6 +8,7 @@ import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.CreditNoteHeaderDto;
 import com.asg.finance.dto.DefaultCreditValuesDto;
+import com.asg.finance.dto.FdaRefResponseDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.finance.service.CreditNoteService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -582,6 +583,36 @@ public class CreditNoteController {
         } catch (Exception e) {
             log.error("Error fetching party GL POID for partyPoid: {}, partyType: {}", partyPoid, partyType, e);
             return internalServerError("Failed to fetch party GL POID: " + e.getMessage());
+        }
+    }
+
+    @Operation(
+            summary = "Get FDA Reference for Credit Note",
+            description = """
+                Fetches FDA reference details for credit note creation using:
+                PROC_AR_CN_SET_FDAREF
+
+                ### Input:
+                - Doc Key POID (Transaction POID)
+                - LOV Name (e.g., DN_INVOICE_FOR_CN)
+                - LOV Value (e.g., Debit Note POID)
+
+                ### Output:
+                - FDA Reference POID
+                """
+    )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
+    @GetMapping("/fda-ref")
+    public ResponseEntity<?> getFdaRefForCreditNote(
+            @RequestParam Long docKeyPoid,
+            @RequestParam String lovName,
+            @RequestParam Long lovValue) {
+        try {
+            FdaRefResponseDto result = creditNoteService.getFdaRefForCreditNote(docKeyPoid, lovName, lovValue);
+            return success("FDA reference fetched successfully", result);
+        } catch (Exception e) {
+            log.error("Error fetching FDA reference for docKeyPoid: {}, lovName: {}, lovValue: {}", docKeyPoid, lovName, lovValue, e);
+            return internalServerError("Failed to fetch FDA reference: " + e.getMessage());
         }
     }
 

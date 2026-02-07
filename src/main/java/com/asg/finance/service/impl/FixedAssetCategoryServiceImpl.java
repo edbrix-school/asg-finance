@@ -148,13 +148,23 @@ public class FixedAssetCategoryServiceImpl implements FixedAssetCategoryService 
         fixedAssetCategoryResponseDto.setFaGlAccount(Long.valueOf(fixedAssetCategory.getFaGlAccount()));
         fixedAssetCategoryResponseDto.setFaAccumulationAccount(Long.valueOf(fixedAssetCategory.getFaAccumulationAccount()));
         fixedAssetCategoryResponseDto.setFaDepreciationAccount(Long.valueOf(fixedAssetCategory.getFaDepreciationAccount()));
-        CostCenter costCenter = costCenterRepository.findByCostCenterPoid(Long.valueOf(fixedAssetCategory.getCostCenter()));
         
-        if(costCenter!=null) {
-	        DetailsDto detailsDto = new DetailsDto(costCenter.getCostCenterPoid(), costCenter.getCostCenterCode(),
-	                costCenter.getCostCenterDescription(), costCenter.getCostCenterPoid(), costCenter.getCostCenterDescription(), costCenter.getSeqNo());
-	        fixedAssetCategoryResponseDto.setCostCenterDet(detailsDto);
+        Long costCenterPoid = fixedAssetCategory.getCostCenter() == null ? null : Long.valueOf(fixedAssetCategory.getCostCenter());
+        if (costCenterPoid != null) {
+        	fixedAssetCategoryResponseDto.setCostCenter(costCenterPoid);
+
+            costCenterRepository.findById(costCenterPoid)
+                    .ifPresent(cc -> fixedAssetCategoryResponseDto.setCostCenterDet(
+                    		new DetailsDto(
+                    				cc.getCostCenterPoid(), 
+                    				cc.getCostCenterCode(),
+                	                cc.getCostCenterDescription(), 
+                	                cc.getCostCenterPoid(), 
+                	                cc.getCostCenterDescription(), 
+                	                cc.getSeqNo()
+                	                )));
         }
+        
         Set<Long> glPoids = new HashSet<>(Arrays.asList(
                 Long.valueOf(fixedAssetCategory.getFaGlAccount()),
                 Long.valueOf(fixedAssetCategory.getFaAccumulationAccount()),
@@ -179,8 +189,6 @@ public class FixedAssetCategoryServiceImpl implements FixedAssetCategoryService 
         fixedAssetCategoryResponseDto.setFaAccumulationAccountDet(glMasterDetailsMap.get(Long.valueOf(fixedAssetCategory.getFaAccumulationAccount())));
         fixedAssetCategoryResponseDto.setFaDepreciationAccountDet(glMasterDetailsMap.get(Long.valueOf(fixedAssetCategory.getFaDepreciationAccount())));
 
-        fixedAssetCategoryResponseDto.setCostCenter(Long.valueOf(fixedAssetCategory.getCostCenter()));
-        
         List<UserRoleDto> userRoleDtos = new ArrayList<>();
         if (fixedAssetCategory.getUserRolePoid() != null && !fixedAssetCategory.getUserRolePoid().isBlank()) {
             String[] userRoles = fixedAssetCategory.getUserRolePoid().split(";");

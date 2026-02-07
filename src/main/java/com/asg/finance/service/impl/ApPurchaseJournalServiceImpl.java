@@ -1321,7 +1321,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                 String actionType = actionTypeStr.toUpperCase();
 
                 if ("ISDELETED".equalsIgnoreCase(actionType)) {
-                    apPurchaseInvoiceItemDtlRepository.deleteById(new ApPurchaseInvoiceItemDtlKey(transactionPoid, rdto.getDetRowId()));
+                    apPurchaseInvRjvDetailsRepository.deleteById(new ApPurchaseInvRjvDetailsKey(transactionPoid, rdto.getDetRowId()));
                     loggingService.logDelete(rdto, UserContext.getDocumentId(), transactionPoid.toString());
                     continue;
                 }

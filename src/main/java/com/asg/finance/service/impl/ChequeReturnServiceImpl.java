@@ -318,6 +318,7 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
                                         .toInstant().atZone(ZoneId.systemDefault()).toLocalDate() : null)
                         .docRef(header.getDocRef())
                         .chequeNumber(header.getChequeNumber())
+                        .receiptNumber(header.getReceiptNumber())
                         .closeDetail(header.getCloseDetail())
                         .createdBy(header.getCreatedBy())
                         .createdDate(header.getCreatedDate())

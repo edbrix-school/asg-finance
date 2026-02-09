@@ -38,6 +38,6 @@ public interface CreditNoteService {
 
     byte[] print(Long transactionPoid) throws Exception;
 
-    FdaRefResponseDto getFdaRefForCreditNote(Long docKeyPoid, String lovName, Long lovValue);
+    FdaRefResponseDto getFdaRefForCreditNote(String lovName, Long lovValue);
 
 }

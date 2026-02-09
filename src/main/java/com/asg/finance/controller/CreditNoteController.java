@@ -604,14 +604,13 @@ public class CreditNoteController {
     @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/fda-ref")
     public ResponseEntity<?> getFdaRefForCreditNote(
-            @RequestParam Long docKeyPoid,
             @RequestParam String lovName,
             @RequestParam Long lovValue) {
         try {
-            FdaRefResponseDto result = creditNoteService.getFdaRefForCreditNote(docKeyPoid, lovName, lovValue);
+            FdaRefResponseDto result = creditNoteService.getFdaRefForCreditNote(lovName, lovValue);
             return success("FDA reference fetched successfully", result);
         } catch (Exception e) {
-            log.error("Error fetching FDA reference for docKeyPoid: {}, lovName: {}, lovValue: {}", docKeyPoid, lovName, lovValue, e);
+            log.error("Error fetching FDA reference for lovName: {}, lovValue: {}", lovName, lovValue, e);
             return internalServerError("Failed to fetch FDA reference: " + e.getMessage());
         }
     }

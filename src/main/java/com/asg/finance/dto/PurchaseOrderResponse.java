@@ -3,6 +3,7 @@ package com.asg.finance.dto;
 import com.asg.common.lib.dto.LovGetListDto;
 import lombok.*;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
@@ -82,6 +83,9 @@ public class PurchaseOrderResponse {
     private Double discountPercentage;
     private Double itemDiscountTotal;
     private Double itemDiscountTotalPercentage;
+
+    private String createdBy;
+    private LocalDateTime createdDate;
 
     // Child List
     private List<PurchaseOrderItemResponseDto> items;

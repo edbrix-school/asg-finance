@@ -6,6 +6,7 @@ import com.asg.finance.dto.GeneralReceiptResponse;
 import com.asg.common.lib.dto.FilterRequestDto;
 import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDate;
 import java.util.Map;
 
 public interface GeneralReceiptService {
@@ -48,7 +49,7 @@ public interface GeneralReceiptService {
     /**
      * Generic list with search and pagination using DocumentService
      */
-    Map<String, Object> listOfRecordsAndGenericSearch(String docId, FilterRequestDto filters, Pageable pageable);
+    Map<String, Object> listOfRecordsAndGenericSearch(String docId, FilterRequestDto filters, LocalDate startDate, LocalDate endDate, Pageable pageable);
 
     /**
      * Get GL account for charge type

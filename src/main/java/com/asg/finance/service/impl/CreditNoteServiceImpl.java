@@ -2109,16 +2109,16 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     }
 
     @Override
-    public FdaRefResponseDto getFdaRefForCreditNote(Long docKeyPoid, String lovName, Long lovValue) {
+    public FdaRefResponseDto getFdaRefForCreditNote(String lovName, Long lovValue) {
         try {
-            return executeFdaRefProcedure(docKeyPoid, lovName, lovValue);
+            return executeFdaRefProcedure(lovName, lovValue);
         } catch (SQLException e) {
-            log.error("Error fetching FDA reference for docKeyPoid: {}, lovName: {}, lovValue: {}", docKeyPoid, lovName, lovValue, e);
+            log.error("Error fetching FDA reference for lovName: {}, lovValue: {}", lovName, lovValue, e);
             throw new RuntimeException("Failed to fetch FDA reference: " + e.getMessage(), e);
         }
     }
 
-    private FdaRefResponseDto executeFdaRefProcedure(Long docKeyPoid, String lovName, Long lovValue) throws SQLException {
+    private FdaRefResponseDto executeFdaRefProcedure(String lovName, Long lovValue) throws SQLException {
         String sql = "BEGIN PROC_AR_CN_SET_FDAREF(?, ?, ?, ?, ?, ?, ?, ?); END;";
 
         try (Connection conn = dataSource.getConnection();
@@ -2128,7 +2128,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             cs.setLong(2, UserContext.getCompanyPoid());
             cs.setLong(3, UserContext.getUserPoid());
             cs.setString(4, UserContext.getDocumentId());
-            cs.setLong(5, docKeyPoid != null ? docKeyPoid : 0);
+            cs.setNull(5, java.sql.Types.NUMERIC);
             cs.setString(6, lovName);
             cs.setLong(7, lovValue != null ? lovValue : 0);
             cs.registerOutParameter(8, OracleTypes.CURSOR);

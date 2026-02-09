@@ -270,7 +270,12 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
                 return inEntity;
             }).collect(Collectors.toList());
 
-            glChequeCashConvertInDtlRepository.saveAll(inDtlEntities);
+            List<GlChequeCashConvertInDtlEntity> savedInDtls = glChequeCashConvertInDtlRepository.saveAll(inDtlEntities);
+            
+            savedInDtls.forEach(inDtl -> {
+                String logDetail = String.format("Row Created on In Detail with detRowId: %s", inDtl.getId().getDetRowId());
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString(), logDetail);
+            });
         }
 
         if (dto.getOutDtls() != null && !dto.getOutDtls().isEmpty()) {
@@ -297,7 +302,12 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
                 return outEntity;
             }).collect(Collectors.toList());
 
-            glChequeCashConvertOutDtlRepository.saveAll(outDtlEntities);
+            List<GlChequeCashConvertOutDtlEntity> savedOutDtls = glChequeCashConvertOutDtlRepository.saveAll(outDtlEntities);
+            
+            savedOutDtls.forEach(outDtl -> {
+                String logDetail = String.format("Row Created on Out Detail with detRowId: %s", outDtl.getId().getDetRowId());
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString(), logDetail);
+            });
         }
 
         String docId = UserContext.getDocumentId();

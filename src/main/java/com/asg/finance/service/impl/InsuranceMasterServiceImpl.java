@@ -567,6 +567,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
     private InsuranceMasterResponseDto mapToResponseDto(InsuranceMaster entity) {
         return InsuranceMasterResponseDto.builder()
                 .insurancePoid(entity.getTransactionPoid())
+                .docRef(entity.getDocRef())
                 .groupPoid(entity.getGroupPoid())
                 .companyPoid(entity.getCompanyPoid())
                 .insuranceType(entity.getInsuranceType())

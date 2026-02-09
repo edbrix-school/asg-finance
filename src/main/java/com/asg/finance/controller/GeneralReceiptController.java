@@ -389,15 +389,13 @@ public class GeneralReceiptController {
             )
             FilterRequestDto filters,
 
-            @RequestParam
-            @Parameter(description = "Document identifier for General Receipt", required = true, example = "300-105")
-            String documentId,
+            @Parameter(description = "Start date for filtering")
+            @RequestParam(required = false) java.time.LocalDate startDate,
 
-            @RequestParam
-            @Parameter(description = "Type of action to perform (e.g., VIEW)", required = true, example = "VIEW")
-            String actionRequested
+            @Parameter(description = "End date for filtering")
+            @RequestParam(required = false) java.time.LocalDate endDate
     ) {
-        Map<String, Object> result = generalReceiptService.listOfRecordsAndGenericSearch(documentId, filters, pageable);
+        Map<String, Object> result = generalReceiptService.listOfRecordsAndGenericSearch(UserContext.getDocumentId(), filters, startDate, endDate, pageable);
 
             return success("General Receipts fetched successfully", result);
     }

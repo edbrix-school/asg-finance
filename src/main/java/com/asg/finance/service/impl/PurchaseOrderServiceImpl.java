@@ -290,6 +290,8 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                 .discountPercentage(request.getDiscountPercentage())
                 .itemDiscountTotal(request.getItemDiscountTotal())
                 .itemDiscountTotalPercentage(request.getItemDiscountTotalPercentage())
+                .createdBy(UserContext.getUserName())
+                .createdDate(LocalDateTime.now())
                 .build();
     }
 
@@ -447,6 +449,8 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                 .supplierDetails(mapLovDetails(savedPO.getSupplierPoid(), "SUPPLIER_MASTER", true))
                 .paymentTermsDetails(mapLovDetailsWithFallback(savedPO.getPaymentTerms(), "PO_PAYMENT_TYPE"))
                 .deliveryMethodDetails(mapLovDetailsWithFallback(savedPO.getDeliveryMethod(), "DELIVERY_METHOD"))
+                .createdBy(savedPO.getCreatedBy())
+                .createdDate(savedPO.getCreatedDate())
                 .items(itemDtos)
                 .build();
     }
@@ -504,7 +508,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         po.setDiscount(request.getDiscount());
         po.setExpenseBySupplier(request.getExpenseBySupplier());
         po.setGrandTotal(request.getGrandTotal());
-        po.setRemarks(request.getRemarks());
+//        po.setRemarks(request.getRemarks());
         po.setRfqPoid(request.getRfqPoid());
         po.setPoStatus(request.getPoStatus());
         po.setItemTotal(request.getItemTotal());
@@ -532,6 +536,8 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         po.setDiscountPercentage(request.getDiscountPercentage());
         po.setItemDiscountTotal(request.getItemDiscountTotal());
         po.setItemDiscountTotalPercentage(request.getItemDiscountTotalPercentage());
+        po.setLastModifiedBy(UserContext.getUserName());
+        po.setLastModifiedDate(LocalDateTime.now());
     }
 
     private List<PurchaseOrderItem> updateGeneralOrOperationItems(

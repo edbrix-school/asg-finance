@@ -1683,10 +1683,10 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
     }
 
     @Override
-    public Map<String, Object> listOfRecordsAndGenericSearch(String docId, FilterRequestDto filters, Pageable pageable) {
+    public Map<String, Object> listOfRecordsAndGenericSearch(String docId, FilterRequestDto filters, LocalDate startDate, LocalDate endDate, Pageable pageable) {
         String operator = documentService.resolveOperator(filters);
         String isDeleted = documentService.resolveIsDeleted(filters);
-        java.util.List<FilterDto> filterList = documentService.resolveFilters(filters);
+        List<FilterDto> filterList = documentService.resolveDateFilters(filters, "TRANSACTION_DATE", startDate, endDate);
 
         RawSearchResult raw = documentService.search(
                 docId,

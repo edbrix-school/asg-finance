@@ -684,8 +684,10 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         dto.setDueDate(entity.getDueDate());
         dto.setCreditPeriod(entity.getCreditPeriod());
         dto.setPoRef(entity.getPoRef());
-        dto.setFdaRefPoid(Long.valueOf(entity.getFdaRef()));
-        dto.setFdaDirectRefPoid(Long.valueOf(entity.getFdaDirectRef()));
+        dto.setFdaRefPoid(
+                entity.getFdaRef() != null ? Long.valueOf(entity.getFdaRef()) : null
+        );
+        dto.setFdaDirectRefPoid(entity.getFdaDirectRef() != null ? Long.valueOf(entity.getFdaDirectRef()) : null);
         dto.setBankPoid(entity.getBankPoid());
         dto.setTinNumber(entity.getTinNumber());
         dto.setBhdAmount(entity.getBhdAmount());

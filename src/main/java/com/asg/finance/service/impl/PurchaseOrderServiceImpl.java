@@ -290,6 +290,8 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                 .discountPercentage(request.getDiscountPercentage())
                 .itemDiscountTotal(request.getItemDiscountTotal())
                 .itemDiscountTotalPercentage(request.getItemDiscountTotalPercentage())
+                .createdBy(UserContext.getUserName())
+                .createdDate(LocalDateTime.now())
                 .build();
     }
 
@@ -534,6 +536,8 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         po.setDiscountPercentage(request.getDiscountPercentage());
         po.setItemDiscountTotal(request.getItemDiscountTotal());
         po.setItemDiscountTotalPercentage(request.getItemDiscountTotalPercentage());
+        po.setLastModifiedBy(UserContext.getUserName());
+        po.setLastModifiedDate(LocalDateTime.now());
     }
 
     private List<PurchaseOrderItem> updateGeneralOrOperationItems(

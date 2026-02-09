@@ -10,6 +10,7 @@ import com.asg.finance.dto.CostCenterListResponseDto;
 import com.asg.finance.dto.CostCenterRequestDTO;
 import com.asg.finance.dto.CostCenterResponseDTO;
 import com.asg.finance.dto.CostCenterTreeRequest;
+import com.asg.finance.dto.ValidateCostCenterCodeRequest;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.finance.service.CostCenterService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -371,5 +372,61 @@ public class CostCenterController {
             return internalServerError("An error occurred while retrieving Cost Center list: " + e.getMessage());
         }
     }
+    
+    
+    @Operation(
+            summary = "Validate code and description",
+            description = "Validate cost center code and cost center description",
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Successfully validated the code and description"
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Invalid input, object invalid"
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized - Authentication required"
+                    ),
+                    @ApiResponse(
+                            responseCode = "409",
+                            description = "CostCenter with the same code already exists",
+                            content = @Content(mediaType = "application/json")
+                    ),
+                    @ApiResponse(
+                            responseCode = "409",
+                            description = "CostCenter with the same description already exists"
+                    )
+            },
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
+    @PostMapping("/validate")
+    public ResponseEntity<?> validateCodeDescription(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "CostCenter object that needs to be created",
+                    required = true,
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ValidateCostCenterCodeRequest.class)
+                    )
+            )
+            @Parameter(description = "Validate the costcenter code and description", required = true)
+            @Valid @RequestBody ValidateCostCenterCodeRequest validateCostCenterCode,
+            @Parameter(description = "CostCenter POID (null for Create)", example = "1000")
+            @RequestParam(required = false) Long transactionPoid) {
+        try {
+        	Map<String,String> response = costCenterServiceImpl.validateCodeDescription(validateCostCenterCode,transactionPoid);
+            return success("Cost center validated successfully", response);
+
+        } catch (ValidationException ex) {
+            return badRequest(ex.getMessage());
+        } catch (Exception ex) {
+            return internalServerError(ex.getMessage());
+        }
+    }
+    
 }
 

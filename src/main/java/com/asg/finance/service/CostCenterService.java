@@ -4,6 +4,7 @@ import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.finance.dto.CostCenterListResponseDto;
 import com.asg.finance.dto.CostCenterRequestDTO;
 import com.asg.finance.dto.CostCenterTreeResponseDto;
+import com.asg.finance.dto.ValidateCostCenterCodeRequest;
 import com.asg.finance.dto.CostCenterTreeRequest;
 import com.asg.common.lib.dto.FilterRequestDto;
 import org.springframework.data.domain.Pageable;
@@ -25,5 +26,7 @@ public interface CostCenterService {
 
     // List functionality
     List<CostCenterListResponseDto> getCostCenterList(String documentId, String actionRequested, Long parentPoid);
+    
+    Map<String,String> validateCodeDescription(ValidateCostCenterCodeRequest validateCostCenterCode,Long costCenterPoid);
 
 }

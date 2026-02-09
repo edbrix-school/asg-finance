@@ -16,6 +16,7 @@ import com.asg.finance.dto.CostCenterListResponseDto;
 import com.asg.finance.dto.CostCenterRequestDTO;
 import com.asg.finance.dto.CostCenterTreeRequest;
 import com.asg.finance.dto.CostCenterTreeResponseDto;
+import com.asg.finance.dto.ValidateCostCenterCodeRequest;
 import com.asg.finance.entity.CostCenter;
 import com.asg.finance.repository.CostCenterRepository;
 import com.asg.finance.repository.CostCenterTreeViewRepository;
@@ -536,6 +537,40 @@ public class CostCenterServiceImpl implements CostCenterService {
                 return codeA.compareTo(codeB);
             }
         });
+    }
+    
+    
+    @Override
+    public Map<String,String> validateCodeDescription(ValidateCostCenterCodeRequest request,Long costCenterPoid) {
+    	
+    	Map<String,String> response=new HashMap<>();
+    	String code = request.getCostCenterCode();
+        String description = request.getCostCenterDescription();
+
+        boolean codeExists;
+        boolean descriptionExists;
+
+        if (costCenterPoid != null) {
+            codeExists = repository
+                    .existsByCostCenterCodeAndCostCenterPoidNot(code, costCenterPoid);
+
+            descriptionExists = repository
+                    .existsByCostCenterDescriptionAndCostCenterPoidNot(description, costCenterPoid);
+        } else {
+            codeExists = repository.existsByCostCenterCode(code);
+            descriptionExists = repository.existsByCostCenterDescription(description);
+        }
+
+        if (codeExists) {
+            response.put("code", "Cost Center Code exists");
+        }
+
+        if (descriptionExists) {
+            response.put("desacription", "Cost Center Description exists");
+        }
+
+        return response;
+        
     }
 
 }

@@ -240,6 +240,9 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
             throw e;
         }
 
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = savedHdr.getTransactionPoid().toString();
+        List<GlobalLogSummary> subTableLogs = new ArrayList<>();
         if (dto.getInDtls() != null && !dto.getInDtls().isEmpty()) {
             Long transactionPoid = savedHdr.getTransactionPoid();
             List<GlChequeCashConvertInDtlEntity> inDtlEntities = dto.getInDtls().stream().map(inDto -> {
@@ -270,7 +273,14 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
                 return inEntity;
             }).collect(Collectors.toList());
 
-            glChequeCashConvertInDtlRepository.saveAll(inDtlEntities);
+            List<GlChequeCashConvertInDtlEntity> savedInDtls = glChequeCashConvertInDtlRepository.saveAll(inDtlEntities);
+            for (GlChequeCashConvertInDtlEntity savedIn : savedInDtls) {
+                if (savedIn.getId() != null && savedIn.getId().getDetRowId() != null) {
+                    subTableLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid,
+                            String.format("Row Created on Cheque Cash Convert In Detail with DetRowId: %s",
+                                    savedIn.getId().getDetRowId())));
+                }
+            }
         }
 
         if (dto.getOutDtls() != null && !dto.getOutDtls().isEmpty()) {
@@ -297,14 +307,22 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
                 return outEntity;
             }).collect(Collectors.toList());
 
-            glChequeCashConvertOutDtlRepository.saveAll(outDtlEntities);
+            List<GlChequeCashConvertOutDtlEntity> savedOutDtls = glChequeCashConvertOutDtlRepository.saveAll(outDtlEntities);
+            for (GlChequeCashConvertOutDtlEntity savedOut : savedOutDtls) {
+                if (savedOut.getId() != null && savedOut.getId().getDetRowId() != null) {
+                    subTableLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid,
+                            String.format("Row Created on Cheque Cash Convert Out Detail with DetRowId: %s",
+                                    savedOut.getId().getDetRowId())));
+                }
+            }
         }
 
-        String docId = UserContext.getDocumentId();
-        String docKeyPoid = savedHdr.getTransactionPoid().toString();
         String createdMessage = String.format("Created - - DOC:%s KEY:%s", docId, docKeyPoid);
         GlobalLogSummary headerLog = createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, createdMessage);
         globalLogSummaryRepository.save(headerLog);
+        if (!subTableLogs.isEmpty()) {
+            globalLogSummaryRepository.saveAll(subTableLogs);
+        }
 
         return getGlChequeCashConvert(savedHdr.getTransactionPoid());
         } catch (Exception ex) {

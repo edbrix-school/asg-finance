@@ -16,6 +16,7 @@ import java.util.List;
 @Builder
 public class InsuranceMasterResponseDto {
     private Long insurancePoid;
+    private String docRef;
     private Long groupPoid;
     private Long companyPoid;
     private String insuranceType;

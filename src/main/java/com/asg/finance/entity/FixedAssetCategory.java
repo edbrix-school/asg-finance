@@ -1,5 +1,6 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.annotation.AuditIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -16,12 +17,15 @@ public class FixedAssetCategory {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "FA_CATEGORY_POID", nullable = false)
+    @AuditIgnore
     private Long faCategoryPoid;
 
     @Column(name = "GROUP_POID")
+    @AuditIgnore
     private Long groupPoid;
 
     @Column(name = "FA_CATG_CODE", length = 20, updatable = false)
+    @AuditIgnore
     private String faCategoryCode;
 
     @Column(name = "FA_CATG_DESCRIPTION", length = 300)
@@ -46,15 +50,19 @@ public class FixedAssetCategory {
     private String costCenter;
 
     @Column(name = "CREATED_BY", length = 20)
+    @AuditIgnore
     private String createdBy;
 
     @Column(name = "CREATED_DATE")
+    @AuditIgnore
     private LocalDateTime createdDate;
 
     @Column(name = "LASTMODIFIED_BY", length = 20)
+    @AuditIgnore
     private String lastModifiedBy;
 
     @Column(name = "LASTMODIFIED_DATE")
+    @AuditIgnore
     private LocalDateTime lastModifiedDate;
 
     @Column(name = "ACTIVE", length = 1)
@@ -64,6 +72,7 @@ public class FixedAssetCategory {
     private Integer seqNo;
 
     @Column(name = "DELETED", length = 1)
+    @AuditIgnore
     private String deleted;
 
     @Column(name = "USER_ROLE_POID", length = 300)

@@ -28,6 +28,8 @@ public class UniversalChargeDetailDto {
     private String remarks;
     private String issueInvoice;   // "Y" or "N"
     private Boolean selected = false;
+
+    private String actionType; 
 }
 
 

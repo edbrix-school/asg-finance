@@ -7,6 +7,8 @@ import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.finance.dto.ChequeReturnEditRequest;
 import com.asg.finance.dto.ChequeReturnLoadResponseDto;
 import com.asg.finance.dto.ChequeReturnRequest;
@@ -23,6 +25,7 @@ import jakarta.persistence.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -46,6 +49,7 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
     private final DocumentDeleteService documentDeleteService;
     private final ChequeReturnLoadRepository chequeReturnLoadRepository;
     private final LovDataService lovService;
+    private final LoggingService loggingService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -67,6 +71,7 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
         ChequeReturn header = ChequeReturn.builder()
                 .status(defaultStatus(request.getChequeHeader().getStatus()))
                 .remarks(request.getChequeHeader().getRemarks())
+                .receiptNumber(request.getChequeHeader().getReceiptNumber())
                 .groupPoid(UserContext.getGroupPoid())
                 .companyPoid(UserContext.getCompanyPoid())
                 .transactionDate(
@@ -99,6 +104,10 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
         // Schedule after save procedure to run after transaction commit
         scheduleAfterSave(header.getTransactionPoid(), header.getDocRef());
         
+        // Log the creation
+        String key = header.getTransactionPoid().toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, DOC_ID_CHEQUE_RETURN, key);
+        
         return toResponse(header, request, "Cheque Return created successfully.");
     }
 
@@ -111,6 +120,10 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
         ChequeReturn header = headerRepo.findById(transactionPoid)
                 .orElseThrow(() -> new EntityNotFoundException("Cheque Return not found: " + transactionPoid));
 
+        // Create a copy of the existing entity for logging
+        ChequeReturn oldEntity = new ChequeReturn();
+        BeanUtils.copyProperties(header, oldEntity);
+
         // 🔹 2. Check if already closed
         if ("CLOSED".equalsIgnoreCase(header.getStatus())) {
             throw new IllegalArgumentException("Cannot edit Cheque Return - already in CLOSED status");
@@ -118,10 +131,16 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
         // 🔹 3. Normalize and update status + remarks
         String status = request.getStatus() != null ? request.getStatus().trim().toUpperCase() : "OPEN";
         header.setStatus(status);
+        header.setReceiptNumber(request.getReceiptNumber());
         header.setCloseDetail(request.getCloseDetail());
         header.setLastModifiedDate(getCurrentDbDate());
         header.setLastModifiedBy(UserContext.getUserId());
         headerRepo.save(header);
+        
+        // Log the update
+        String key = transactionPoid.toString();
+        loggingService.logChanges(oldEntity, header, ChequeReturn.class, 
+                DOC_ID_CHEQUE_RETURN, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
         return getChequeReturn(transactionPoid);
     }
 
@@ -138,6 +157,11 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
         ChequeReturn header = headerRepo.findById(transactionPoid)
                 .orElseThrow(() -> new EntityNotFoundException("Cheque Return not found: " + transactionPoid));
 
+        // Create a copy of the existing entity for logging
+
+        ChequeReturn oldEntity = new ChequeReturn();
+        BeanUtils.copyProperties(header, oldEntity);
+
         // Check if already closed
         if ("CLOSED".equalsIgnoreCase(header.getStatus())) {
             throw new IllegalArgumentException("Cannot edit Cheque Return - already in CLOSED status");
@@ -152,6 +176,7 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
                         : header.getTransactionDate()
         );
         header.setChequeNumber(request.getChequeHeader().getChequeNumber());
+        header.setReceiptNumber(request.getChequeHeader().getReceiptNumber());
         header.setCloseDetail(request.getChequeHeader().getCloseDetail());
         header.setLastModifiedDate(dbDate);
         header.setLastModifiedBy(UserContext.getUserId());
@@ -170,6 +195,11 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
         headerRepo.save(header);
         // Schedule after save procedure to run after transaction commit
         scheduleAfterSave(header.getTransactionPoid(), header.getDocRef());
+        
+        // Log the update
+        String key = transactionPoid.toString();
+        loggingService.logChanges(oldEntity, header, ChequeReturn.class, 
+                DOC_ID_CHEQUE_RETURN, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
         return toResponse(header, request, "Cheque Return updated successfully.");
     }
 
@@ -288,6 +318,7 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
                                         .toInstant().atZone(ZoneId.systemDefault()).toLocalDate() : null)
                         .docRef(header.getDocRef())
                         .chequeNumber(header.getChequeNumber())
+                        .receiptNumber(header.getReceiptNumber())
                         .closeDetail(header.getCloseDetail())
                         .createdBy(header.getCreatedBy())
                         .createdDate(header.getCreatedDate())
@@ -314,10 +345,7 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
                 "GL_CHEQUE_RETURN_HDR",
                 "TRANSACTION_POID",
                 deleteReasonDto,
-                existing.getTransactionDate()
-                        .toInstant()
-                        .atZone(ZoneId.systemDefault())
-                        .toLocalDate()
+                null
         );
     }
 
@@ -358,43 +386,138 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
     private List<ChequeReturnDetail> buildAndSaveDetails(Long trnPoid, ChequeReturn header,
                                                          List<ChequeReturnRequest.ChequeDetailDto> dtos,
                                                          Date dbDate, boolean freshInsert) {
-        long startIndex = freshInsert ? 1 : (detailRepo.countById_TransactionPoid(trnPoid) + 1);
-        List<ChequeReturnDetail> entities = new ArrayList<>();
-        long i = startIndex;
-
-        for (ChequeReturnRequest.ChequeDetailDto d : dtos) {
-            Long detId = freshInsert ? i++ : (d.getDetRowId() != null ? d.getDetRowId() : i++);
-            d.setDetRowId(detId);
-            d.setTransactionPoid(trnPoid);
-            ChequeReturnDetail entity = ChequeReturnDetail.builder()
-                    .id(new ChequeReturnDetailId(trnPoid, detId))
-                    .chequeReturn(header)
-                    .paymentMainPoid(d.getPaymentMainPoid())
-                    .amount(d.getAmount())
-                    .choPoid(d.getChoPoid())
-                    .choDate(d.getChoDate() != null ? Date.from(d.getChoDate().atStartOfDay(ZoneId.systemDefault()).toInstant()) : null)
-                    .refDocId(d.getRefDocId())
-                    .refDocPoid(d.getRefDocPoid())
-                    .pymtType(d.getPymtType())
-                    .chqCardNo(d.getChqCardNo())
-                    .chqDate(Date.from(d.getChqDate().atStartOfDay(ZoneId.systemDefault()).toInstant()))
-                    .bankPoid(d.getBankPoid())
-                    .addressPoid(d.getAddressPoid())
-                    .chqAcName(d.getChqAcName())
-                    .chqAcNo(d.getChqAcNo())
-                    .remarks(d.getRemarks())
-                    .status("OPEN")
-                    .voucherType(StringUtils.defaultIfBlank(d.getVoucherType(), "NORMAL"))
-                    .rcpDate(Date.from(d.getRcpDate().atStartOfDay(ZoneId.systemDefault()).toInstant()))
-                    .refDocRef(d.getRefDocRef())
-                    .createdDate(dbDate)
-                    .lastModifiedDate(dbDate)
-                    .createdBy(UserContext.getUserId())
-                    .lastModifiedBy(UserContext.getUserId())
-                    .build();
-            entities.add(entity);
+        if (freshInsert) {
+            // Original create logic
+            long i = 1;
+            List<ChequeReturnDetail> entities = new ArrayList<>();
+            for (ChequeReturnRequest.ChequeDetailDto d : dtos) {
+                Long detId = i++;
+                d.setDetRowId(detId);
+                d.setTransactionPoid(trnPoid);
+                ChequeReturnDetail entity = buildDetailEntity(trnPoid, header, d, dbDate, detId);
+                entities.add(entity);
+            }
+            List<ChequeReturnDetail> savedDetails = detailRepo.saveAll(entities);
+            savedDetails.forEach(detail -> {
+                String logDetail = String.format("Row Created on Cheque Return Detail with detRowId: %s", detail.getId().getDetRowId());
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), trnPoid.toString(), logDetail);
+            });
+            return savedDetails;
+        } else {
+            // ActionType-based logic
+            return updateDetailsWithActionType(trnPoid, header, dtos, dbDate);
         }
-        return detailRepo.saveAll(entities);
+    }
+
+    private List<ChequeReturnDetail> updateDetailsWithActionType(Long trnPoid, ChequeReturn header,
+                                                                  List<ChequeReturnRequest.ChequeDetailDto> dtos,
+                                                                  Date dbDate) {
+        List<ChequeReturnDetail> toSave = new ArrayList<>();
+        List<ChequeReturnDetail> toUpdate = new ArrayList<>();
+        List<Long> toDelete = new ArrayList<>();
+        
+        Long maxDetRowId = detailRepo.countById_TransactionPoid(trnPoid);
+        
+        for (ChequeReturnRequest.ChequeDetailDto d : dtos) {
+            String action = d.getActionType() != null ? d.getActionType().toUpperCase() : "ISCREATED";
+            switch (action) {
+                case "ISCREATED":
+                    Long detId = d.getDetRowId() != null ? d.getDetRowId() : ++maxDetRowId;
+                    d.setDetRowId(detId);
+                    d.setTransactionPoid(trnPoid);
+                    toSave.add(buildDetailEntity(trnPoid, header, d, dbDate, detId));
+                    break;
+                case "ISUPDATED":
+                    ChequeReturnDetail existing = detailRepo.findById(new ChequeReturnDetailId(trnPoid, d.getDetRowId()))
+                            .orElseThrow(() -> new EntityNotFoundException("Detail not found: " + d.getDetRowId()));
+                    ChequeReturnDetail oldDetail = new ChequeReturnDetail();
+                    BeanUtils.copyProperties(existing, oldDetail);
+                    updateDetailEntity(existing, d, dbDate);
+                    toUpdate.add(existing);
+                    loggingService.logChanges(oldDetail, existing, ChequeReturnDetail.class, UserContext.getDocumentId(), trnPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+                    break;
+                case "ISDELETED":
+                    toDelete.add(d.getDetRowId());
+                    loggingService.logDelete(d, UserContext.getDocumentId(), trnPoid.toString());
+                    break;
+            }
+        }
+        
+        List<ChequeReturnDetail> allDetails = new ArrayList<>();
+        if (!toSave.isEmpty()) {
+            List<ChequeReturnDetail> saved = detailRepo.saveAll(toSave);
+            allDetails.addAll(saved);
+            saved.forEach(detail -> {
+                String logDetail = String.format("Row Created on Cheque Return Detail with detRowId: %s", detail.getId().getDetRowId());
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), trnPoid.toString(), logDetail);
+            });
+        }
+        if (!toUpdate.isEmpty()) {
+            allDetails.addAll(detailRepo.saveAll(toUpdate));
+        }
+        if (!toDelete.isEmpty()) {
+            toDelete.forEach(id -> detailRepo.deleteById(new ChequeReturnDetailId(trnPoid, id)));
+        }
+        
+        // If no changes were made, return existing details from database
+        if (allDetails.isEmpty()) {
+            allDetails = detailRepo.findByChequeReturn_TransactionPoid(trnPoid);
+        }
+        
+        return allDetails;
+    }
+
+    private ChequeReturnDetail buildDetailEntity(Long trnPoid, ChequeReturn header,
+                                                 ChequeReturnRequest.ChequeDetailDto d,
+                                                 Date dbDate, Long detId) {
+        return ChequeReturnDetail.builder()
+                .id(new ChequeReturnDetailId(trnPoid, detId))
+                .chequeReturn(header)
+                .paymentMainPoid(d.getPaymentMainPoid())
+                .amount(d.getAmount())
+                .choPoid(d.getChoPoid())
+                .choDate(d.getChoDate() != null ? Date.from(d.getChoDate().atStartOfDay(ZoneId.systemDefault()).toInstant()) : null)
+                .refDocId(d.getRefDocId())
+                .refDocPoid(d.getRefDocPoid())
+                .pymtType(d.getPymtType())
+                .chqCardNo(d.getChqCardNo())
+                .chqDate(Date.from(d.getChqDate().atStartOfDay(ZoneId.systemDefault()).toInstant()))
+                .bankPoid(d.getBankPoid())
+                .addressPoid(d.getAddressPoid())
+                .chqAcName(d.getChqAcName())
+                .chqAcNo(d.getChqAcNo())
+                .remarks(d.getRemarks())
+                .status("OPEN")
+                .voucherType(StringUtils.defaultIfBlank(d.getVoucherType(), "NORMAL"))
+                .rcpDate(Date.from(d.getRcpDate().atStartOfDay(ZoneId.systemDefault()).toInstant()))
+                .refDocRef(d.getRefDocRef())
+                .createdDate(dbDate)
+                .lastModifiedDate(dbDate)
+                .createdBy(UserContext.getUserId())
+                .lastModifiedBy(UserContext.getUserId())
+                .build();
+    }
+
+    private void updateDetailEntity(ChequeReturnDetail entity, ChequeReturnRequest.ChequeDetailDto d, Date dbDate) {
+        entity.setPaymentMainPoid(d.getPaymentMainPoid());
+        entity.setAmount(d.getAmount());
+        entity.setChoPoid(d.getChoPoid());
+        entity.setChoDate(d.getChoDate() != null ? Date.from(d.getChoDate().atStartOfDay(ZoneId.systemDefault()).toInstant()) : null);
+        entity.setRefDocId(d.getRefDocId());
+        entity.setRefDocPoid(d.getRefDocPoid());
+        entity.setPymtType(d.getPymtType());
+        entity.setChqCardNo(d.getChqCardNo());
+        entity.setChqDate(Date.from(d.getChqDate().atStartOfDay(ZoneId.systemDefault()).toInstant()));
+        entity.setBankPoid(d.getBankPoid());
+        entity.setAddressPoid(d.getAddressPoid());
+        entity.setChqAcName(d.getChqAcName());
+        entity.setChqAcNo(d.getChqAcNo());
+        entity.setRemarks(d.getRemarks());
+        entity.setVoucherType(StringUtils.defaultIfBlank(d.getVoucherType(), "NORMAL"));
+        entity.setRcpDate(Date.from(d.getRcpDate().atStartOfDay(ZoneId.systemDefault()).toInstant()));
+        entity.setRefDocRef(d.getRefDocRef());
+        entity.setLastModifiedDate(dbDate);
+        entity.setLastModifiedBy(UserContext.getUserId());
     }
 
     private List<ChequeReturnGlDetail> buildAndSaveGlDetails(Long trnPoid, ChequeReturn header,
@@ -427,7 +550,14 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
                     .build();
             entities.add(entity);
         }
-        return glDetailRepo.saveAll(entities);
+        List<ChequeReturnGlDetail> savedGlDetails = glDetailRepo.saveAll(entities);
+        
+        savedGlDetails.forEach(glDetail -> {
+            String logDetail = String.format("Row Created on Cheque Return GL Detail with detRowId: %s", glDetail.getId().getDetRowId());
+            loggingService.createLogSummaryEntry(UserContext.getDocumentId(), trnPoid.toString(), logDetail);
+        });
+        
+        return savedGlDetails;
     }
 
     // ============================================================
@@ -603,6 +733,12 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
     }
 
     private ChequeReturnResponse toResponse(ChequeReturn header, ChequeReturnRequest request, String msg) {
+        // Update the request header with saved entity's audit fields
+        request.getChequeHeader().setCreatedBy(header.getCreatedBy());
+        request.getChequeHeader().setCreatedDate(header.getCreatedDate());
+        request.getChequeHeader().setLastModifiedBy(header.getLastModifiedBy());
+        request.getChequeHeader().setLastModifiedDate(header.getLastModifiedDate());
+        
         return ChequeReturnResponse.builder()
                 .chequeHeader(request.getChequeHeader())
                 .chequeDetails(request.getChequeDetails())

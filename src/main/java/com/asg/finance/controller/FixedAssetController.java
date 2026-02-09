@@ -3,6 +3,8 @@ package com.asg.finance.controller;
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.LoggingService;
 
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.security.util.UserContext;
@@ -18,6 +20,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
@@ -31,12 +34,10 @@ import static com.asg.common.lib.dto.response.ApiResponse.success;
 
 @RestController
 @RequestMapping("/v1/fixed-asset")
+@RequiredArgsConstructor
 public class FixedAssetController {
     private final FixedAssetService fixedAssetService;
-
-    public FixedAssetController(FixedAssetService fixedAssetService) {
-        this.fixedAssetService = fixedAssetService;
-    }
+    private final LoggingService loggingService;
     @Operation(
             summary = "Create a new Fixed Asset",
             description = "Creates a new Fixed Asset with the provided details",
@@ -183,8 +184,8 @@ public class FixedAssetController {
     public ResponseEntity<?> getFixedAssetById(
             @Parameter(description = "refTypePoid reference identifier", required = true)
             @PathVariable Long faPoid) {
-
         FixedAssetResponseDto responseDto = fixedAssetService.getFixedAssetById(faPoid);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), faPoid.toString());
         return success("Fixed Asset fetched successfully", responseDto);
     }
 
@@ -365,6 +366,7 @@ public class FixedAssetController {
                                                      @RequestBody(required = false) FilterRequestDto filters) {
         try {
             Map<String, Object> data = fixedAssetService.listFixedAssetCategories(UserContext.getDocumentId(), filters, pageable);
+
             return success("Fixed Asset Categories fetched successfully", data);
         } catch (Exception ex) {
             return internalServerError("Unable to fetch Fixed Asset Category list: " + ex.getMessage());

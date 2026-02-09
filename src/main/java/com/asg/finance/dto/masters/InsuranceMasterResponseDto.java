@@ -16,6 +16,7 @@ import java.util.List;
 @Builder
 public class InsuranceMasterResponseDto {
     private Long insurancePoid;
+    private String docRef;
     private Long groupPoid;
     private Long companyPoid;
     private String insuranceType;
@@ -32,6 +33,7 @@ public class InsuranceMasterResponseDto {
     private String paymentFrequency;
     private String oneTime;
     private String description;
+    private Long faPoid;
     private Long pjRefPoid;
     //private String active;
     private String deleted;
@@ -43,4 +45,5 @@ public class InsuranceMasterResponseDto {
     private List<InsuranceEmployeeDetailResponseDto> employeeDetails;
     private List<InsurancePropertyDetailResponseDto> propertyDetails;
     private List<InsurancePicDetailResponseDto> picDetails;
+    private List<InsuranceRenewalLogResponseDto> renewalLogs;
 }

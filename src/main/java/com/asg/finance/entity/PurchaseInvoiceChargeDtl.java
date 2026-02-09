@@ -1,5 +1,6 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.annotation.AuditIgnore;
 import com.asg.finance.entity.master.ShipChargeEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -18,9 +19,11 @@ import java.time.LocalDateTime;
 public class PurchaseInvoiceChargeDtl {
 
     @EmbeddedId
+    @AuditIgnore
     private PurchaseInvoiceChargeDtlId id;
 
     @Column(name = "CHARGE_POID")
+    @AuditIgnore
     private Long chargePoid;
 
     @ManyToOne
@@ -37,15 +40,19 @@ public class PurchaseInvoiceChargeDtl {
     @Column(name = "REMARKS")
     private String remarks;
 
+    @AuditIgnore
     @Column(name = "CREATED_BY")
     private String createdBy;
 
+    @AuditIgnore
     @Column(name = "CREATED_DATE")
     private LocalDateTime createdDate;
 
+    @AuditIgnore
     @Column(name = "LASTMODIFIED_BY")
     private String lastModifiedBy;
 
+    @AuditIgnore
     @Column(name = "LASTMODIFIED_DATE")
     private LocalDateTime lastModifiedDate;
 
@@ -55,6 +62,7 @@ public class PurchaseInvoiceChargeDtl {
     @Column(name = "REF_DOC_POID")
     private Long refDocPoid;
 
+    @AuditIgnore
     @Column(name = "FDA_DET_ROW_ID")
     private Long fdaDetRowId;
 
@@ -67,9 +75,11 @@ public class PurchaseInvoiceChargeDtl {
     @Column(name = "FF_AMOUNT")
     private Double ffAmount;
 
+    @AuditIgnore
     @Column(name = "CHARGE_FROM")
     private String chargeFrom;
 
+    @AuditIgnore
     @Column(name = "TAX_POID")
     private Long taxPoid;
 
@@ -82,6 +92,7 @@ public class PurchaseInvoiceChargeDtl {
     @Column(name = "CHARGE_BASE_AMOUNT")
     private Double chargeBaseAmount;
 
+    @AuditIgnore
     @Column(name = "SUPPLIER_POID_FF")
     private Long supplierPoidFf;
 }

@@ -1,9 +1,6 @@
 package com.asg.finance.repository;
 
-import com.asg.finance.dto.ApPiFaDefaultDetailsDto;
-import com.asg.finance.dto.ApPiFromGeneralPoResponseDto;
-import com.asg.finance.dto.ApPiFromPoResponseDto;
-import com.asg.finance.dto.ApPurchaseJournalResponseDto;
+import com.asg.finance.dto.*;
 
 import java.util.List;
 import java.util.Map;
@@ -139,6 +136,20 @@ public interface ApPurchaseJournalRepository {
             String glRefPoid3,
             String partyType,
             Long partyPoid
+    );
+
+    String checkOutstandingPo(
+            Long loginGroupPoid,
+            Long loginCompanyPoid,
+            Long loginUserPoid,
+            Long supplierPoid
+    );
+
+    List<ApPurchaseInvRjvDefaultDto> fetchRjvDefaultDetails(
+            Long groupPoid,
+            Long companyPoid,
+            Long userPoid,
+            String rjvPoid
     );
 
 

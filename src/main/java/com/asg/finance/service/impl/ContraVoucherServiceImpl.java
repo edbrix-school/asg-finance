@@ -5,10 +5,13 @@ import com.asg.common.lib.dto.LovGetListDto;
 import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.DeleteReasonDto;
+import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.entity.Company;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.finance.entity.GLMaster;
 import com.asg.finance.repository.GLMasterRepository;
 import com.asg.common.lib.service.DocumentSearchService;
@@ -30,6 +33,7 @@ import com.asg.finance.service.ContraVoucherService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -61,6 +65,7 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
     private final DocumentDeleteService documentDeleteService;
     private final LovDataService lovService;
     private final PrintService printService;
+    private final LoggingService loggingService;
 
     @Override
     public Map<String, Object> listContraVouchers(String docId, FilterRequestDto request, Pageable pageable, LocalDate periodFrom, LocalDate periodTo) {
@@ -225,6 +230,10 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
 
         GlContraVoucherHdr savedHeader = hdrRepository.save(header);
 
+        // Log the creation
+        String key = savedHeader.getTransactionPoid().toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, "400-103", key);
+
         // Process details from request
         if (request.getDetails() != null && !request.getDetails().isEmpty()) {
             Long nextDetRowId = 1L;
@@ -242,6 +251,10 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
                     detail.setRemarks(detailRequest.getRemarks());
                     detail.setCreatedBy(ASGHelperUtils.getCurrentUser());
                     dtlRepository.save(detail);
+                    
+                    // Log child record creation
+                    String logDetail = String.format("Row Created on Contra Voucher Detail with detRowId: %s", detail.getDetRowId());
+                    loggingService.createLogSummaryEntry(UserContext.getDocumentId(), savedHeader.getTransactionPoid().toString(), logDetail);
                 }
             }
         }
@@ -262,6 +275,10 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
         // Update header
         GlContraVoucherHdr header = hdrRepository.findByTransactionPoid(request.getTransactionPoid())
                 .orElseThrow(() -> new RuntimeException("Contra voucher not found with transactionPoid: " + request.getTransactionPoid()));
+
+        // Create a copy of the existing entity for logging
+        GlContraVoucherHdr oldEntity = new GlContraVoucherHdr();
+        BeanUtils.copyProperties(header, oldEntity);
 
         header.setCreditGl(request.getCreditGl());
         header.setDebitGl(request.getDebitGl());
@@ -289,6 +306,11 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
 
         GlContraVoucherHdr savedHeader = hdrRepository.save(header);
 
+        // Log the update
+        String key = savedHeader.getTransactionPoid().toString();
+        loggingService.logChanges(oldEntity, savedHeader, GlContraVoucherHdr.class, 
+                UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+
         // Process details based on actionType
         if (request.getDetails() != null && !request.getDetails().isEmpty()) {
             List<GlContraVoucherDtl> existingDetails = dtlRepository.findByTransactionPoid(savedHeader.getTransactionPoid());
@@ -298,6 +320,7 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
                     .orElse(0L);
 
             Long nextDetRowId = maxDetRowId + 1;
+            List<LogRequestDto<GlContraVoucherDtl>> logRequests = new ArrayList<>();
 
             for (ContraVoucherDetailRequest detailRequest : request.getDetails()) {
                 String actionType = detailRequest.getActionType();
@@ -315,6 +338,11 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
                     detail.setRemarks(detailRequest.getRemarks());
                     detail.setCreatedBy(ASGHelperUtils.getCurrentUser());
                     dtlRepository.save(detail);
+                    
+                    // Log child record creation
+                    String logDetail = String.format("Row Created on Contra Voucher Detail with detRowId: %s", detail.getDetRowId());
+                    loggingService.createLogSummaryEntry(UserContext.getDocumentId(), savedHeader.getTransactionPoid().toString(), logDetail);
+                    
                 } else if ("isUpdated".equalsIgnoreCase(actionType)) {
                     // Update existing detail with request data
                     if (detailRequest.getDetRowId() == null) {
@@ -323,6 +351,10 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
                     GlContraVoucherDtl detail = dtlRepository
                             .findByTransactionPoidAndDetRowId(savedHeader.getTransactionPoid(), detailRequest.getDetRowId())
                             .orElseThrow(() -> new RuntimeException("Detail not found with detRowId: " + detailRequest.getDetRowId()));
+                    
+                    // Create a copy of the existing detail for logging
+                    GlContraVoucherDtl oldDetail = new GlContraVoucherDtl();
+                    BeanUtils.copyProperties(detail, oldDetail);
                     
                     // Update with request values
                     if (detailRequest.getType() != null) {
@@ -344,15 +376,30 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
                         detail.setRemarks(detailRequest.getRemarks());
                     }
                     dtlRepository.save(detail);
+                    
+                    // Collect log request for batch processing
+                    String logDetailForUpdate = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", detail.getTransactionPoid(), detail.getDetRowId());
+                    logRequests.add(new LogRequestDto<>(oldDetail, detail, GlContraVoucherDtl.class, 
+                            UserContext.getDocumentId(), savedHeader.getTransactionPoid().toString(), logDetailForUpdate));
+                    
                 } else if ("isDeleted".equalsIgnoreCase(actionType)) {
                     // Delete detail
                     if (detailRequest.getDetRowId() == null) {
                         throw new IllegalArgumentException("detRowId is required for delete operation");
                     }
                     dtlRepository.findByTransactionPoidAndDetRowId(savedHeader.getTransactionPoid(), detailRequest.getDetRowId())
-                            .ifPresent(dtlRepository::delete);
+                            .ifPresent(detail -> {
+                                dtlRepository.delete(detail);
+                                // Log child record deletion
+                                loggingService.logDelete(detailRequest, UserContext.getDocumentId(), savedHeader.getTransactionPoid().toString());
+                            });
                 }
                 // noChange/noChanges - do nothing
+            }
+            
+            // Batch process all update logs
+            if (!logRequests.isEmpty()) {
+                loggingService.createLogBatch(logRequests);
             }
         }
 

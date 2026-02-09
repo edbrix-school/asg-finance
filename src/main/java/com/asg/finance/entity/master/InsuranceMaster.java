@@ -1,11 +1,13 @@
 package com.asg.finance.entity.master;
 
+import com.asg.common.lib.annotation.AuditIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import jakarta.validation.constraints.Pattern;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.Generated;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -20,22 +22,26 @@ import java.util.List;
 @Builder
 public class InsuranceMaster {
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "insurance_seq")
-    @SequenceGenerator(name = "insurance_seq", sequenceName = "GLOBAL_INSURANCE_MASTER_SEQ", allocationSize = 1)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "TRANSACTION_POID")
+    @AuditIgnore
     private Long transactionPoid;
 
+    @Column(name = "DOC_REF", length = 25, insertable = false, updatable = false)
+    @Generated
+    private String docRef;
+
     @Column(name = "GROUP_POID", nullable = false)
+    @AuditIgnore
     private Long groupPoid;
 
     @Column(name = "COMPANY_POID", nullable = false)
+    @AuditIgnore
     private Long companyPoid;
 
     @Column(name = "TRANSACTION_DATE")
+    @AuditIgnore
     private LocalDate transactionDate;
-
-    @Column(name = "DOC_REF", length = 25)
-    private String docRef;
 
     @Pattern(regexp = "^(VEHICLE_INSURANCE|MEDICAL_INSURANCE|PROPERTY_INSURANCE|TRAVEL_INSURANCE|PROJECTS_INSURANCE|RO_RO_INSURANCE|EQUIPMENT_INSURANCE|CUSTOMS_CLEARANCE_INSURANCE|IT_INSURANCE|LIFE_INSURANCE|CYBER_SECURITY_INSURANCE|PROFESSIONAL_INDEMNITY_INSURANCE|FORWARDING_LOGISTICS_INSURANCE)$",
             message = "Invalid insurance type")
@@ -65,6 +71,7 @@ public class InsuranceMaster {
     private Long currencyPoid;
 
     @Column(name = "EXCHANGE_RATE")
+    @AuditIgnore
     private BigDecimal exchangeRate;
 
     @Column(name = "INSURANCE_AMOUNT")
@@ -82,39 +89,53 @@ public class InsuranceMaster {
     @Column(name = "DESCRIPTION", length = 200)
     private String description;
 
+    @Column(name = "FA_POID")
+    private Long faPoid;
+
     @Column(name = "PJ_REF_POID")
+    @AuditIgnore
     private Long pjRefPoid;
 
     @Column(name = "CREATED_BY", length = 20)
+    @AuditIgnore
     private String createdBy;
 
     @Column(name = "CREATED_DATE")
+    @AuditIgnore
     private LocalDateTime createdDate;
 
     @Column(name = "LASTMODIFIED_BY", length = 20)
+    @AuditIgnore
     private String lastModifiedBy;
 
     @Column(name = "LASTMODIFIED_DATE")
+    @AuditIgnore
     private LocalDateTime lastModifiedDate;
 
     @Column(name = "DELETED", length = 1)
     private String deleted;
 
-    @OneToMany(mappedBy = "insuranceMaster", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "insuranceMaster", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @AuditIgnore
     private List<InsuranceVehicleDetail> vehicleDetails;
 
-    @OneToMany(mappedBy = "insuranceMaster", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "insuranceMaster", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @AuditIgnore
     private List<InsuranceEmployeeDetail> employeeDetails;
 
-    @OneToMany(mappedBy = "insuranceMaster", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "insuranceMaster", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @AuditIgnore
     private List<InsurancePropertyDetail> propertyDetails;
 
     @OneToMany(mappedBy = "insuranceMaster", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @AuditIgnore
     private List<InsuranceDetail> insuranceDetails;
 
-    @OneToMany(mappedBy = "insuranceMaster", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "insuranceMaster", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @AuditIgnore
     private List<InsurancePicDetail> picDetails;
 
     @OneToMany(mappedBy = "insuranceMaster", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @AuditIgnore
     private List<InsuranceRenewalLog> renewalLogs;
 }

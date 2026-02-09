@@ -61,6 +61,8 @@ public class DebitNoteCustomRepositoryImpl implements DebitNoteCustomRepository 
                     charge.put("fdaDetRowId", rs.getObject("FDA_DET_ROW_ID"));
                     charge.put("taxPercentage", rs.getObject("TAX_PERCENTAGE"));
                     charge.put("taxPoid", rs.getObject("TAX_POID"));
+                    charge.put("taxCode", rs.getObject("TAX_CODE"));
+                    charge.put("taxName", rs.getObject("TAX_NAME"));
                     charges.add(charge);
                 }
                 Map<String, Object> response = new java.util.HashMap<>();

@@ -15,6 +15,10 @@ public class AssetLocationMasterResponseDto {
     private String description;
     private Integer seqNo;
     private Long groupPoid;
+    private String createdBy;
+    private java.time.LocalDateTime createdDate;
+    private String lastModifiedBy;
+    private java.time.LocalDateTime lastModifiedDate;
     private String deleted;
     private String active;
 }

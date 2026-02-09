@@ -1,9 +1,6 @@
 package com.asg.finance.repository;
 
-import com.asg.finance.dto.ApPiFaDefaultDetailsDto;
-import com.asg.finance.dto.ApPiFromGeneralPoResponseDto;
-import com.asg.finance.dto.ApPiFromPoResponseDto;
-import com.asg.finance.dto.ApPurchaseJournalResponseDto;
+import com.asg.finance.dto.*;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.ParameterMode;
 import jakarta.persistence.PersistenceContext;
@@ -14,6 +11,7 @@ import org.springframework.stereotype.Repository;
 import com.asg.common.lib.security.util.UserContext;
 
 import javax.sql.DataSource;
+import java.math.BigDecimal;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -538,39 +536,56 @@ public class ApPurchaseJournalRepositoryImpl implements ApPurchaseJournalReposit
             StoredProcedureQuery query =
                     entityManager.createStoredProcedureQuery("PROC_AP_PI_CREATE_FROM_PO");
 
-            // IN params
             query.registerStoredProcedureParameter("P_LOGIN_GROUP_POID", Long.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("P_LOGIN_COMPANY_POID", Long.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("P_LOGIN_USER_POID", Long.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("P_PO_POID", String.class, ParameterMode.IN);
 
-            // OUT params
             query.registerStoredProcedureParameter("P_RESULT", String.class, ParameterMode.OUT);
-            query.registerStoredProcedureParameter("OUTDATA", ResultSet.class, ParameterMode.REF_CURSOR);
+            query.registerStoredProcedureParameter("OUTDATA", void.class, ParameterMode.REF_CURSOR);
 
-            // Set input values
             query.setParameter("P_LOGIN_GROUP_POID", loginGroupPoid);
             query.setParameter("P_LOGIN_COMPANY_POID", loginCompanyPoid);
             query.setParameter("P_LOGIN_USER_POID", loginUserPoid);
             query.setParameter("P_PO_POID", poPoid);
 
-            // Execute
             query.execute();
 
-            // P_RESULT
             String result = (String) query.getOutputParameterValue("P_RESULT");
-            if (resultMsg != null) resultMsg.append(result);
+            if (resultMsg != null) {
+                resultMsg.append(result);
+            }
 
-            // OUTDATA
-            ResultSet rs = (ResultSet) query.getOutputParameterValue("OUTDATA");
+            // 🔑 THIS LINE FIXES EVERYTHING
+            @SuppressWarnings("unchecked")
+            List<Object[]> rows = query.getResultList();
 
-            responseList = mapToPoDto(rs);
+            for (Object[] row : rows) {
+                responseList.add(
+                        ApPiFromPoResponseDto.builder()
+                                .stockPoid(row[0] != null ? ((Number) row[0]).longValue() : null)
+                                .stockUnitPoid(row[1] != null ? ((Number) row[1]).longValue() : null)
+                                .poQty((BigDecimal) row[2])
+                                .price((BigDecimal) row[3])
+                                .discount((BigDecimal) row[4])
+                                .baseAmount((BigDecimal) row[5])
+                                .taxPoid(row[6] != null ? ((Number) row[6]).longValue() : null)
+                                .taxPercentage((BigDecimal) row[7])
+                                .taxAmount((BigDecimal) row[8])
+                                .amount((BigDecimal) row[9])
+                                .remarks((String) row[10])
+                                .refDocId((String) row[11])
+                                .refDocPoid((String) row[12])
+                                .refDetRowId(row[13] != null ? ((Number) row[13]).longValue() : null)
+                                .build()
+                );
+            }
 
-            log.info("PROC_AP_PI_CREATE_FROM_PO executed successfully. Result={}", result);
+            log.info("PROC_AP_PI_CREATE_FROM_PO executed. Result={}, rows={}", result, responseList.size());
 
         } catch (Exception e) {
-            log.error("Error executing PROC_AP_PI_CREATE_FROM_PO: {}", e.getMessage(), e);
-            throw new RuntimeException("Failed to create PI items from PO: " + e.getMessage(), e);
+            log.error("Error executing PROC_AP_PI_CREATE_FROM_PO", e);
+            throw new RuntimeException("Failed to create PI items from PO", e);
         }
 
         return responseList;
@@ -731,6 +746,7 @@ public class ApPurchaseJournalRepositoryImpl implements ApPurchaseJournalReposit
 
             dto.setFaDescription(rs.getString("FA_DESCRIPTION"));
             dto.setFaCategoryPoid(rs.getLong("FA_CATEGORY_POID"));
+            dto.setCategoryDescription(rs.getString("CATEGORY_DESCRIPTION"));
             dto.setAssetType(rs.getString("ASSET_TYPE"));
             dto.setGrossValue(rs.getBigDecimal("GROSS_VALUE"));
 
@@ -925,6 +941,110 @@ public class ApPurchaseJournalRepositoryImpl implements ApPurchaseJournalReposit
         }
 
         return output;
+    }
+
+    @Override
+    public String checkOutstandingPo(
+            Long loginGroupPoid,
+            Long loginCompanyPoid,
+            Long loginUserPoid,
+            Long supplierPoid) {
+
+        String result;
+
+        try {
+            StoredProcedureQuery query =
+                    entityManager.createStoredProcedureQuery(
+                            "PROC_AP_PI_CHECK_OUTSTAND_PO");
+
+            query.registerStoredProcedureParameter("P_LOGIN_GROUP_POID", Long.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("P_LOGIN_COMPANY_POID", Long.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("P_LOGIN_USER_POID", Long.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("P_SUPPLIER_POID", Long.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("P_RESULT", String.class, ParameterMode.OUT);
+
+            query.setParameter("P_LOGIN_GROUP_POID", loginGroupPoid);
+            query.setParameter("P_LOGIN_COMPANY_POID", loginCompanyPoid);
+            query.setParameter("P_LOGIN_USER_POID", loginUserPoid);
+            query.setParameter("P_SUPPLIER_POID", supplierPoid);
+
+            query.execute();
+
+            result = (String) query.getOutputParameterValue("P_RESULT");
+
+            // 🔥 FIX: handle NULL from procedure
+            if (result == null || result.trim().isEmpty()) {
+                result = "No outstanding General PO found for this supplier.";
+            }
+
+            log.info("Outstanding PO check result: {}", result);
+
+        } catch (Exception e) {
+            log.error("Error executing PROC_AP_PI_CHECK_OUTSTAND_PO", e);
+            throw new RuntimeException("Failed to check outstanding PO", e);
+        }
+
+        return result;
+    }
+
+    @Override
+    public List<ApPurchaseInvRjvDefaultDto> fetchRjvDefaultDetails(
+            Long groupPoid,
+            Long companyPoid,
+            Long userPoid,
+            String rjvPoid) {
+
+        StoredProcedureQuery query =
+                entityManager.createStoredProcedureQuery(
+                        "PROC_AP_PI_RJV_DEFAULT_DTLS");
+
+        // IN params
+        query.registerStoredProcedureParameter(
+                "P_LOGIN_GROUP_POID", Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(
+                "P_LOGIN_COMPANY_POID", Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(
+                "P_LOGIN_USER_POID", Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(
+                "P_RJV_POID", String.class, ParameterMode.IN);
+
+        // OUT REF CURSOR
+        query.registerStoredProcedureParameter(
+                "OUTDATA", void.class, ParameterMode.REF_CURSOR);
+
+        query.setParameter("P_LOGIN_GROUP_POID", groupPoid);
+        query.setParameter("P_LOGIN_COMPANY_POID", companyPoid);
+        query.setParameter("P_LOGIN_USER_POID", userPoid);
+        query.setParameter("P_RJV_POID", rjvPoid);
+
+        query.execute();
+
+        @SuppressWarnings("unchecked")
+        List<Object[]> rows =
+                query.getResultList();
+
+        List<ApPurchaseInvRjvDefaultDto> result = new ArrayList<>();
+
+        for (Object[] row : rows) {
+            ApPurchaseInvRjvDefaultDto dto =
+                    new ApPurchaseInvRjvDefaultDto();
+
+            dto.setDrilldownLinkInfo((String) row[0]);
+            dto.setRjvTrnDate(
+                    row[1] != null
+                            ? ((Timestamp) row[1]).toLocalDateTime()
+                            : null);
+            dto.setRjvDocRef((String) row[2]);
+            dto.setRjvCompanyPoid(
+                    row[3] != null ? ((Number) row[3]).longValue() : null);
+            dto.setRjvRefType((String) row[4]);
+            dto.setRjvAmount((BigDecimal) row[5]);
+            dto.setRjvRemarks((String) row[6]);
+
+            result.add(dto);
+        }
+
+        return result;
     }
 
     private Long getLong(ResultSet rs, String col) throws SQLException {

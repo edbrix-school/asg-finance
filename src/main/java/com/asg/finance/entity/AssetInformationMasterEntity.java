@@ -1,5 +1,6 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.annotation.AuditIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -17,15 +18,19 @@ public class AssetInformationMasterEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "IA_POID")
+    @AuditIgnore
     private Long iaPoid;
 
     @Column(name = "GROUP_POID")
+    @AuditIgnore
     private Long groupPoid;
 
     @Column(name = "COMPANY_POID")
+    @AuditIgnore
     private Long companyPoid;
 
     @Column(name = "IA_CODE")
+    @AuditIgnore
     private String iaCode;
 
     @Column(name = "IA_NAME")
@@ -68,6 +73,7 @@ public class AssetInformationMasterEntity {
     private String active;
 
     @Column(name = "DELETED")
+    @AuditIgnore
     private String deleted;
 
     @Column(name = "SEQNO")
@@ -86,15 +92,19 @@ public class AssetInformationMasterEntity {
     private String protectionLevelMoved;
 
     @Column(name = "CREATED_BY")
+    @AuditIgnore
     private String createdBy;
 
     @Column(name = "CREATED_DATE")
+    @AuditIgnore
     private LocalDateTime createdDate;
 
     @Column(name = "LASTMODIFIED_BY")
+    @AuditIgnore
     private String lastModifiedBy;
 
     @Column(name = "LASTMODIFIED_DATE")
+    @AuditIgnore
     private LocalDateTime lastModifiedDate;
 }
 

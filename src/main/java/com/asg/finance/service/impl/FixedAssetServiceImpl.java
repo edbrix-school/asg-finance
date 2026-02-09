@@ -2,9 +2,11 @@ package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.*;
 
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.finance.dto.masters.*;
 import com.asg.finance.entity.AssetLocation;
@@ -25,6 +27,8 @@ import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.FixedAssetService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import oracle.jdbc.OracleTypes;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,16 +37,23 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import javax.sql.DataSource;
+import java.sql.CallableStatement;
+import java.sql.Connection;
+import java.sql.ResultSet;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class FixedAssetServiceImpl implements FixedAssetService {
 
     private final FixedAssetRepository repository;
+    private final DataSource dataSource;
     @Autowired
     DocumentDeleteService documentDeleteService;
     @Autowired
@@ -62,6 +73,9 @@ public class FixedAssetServiceImpl implements FixedAssetService {
 
     @Autowired
     LovDataService lovService;
+    
+    @Autowired
+    LoggingService loggingService;
 
     public FixedAssetResponseDto createFixedAsset(FixedAssetRequestDto requestDto) {
 
@@ -73,11 +87,41 @@ public class FixedAssetServiceImpl implements FixedAssetService {
         }
         FixedAsset entity = convertFromFixedAssetDtoToFixedAssetEntity(requestDto);
         FixedAsset savedEntity = repository.save(entity);
+        
+        // Log the creation
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), savedEntity.getFaPoid().toString());
+        
         return convertFromFixedAssetEntityToFixedAssetDto(savedEntity);
     }
 
     private String getCurrentUser() {
         return UserContext.getUserId() != null ? String.valueOf(UserContext.getUserId()) : "SYSTEM";
+    }
+
+    private Map<String, Object> fetchFixedAssetPjDetails(Long faPoid) {
+        Map<String, Object> result = new HashMap<>();
+        try (Connection conn = dataSource.getConnection();
+             CallableStatement stmt = conn.prepareCall("{call PROC_FIXED_ASSET_PJ_DETAILS(?, ?, ?, ?, ?)}")) {
+            
+            stmt.setLong(1, UserContext.getGroupPoid());
+            stmt.setLong(2, UserContext.getCompanyPoid());
+            stmt.setLong(3, UserContext.getUserPoid());
+            stmt.setLong(4, faPoid);
+            stmt.registerOutParameter(5, OracleTypes.CURSOR);
+            stmt.execute();
+            
+            try (ResultSet rs = (ResultSet) stmt.getObject(5)) {
+                if (rs != null && rs.next()) {
+                    result.put("DOC_REF", rs.getObject("DOC_REF"));
+                    result.put("TRANSACTION_POID", rs.getObject("TRANSACTION_POID") != null ? rs.getLong("TRANSACTION_POID") : null);
+                    result.put("COMPANY_POID", rs.getObject("COMPANY_POID") != null ? rs.getLong("COMPANY_POID") : null);
+                    result.put("INV_NO", rs.getObject("INV_NO"));
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error fetching PJ details for FA: {}", faPoid, e);
+        }
+        return result;
     }
 
     private FixedAsset convertFromFixedAssetDtoToFixedAssetEntity(FixedAssetRequestDto requestDto) {
@@ -140,7 +184,7 @@ public class FixedAssetServiceImpl implements FixedAssetService {
         }
         //OpeningDetailsDto
         if(requestDto.getOpeningDetailsDto()!=null) {
-            entity.setOpeningAsset("N");
+            entity.setOpeningAsset(requestDto.getOpeningDetailsDto().getOpeningAsset());
             entity.setOpeningAssetValue(requestDto.getOpeningDetailsDto().getOpeningAssetValue());
             entity.setAccumulatedDepreciation(requestDto.getOpeningDetailsDto().getAccDepreciatedAmt());
             entity.setWdValue(requestDto.getOpeningDetailsDto().getWdvValue());
@@ -200,7 +244,7 @@ public class FixedAssetServiceImpl implements FixedAssetService {
 
         DetailsDto companyPoidDet = null;
         if (savedEntity.getCompanyPoid() != null) {
-            LovGetListDto lovGetListDto = lovService.getDetailsByPoidAndLovNameFast(savedEntity.getCompanyPoid(), "COMPANY");
+            LovGetListDto lovGetListDto = lovService.getDetailsByPoidAndLovName(savedEntity.getCompanyPoid(), "COMPANY");
             if (lovGetListDto != null) {
                 companyPoidDet = new DetailsDto(lovGetListDto.getPoid(), lovGetListDto.getCode(),
                         lovGetListDto.getLabel(), lovGetListDto.getValue(), lovGetListDto.getDescription(), lovGetListDto.getSeqNo());
@@ -228,6 +272,7 @@ public class FixedAssetServiceImpl implements FixedAssetService {
         }
 
         // GeneralInfoDto mapping
+        Map<String, Object> pjDetails = fetchFixedAssetPjDetails(savedEntity.getFaPoid());
         GeneralInfoDto generalInfoDto = GeneralInfoDto.builder()
                 .faOwner(savedEntity.getFaOwner())
                 .employeePoid(savedEntity.getEmployeePoid())
@@ -250,6 +295,10 @@ public class FixedAssetServiceImpl implements FixedAssetService {
                 .contractExpiry(savedEntity.getContractExpiry())
                 .grossValue(savedEntity.getGrossValue())
                 .softwareDetails(savedEntity.getSoftwareDetails())
+                .pjDocRef((String) pjDetails.getOrDefault("DOC_REF", null))
+                .pjTransactionPoid((Long) pjDetails.getOrDefault("TRANSACTION_POID", null))
+                .pjCompanyPoid((Long) pjDetails.getOrDefault("COMPANY_POID", null))
+                .pjInvNo((String) pjDetails.getOrDefault("INV_NO", null))
                 .build();
 
                  //VehicleDetailsDto mapping
@@ -282,6 +331,7 @@ public class FixedAssetServiceImpl implements FixedAssetService {
 
         // OpeningDetailsDto mapping
         OpeningDetailsDto openingDetailsDto = OpeningDetailsDto.builder()
+        		.openingAsset(savedEntity.getOpeningAsset())
                 .openingAssetValue(savedEntity.getOpeningAssetValue())
                 .accDepreciatedAmt(savedEntity.getAccumulatedDepreciation())
                 .wdvValue(savedEntity.getWdValue())
@@ -370,6 +420,10 @@ public class FixedAssetServiceImpl implements FixedAssetService {
         FixedAsset existingEntity = repository.findById(faPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Fixed Asset not found for id: ", "faPoid", faPoid));
 
+        // Create a copy of the old entity for logging
+        FixedAsset oldEntity = new FixedAsset();
+        BeanUtils.copyProperties(existingEntity, oldEntity);
+
         if (repository.existsByFaCodeAndFaPoidNot(requestDto.getFaCode(), faPoid)) {
             throw new ValidationException("FA Code must be unique" + faPoid);
         }
@@ -383,6 +437,10 @@ public class FixedAssetServiceImpl implements FixedAssetService {
         updatedEntity.setLastModifiedBy(getCurrentUser());
         updatedEntity.setLastModifiedDate(LocalDateTime.now());
         FixedAsset savedEntity = repository.save(updatedEntity);
+        
+        // Log the update
+        loggingService.logChanges(oldEntity, savedEntity, FixedAsset.class, UserContext.getDocumentId(), faPoid.toString(), LogDetailsEnum.MODIFIED, "FA_POID");
+        
         return convertFromFixedAssetEntityToFixedAssetDto(savedEntity);
     }
 
@@ -430,6 +488,11 @@ public class FixedAssetServiceImpl implements FixedAssetService {
         }
 
         List<FixedAsset> savedCopies = repository.saveAll(copies);
+        savedCopies.forEach(copy -> {
+            String logDetail = String.format("Created-(batch creation from %s)",original.getFaCode());
+            loggingService.createLogSummaryEntry(UserContext.getDocumentId(), copy.getFaPoid().toString(), logDetail);
+        });
+
         return savedCopies.stream().map(FixedAsset::getFaPoid).toList();
     }
 

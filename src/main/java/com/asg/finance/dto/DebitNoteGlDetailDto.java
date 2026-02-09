@@ -35,6 +35,8 @@ public class DebitNoteGlDetailDto {
     
     private String remarks;
 
+    private String actionType; 
+
     private List<BillwiseBreakupPopupRequestDto> breakupList;
     private List<CostCenterBreakupPopupRequestDto> costCenterList;
 

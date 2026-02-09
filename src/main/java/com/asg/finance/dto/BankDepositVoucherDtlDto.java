@@ -16,6 +16,7 @@ import java.time.LocalDate;
 @Builder
 public class BankDepositVoucherDtlDto {
     private Long detRowId;
+    private String actionType;
 
     @NotNull(message = "Bank POID is required")
     private Long bankPoid;

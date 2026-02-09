@@ -1,5 +1,6 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.annotation.AuditIgnore;
 import com.asg.finance.entity.key.SupplierPaymentDetailId;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -12,7 +13,9 @@ import java.time.LocalDateTime;
 @Setter
 @Table(name = "AP_SUPPLIER_MASTER_PYMT_DTL")
 public class SupplierMasterPaymentDtlEntity {
+
     @EmbeddedId
+    @AuditIgnore
     private SupplierPaymentDetailId id;
 
     @Column(name = "BANK")
@@ -25,15 +28,19 @@ public class SupplierMasterPaymentDtlEntity {
     private String accountNumber;
 
     @Column(name = "CREATED_BY")
+    @AuditIgnore
     private String createdBy;
 
     @Column(name = "CREATED_DATE")
+    @AuditIgnore
     private LocalDateTime createdDate;
 
     @Column(name = "LASTMODIFIED_BY")
+    @AuditIgnore
     private String lastModifiedBy;
 
     @Column(name = "LASTMODIFIED_DATE")
+    @AuditIgnore
     private LocalDateTime lastModifiedDate;
 
     @Column(name = "REMARKS")
@@ -67,9 +74,11 @@ public class SupplierMasterPaymentDtlEntity {
     private String intermediaryAcct;
 
     @Column(name = "INTERMEDIARY_OTH")
+    @AuditIgnore
     private String intermediaryOth;
 
     @Column(name = "SPECIAL_INSTRUCTION")
+    @AuditIgnore
     private String specialInstruction;
 
     @Column(name = "INTERMEDIARY_COUNTRY_POID")
@@ -79,6 +88,7 @@ public class SupplierMasterPaymentDtlEntity {
     private Long beneficiaryCountry;
 
     @Column(name = "ACTIVE")
+    @AuditIgnore
     private String active;
 
     @Column(name = "DEFAULTS")

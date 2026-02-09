@@ -4,6 +4,7 @@ import com.asg.common.lib.dto.LovGetListDto;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -28,6 +29,8 @@ public class GLMasterResponseDto {
     private Boolean isKeyFavorite;
     private Boolean billWise;
     private Boolean prepaymentLedger;
+    private String createdBy;
+    private LocalDateTime createdDate;
     private List<PaymentDetailsDto> paymentDetails;
     private List<CompanyDetailsDto> companyDetails;
 
@@ -35,4 +38,5 @@ public class GLMasterResponseDto {
     private Long parentPoid;     // mirrors subOf in list responses
     private Integer level;       // hierarchy level (0 main groups, 1 direct children)
     private Boolean deleted;     // soft delete flag
+    private Long childCount;     // number of direct children
 }

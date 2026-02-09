@@ -26,7 +26,7 @@ public class HsbcApiSyncRepositoryImpl implements HsbcApiSyncRepository {
     @Override
     public HsbcApiSyncResponseDto loadHsbcApiData(String accountNumber, String date) {
         try (Connection conn = dataSource.getConnection();
-             CallableStatement stmt = conn.prepareCall("{call PRODUCTION.PROC_LOAD_HSBC_API_BAL(?,?,?,?)}")) {
+             CallableStatement stmt = conn.prepareCall("{call PROC_LOAD_HSBC_API_BAL(?,?,?,?)}")) {
             
             stmt.setString(1, accountNumber);
             stmt.setString(2, date);

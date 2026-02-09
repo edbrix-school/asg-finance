@@ -1,5 +1,6 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.annotation.AuditIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.time.LocalDateTime;
@@ -18,6 +19,7 @@ public class GlFavAcEntity {
     private Long groupPoid;
 
     @Column(name = "FAV_AC_CODE")
+    @AuditIgnore
     private String favAcCode;
 
     @Column(name = "DESCRIPTION")

@@ -1,5 +1,6 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.annotation.AuditIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -18,6 +19,7 @@ import java.time.LocalDate;
 public class ArCreditNoteHdr {
 
     @Id
+    @AuditIgnore
     @GeneratedValue(generator = "trigger-generated")
     @org.hibernate.annotations.GenericGenerator(
             name = "trigger-generated",
@@ -26,12 +28,15 @@ public class ArCreditNoteHdr {
     @Column(name = "TRANSACTION_POID", updatable = false, insertable = false)
     private Long transactionPoid;
 
+    @AuditIgnore
     @Column(name = "TRANSACTION_DATE", nullable = false)
     private LocalDate transactionDate;
 
+    @AuditIgnore
     @Column(name = "GROUP_POID")
     private Long groupPoid;
 
+    @AuditIgnore
     @Column(name = "COMPANY_POID")
     private Long companyPoid;
 

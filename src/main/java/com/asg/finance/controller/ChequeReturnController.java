@@ -3,6 +3,8 @@ package com.asg.finance.controller;
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.LoggingService;
 
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.ChequeReturnEditRequest;
@@ -35,6 +37,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 public class ChequeReturnController {
 
     private final ChequeReturnService service;
+    private final LoggingService loggingService;
 
     @Operation(
             summary = "Create Cheque Return",
@@ -168,6 +171,7 @@ public class ChequeReturnController {
     ) {
         try {
             ChequeReturnResponse resp = service.getChequeReturn(transactionPoid);
+            loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
             return success("Cheque Return fetched successfully", resp);
         } catch (jakarta.persistence.EntityNotFoundException ex) {
             return notFound(ex.getMessage());
@@ -190,14 +194,8 @@ public class ChequeReturnController {
             @Parameter(description = "TRANSACTION_POID", required = true) @PathVariable Long transactionPoid,
             @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto
     ) {
-        try {
             service.softDeleteChequeReturn(transactionPoid, deleteReasonDto);
             return success("Cheque Return soft deleted successfully");
-        } catch (jakarta.persistence.EntityNotFoundException ex) {
-            return notFound(ex.getMessage());
-        } catch (Exception ex) {
-            return internalServerError("Failed to delete Cheque Return: " + ex.getMessage());
-        }
     }
 
     @Operation(
@@ -315,7 +313,8 @@ public class ChequeReturnController {
         }
 
         Map<String, Object> ChequeReturnList = service.listOfRecordsAndGenericSearch(UserContext.getDocumentId(), filters, startDate, endDate, pageable);
-        return success("Cheque Return list fetched successfully", ChequeReturnList);
+
+            return success("Cheque Return list fetched successfully", ChequeReturnList);
     }
 
     @AllowedAction(UserRolesRightsEnum.VIEW)
@@ -325,6 +324,7 @@ public class ChequeReturnController {
             @RequestParam(required = false) @Parameter(description = "Receipt number(Optional)", required = false, example = "") String receiptNo
     ) {
         ChequeReturnLoadResponseDto data = service.loadChequeData(chequeNumber, receiptNo);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), receiptNo);
         return success("Cheque Return load fetched successfully", data);
     }
 }

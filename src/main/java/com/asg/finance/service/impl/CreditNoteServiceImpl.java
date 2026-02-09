@@ -2,10 +2,14 @@ package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.*;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
+import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.LoadBillwiseBreakupResponseDto;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.PrintService;
+import com.asg.finance.entity.*;
 import com.asg.finance.repository.GLMasterRepository;
 import com.asg.finance.repository.TaxMasterRepository;
 import com.asg.common.lib.service.DocumentDeleteService;
@@ -13,13 +17,11 @@ import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.utility.ASGHelperUtils;
 import com.asg.finance.dto.*;
-import com.asg.finance.entity.ArCreditNoteHdr;
-import com.asg.finance.entity.ArCreditNoteDtl;
-import com.asg.finance.entity.ArCreditNoteChargeDtl;
 import com.asg.finance.repository.ArCreditNoteChargeDtlRepository;
 import com.asg.finance.repository.ArCreditNoteDtlRepository;
 import com.asg.finance.repository.ArCreditNoteHdrRepository;
 import com.asg.finance.repository.BankPaymentVoucherSpRepository;
+import com.asg.finance.repository.GlobalLogSummaryRepository;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.BillwiseBreakupService;
@@ -28,6 +30,7 @@ import com.asg.finance.service.CostCenterBreakupService;
 import com.asg.finance.service.CreditNoteService;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -43,6 +46,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.function.Function;
 
 import oracle.jdbc.OracleTypes;
 import com.asg.common.lib.exception.ValidationException;
@@ -93,7 +97,14 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     @Autowired
     private LovDataService lovService;
 
-    @Autowired private PrintService printService;
+    @Autowired
+    private PrintService printService;
+
+    @Autowired
+    private LoggingService loggingService;
+
+    @Autowired
+    private GlobalLogSummaryRepository globalLogSummaryRepository;
 
     @Override
     @Transactional(propagation = Propagation.REQUIRED)
@@ -166,6 +177,13 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             List<ArCreditNoteChargeDtl> chargeDetails = creditNoteChargeDtlRepository.findByTransactionPoidOrderByDetRowId(transactionPoid);
             result.setChargeDetails(chargeDetails.stream().map(charge -> mapChargeToDto(charge, result.getRefType())).collect(Collectors.toList()));
 
+            // Log the creation
+            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), transactionPoid.toString());
+            List<GlobalLogSummary> detailCreateLogs = buildCreateDetailSummaryLogs(creditNoteDto, transactionPoid);
+            if (!detailCreateLogs.isEmpty()) {
+                globalLogSummaryRepository.saveAll(detailCreateLogs);
+            }
+
             return result;
 
         } catch (SQLException e) {
@@ -227,21 +245,23 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             executeBeforeSaveValidation(creditNoteDto);
             calculateDueDateFromCreditPeriod(creditNoteDto);
 
+            // Create a copy of the old entity for logging
+            ArCreditNoteHdr oldEntity = new ArCreditNoteHdr();
+            BeanUtils.copyProperties(existing, oldEntity);
+
             updateHeaderFromDto(existing, creditNoteDto);
             existing.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
             existing.setLastModifiedDate(Timestamp.from(Instant.now()));
 
             existing = creditNoteHdrRepository.save(existing);
 
+            List<GlobalLogSummary> detailSummaryLogs = new ArrayList<>();
             if (creditNoteDto.getGlDetails() != null) {
-                String issueType = creditNoteDto.getIssueType() != null ? creditNoteDto.getIssueType() : "Y";
-                creditNoteDtlRepository.deleteByTransactionPoid(transactionPoid);
-                saveGLDetailsWithIssueType(transactionPoid, creditNoteDto.getGlDetails(), issueType);
+                updateGLDetailsWithLogging(transactionPoid, creditNoteDto.getGlDetails(), detailSummaryLogs);
             }
 
             if (creditNoteDto.getChargeDetails() != null) {
-                creditNoteChargeDtlRepository.deleteByTransactionPoid(transactionPoid);
-                saveChargeDetails(transactionPoid, creditNoteDto.getChargeDetails());
+                updateChargeDetailsWithLogging(transactionPoid, creditNoteDto.getChargeDetails(), detailSummaryLogs);
                 // Recalculate tax if charge amount changed
                 executeChargeTaxCalculation(transactionPoid, creditNoteDto.getPartyType(), creditNoteDto.getPartyPoid());
             }
@@ -257,6 +277,13 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             List<CreditNoteGLDetailDto> glDetailDtos = glDetails.stream().map(this::mapGLToDto).collect(Collectors.toList());
             loadBillwiseAndCostCenterBreakup(glDetailDtos, transactionPoid, "300-111");
             result.setGlDetails(glDetailDtos);
+
+            // Log the update
+            loggingService.logChanges(oldEntity, existing, ArCreditNoteHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+            loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), transactionPoid.toString());
+            if (!detailSummaryLogs.isEmpty()) {
+                globalLogSummaryRepository.saveAll(detailSummaryLogs);
+            }
             return result;
         } catch (SQLException e) {
             log.error("Database error updating credit note", e);
@@ -273,7 +300,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         try {
             ArCreditNoteHdr existing = creditNoteHdrRepository.findById(transactionPoid)
                     .orElseThrow(() -> new ResourceNotFoundException("Credit Note", "transactionPoid", transactionPoid));
-            
+
             documentDeleteService.deleteDocument(
                     transactionPoid,
                     "AR_CREDIT_NOTE_HDR",
@@ -313,7 +340,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         }
     }
 
-    private List<UniversalChargeDetailDto> executeFFChargesFetchSP(Long refNo,Long partyPoid) throws SQLException {
+    private List<UniversalChargeDetailDto> executeFFChargesFetchSP(Long refNo, Long partyPoid) throws SQLException {
 
         String sql = "BEGIN PROC_AR_CREDIT_NT_FROM_FF_INV(?, ?, ?, ?, ?, ?, ?); END;";
         List<UniversalChargeDetailDto> charges = new ArrayList<>();
@@ -347,7 +374,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     dto.setIssueInvoice("N");
 
                     dto.setChargeDet(lovService.getDetailsByPoidAndLovName(dto.getChargePoid(), "CHARGE_MASTER_IN_CN_FOR_FF"));
-                    dto.setTaxDet(lovService.getDetailsByPoidAndLovName(dto.getTaxPoid(), "CR_TAX_MASTER"));
+                    dto.setTaxDet(taxMasterRepository.findByTaxPoid(dto.getTaxPoid())
+                            .map(tm -> new LovGetListDto(tm.getTaxPoid(), tm.getTaxCode(), tm.getTaxName(), tm.getTaxPoid(), tm.getTaxName(), tm.getSeqNo(), null))
+                            .orElse(null));
                     charges.add(dto);
                 }
             }
@@ -394,7 +423,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     dto.setIssueInvoice("N");
 
                     dto.setChargeDet(lovService.getDetailsByPoidAndLovName(dto.getChargePoid(), "CHARGE_MASTER_IN_CN_FOR_SH"));
-                    dto.setTaxDet(lovService.getDetailsByPoidAndLovName(dto.getTaxPoid(), "CR_TAX_MASTER"));
+                    dto.setTaxDet(taxMasterRepository.findByTaxPoid(dto.getTaxPoid())
+                            .map(tm -> new LovGetListDto(tm.getTaxPoid(), tm.getTaxCode(), tm.getTaxName(), tm.getTaxPoid(), tm.getTaxName(), tm.getSeqNo(), null))
+                            .orElse(null));
                     charges.add(dto);
                 }
             }
@@ -462,7 +493,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     dto.setRemarks(rs.getString("REMARKS"));
                     dto.setIssueInvoice("N");
                     dto.setChargeDet(lovService.getDetailsByPoidAndLovName(dto.getChargePoid(), "CHARGE_MASTER_IN_CN_FOR_DN"));
-                    dto.setTaxDet(lovService.getDetailsByPoidAndLovName(dto.getTaxPoid(), "CR_TAX_MASTER"));
+                    dto.setTaxDet(taxMasterRepository.findByTaxPoid(dto.getTaxPoid())
+                            .map(tm -> new LovGetListDto(tm.getTaxPoid(), tm.getTaxCode(), tm.getTaxName(), tm.getTaxPoid(), tm.getTaxName(), tm.getSeqNo(), null))
+                            .orElse(null));
                     charges.add(dto);
                 }
             }
@@ -749,10 +782,10 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     private void executeFFCreateSP(Long transactionPoid, Long ffInvoicePoid) throws SQLException {
         String sql = "BEGIN PROC_CR_NOTE_CREATE_FROM_FF(?, ?, ?, ?, ?, ?); END;";
         try (Connection conn = dataSource.getConnection();
-            CallableStatement cs = conn.prepareCall(sql)) {
+             CallableStatement cs = conn.prepareCall(sql)) {
             Long groupPoid = 1L;
             Long companyPoid = 3L;
-            Long userPoid =UserContext.getUserPoid();
+            Long userPoid = UserContext.getUserPoid();
 
             cs.setLong(1, groupPoid); // P_LOGIN_GROUP_POID
             cs.setLong(2, companyPoid); // P_LOGIN_COMPANY_POID
@@ -767,10 +800,10 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     private void executeSHCreateSP(Long transactionPoid, Long shInvoicePoid, Long partyPoid) throws SQLException {
         String sql = "BEGIN PROC_AR_CREDIT_NT_FROM_SH_INV(?, ?, ?, ?, ?, ?, ?); END;";
         try (Connection conn = dataSource.getConnection();
-            CallableStatement cs = conn.prepareCall(sql)) {
+             CallableStatement cs = conn.prepareCall(sql)) {
             Long groupPoid = 1L;
             Long companyPoid = 3L;
-            Long userPoid =UserContext.getUserPoid();
+            Long userPoid = UserContext.getUserPoid();
             cs.setLong(1, groupPoid); // P_LOGIN_GROUP_POID
             cs.setLong(2, companyPoid); // P_LOGIN_COMPANY_POID
             cs.setLong(3, userPoid); // P_LOGIN_USER_POID
@@ -785,7 +818,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     private void executeDNCreateSP(Long transactionPoid, Long dnInvoicePoid, Long partyPoid) throws SQLException {
         String sql = "BEGIN PROC_AR_CN_CREATE_FROM_DN(?, ?, ?, ?, ?, ?, ?); END;";
         try (Connection conn = dataSource.getConnection();
-            CallableStatement cs = conn.prepareCall(sql)) {
+             CallableStatement cs = conn.prepareCall(sql)) {
             Long groupPoid = 1L;
             Long companyPoid = 3L;
             Long userPoid = UserContext.getUserPoid();
@@ -804,7 +837,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     private void executeFDACreateSP(Long transactionPoid, String fdaRef, Long partyPoid) throws SQLException {
         String sql = "BEGIN PROC_AR_CREDIT_CREATE_FROM_FDA(?, ?, ?, ?, ?, ?, ?); END;";
         try (Connection conn = dataSource.getConnection();
-            CallableStatement cs = conn.prepareCall(sql)) {
+             CallableStatement cs = conn.prepareCall(sql)) {
             Long groupPoid = 1L;
             Long companyPoid = 3L;
             Long userPoid = UserContext.getUserPoid();
@@ -977,10 +1010,10 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     private void executeGLVoucherValidation(CreditNoteHeaderDto dto) throws SQLException {
         String sql = "BEGIN PROC_GL_VOUCHERS_VALIDATIONS(?, ?, ?, ?, ?, ?, ?); END;";
         try (Connection conn = dataSource.getConnection();
-            CallableStatement cs = conn.prepareCall(sql)) {
+             CallableStatement cs = conn.prepareCall(sql)) {
             Long groupPoid = 1L;
             Long companyPoid = 3L;
-            Long userPoid =UserContext.getUserPoid();
+            Long userPoid = UserContext.getUserPoid();
 
             cs.setLong(1, groupPoid); // P_LOGIN_GROUP_POID
             cs.setLong(2, userPoid); // P_LOGIN_USER_POID
@@ -1054,10 +1087,10 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     private void executeGLBillRefUpdate(Long transactionPoid, String refType) throws SQLException {
         String sql = "BEGIN PROC_DR_CR_BILL_REF_UPDATE(?, ?, ?, ?, ?, ?, ?, ?); END;";
         try (Connection conn = dataSource.getConnection();
-            CallableStatement cs = conn.prepareCall(sql)) {
+             CallableStatement cs = conn.prepareCall(sql)) {
             Long groupPoid = 1L;
             Long companyPoid = 3L;
-            Long userPoid =UserContext.getUserPoid();
+            Long userPoid = UserContext.getUserPoid();
 
             // Get credit note header to get doc ref and party type
             ArCreditNoteHdr header = creditNoteHdrRepository.findById(transactionPoid).orElse(null);
@@ -1151,23 +1184,46 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         }
     }
 
-    private void  saveGLDetailsWithIssueType(
+    private void saveGLDetailsWithIssueType(
             Long transactionPoid,
             List<CreditNoteGLDetailDto> glDetails,
             String issueType
     ) {
         log.info("Saving {} GL rows for txn: {} issueType: {}", glDetails.size(), transactionPoid, issueType);
         creditNoteDtlRepository.deleteByTransactionPoid(transactionPoid);
-        long detRowId = 1L;
+        long detRowId = 0L;
         for (CreditNoteGLDetailDto glDto : glDetails) {
             if (glDto == null) continue;
+            String actionType = glDto.getActionType();
+            if (actionType == null || actionType.trim().isEmpty()) {
+                actionType = "ISCREATED";
+            } else {
+                actionType = actionType.trim().toUpperCase();
+            }
+            if ("NOCHANGES".equals(actionType)) {
+                actionType = "NOCHANGE";
+            }
+            if ("ISUPDATED".equals(actionType) && glDto.getDetRowId() == null) {
+                actionType = "ISCREATED";
+            }
+            if (!"ISCREATED".equals(actionType)) {
+                continue;
+            }
+
+            Long incomingDetRowId = glDto.getDetRowId();
+            if (incomingDetRowId == null) {
+                throw new ValidationException("detRowId is required");
+            }
+            detRowId = Math.max(detRowId, incomingDetRowId);
+            glDto.setDetRowId(incomingDetRowId);
+
             if ("N".equalsIgnoreCase(issueType)) {
                 // Normal + Reversal (SRS requirement)
-                saveNormalGLEntry(transactionPoid, glDto, detRowId++, UserContext.getCompanyPoid());
+                saveNormalGLEntry(transactionPoid, glDto, incomingDetRowId, UserContext.getCompanyPoid());
                 //saveReversalGLEntry(transactionPoid, glDto, detRowId++, UserContext.getCompanyPoid());
             } else {
                 // Issue Type = YES → Normal + Additional
-                saveNormalGLEntry(transactionPoid, glDto, detRowId++, UserContext.getCompanyPoid());
+                saveNormalGLEntry(transactionPoid, glDto, incomingDetRowId, UserContext.getCompanyPoid());
                 //saveAdditionalGLEntry(transactionPoid, glDto, detRowId++, UserContext.getCompanyPoid());
             }
         }
@@ -1263,12 +1319,35 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     }
 
     private void saveChargeDetails(Long transactionPoid, List<UniversalChargeDetailDto> chargeDetails) {
-        long detRowId = 1L;
+        long detRowId = 0L;
         for (UniversalChargeDetailDto dto : chargeDetails) {
             if (dto == null) continue;
+            String actionType = dto.getActionType();
+            if (actionType == null || actionType.trim().isEmpty()) {
+                actionType = "ISCREATED";
+            } else {
+                actionType = actionType.trim().toUpperCase();
+            }
+            if ("NOCHANGES".equals(actionType)) {
+                actionType = "NOCHANGE";
+            }
+            if ("ISUPDATED".equals(actionType) && dto.getDetRowId() == null) {
+                actionType = "ISCREATED";
+            }
+            if (!"ISCREATED".equals(actionType)) {
+                continue;
+            }
+
+            Long incomingDetRowId = dto.getDetRowId();
+            if (incomingDetRowId == null) {
+                throw new ValidationException("detRowId is required");
+            }
+            detRowId = Math.max(detRowId, incomingDetRowId);
+            dto.setDetRowId(incomingDetRowId);
+
             ArCreditNoteChargeDtl entity = new ArCreditNoteChargeDtl();
             entity.setTransactionPoid(transactionPoid);
-            entity.setDetRowId(detRowId++);
+            entity.setDetRowId(incomingDetRowId);
             entity.setChargePoid(dto.getChargePoid());
             entity.setChargeAmount(dto.getChargeAmount());
             entity.setChargeCostAmount(dto.getChargeCostAmount());
@@ -1284,6 +1363,362 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
             creditNoteChargeDtlRepository.save(entity);
         }
+    }
+
+    private List<GlobalLogSummary> buildCreateDetailSummaryLogs(CreditNoteHeaderDto creditNoteDto, Long transactionPoid) {
+        List<GlobalLogSummary> summaryLogs = new ArrayList<>();
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = transactionPoid.toString();
+
+        if (creditNoteDto.getGlDetails() != null) {
+            for (CreditNoteGLDetailDto gl : creditNoteDto.getGlDetails()) {
+                if (gl == null) continue;
+                String actionType = gl.getActionType();
+                if (actionType == null || actionType.trim().isEmpty()) {
+                    actionType = "ISCREATED";
+                } else {
+                    actionType = actionType.trim().toUpperCase();
+                }
+                if ("NOCHANGES".equals(actionType)) {
+                    actionType = "NOCHANGE";
+                }
+                if ("ISUPDATED".equals(actionType) && gl.getDetRowId() == null) {
+                    throw new ValidationException("detRowId is required");
+                }
+                if (!"ISCREATED".equals(actionType) || gl.getDetRowId() == null) {
+                    continue;
+                }
+                String summaryMessage = String.format("Row Created on Credit Note GL Detail with DetRowId: %s", gl.getDetRowId());
+                summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, summaryMessage));
+            }
+        }
+
+        if (creditNoteDto.getChargeDetails() != null) {
+            for (UniversalChargeDetailDto charge : creditNoteDto.getChargeDetails()) {
+                if (charge == null) continue;
+                String actionType = charge.getActionType();
+                if (actionType == null || actionType.trim().isEmpty()) {
+                    actionType = "ISCREATED";
+                } else {
+                    actionType = actionType.trim().toUpperCase();
+                }
+                if ("NOCHANGES".equals(actionType)) {
+                    actionType = "NOCHANGE";
+                }
+                if ("ISUPDATED".equals(actionType) && charge.getDetRowId() == null) {
+                    throw new ValidationException("detRowId is required");
+                }
+                if (!"ISCREATED".equals(actionType) || charge.getDetRowId() == null) {
+                    continue;
+                }
+                String summaryMessage = String.format("Row Created on Credit Note Charge Detail with DetRowId: %s", charge.getDetRowId());
+                summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, summaryMessage));
+            }
+        }
+
+        return summaryLogs;
+    }
+
+    private void updateGLDetailsWithLogging(Long transactionPoid, List<CreditNoteGLDetailDto> glDetails,
+                                            List<GlobalLogSummary> summaryLogs) {
+        if (glDetails == null || glDetails.isEmpty()) return;
+
+        String currentUser = ASGHelperUtils.getCurrentUser();
+        Timestamp now = Timestamp.from(Instant.now());
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = transactionPoid.toString();
+
+        List<ArCreditNoteDtl> toSave = new ArrayList<>();
+        List<ArCreditNoteDtl> newlyCreated = new ArrayList<>();
+        List<Long> toDelete = new ArrayList<>();
+        List<LogRequestDto<ArCreditNoteDtl>> logRequests = new ArrayList<>();
+
+        List<ArCreditNoteDtl> existingDetails = creditNoteDtlRepository.findByTransactionPoidOrderByDetRowId(transactionPoid);
+        Map<Long, ArCreditNoteDtl> existingMap = existingDetails.stream()
+                .collect(Collectors.toMap(ArCreditNoteDtl::getDetRowId, Function.identity(), (a, b) -> a));
+
+        long nextDetRowId = existingDetails.stream()
+                .map(ArCreditNoteDtl::getDetRowId)
+                .filter(Objects::nonNull)
+                .max(Long::compareTo)
+                .orElse(0L);
+
+        for (CreditNoteGLDetailDto dto : glDetails) {
+            if (dto == null) continue;
+            String actionType = dto.getActionType();
+            if (actionType == null || actionType.trim().isEmpty()) {
+                actionType = (dto.getDetRowId() == null) ? "ISCREATED" : "ISUPDATED";
+            } else {
+                actionType = actionType.trim().toUpperCase();
+            }
+            if ("NOCHANGES".equals(actionType)) {
+                actionType = "NOCHANGE";
+            }
+            if ("ISUPDATED".equals(actionType) && dto.getDetRowId() == null) {
+                actionType = "ISCREATED";
+            }
+
+            switch (actionType) {
+                case "ISCREATED": {
+                    Long detRowId = dto.getDetRowId();
+                    if (detRowId == null) {
+                        throw new ValidationException("detRowId is required");
+                    }
+                    if (detRowId > nextDetRowId) {
+                        nextDetRowId = detRowId;
+                    }
+
+                    ArCreditNoteDtl newEntity = new ArCreditNoteDtl();
+                    mapGlDtoToEntity(dto, newEntity, transactionPoid);
+                    newEntity.setDetRowId(detRowId);
+                    newEntity.setCreatedBy(currentUser);
+                    newEntity.setCreatedDate(now);
+                    newEntity.setLastModifiedBy(currentUser);
+                    newEntity.setLastModifiedDate(now);
+                    toSave.add(newEntity);
+                    newlyCreated.add(newEntity);
+                    break;
+                }
+                case "ISUPDATED": {
+                    Long detRowId = dto.getDetRowId();
+                    if (detRowId == null) {
+                        throw new ValidationException("detRowId is required");
+                    }
+                    ArCreditNoteDtl existing = existingMap.get(detRowId);
+                    if (existing == null) {
+                        Long newDetRowId = detRowId;
+                        if (newDetRowId > nextDetRowId) {
+                            nextDetRowId = newDetRowId;
+                        }
+                        ArCreditNoteDtl newEntity = new ArCreditNoteDtl();
+                        mapGlDtoToEntity(dto, newEntity, transactionPoid);
+                        newEntity.setDetRowId(newDetRowId);
+                        newEntity.setCreatedBy(currentUser);
+                        newEntity.setCreatedDate(now);
+                        newEntity.setLastModifiedBy(currentUser);
+                        newEntity.setLastModifiedDate(now);
+                        toSave.add(newEntity);
+                        newlyCreated.add(newEntity);
+                        break;
+                    }
+
+                    ArCreditNoteDtl oldEntity = new ArCreditNoteDtl();
+                    BeanUtils.copyProperties(existing, oldEntity);
+                    mapGlDtoToEntity(dto, existing, transactionPoid);
+                    existing.setLastModifiedBy(currentUser);
+                    existing.setLastModifiedDate(now);
+                    toSave.add(existing);
+
+                    String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", docKeyPoid, detRowId);
+                    logRequests.add(new LogRequestDto<>(oldEntity, existing, ArCreditNoteDtl.class, docId, docKeyPoid, logDetail));
+                    break;
+                }
+                case "ISDELETED": {
+                    Long detRowId = dto.getDetRowId();
+                    if (detRowId == null) {
+                        throw new ValidationException("detRowId is required");
+                    }
+                    toDelete.add(detRowId);
+                    ArCreditNoteDtl oldEntityForDelete = existingMap.get(detRowId);
+                    if (oldEntityForDelete != null) {
+                        String deletedRecordString = String.format("detRowId:%s, transactionPoid:%s, glPoid:%s, drAmt:%s, crAmt:%s, remarks:%s",
+                                oldEntityForDelete.getDetRowId(), transactionPoid, oldEntityForDelete.getGlPoid(),
+                                oldEntityForDelete.getDrAmt(), oldEntityForDelete.getCrAmt(), oldEntityForDelete.getRemarks());
+                        String deleteSummaryMessage = String.format("Row Deleted %s", deletedRecordString);
+                        summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.DELETED, docId, docKeyPoid, deleteSummaryMessage));
+                    }
+                    break;
+                }
+                case "NOCHANGE":
+                default:
+                    break;
+            }
+        }
+
+        if (!toSave.isEmpty()) {
+            creditNoteDtlRepository.saveAll(toSave);
+            for (ArCreditNoteDtl newlyCreatedEntity : newlyCreated) {
+                if (newlyCreatedEntity.getDetRowId() != null) {
+                    String summaryMessage = String.format("Row Created on Credit Note GL Detail with DetRowId: %s", newlyCreatedEntity.getDetRowId());
+                    summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, summaryMessage));
+                }
+            }
+        }
+        if (!toDelete.isEmpty()) {
+            creditNoteDtlRepository.deleteByTransactionPoidAndDetRowIdIn(transactionPoid, toDelete);
+        }
+        if (!logRequests.isEmpty()) {
+            loggingService.createLogBatch(logRequests);
+        }
+    }
+
+    private void updateChargeDetailsWithLogging(Long transactionPoid, List<UniversalChargeDetailDto> chargeDetails,
+                                                List<GlobalLogSummary> summaryLogs) {
+        if (chargeDetails == null || chargeDetails.isEmpty()) return;
+
+        String currentUser = ASGHelperUtils.getCurrentUser();
+        Timestamp now = Timestamp.from(Instant.now());
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = transactionPoid.toString();
+
+        List<ArCreditNoteChargeDtl> toSave = new ArrayList<>();
+        List<ArCreditNoteChargeDtl> newlyCreated = new ArrayList<>();
+        List<Long> toDelete = new ArrayList<>();
+        List<LogRequestDto<ArCreditNoteChargeDtl>> logRequests = new ArrayList<>();
+
+        List<ArCreditNoteChargeDtl> existingDetails = creditNoteChargeDtlRepository.findByTransactionPoidOrderByDetRowId(transactionPoid);
+        Map<Long, ArCreditNoteChargeDtl> existingMap = existingDetails.stream()
+                .collect(Collectors.toMap(ArCreditNoteChargeDtl::getDetRowId, Function.identity(), (a, b) -> a));
+
+        long nextDetRowId = existingDetails.stream()
+                .map(ArCreditNoteChargeDtl::getDetRowId)
+                .filter(Objects::nonNull)
+                .max(Long::compareTo)
+                .orElse(0L);
+
+        for (UniversalChargeDetailDto dto : chargeDetails) {
+            if (dto == null) continue;
+            String actionType = dto.getActionType();
+            if (actionType == null || actionType.trim().isEmpty()) {
+                actionType = (dto.getDetRowId() == null) ? "ISCREATED" : "ISUPDATED";
+            } else {
+                actionType = actionType.trim().toUpperCase();
+            }
+            if ("NOCHANGES".equals(actionType)) {
+                actionType = "NOCHANGE";
+            }
+            if ("ISUPDATED".equals(actionType) && dto.getDetRowId() == null) {
+                actionType = "ISCREATED";
+            }
+
+            switch (actionType) {
+                case "ISCREATED": {
+                    Long detRowId = dto.getDetRowId();
+                    if (detRowId == null) {
+                        throw new ValidationException("detRowId is required");
+                    }
+                    if (detRowId > nextDetRowId) {
+                        nextDetRowId = detRowId;
+                    }
+
+                    ArCreditNoteChargeDtl newEntity = new ArCreditNoteChargeDtl();
+                    mapChargeDtoToEntity(dto, newEntity, transactionPoid);
+                    newEntity.setDetRowId(detRowId);
+                    newEntity.setCreatedBy(currentUser);
+                    newEntity.setCreatedDate(now);
+                    newEntity.setLastModifiedBy(currentUser);
+                    newEntity.setLastModifiedDate(now);
+                    toSave.add(newEntity);
+                    newlyCreated.add(newEntity);
+                    break;
+                }
+                case "ISUPDATED": {
+                    Long detRowId = dto.getDetRowId();
+                    if (detRowId == null) {
+                        throw new ValidationException("detRowId is required");
+                    }
+                    ArCreditNoteChargeDtl existing = existingMap.get(detRowId);
+                    if (existing == null) {
+                        Long newDetRowId = detRowId;
+                        if (newDetRowId > nextDetRowId) {
+                            nextDetRowId = newDetRowId;
+                        }
+                        ArCreditNoteChargeDtl newEntity = new ArCreditNoteChargeDtl();
+                        mapChargeDtoToEntity(dto, newEntity, transactionPoid);
+                        newEntity.setDetRowId(newDetRowId);
+                        newEntity.setCreatedBy(currentUser);
+                        newEntity.setCreatedDate(now);
+                        newEntity.setLastModifiedBy(currentUser);
+                        newEntity.setLastModifiedDate(now);
+                        toSave.add(newEntity);
+                        newlyCreated.add(newEntity);
+                        break;
+                    }
+
+                    ArCreditNoteChargeDtl oldEntity = new ArCreditNoteChargeDtl();
+                    BeanUtils.copyProperties(existing, oldEntity);
+                    mapChargeDtoToEntity(dto, existing, transactionPoid);
+                    existing.setLastModifiedBy(currentUser);
+                    existing.setLastModifiedDate(now);
+                    toSave.add(existing);
+
+                    String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", docKeyPoid, detRowId);
+                    logRequests.add(new LogRequestDto<>(oldEntity, existing, ArCreditNoteChargeDtl.class, docId, docKeyPoid, logDetail));
+                    break;
+                }
+                case "ISDELETED": {
+                    Long detRowId = dto.getDetRowId();
+                    if (detRowId == null) {
+                        throw new ValidationException("detRowId is required");
+                    }
+                    toDelete.add(detRowId);
+                    ArCreditNoteChargeDtl oldEntityForDelete = existingMap.get(detRowId);
+                    if (oldEntityForDelete != null) {
+                        String deletedRecordString = String.format("detRowId:%s, transactionPoid:%s, chargePoid:%s, chargeAmount:%s, remarks:%s",
+                                oldEntityForDelete.getDetRowId(), transactionPoid, oldEntityForDelete.getChargePoid(),
+                                oldEntityForDelete.getChargeAmount(), oldEntityForDelete.getRemarks());
+                        String deleteSummaryMessage = String.format("Row Deleted %s", deletedRecordString);
+                        summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.DELETED, docId, docKeyPoid, deleteSummaryMessage));
+                    }
+                    break;
+                }
+                case "NOCHANGE":
+                default:
+                    break;
+            }
+        }
+
+        if (!toSave.isEmpty()) {
+            creditNoteChargeDtlRepository.saveAll(toSave);
+            for (ArCreditNoteChargeDtl newlyCreatedEntity : newlyCreated) {
+                if (newlyCreatedEntity.getDetRowId() != null) {
+                    String summaryMessage = String.format("Row Created on Credit Note Charge Detail with DetRowId: %s", newlyCreatedEntity.getDetRowId());
+                    summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, summaryMessage));
+                }
+            }
+        }
+        if (!toDelete.isEmpty()) {
+            creditNoteChargeDtlRepository.deleteByTransactionPoidAndDetRowIdIn(transactionPoid, toDelete);
+        }
+        if (!logRequests.isEmpty()) {
+            loggingService.createLogBatch(logRequests);
+        }
+    }
+
+    private void mapGlDtoToEntity(CreditNoteGLDetailDto dto, ArCreditNoteDtl entity, Long transactionPoid) {
+        entity.setTransactionPoid(transactionPoid);
+        entity.setType(dto.getType());
+        entity.setCompanyPoid(dto.getCompanyPoid() != null ? dto.getCompanyPoid() : UserContext.getCompanyPoid());
+        entity.setGlPoid(dto.getGlPoid());
+        entity.setDrAmt(dto.getDrAmt());
+        entity.setCrAmt(dto.getCrAmt());
+        entity.setRemarks(dto.getRemarks());
+        entity.setTaxPoid(dto.getTaxPoid());
+        entity.setTaxPercentage(dto.getTaxPercentage());
+        entity.setTaxAmount(dto.getTaxAmount());
+        entity.setTotalAmount(dto.getTotalAmount());
+    }
+
+    private void mapChargeDtoToEntity(UniversalChargeDetailDto dto, ArCreditNoteChargeDtl entity, Long transactionPoid) {
+        entity.setTransactionPoid(transactionPoid);
+        entity.setChargePoid(dto.getChargePoid());
+        entity.setChargeAmount(dto.getChargeAmount());
+        entity.setChargeCostAmount(dto.getChargeCostAmount());
+        entity.setRemarks(dto.getRemarks());
+        entity.setTaxAmount(dto.getTaxAmount());
+        entity.setTotalAmount(dto.getTotalAmount());
+        entity.setIssueInvoice(dto.getIssueInvoice());
+        entity.setRefDocId("300-111");
+    }
+
+    private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage) {
+        GlobalLogSummary summary = new GlobalLogSummary();
+        summary.setLogUserPoid(UserContext.getUserPoid());
+        summary.setLogDateTime(new Timestamp(System.currentTimeMillis()));
+        summary.setLogDocId(docId);
+        summary.setLogDocKeyPoid(docKeyPoid);
+        summary.setLogDetails(customMessage);
+        return summary;
     }
 
     private ArCreditNoteHdr mapToEntity(CreditNoteHeaderDto dto) {
@@ -1402,6 +1837,8 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         dto.setTaxPercentage(entity.getTaxPercentage());
         dto.setTaxAmount(entity.getTaxAmount());
         dto.setTotalAmount(entity.getTotalAmount());
+        dto.setCompanyPoid(entity.getCompanyPoid());
+        dto.setCompanyDet(lovService.getDetailsByPoidAndLovName(entity.getCompanyPoid(), "COMPANY"));
         return dto;
     }
 
@@ -1416,7 +1853,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         dto.setTotalAmount(entity.getTotalAmount());
         dto.setRemarks(entity.getRemarks());
         dto.setTaxPoid(entity.getTaxPoid());
-        dto.setTaxDet(lovService.getDetailsByPoidAndLovName(entity.getTaxPoid(), "CR_TAX_MASTER"));
+        dto.setTaxDet(taxMasterRepository.findByTaxPoid(entity.getTaxPoid())
+                .map(tm -> new LovGetListDto(tm.getTaxPoid(), tm.getTaxCode(), tm.getTaxName(), tm.getTaxPoid(), tm.getTaxName(), tm.getSeqNo(), null))
+                .orElse(null));
         dto.setTaxAmount(entity.getTaxAmount());
         dto.setTaxPercentage(entity.getTaxPercentage());
         dto.setIssueInvoice(entity.getIssueInvoice());
@@ -1667,5 +2106,46 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         params.put("SUB_ITEM", printService.load("Finance/AR/CrdeitNoteItemSubreport.jrxml"));
         JasperReport mainReport = printService.load("Finance/AR/CreditNote.jrxml");
         return printService.fillReportToPdf(mainReport, params, dataSource);
+    }
+
+    @Override
+    public FdaRefResponseDto getFdaRefForCreditNote(String lovName, Long lovValue) {
+        try {
+            return executeFdaRefProcedure(lovName, lovValue);
+        } catch (SQLException e) {
+            log.error("Error fetching FDA reference for lovName: {}, lovValue: {}", lovName, lovValue, e);
+            throw new RuntimeException("Failed to fetch FDA reference: " + e.getMessage(), e);
+        }
+    }
+
+    private FdaRefResponseDto executeFdaRefProcedure(String lovName, Long lovValue) throws SQLException {
+        String sql = "BEGIN PROC_AR_CN_SET_FDAREF(?, ?, ?, ?, ?, ?, ?, ?); END;";
+
+        try (Connection conn = dataSource.getConnection();
+             CallableStatement cs = conn.prepareCall(sql)) {
+
+            cs.setLong(1, UserContext.getGroupPoid());
+            cs.setLong(2, UserContext.getCompanyPoid());
+            cs.setLong(3, UserContext.getUserPoid());
+            cs.setString(4, UserContext.getDocumentId());
+            cs.setNull(5, java.sql.Types.NUMERIC);
+            cs.setString(6, lovName);
+            cs.setLong(7, lovValue != null ? lovValue : 0);
+            cs.registerOutParameter(8, OracleTypes.CURSOR);
+
+            cs.execute();
+
+            try (ResultSet rs = (ResultSet) cs.getObject(8)) {
+                if (rs != null && rs.next()) {
+                    Long fdaRefPoid = rs.getLong("FDA_REF_POID");
+                    return FdaRefResponseDto.builder()
+                            .fdaRefPoid(fdaRefPoid)
+                            .fdaRefDet(lovService.getDetailsByPoidAndLovName(fdaRefPoid, "DN_FDA_REF_FOR_CN"))
+                            .build();
+                }
+            }
+
+            return FdaRefResponseDto.builder().build();
+        }
     }
 }

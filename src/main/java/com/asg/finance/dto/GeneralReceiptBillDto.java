@@ -54,5 +54,8 @@ public class GeneralReceiptBillDto {
 
     @Schema(description = "Description", example = "Payment for invoice")
     private String description;
+
+    @Schema(description = "Action type for update operations", example = "ISCREATED", allowableValues = {"ISCREATED", "ISUPDATED", "ISDELETED"})
+    private String actionType;
 }
 

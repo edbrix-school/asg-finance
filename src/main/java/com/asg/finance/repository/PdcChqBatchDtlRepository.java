@@ -18,4 +18,7 @@ public interface PdcChqBatchDtlRepository extends JpaRepository<PdcChqBatchDtlEn
     @Modifying
     @Query("DELETE FROM PdcChqBatchDtlEntity d WHERE d.transactionPoid = :transactionPoid")
     void deleteByTransactionPoid(@Param("transactionPoid") Long transactionPoid);
+    @Modifying
+    @Query("DELETE FROM PdcChqBatchDtlEntity d WHERE d.transactionPoid = :transactionPoid AND d.detRowId = :detRowId")
+    void deleteByTransactionPoidAndDetRowId(@Param("transactionPoid") Long transactionPoid, @Param("detRowId") Long detRowId);
 }

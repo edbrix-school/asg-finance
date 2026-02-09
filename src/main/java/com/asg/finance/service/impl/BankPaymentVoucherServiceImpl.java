@@ -4,13 +4,17 @@ import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
+import com.asg.common.lib.dto.ReconcileResultDto;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
+import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.LoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.finance.dto.*;
 import com.asg.finance.entity.GLPaymentVoucherDtlGLEntity;
 import com.asg.finance.entity.GLPaymentVoucherHDREntity;
@@ -36,8 +40,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.nimbusds.oauth2.sdk.util.CollectionUtils;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.ParameterMode;
+import jakarta.persistence.StoredProcedureQuery;
+
 import javax.sql.DataSource;
 import java.math.BigDecimal;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -85,14 +95,11 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     @Autowired
     private CostCenterBreakupService costCenterBreakupService;
 
-    @Autowired
-    private PrintService printService;
-
-    @Autowired
-    private DataSource dataSource;
-
-    @Autowired
-    private DocumentDeleteService documentDeleteService;
+    @Autowired private PrintService printService;
+    @Autowired private DataSource dataSource;
+    @Autowired private LoggingService loggingService;
+    @Autowired private DocumentDeleteService documentDeleteService;
+    @Autowired private EntityManager entityManager;
 
     @Override
     @Transactional
@@ -203,6 +210,10 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         // Flush to ensure all changes are persisted
         paymentVoucherRepository.flush();
 
+        // Log the creation
+        String key = savedHeader.getTransactionPoid().toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, documentId, key);
+
         return getVoucherById(savedHeader.getTransactionPoid(),documentId);
     }
 
@@ -212,6 +223,10 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         GLPaymentVoucherHDREntity existing = paymentVoucherRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ValidationException("Bank Payment Voucher not found for ID: " + transactionPoid));
+
+        // Create a copy of the existing entity for logging
+        GLPaymentVoucherHDREntity oldEntity = new GLPaymentVoucherHDREntity();
+        BeanUtils.copyProperties(existing, oldEntity);
 
         String oldRefType = existing.getRefType();
 
@@ -237,6 +252,11 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         // Post-update job costs
         updateJobCostsInNewTransaction(updatedHeader, req.getRefType());
+
+        // Log the update
+        String key = transactionPoid.toString();
+        loggingService.logChanges(oldEntity, updatedHeader, GLPaymentVoucherHDREntity.class, 
+                documentId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
         return getVoucherById(transactionPoid, documentId);
     }
@@ -277,6 +297,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         response.setGroupDet(lovService.getDetailsByPoidAndLovName(header.getGroupPoid(), "COMPANY"));
         response.setCompanyDet(lovService.getDetailsByPoidAndLovName(header.getCompanyPoid(), "COMPANY"));
+        response.setPayGlDet(lovService.getDetailsByPoidAndLovName(header.getPayGlPoid(), "GL_MASTER_LEDGERS"));
         response.setBankDet(lovService.getDetailsByPoidAndLovName(header.getBankPoid(), "BANK_MASTER"));
         response.setFdaDet(lovService.getDetailsByPoidAndLovName(header.getFdaRef(), "FDA_JOB"));
 
@@ -371,6 +392,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         entity.setAccountPayee(req.getAccountPayee());
         entity.setMultiCompany(req.getMultiple());
         entity.setSecurityCheque(req.getSecurityCheque());
+        entity.setCurrencyAmount(req.getCurrencyAmount());
 
         if (Boolean.TRUE.equals(req.getReleased())) {
             entity.setReleasedToPerson(req.getReleasedToPerson());
@@ -432,6 +454,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         entity.setAccountPayee(req.getAccountPayee());
         entity.setMultiCompany(req.getMultiple());
         entity.setSecurityCheque(req.getSecurityCheque());
+        entity.setCurrencyAmount(req.getCurrencyAmount());
         entity.setPrePrinted("N");
         entity.setReleased("N");
         entity.setHold("N");
@@ -489,7 +512,13 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
             entities.add(entity);
         }
 
-        paymentVoucherDetailsRepository.saveAll(entities);
+        List<GLPaymentVoucherDtlGLEntity> savedEntities = paymentVoucherDetailsRepository.saveAll(entities);
+        
+        // Log child record creation
+        savedEntities.forEach(entity -> {
+            String logDetail = String.format("Row Created on GL Detail with detRowId: %s", entity.getDetRowId());
+            loggingService.createLogSummaryEntry(documentId, transactionPoid.toString(), logDetail);
+        });
 
         // Save billwise breakup for GL details
         saveBillwiseBreakup(glDetails, transactionPoid, documentId);
@@ -502,55 +531,106 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         // Fetch existing charge entries for this transaction
         List<GlBankPaymentChargeDtlEntity> existing = chargeDtlRepository
                 .findByTransactionPoid(transactionPoid);
+        
+        Map<Long, GlBankPaymentChargeDtlEntity> existingMap = existing.stream()
+                .collect(Collectors.toMap(GlBankPaymentChargeDtlEntity::getDetRowId, d -> d));
 
-        // Collect IDs from the incoming request
-        List<Long> reqIds = chargeDetails.stream()
-                .map(BankPaymentChargeDetailRequest::getDetRowId)
-                .filter(Objects::nonNull)
-                .toList();
+        List<GlBankPaymentChargeDtlEntity> toSave = new ArrayList<>();
+        List<GlBankPaymentChargeDtlEntity> toDelete = new ArrayList<>();
+        List<LogRequestDto<GlBankPaymentChargeDtlEntity>> logRequests = new ArrayList<>();
+        String documentId = UserContext.getDocumentId();
 
-        // Delete any existing charges that are no longer present in the request
-        List<GlBankPaymentChargeDtlEntity> toDelete = existing.stream()
-                .filter(e -> !reqIds.contains(e.getDetRowId()))
-                .toList();
-        if (!toDelete.isEmpty()) chargeDtlRepository.deleteAll(toDelete);
+        for (BankPaymentChargeDetailRequest detail : chargeDetails) {
+            // Handle null, empty string, or whitespace as "noChanges"
+            String actionTypeStr = detail.getActionType();
+            if (actionTypeStr == null || actionTypeStr.trim().isEmpty()) {
+                actionTypeStr = "noChanges";
+            }
+            String actionType = actionTypeStr.toUpperCase();
 
-        // Map request objects to entities (save all, no filter)
-        List<GlBankPaymentChargeDtlEntity> toSave = chargeDetails.stream()
-                .map(detail -> {
-                    // Check if entity already exists, otherwise create new
-                    GlBankPaymentChargeDtlEntity e = existing.stream()
-                            .filter(x -> x.getDetRowId() != null &&
-                                    x.getDetRowId().equals(detail.getDetRowId()))
-                            .findFirst()
-                            .orElse(new GlBankPaymentChargeDtlEntity());
+            switch (actionType) {
+                case "ISCREATED":
+                    // Create new record
+                    GlBankPaymentChargeDtlEntity newEntity = new GlBankPaymentChargeDtlEntity();
+                    mapChargeFields(newEntity, detail, transactionPoid);
+                    newEntity.setCreatedBy(UserContext.getCurrentUser().getUserName());
+                    newEntity.setCreatedDate(LocalDateTime.now());
+                    toSave.add(newEntity);
+                    break;
 
-                    // Map fields from request to entity
-                    e.setTransactionPoid(transactionPoid);
-                    e.setDetRowId(detail.getDetRowId());
-                    e.setChargePoid(detail.getChargePoid());
-                    e.setChargeAmount(detail.getChargeAmount());
-                    e.setDescription(detail.getDescription());
-                    e.setRemarks(detail.getRemarks());
-                    e.setRefDocId(detail.getRefDocId());
-                    e.setRefDocPoid(detail.getRefDocPoid());
-                    e.setFdaDetRowId(detail.getFdaDetRowId());
-                    e.setPdaAmount(detail.getPdaAmount());
-                    e.setFfAmount(detail.getFfAmount());
-                    e.setLastModifiedBy(Objects.requireNonNull(UserContext.getCurrentUser()).getUserName());
-                    e.setLastModifiedDate(LocalDateTime.now());
-
-                    // Set creation metadata if new
-                    if (e.getCreatedBy() == null) {
-                        e.setCreatedBy(UserContext.getCurrentUser().getUserName());
-                        e.setCreatedDate(LocalDateTime.now());
+                case "ISUPDATED":
+                    // Update existing record
+                    GlBankPaymentChargeDtlEntity existingEntity = existingMap.get(detail.getDetRowId());
+                    if (existingEntity != null) {
+                        // Create copy for logging
+                        GlBankPaymentChargeDtlEntity oldEntity = new GlBankPaymentChargeDtlEntity();
+                        BeanUtils.copyProperties(existingEntity, oldEntity);
+                        
+                        mapChargeFields(existingEntity, detail, transactionPoid);
+                        toSave.add(existingEntity);
+                        
+                        // Add to batch logging
+                        String logDetail = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", transactionPoid, detail.getDetRowId());
+                        logRequests.add(new LogRequestDto<>(oldEntity, existingEntity, GlBankPaymentChargeDtlEntity.class, documentId, transactionPoid.toString(), logDetail));
                     }
+                    break;
 
-                    return e;
-                }).toList();
+                case "ISDELETED":
+                    // Mark for deletion
+                    GlBankPaymentChargeDtlEntity entityToDelete = existingMap.get(detail.getDetRowId());
+                    if (entityToDelete != null) {
+                        toDelete.add(entityToDelete);
+                        loggingService.logDelete(entityToDelete, documentId, transactionPoid.toString());
+                    }
+                    break;
+
+                case "NOCHANGES":
+                default:
+                    // Keep existing record as-is
+                    GlBankPaymentChargeDtlEntity unchangedEntity = existingMap.get(detail.getDetRowId());
+                    if (unchangedEntity != null) {
+                        toSave.add(unchangedEntity);
+                    }
+                    break;
+            }
+        }
+
+        // Delete records marked for deletion
+        if (!toDelete.isEmpty()) {
+            chargeDtlRepository.deleteAll(toDelete);
+        }
 
         // Save all entities to the repository
-        chargeDtlRepository.saveAll(toSave);
+        List<GlBankPaymentChargeDtlEntity> savedEntities = chargeDtlRepository.saveAll(toSave);
+        
+        // Process batch logging for updates
+        if (!logRequests.isEmpty()) {
+            loggingService.createLogBatch(logRequests);
+        }
+        
+        // Log creation for new records
+        savedEntities.stream()
+            .filter(entity -> entity.getCreatedDate() != null && entity.getCreatedDate().isAfter(LocalDateTime.now().minusMinutes(1)))
+            .forEach(entity -> {
+                String logDetail = String.format("Row Created on Charge Detail with detRowId: %s", entity.getDetRowId());
+                loggingService.createLogSummaryEntry(documentId, transactionPoid.toString(), logDetail);
+            });
+    }
+    
+    private void mapChargeFields(GlBankPaymentChargeDtlEntity entity, BankPaymentChargeDetailRequest detail, Long transactionPoid) {
+        entity.setTransactionPoid(transactionPoid);
+        entity.setDetRowId(detail.getDetRowId());
+        entity.setChargePoid(detail.getChargePoid());
+        entity.setChargeAmount(detail.getChargeAmount());
+        entity.setDescription(detail.getDescription());
+        entity.setRemarks(detail.getRemarks());
+        entity.setRefDocId(detail.getRefDocId());
+        entity.setRefDocPoid(detail.getRefDocPoid());
+        entity.setFdaDetRowId(detail.getFdaDetRowId());
+        entity.setPdaAmount(detail.getPdaAmount());
+        entity.setFfAmount(detail.getFfAmount());
+        entity.setLastModifiedBy(Objects.requireNonNull(UserContext.getCurrentUser()).getUserName());
+        entity.setLastModifiedDate(LocalDateTime.now());
     }
 
     // ============================================================
@@ -562,50 +642,108 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         List<GlBankPaymentItemDtlEntity> existing = itemRepository
                 .findByTransactionPoid(transactionPoid);
+        
+        Map<Long, GlBankPaymentItemDtlEntity> existingMap = existing.stream()
+                .collect(Collectors.toMap(GlBankPaymentItemDtlEntity::getDetRowId, d -> d));
 
-        List<Long> reqIds = itemDetails.stream()
-                .map(BankPaymentItemDetailRequest::getDetRowId)
-                .filter(Objects::nonNull)
-                .toList();
+        List<GlBankPaymentItemDtlEntity> toSave = new ArrayList<>();
+        List<GlBankPaymentItemDtlEntity> toDelete = new ArrayList<>();
+        List<LogRequestDto<GlBankPaymentItemDtlEntity>> logRequests = new ArrayList<>();
+        String documentId = UserContext.getDocumentId();
 
-        List<GlBankPaymentItemDtlEntity> toDelete = existing.stream()
-                .filter(e -> !reqIds.contains(e.getDetRowId()))
-                .toList();
-        if (!toDelete.isEmpty()) itemRepository.deleteAll(toDelete);
+        for (BankPaymentItemDetailRequest detail : itemDetails) {
+            // Handle null, empty string, or whitespace as "noChanges"
+            String actionTypeStr = detail.getActionType();
+            if (actionTypeStr == null || actionTypeStr.trim().isEmpty()) {
+                actionTypeStr = "noChanges";
+            }
+            String actionType = actionTypeStr.toUpperCase();
 
-        List<GlBankPaymentItemDtlEntity> toSave = itemDetails.stream()
-                .map(detail -> {
-                    GlBankPaymentItemDtlEntity e = existing.stream()
-                            .filter(x -> x.getDetRowId().equals(detail.getDetRowId()))
-                            .findFirst()
-                            .orElse(new GlBankPaymentItemDtlEntity());
+            switch (actionType) {
+                case "ISCREATED":
+                    // Create new record
+                    GlBankPaymentItemDtlEntity newEntity = new GlBankPaymentItemDtlEntity();
+                    mapItemFields(newEntity, detail, transactionPoid);
+                    newEntity.setCreatedBy(UserContext.getCurrentUser().getUserName());
+                    newEntity.setCreatedDate(LocalDateTime.now());
+                    toSave.add(newEntity);
+                    break;
 
-                    e.setTransactionPoid(transactionPoid);
-                    e.setDetRowId(detail.getDetRowId());
-                    e.setStockPoid(detail.getStockPoid());
-                    e.setStockUnitPoid(detail.getStockUnitPoid());
-                    e.setPoQty(detail.getPoQty());
-                    e.setDnQty(detail.getDnQty());
-                    e.setQtyReceived(detail.getQtyReceived());
-                    e.setPrice(detail.getPrice());
-                    e.setDiscount(detail.getDiscount());
-                    e.setTotal(detail.getTotal());
-                    e.setRemarks(detail.getRemarks());
-                    e.setRefDocId(detail.getRefDocId());
-                    e.setRefDocPoid(detail.getRefDocPoid());
-                    e.setRefDetRowId(detail.getRefDetRowId());
-                    e.setLastModifiedBy(Objects.requireNonNull(UserContext.getCurrentUser()).getUserName());
-                    e.setLastModifiedDate(LocalDateTime.now());
-
-                    if (e.getCreatedBy() == null) {
-                        e.setCreatedBy(UserContext.getCurrentUser().getUserName());
-                        e.setCreatedDate(LocalDateTime.now());
+                case "ISUPDATED":
+                    // Update existing record
+                    GlBankPaymentItemDtlEntity existingEntity = existingMap.get(detail.getDetRowId());
+                    if (existingEntity != null) {
+                        // Create copy for logging
+                        GlBankPaymentItemDtlEntity oldEntity = new GlBankPaymentItemDtlEntity();
+                        BeanUtils.copyProperties(existingEntity, oldEntity);
+                        
+                        mapItemFields(existingEntity, detail, transactionPoid);
+                        toSave.add(existingEntity);
+                        
+                        // Add to batch logging
+                        String logDetail = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", transactionPoid, detail.getDetRowId());
+                        logRequests.add(new LogRequestDto<>(oldEntity, existingEntity, GlBankPaymentItemDtlEntity.class, documentId, transactionPoid.toString(), logDetail));
                     }
+                    break;
 
-                    return e;
-                }).toList();
+                case "ISDELETED":
+                    // Mark for deletion
+                    GlBankPaymentItemDtlEntity entityToDelete = existingMap.get(detail.getDetRowId());
+                    if (entityToDelete != null) {
+                        toDelete.add(entityToDelete);
+                        loggingService.logDelete(entityToDelete, documentId, transactionPoid.toString());
+                    }
+                    break;
 
-        itemRepository.saveAll(toSave);
+                case "NOCHANGES":
+                default:
+                    // Keep existing record as-is
+                    GlBankPaymentItemDtlEntity unchangedEntity = existingMap.get(detail.getDetRowId());
+                    if (unchangedEntity != null) {
+                        toSave.add(unchangedEntity);
+                    }
+                    break;
+            }
+        }
+
+        // Delete records marked for deletion
+        if (!toDelete.isEmpty()) {
+            itemRepository.deleteAll(toDelete);
+        }
+
+        List<GlBankPaymentItemDtlEntity> savedEntities = itemRepository.saveAll(toSave);
+        
+        // Process batch logging for updates
+        if (!logRequests.isEmpty()) {
+            loggingService.createLogBatch(logRequests);
+        }
+        
+        // Log creation for new records
+        savedEntities.stream()
+            .filter(entity -> entity.getCreatedDate() != null && entity.getCreatedDate().isAfter(LocalDateTime.now().minusMinutes(1)))
+            .forEach(entity -> {
+                String logDetail = String.format("Row Created on Item Detail with detRowId: %s", entity.getDetRowId());
+                loggingService.createLogSummaryEntry(documentId, transactionPoid.toString(), logDetail);
+            });
+    }
+    
+    private void mapItemFields(GlBankPaymentItemDtlEntity entity, BankPaymentItemDetailRequest detail, Long transactionPoid) {
+        entity.setTransactionPoid(transactionPoid);
+        entity.setDetRowId(detail.getDetRowId());
+        entity.setStockPoid(detail.getStockPoid());
+        entity.setStockUnitPoid(detail.getStockUnitPoid());
+        entity.setPoQty(detail.getPoQty());
+        entity.setDnQty(detail.getDnQty());
+        entity.setQtyReceived(detail.getQtyReceived());
+        entity.setPrice(detail.getPrice());
+        entity.setDiscount(detail.getDiscount());
+        entity.setTotal(detail.getTotal());
+        entity.setRemarks(detail.getRemarks());
+        entity.setRefDocId(detail.getRefDocId());
+        entity.setRefDocPoid(detail.getRefDocPoid());
+        entity.setRefDetRowId(detail.getRefDetRowId());
+        entity.setLastModifiedBy(Objects.requireNonNull(UserContext.getCurrentUser()).getUserName());
+        entity.setLastModifiedDate(LocalDateTime.now());
     }
 
     // ============================================================
@@ -667,6 +805,15 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     public void markChequePrinted(Long transactionPoid) {
         GLPaymentVoucherHDREntity header = paymentVoucherRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ValidationException("Voucher not found"));
+        
+        // Create a copy of the existing entity for logging
+        GLPaymentVoucherHDREntity oldEntity = GLPaymentVoucherHDREntity.builder()
+                .transactionPoid(header.getTransactionPoid())
+                .chqPrinted(header.getChqPrinted())
+                .chqPrintedUserCode(header.getChqPrintedUserCode())
+                .chqPrintedDate(header.getChqPrintedDate())
+                .build();
+        
         spRepository.afterChequePrint(
                 UserContext.getGroupPoid(),
                 getCurrentUser(),
@@ -676,6 +823,16 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                 header.getChqSignType(),
                 UserContext.getUserPoid()
         );
+        
+        // Reload entity to get updated values
+        GLPaymentVoucherHDREntity updatedHeader = paymentVoucherRepository.findById(transactionPoid)
+                .orElse(header);
+        
+        // Log the update
+        String key = transactionPoid.toString();
+        String docId = UserContext.getDocumentId();
+        loggingService.logChanges(oldEntity, updatedHeader, GLPaymentVoucherHDREntity.class, 
+                docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
     }
 
     @Override
@@ -683,6 +840,17 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     public void releaseCheque(Long transactionPoid, String releasedTo, String contact) {
         GLPaymentVoucherHDREntity header = paymentVoucherRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ValidationException("Voucher not found"));
+        
+        // Create a copy of the existing entity for logging
+        GLPaymentVoucherHDREntity oldEntity = GLPaymentVoucherHDREntity.builder()
+                .transactionPoid(header.getTransactionPoid())
+                .released(header.getReleased())
+                .releasedToPerson(header.getReleasedToPerson())
+                .releasedPersonAddress(header.getReleasedPersonAddress())
+                .releasedByUserCode(header.getReleasedByUserCode())
+                .releasedDate(header.getReleasedDate())
+                .build();
+        
         spRepository.releaseCheque(
                 header.getGroupPoid(),
                 getCurrentUser(),
@@ -691,6 +859,16 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                 releasedTo,
                 contact
         );
+        
+        // Reload entity to get updated values
+        GLPaymentVoucherHDREntity updatedHeader = paymentVoucherRepository.findById(transactionPoid)
+                .orElse(header);
+        
+        // Log the update
+        String key = transactionPoid.toString();
+        String docId = UserContext.getDocumentId();
+        loggingService.logChanges(oldEntity, updatedHeader, GLPaymentVoucherHDREntity.class, 
+                docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
     }
 
     @Override
@@ -698,12 +876,33 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     public void unReleaseCheque(Long transactionPoid) {
         GLPaymentVoucherHDREntity header = paymentVoucherRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ValidationException("Voucher not found"));
+        
+        // Create a copy of the existing entity for logging
+        GLPaymentVoucherHDREntity oldEntity = GLPaymentVoucherHDREntity.builder()
+                .transactionPoid(header.getTransactionPoid())
+                .released(header.getReleased())
+                .releasedToPerson(header.getReleasedToPerson())
+                .releasedPersonAddress(header.getReleasedPersonAddress())
+                .releasedByUserCode(header.getReleasedByUserCode())
+                .releasedDate(header.getReleasedDate())
+                .build();
+        
         spRepository.unReleaseCheque(
                 UserContext.getGroupPoid(),
                 UserContext.getUserId(),
                 UserContext.getCompanyPoid(),
                 transactionPoid
         );
+        
+        // Reload entity to get updated values
+        GLPaymentVoucherHDREntity updatedHeader = paymentVoucherRepository.findById(transactionPoid)
+                .orElse(header);
+        
+        // Log the update
+        String key = transactionPoid.toString();
+        String docId = UserContext.getDocumentId();
+        loggingService.logChanges(oldEntity, updatedHeader, GLPaymentVoucherHDREntity.class, 
+                docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
     }
 
     @Override
@@ -711,12 +910,36 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     public void resetChequeStatus(Long transactionPoid) {
         GLPaymentVoucherHDREntity header = paymentVoucherRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ValidationException("Voucher not found"));
+        
+        // Create a copy of the existing entity for logging
+        GLPaymentVoucherHDREntity oldEntity = GLPaymentVoucherHDREntity.builder()
+                .transactionPoid(header.getTransactionPoid())
+                .chqPrinted(header.getChqPrinted())
+                .chqPrintedUserCode(header.getChqPrintedUserCode())
+                .chqPrintedDate(header.getChqPrintedDate())
+                .released(header.getReleased())
+                .releasedToPerson(header.getReleasedToPerson())
+                .releasedPersonAddress(header.getReleasedPersonAddress())
+                .releasedByUserCode(header.getReleasedByUserCode())
+                .releasedDate(header.getReleasedDate())
+                .build();
+        
         spRepository.resetChequeStatus(
                 header.getGroupPoid(),
                 header.getCompanyPoid(),
                 null,
                 transactionPoid
         );
+        
+        // Reload entity to get updated values
+        GLPaymentVoucherHDREntity updatedHeader = paymentVoucherRepository.findById(transactionPoid)
+                .orElse(header);
+        
+        // Log the update
+        String key = transactionPoid.toString();
+        String docId = UserContext.getDocumentId();
+        loggingService.logChanges(oldEntity, updatedHeader, GLPaymentVoucherHDREntity.class, 
+                docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
     }
 
     @Override
@@ -724,6 +947,13 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     public String revertReconciliation(Long transactionPoid, String documentId) {
         GLPaymentVoucherHDREntity header = paymentVoucherRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ValidationException("Voucher not found"));
+        
+        // Create a copy of the existing entity for logging
+        GLPaymentVoucherHDREntity oldEntity = GLPaymentVoucherHDREntity.builder()
+                .transactionPoid(header.getTransactionPoid())
+                .reconciledDate(header.getReconciledDate())
+                .build();
+        
         String status = spRepository.revertReconciliation(
                 UserContext.getGroupPoid(),
                 UserContext.getCompanyPoid(),
@@ -732,6 +962,16 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                 String.valueOf(transactionPoid),
                 "Y"
         );
+        
+        // Reload entity to get updated values
+        GLPaymentVoucherHDREntity updatedHeader = paymentVoucherRepository.findById(transactionPoid)
+                .orElse(header);
+        
+        // Log the update
+        String key = transactionPoid.toString();
+        loggingService.logChanges(oldEntity, updatedHeader, GLPaymentVoucherHDREntity.class, 
+                documentId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+        
         return status;
     }
 
@@ -853,8 +1093,113 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     // ============================================================
 
     private void updateGLDetails(List<BankPaymentGLDetailRequest> glDetails, Long transactionPoid, String documentId) {
-        saveGLDetails(glDetails, transactionPoid, documentId);
+        if (glDetails == null || glDetails.isEmpty()) {
+            return;
+        }
+
+        // Get existing records
+        List<GLPaymentVoucherDtlGLEntity> existing = paymentVoucherDetailsRepository.findByTransactionPoid(transactionPoid);
+        Map<Long, GLPaymentVoucherDtlGLEntity> existingMap = existing.stream()
+                .collect(Collectors.toMap(GLPaymentVoucherDtlGLEntity::getDetRowId, d -> d));
+
+        List<GLPaymentVoucherDtlGLEntity> toSave = new ArrayList<>();
+        List<GLPaymentVoucherDtlGLEntity> toDelete = new ArrayList<>();
+        List<LogRequestDto<GLPaymentVoucherDtlGLEntity>> logRequests = new ArrayList<>();
+
+        for (BankPaymentGLDetailRequest detail : glDetails) {
+            // Handle null, empty string, or whitespace as "noChanges"
+            String actionTypeStr = detail.getActionType();
+            if (actionTypeStr == null || actionTypeStr.trim().isEmpty()) {
+                actionTypeStr = "noChanges";
+            }
+            String actionType = actionTypeStr.toUpperCase();
+
+            switch (actionType) {
+                case "ISCREATED":
+                    // Create new record
+                    GLPaymentVoucherDtlGLEntity newEntity = new GLPaymentVoucherDtlGLEntity();
+                    mapGLFields(newEntity, detail, transactionPoid);
+                    newEntity.setCreatedBy(Objects.requireNonNull(UserContext.getCurrentUser()).getUserName());
+                    newEntity.setCreatedDate(LocalDateTime.now());
+                    toSave.add(newEntity);
+                    break;
+
+                case "ISUPDATED":
+                    // Update existing record
+                    GLPaymentVoucherDtlGLEntity existingEntity = existingMap.get(detail.getDetRowId());
+                    if (existingEntity != null) {
+                        // Create copy for logging
+                        GLPaymentVoucherDtlGLEntity oldEntity = new GLPaymentVoucherDtlGLEntity();
+                        BeanUtils.copyProperties(existingEntity, oldEntity);
+                        
+                        mapGLFields(existingEntity, detail, transactionPoid);
+                        toSave.add(existingEntity);
+                        
+                        // Add to batch logging
+                        String logDetail = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", transactionPoid, detail.getDetRowId());
+                        logRequests.add(new LogRequestDto<>(oldEntity, existingEntity, GLPaymentVoucherDtlGLEntity.class, documentId, transactionPoid.toString(), logDetail));
+                    }
+                    break;
+
+                case "ISDELETED":
+                    // Mark for deletion
+                    GLPaymentVoucherDtlGLEntity entityToDelete = existingMap.get(detail.getDetRowId());
+                    if (entityToDelete != null) {
+                        toDelete.add(entityToDelete);
+                        loggingService.logDelete(entityToDelete, documentId, transactionPoid.toString());
+                    }
+                    break;
+
+                case "NOCHANGES":
+                default:
+                    // Keep existing record as-is
+                    GLPaymentVoucherDtlGLEntity unchangedEntity = existingMap.get(detail.getDetRowId());
+                    if (unchangedEntity != null) {
+                        toSave.add(unchangedEntity);
+                    }
+                    break;
+            }
+        }
+
+        // Delete records marked for deletion
+        if (!toDelete.isEmpty()) {
+            paymentVoucherDetailsRepository.deleteAll(toDelete);
+        }
+
+        // Save records and log creations
+        List<GLPaymentVoucherDtlGLEntity> savedEntities = paymentVoucherDetailsRepository.saveAll(toSave);
+        
+        // Process batch logging for updates
+        if (!logRequests.isEmpty()) {
+            loggingService.createLogBatch(logRequests);
+        }
+        
+        savedEntities.stream()
+            .filter(entity -> entity.getCreatedDate() != null && entity.getCreatedDate().isAfter(LocalDateTime.now().minusMinutes(1)))
+            .forEach(entity -> {
+                String logDetail = String.format("Row Created on GL Detail with detRowId: %s", entity.getDetRowId());
+                loggingService.createLogSummaryEntry(documentId, transactionPoid.toString(), logDetail);
+            });
+
+        // Update billwise breakup (keep existing logic)
         updateBillwiseBreakup(glDetails, transactionPoid, documentId);
+    }
+    
+    private void mapGLFields(GLPaymentVoucherDtlGLEntity entity, BankPaymentGLDetailRequest detail, Long transactionPoid) {
+        entity.setTransactionPoid(transactionPoid);
+        entity.setDetRowId(detail.getDetRowId());
+        entity.setType(detail.getType());
+        entity.setCompanyPoid(detail.getCompanyPoid());
+        entity.setGlPoid(detail.getGlPoid());
+        entity.setDrAmt(detail.getDrAmt());
+        entity.setCrAmt(detail.getCrAmt());
+        entity.setTaxPoid(detail.getTaxPoid());
+        entity.setTaxPercentage(detail.getTaxPercentage());
+        entity.setTaxAmount(detail.getTaxAmount());
+        entity.setTotalAmount(detail.getTotalAmount());
+        entity.setPartyInvNumber(detail.getPartyInvNumber());
+        entity.setPartyInvDate(detail.getPartyInvDate());
+        entity.setRemarks(detail.getRemarks());
     }
 
 
@@ -1061,6 +1406,46 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
             mainReport = printService.load("Finance/BankPayments/BankPaymentVoucher_WithOutCheque.jrxml");
         }
         return printService.fillReportToPdf(mainReport, params, dataSource);
+    }
+
+    @Override
+    public ReconcileResultDto getReconciledDate(String documentId, Long transactionPoid) {
+        StoredProcedureQuery query = entityManager
+                .createStoredProcedureQuery("PROC_DEBIT_PAYMENT_RECON_DATE");
+
+        query.registerStoredProcedureParameter("P_LOGIN_GROUP_POID", Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("P_LOGIN_COMPANY_POID", Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("P_LOGIN_USER_POID", Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("P_DOC_ID", String.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("P_DOC_KEY_POID", Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("OUTDATA", void.class, ParameterMode.REF_CURSOR);
+
+        query.setParameter("P_LOGIN_GROUP_POID", UserContext.getGroupPoid());
+        query.setParameter("P_LOGIN_COMPANY_POID", UserContext.getCompanyPoid());
+        query.setParameter("P_LOGIN_USER_POID", UserContext.getUserPoid());
+        query.setParameter("P_DOC_ID", documentId);
+        query.setParameter("P_DOC_KEY_POID", transactionPoid);
+
+        query.execute();
+
+        Object cursor = query.getOutputParameterValue("OUTDATA");
+        return mapReconCursorToDto(cursor);
+    }
+
+    private ReconcileResultDto mapReconCursorToDto(Object cursor) {
+        try {
+            ResultSet rs = (ResultSet) cursor;
+            if (rs != null && rs.next()) {
+                return new ReconcileResultDto(
+                        rs.getString("RECONCILE_DATE"),
+                        rs.getString("HOLD")
+                );
+            }
+        } catch (SQLException e) {
+            log.error("Error reading PROC_DEBIT_PAYMENT_RECON_DATE cursor", e);
+            throw new RuntimeException("Error reading reconcile date result", e);
+        }
+        return new ReconcileResultDto(null, null);
     }
 
 }

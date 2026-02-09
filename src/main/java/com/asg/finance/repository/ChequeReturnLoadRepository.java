@@ -53,52 +53,74 @@ public class ChequeReturnLoadRepository {
             cs.execute();
 
             ChequeReturnDataDto chequeData= null ;
+            boolean hasChequeData = false;
             try (ResultSet rs = (ResultSet) cs.getObject(5)) {
-                if (rs != null) {
-                    while(rs.next()) {
-                        chequeData = new ChequeReturnDataDto();
-                        chequeData.setPaymentMainPoid(getLong(rs, 1));
-                        chequeData.setAmount(getDouble(rs, 2));
-                        chequeData.setChoPoid(getLong(rs, 3));
-                        chequeData.setChoDate(toLocalDate(rs.getTimestamp(4)));
-                        chequeData.setPymtType(rs.getString(5));
-                        chequeData.setChqCardNo(rs.getString(6));
-                        chequeData.setChqDate(toLocalDate(rs.getTimestamp(7)));
-                        chequeData.setBankPoid(getLong(rs, 8));
-                        chequeData.setAddressPoid(getLong(rs, 9));
-                        chequeData.setChqAcName(rs.getString(10));
-                        chequeData.setRcpDate(toLocalDate(rs.getTimestamp(11)));
-                        chequeData.setChqAcNo(rs.getString(12));
-                        chequeData.setRemarks(rs.getString(13));
-                        chequeData.setRefDocRef(rs.getString(14));
-                        chequeData.setRefDocId(rs.getString(15));
-                        chequeData.setRefDocPoid(getLong(rs, 16));
-                    }
-                }else{
-                    log.info("OUTDATA returned NULL — Procedure returned before opening cursor");
+                if (rs == null) {
+                    log.warn("No recent deposit details found for cheque {}", chequeNum);
+                    throw new IllegalStateException(
+                            "No recent deposit details found for this cheque in the current login company..."
+                    );
                 }
+
+                while (rs.next()) {
+                    hasChequeData = true;
+                    chequeData = new ChequeReturnDataDto();
+                    chequeData.setPaymentMainPoid(getLong(rs, 1));
+                    chequeData.setAmount(getDouble(rs, 2));
+                    chequeData.setChoPoid(getLong(rs, 3));
+                    chequeData.setChoDate(toLocalDate(rs.getTimestamp(4)));
+                    chequeData.setPymtType(rs.getString(5));
+                    chequeData.setChqCardNo(rs.getString(6));
+                    chequeData.setChqDate(toLocalDate(rs.getTimestamp(7)));
+                    chequeData.setBankPoid(getLong(rs, 8));
+                    chequeData.setAddressPoid(getLong(rs, 9));
+                    chequeData.setChqAcName(rs.getString(10));
+                    chequeData.setRcpDate(toLocalDate(rs.getTimestamp(11)));
+                    chequeData.setChqAcNo(rs.getString(12));
+                    chequeData.setRemarks(rs.getString(13));
+                    chequeData.setRefDocRef(rs.getString(14));
+                    chequeData.setRefDocId(rs.getString(15));
+                    chequeData.setRefDocPoid(getLong(rs, 16));
+                }
+            }
+            if (!hasChequeData) {
+                log.warn("Cheque cursor returned no rows for cheque {}", chequeNum);
+                throw new IllegalStateException(
+                        "No recent deposit details found for this cheque in the current login company..."
+                );
             }
 
             List<ChequeReturnGlEntryDto> glEntries = new ArrayList<>();
             try (ResultSet rs2 = (ResultSet) cs.getObject(6)) {
-                if (rs2 != null) {
-                    while (rs2.next()) {
-                        ChequeReturnGlEntryDto gl = new ChequeReturnGlEntryDto();
-                        String type = rs2.getString(1);
-                        gl.setType(type);
-                        gl.setCompanyPoid(getLong(rs2, 2));
-                        gl.setCompanyDtl(lovService.getDetailsByPoidAndLovName(gl.getCompanyPoid(), "COMPANY"));
-                        gl.setGlPoid(getLong(rs2, 3));
-                        gl.setGlDtl(lovService.getDetailsByPoidAndLovName(gl.getGlPoid(), "GL_MASTER_LEDGERS"));
-                        if ("DR".equalsIgnoreCase(type)) {
-                            gl.setAmount(getDouble(rs2, 4));
-                        } else {
-                            gl.setAmount(getDouble(rs2, 5));
-                        }
-                        glEntries.add(gl);
+
+                if (rs2 == null) {
+                    log.warn("GL cursor returned NULL for cheque {}", chequeNum);
+                    throw new IllegalStateException(
+                            "No recent deposit details found for this cheque in the current login company..."
+                    );
+                }
+
+
+                while (rs2.next()) {
+                    ChequeReturnGlEntryDto gl = new ChequeReturnGlEntryDto();
+                    String type = rs2.getString(1);
+                    gl.setType(type);
+                    gl.setCompanyPoid(getLong(rs2, 2));
+                    gl.setCompanyDtl(lovService.getDetailsByPoidAndLovName(gl.getCompanyPoid(), "COMPANY"));
+                    gl.setGlPoid(getLong(rs2, 3));
+                    gl.setGlDtl(lovService.getDetailsByPoidAndLovName(gl.getGlPoid(), "GL_MASTER_LEDGERS"));
+                    if ("DR".equalsIgnoreCase(type)) {
+                        gl.setAmount(getDouble(rs2, 4));
+                    } else {
+                        gl.setAmount(getDouble(rs2, 5));
                     }
-                }else{
-                    log.info("OUTDATA1 returned NULL — Procedure returned before opening cursor");
+                    glEntries.add(gl);
+                }
+                if (glEntries.isEmpty()) {
+                    log.warn("GL cursor returned no rows for cheque {}", chequeNum);
+                    throw new IllegalStateException(
+                            "No recent deposit details found for this cheque in the current login company..."
+                    );
                 }
             }
 

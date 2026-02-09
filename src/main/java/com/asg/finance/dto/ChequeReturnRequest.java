@@ -40,6 +40,9 @@ public class ChequeReturnRequest {
         private String closeDetail;
         private String createdBy;
         private Date createdDate;
+        private Date lastModifiedDate;
+        private String lastModifiedBy;
+        private String receiptNumber;
 
     }
 
@@ -48,6 +51,7 @@ public class ChequeReturnRequest {
 
         private Long detRowId;
         private Long transactionPoid;
+        private String actionType;
 
         @NotNull(message = "amount is mandatory")
         @DecimalMin(value = "0.01", message = "amount must be > 0")
@@ -104,6 +108,7 @@ public class ChequeReturnRequest {
     public static class GlDetailDto {
         private Long detRowId;
         private Long transactionPoid;
+        private String actionType;
 
         @NotNull(message = "companyPoid is mandatory")
         private Long companyPoid;

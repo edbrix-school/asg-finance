@@ -39,6 +39,7 @@ public class GlPettyCashPaymentDtlResponseDto {
     private String inputVatNumber;
     private LocalDate supplierInvDate;
     private Long taxPoid;
+    private DetailsDto taxPoidDtl;
     private BigDecimal taxPercentage;
     private String vatPartyName;
 

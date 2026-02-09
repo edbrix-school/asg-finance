@@ -2,14 +2,18 @@ package com.asg.finance.dto;
 
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 @Data
 public class BankPaymentVoucherRequest {
 
     private Long bankPoid;
-    private Double amount;
+    @JsonProperty("amount")
+    private BigDecimal currencyAmount;
     private String chequeDate;
     private String chequeNo;
     private String accountPayee;

@@ -1,5 +1,7 @@
 package com.asg.finance.repository;
 
+import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.finance.dto.TelexFileDtlDto;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.ParameterMode;
@@ -18,6 +20,8 @@ public class TelexFileGenerateProcRepositoryImpl implements TelexFileGeneratePro
 
     @PersistenceContext
     private EntityManager entityManager;
+
+    private final LoggingService loggingService;
 
     @Override
     public List<TelexFileDtlDto> loadTelexTransferData(String bankList) {
@@ -95,7 +99,13 @@ public class TelexFileGenerateProcRepositoryImpl implements TelexFileGeneratePro
 
             query.execute();
             String result = (String) query.getOutputParameterValue(5);
-            return result != null ? result : "SUCCESS: Bank telex file removed";
+
+            if (result.isEmpty() || result.contains("ERROR")) {
+                return result;
+            }
+
+            loggingService.createLogSummaryEntry(UserContext.getDocumentId(), docKeyPoid.toString(), "SUCCESS : Bank telex file removed for recreation.");
+            return "SUCCESS: Bank telex file removed";
         } catch (Exception e) {
             return "ERROR: " + e.getMessage();
         }

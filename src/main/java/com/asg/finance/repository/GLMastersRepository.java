@@ -34,6 +34,15 @@ public interface GLMastersRepository extends JpaRepository<GLMasterEntity, Long>
             @Param("groupPoid") Long groupPoid);
 
     /**
+     * Count children for multiple parent IDs
+     */
+    @Query("SELECT c.groupGlPoid, COUNT(c) FROM GLMasterEntity c " +
+           "WHERE c.groupGlPoid IN :parentIds " +
+           "AND c.deletedFlag = 'N' " +
+           "GROUP BY c.groupGlPoid")
+    List<Object[]> countChildrenByParentIds(@Param("parentIds") List<Long> parentIds);
+
+    /**
      * Find direct children of a specific parent
      * Returns only immediate children, not the complete hierarchy
      */

@@ -3,6 +3,8 @@ package com.asg.finance.controller;
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.GlChequeCashConvertHdrDto;
 import com.asg.finance.dto.GlChequeConversionLoadResponseDto;
@@ -37,6 +39,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.success;
 public class GlChequeCashConvertController {
 
     private final GlChequeCashConvertService service;
+    private final LoggingService loggingService;
 
     @Operation(
             summary = "Fetch GL Cheque Cash Convert Record by Transaction POID",
@@ -62,6 +65,7 @@ public class GlChequeCashConvertController {
             )
             @PathVariable Long transactionPoid) {
         GlChequeCashConvertHdrDto result = service.getGlChequeCashConvert(transactionPoid);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
         return success("GL Cheque Cash Convert Records fetched successfully", result);
     }
 
@@ -172,7 +176,8 @@ public class GlChequeCashConvertController {
         java.time.LocalDate startDateValue = startDate != null ? java.time.LocalDate.parse(startDate) : null;
         java.time.LocalDate endDateValue = endDate != null ? java.time.LocalDate.parse(endDate) : null;
         Map<String, Object> result = service.listOfRecordsAndGenericSearch(UserContext.getDocumentId(), filters, startDateValue, endDateValue, pageable);
-        return success("GL Cheque Cash Convert list fetched successfully", result);
+
+            return success("GL Cheque Cash Convert list fetched successfully", result);
     }
 
 
@@ -188,53 +193,55 @@ public class GlChequeCashConvertController {
                             schema = @Schema(implementation = GlChequeCashConvertHdrDto.class),
                             examples = {
                                     @ExampleObject(
-                                            name = "Sample Request",
+                                            name = "Sample Request (same structure as View response)",
                                             value = """
                                                     {
-                                                     "transactionDate": "2025-11-14T10:00:00",
-                                                                                         "groupPoid": 1,
-                                                                                         "companyPoid": 1,
-                                                                                         "docRef": "GLC-0002",
-                                                                                         "type": "CHQ2CASH",
-                                                                                         "postingNarration": "Split cheques to cash",
-                                                                                         "cash": 3000,
-                                                                                         "remarks": "Multiple cheques",
-                                                                                         "createdBy": "api.user",
-                                                                                         "chqAcNo": "AX-009988",
-                                                                                         "chqCardNo": "NA",
-                                                                                         "roundingAmt": 0,
-                                                                                         "inDtls": [
-                                                                                           {
-                                                                                             "bankPoid": 501,
-                                                                                             "chqAcName": "Axis Bank - Main",
-                                                                                             "chqAcNo": "AX-009988",
-                                                                                             "chqCardNo": "111122223333",
-                                                                                             "chqDate": "2025-11-13",
-                                                                                             "amount": 1000,
-                                                                                             "remarks": "Cheque A",
-                                                                                             "voucherType": "CHQ",
-                                                                                             "chequeCompanyPoid": 301,
-                                                                                             "paymentMainPoid": 7002001,
-                                                                                             "lineType": "IN",
-                                                                                             "pymtType": "CHEQUE"
-                                                                                           }
-                                                    
-                                                                                         ],
-                                                                                         "outDtls": [
-                                                                                           {
-                                                                                             "paymentMainPoid": 772300,
-                                                                                             "amount": 3000,
-                                                                                             "remarks": "Cash issued",
-                                                                                             "bankPoid": 50,
-                                                                                             "chqAcName": "Cash Account",
-                                                                                             "chqAcNo": "CASH-001",
-                                                                                             "chqCardNo": "NA",
-                                                                                             "chqDate": "2025-11-14",
-                                                                                             "selected": "Y",
-                                                                                             "voucherType": "CASH",
-                                                                                             "lineType": "OUT"
-                                                                                           }
-                                                                                         ]
+                                                      "transactionDate": "2026-02-02",
+                                                      "groupPoid": 1,
+                                                      "companyPoid": 1,
+                                                      "docRef": "ASG215",
+                                                      "type": "4",
+                                                      "postingNarration": "TESY",
+                                                      "cash": 100,
+                                                      "remarks": "TESSY",
+                                                      "chqAcNo": "1040993",
+                                                      "chqCardNo": "1040590",
+                                                      "roundingAmt": 0,
+                                                      "inDtls": [
+                                                        {
+                                                          "detRowId": 1,
+                                                          "actionType": "ISCREATED",
+                                                          "bankPoid": 122,
+                                                          "chqAcName": "TEST",
+                                                          "chqAcNo": "4578888888",
+                                                          "chqCardNo": "12455555",
+                                                          "chqDate": "2026-02-25",
+                                                          "amount": 100,
+                                                          "remarks": "",
+                                                          "voucherType": "NORMAL",
+                                                          "chequeCompanyPoid": 0,
+                                                          "paymentMainPoid": 0,
+                                                          "lineType": "OTHERS | OTHERS",
+                                                          "pymtType": ""
+                                                        }
+                                                      ],
+                                                      "outDtls": [
+                                                        {
+                                                          "detRowId": 1,
+                                                          "actionType": "ISCREATED",
+                                                          "paymentMainPoid": 0,
+                                                          "amount": 100,
+                                                          "remarks": "",
+                                                          "bankPoid": 102,
+                                                          "chqAcName": "TSY",
+                                                          "chqAcNo": "124578888",
+                                                          "chqCardNo": "12345",
+                                                          "chqDate": "2026-02-02",
+                                                          "selected": "Y",
+                                                          "voucherType": "NORMAL",
+                                                          "lineType": "MSC | MSC"
+                                                        }
+                                                      ]
                                                     }
                                                     """
                                     )

@@ -15,6 +15,7 @@ public class CreditNoteGLDetailDto {
 
     @NotNull(message = "Company Poid is mandatory")
     private Long companyPoid;
+    private LovGetListDto companyDet;
 
     private Long glPoid;
     private LovGetListDto glDet;
@@ -31,6 +32,8 @@ public class CreditNoteGLDetailDto {
     private BigDecimal taxAmount;
     private BigDecimal totalAmount;
     private String remarks;
+
+    private String actionType; 
 
     private List<BillwiseBreakupPopupRequestDto> breakupList;
     private List<CostCenterBreakupPopupRequestDto> costCenterList;

@@ -7,8 +7,9 @@ import com.asg.finance.dto.PropertyCostCenterTreeNodeDto;
 import com.asg.finance.dto.PropertyCostCenterTreeRequest;
 
 import java.util.List;
+import java.util.Map;
 
-public interface IPropertyCostCenterService {
+public interface PropertyCostCenterService {
 
     PropertyCostCenterResponse createPropertyCostCenter(PropertyCostCenterRequest request);
 
@@ -26,5 +27,6 @@ public interface IPropertyCostCenterService {
     /**
      * Get Property Cost Center list view (flat structure with parent-child info)
      */
-    List<PropertyCostCenterResponse> getPropertyCostCenterList(String documentId, String actionRequested, Long parentPoid);
+    Map<String, Object> getPropertyCostCenterList(String documentId, String actionRequested, Long parentPoid, String sort);
+
 }

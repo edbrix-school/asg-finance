@@ -1,12 +1,14 @@
 package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.*;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.finance.client.RoleServiceClient;
 import com.asg.finance.entity.GLMaster;
 import com.asg.finance.repository.GLMasterRepository;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.utility.ASGHelperUtils;
 import com.asg.finance.dto.FixedAssetCategoryRequestDto;
 import com.asg.finance.dto.FixedAssetCategoryResponseDto;
@@ -20,6 +22,7 @@ import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.FixedAssetCategoryService;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
 import org.springframework.data.domain.Page;
@@ -41,6 +44,7 @@ public class FixedAssetCategoryServiceImpl implements FixedAssetCategoryService 
     private final RoleServiceClient roleServiceClient;
     private final GLMasterRepository glMasterRepository;
     private final CostCenterRepository costCenterRepository;
+    private final LoggingService loggingService;
 
     @Override
     public FixedAssetCategoryResponseDto createFixedAssetCategory(FixedAssetCategoryRequestDto request) {
@@ -49,6 +53,10 @@ public class FixedAssetCategoryServiceImpl implements FixedAssetCategoryService 
         }
             FixedAssetCategory entity = convertFromFixedAssetDtoToFixedAssetEntity(request);
         FixedAssetCategory fixedAssetCategory = fixedAssetCategoryRepository.save(entity);
+        
+        // Log the creation
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), fixedAssetCategory.getFaCategoryPoid().toString());
+        
         return convertFromFixedAssetEntityToFixedAssetDto(fixedAssetCategory);
     }
 
@@ -56,6 +64,10 @@ public class FixedAssetCategoryServiceImpl implements FixedAssetCategoryService 
     public FixedAssetCategoryResponseDto updateFixedAssetCategory(Long faCategoryPoid, FixedAssetCategoryRequestDto requestDto) {
         FixedAssetCategory fixedAssetCategory = fixedAssetCategoryRepository.findById(faCategoryPoid).orElseThrow(
                 () -> new ResourceNotFoundException("Fixed Asset Category  not found with ID: ", "faCategoryPoid",faCategoryPoid));
+        
+        // Create a copy of the old entity for logging
+        FixedAssetCategory oldEntity = new FixedAssetCategory();
+        BeanUtils.copyProperties(fixedAssetCategory, oldEntity);
         if (fixedAssetCategoryRepository.existsByFaCategoryDescriptionIgnoreCaseAndFaCategoryPoidNot(
                 requestDto.getFaCategoryDescription(), faCategoryPoid)) {
             throw new ValidationException("FA Category Description already exists: " + requestDto.getFaCategoryDescription());
@@ -74,6 +86,10 @@ public class FixedAssetCategoryServiceImpl implements FixedAssetCategoryService 
         fixedAssetCategory.setLastModifiedBy(getCurrentUser());
         fixedAssetCategory.setLastModifiedDate(LocalDateTime.now());
         FixedAssetCategory updatedEntity = fixedAssetCategoryRepository.save(fixedAssetCategory);
+        
+        // Log the update
+        loggingService.logChanges(oldEntity, updatedEntity, FixedAssetCategory.class, UserContext.getDocumentId(), faCategoryPoid.toString(), LogDetailsEnum.MODIFIED, "FA_CATEGORY_POID");
+        
         return convertFromFixedAssetEntityToFixedAssetDto(updatedEntity);
     }
 
@@ -132,10 +148,23 @@ public class FixedAssetCategoryServiceImpl implements FixedAssetCategoryService 
         fixedAssetCategoryResponseDto.setFaGlAccount(Long.valueOf(fixedAssetCategory.getFaGlAccount()));
         fixedAssetCategoryResponseDto.setFaAccumulationAccount(Long.valueOf(fixedAssetCategory.getFaAccumulationAccount()));
         fixedAssetCategoryResponseDto.setFaDepreciationAccount(Long.valueOf(fixedAssetCategory.getFaDepreciationAccount()));
-        CostCenter costCenter = costCenterRepository.findByCostCenterPoid(Long.valueOf(fixedAssetCategory.getCostCenter()));
-        DetailsDto detailsDto = new DetailsDto(costCenter.getCostCenterPoid(), costCenter.getCostCenterCode(),
-                costCenter.getCostCenterDescription(), costCenter.getCostCenterPoid(), costCenter.getCostCenterDescription(), costCenter.getSeqNo());
+        
+        Long costCenterPoid = fixedAssetCategory.getCostCenter() == null ? null : Long.valueOf(fixedAssetCategory.getCostCenter());
+        if (costCenterPoid != null) {
+        	fixedAssetCategoryResponseDto.setCostCenter(costCenterPoid);
 
+            costCenterRepository.findById(costCenterPoid)
+                    .ifPresent(cc -> fixedAssetCategoryResponseDto.setCostCenterDet(
+                    		new DetailsDto(
+                    				cc.getCostCenterPoid(), 
+                    				cc.getCostCenterCode(),
+                	                cc.getCostCenterDescription(), 
+                	                cc.getCostCenterPoid(), 
+                	                cc.getCostCenterDescription(), 
+                	                cc.getSeqNo()
+                	                )));
+        }
+        
         Set<Long> glPoids = new HashSet<>(Arrays.asList(
                 Long.valueOf(fixedAssetCategory.getFaGlAccount()),
                 Long.valueOf(fixedAssetCategory.getFaAccumulationAccount()),
@@ -160,8 +189,6 @@ public class FixedAssetCategoryServiceImpl implements FixedAssetCategoryService 
         fixedAssetCategoryResponseDto.setFaAccumulationAccountDet(glMasterDetailsMap.get(Long.valueOf(fixedAssetCategory.getFaAccumulationAccount())));
         fixedAssetCategoryResponseDto.setFaDepreciationAccountDet(glMasterDetailsMap.get(Long.valueOf(fixedAssetCategory.getFaDepreciationAccount())));
 
-        fixedAssetCategoryResponseDto.setCostCenter(Long.valueOf(fixedAssetCategory.getCostCenter()));
-        fixedAssetCategoryResponseDto.setCostCenterDet(detailsDto);
         List<UserRoleDto> userRoleDtos = new ArrayList<>();
         if (fixedAssetCategory.getUserRolePoid() != null && !fixedAssetCategory.getUserRolePoid().isBlank()) {
             String[] userRoles = fixedAssetCategory.getUserRolePoid().split(";");
@@ -185,6 +212,10 @@ public class FixedAssetCategoryServiceImpl implements FixedAssetCategoryService 
         fixedAssetCategoryResponseDto.setUserRolesPoidDet(userRoleDtos);
         fixedAssetCategoryResponseDto.setActive(fixedAssetCategory.getActive());
         fixedAssetCategoryResponseDto.setSeqNo(fixedAssetCategory.getSeqNo());
+        fixedAssetCategoryResponseDto.setCreatedBy(fixedAssetCategory.getCreatedBy());
+        fixedAssetCategoryResponseDto.setCreatedDate(fixedAssetCategory.getCreatedDate());
+        fixedAssetCategoryResponseDto.setLastModifiedBy(fixedAssetCategory.getLastModifiedBy());
+        fixedAssetCategoryResponseDto.setLastModifiedDate(fixedAssetCategory.getLastModifiedDate());
         return fixedAssetCategoryResponseDto;
     }
 

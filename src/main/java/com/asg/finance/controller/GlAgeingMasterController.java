@@ -3,6 +3,8 @@ package com.asg.finance.controller;
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.LoggingService;
 
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.security.util.UserContext;
@@ -35,6 +37,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 public class GlAgeingMasterController {
 
     private final GlAgeingMasterService ageingMasterService;
+    private final LoggingService loggingService;
 
     @Operation(
             summary = "Create Ageing Master",
@@ -157,7 +160,7 @@ public class GlAgeingMasterController {
     ) {
         try {
             GlAgeingMasterDto ageingMaster = ageingMasterService.fetchAgeingMaster(ageingPoid);
-            // Return raw DTO as per acceptance criteria
+            loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), ageingPoid.toString());
             return success("Ageing Master Details fetched successfully", ageingMaster);
         } catch (ResourceNotFoundException rnfe) {
             return notFound(rnfe.getMessage());
@@ -306,6 +309,7 @@ public class GlAgeingMasterController {
                                                @RequestBody(required = false) FilterRequestDto filters) {
         try {
             Map<String, Object> data = ageingMasterService.listAgeingMasters(UserContext.getDocumentId(), filters, pageable);
+
             return success("Ageing Masters fetched successfully", data);
         } catch (Exception ex) {
             return internalServerError("Unable to fetch ageing master list: " + ex.getMessage());

@@ -5,7 +5,10 @@ import com.asg.common.lib.exception.ResourceAlreadyExistsException;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.utility.ASGHelperUtils;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.BankPayeeRequest;
 import com.asg.finance.dto.BankPayeeResponse;
 import com.asg.common.lib.dto.FilterDto;
@@ -15,6 +18,7 @@ import com.asg.finance.entity.BankPayee;
 import com.asg.finance.repository.BankPayeeRepository;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.IBankPayeeService;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import org.springframework.data.domain.Page;
@@ -38,6 +42,9 @@ public class BankPayeeServiceImpl implements IBankPayeeService {
     private DocumentSearchService documentService;
 
     @Autowired
+    private LoggingService loggingService;
+
+    @Autowired
     private DocumentDeleteService documentDeleteService;
 
     @Transactional
@@ -56,8 +63,14 @@ public class BankPayeeServiceImpl implements IBankPayeeService {
         payee.setActive(request.getActive() != null ? request.getActive() : "N");
         payee.setDeleted("N");
         payee.setSeqNo(request.getSeqNo());
+        payee.setCreatedBy(ASGHelperUtils.getCurrentUser());
+        payee.setCreatedDate(LocalDateTime.now());
 
         BankPayee saved = repository.save(payee);
+
+        // Log the creation
+        String key = saved.getPayingPoid().toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), key);
 
         BankPayeeResponse response = new BankPayeeResponse();
         response.setPoid(saved.getPayingPoid());
@@ -66,6 +79,8 @@ public class BankPayeeServiceImpl implements IBankPayeeService {
         response.setRemarks(saved.getRemarks());
         response.setActive(saved.getActive());
         response.setSeqNo(saved.getSeqNo());
+        response.setCreatedBy(saved.getCreatedBy());
+        response.setCreatedDate(saved.getCreatedDate());
 
         return response;
     }
@@ -80,6 +95,8 @@ public class BankPayeeServiceImpl implements IBankPayeeService {
         response.setRemarks(payee.getRemarks());
         response.setActive(payee.getActive());
         response.setSeqNo(payee.getSeqNo());
+        response.setCreatedBy(payee.getCreatedBy());
+        response.setCreatedDate(payee.getCreatedDate());
         return response;
     }
 
@@ -89,7 +106,7 @@ public class BankPayeeServiceImpl implements IBankPayeeService {
         
         documentDeleteService.deleteDocument(
                 payingPoid,
-                "BANK_PAYEE_MASTER",
+                "GL_PAYING_TO_MASTER",
                 "PAYING_POID",
                 deleteReasonDto,
                 null
@@ -102,6 +119,10 @@ public class BankPayeeServiceImpl implements IBankPayeeService {
         BankPayee entity = repository.findByPayingPoidAndDeleted(payingPoid, "N")
                 .orElseThrow(() -> new RuntimeException("Payee not found"));
 
+        // Create a copy of the existing entity for logging
+        BankPayee oldEntity = new BankPayee();
+        BeanUtils.copyProperties(entity, oldEntity);
+
         if (request.getPayingName() != null &&
                 !request.getPayingName().equalsIgnoreCase(entity.getPayingName())) {
 
@@ -112,13 +133,10 @@ public class BankPayeeServiceImpl implements IBankPayeeService {
             entity.setPayingName(request.getPayingName());
         }
 
-        if (request.getPayingName2() != null) {
-            entity.setPayingName2(request.getPayingName2());
-        }
+        entity.setPayingName2(request.getPayingName2());
 
-        if (request.getRemarks() != null) {
-            entity.setRemarks(request.getRemarks());
-        }
+        entity.setRemarks(request.getRemarks());
+
 
         if (request.getActive() != null) {
             if (!request.getActive().matches("Y|N")) {
@@ -126,13 +144,18 @@ public class BankPayeeServiceImpl implements IBankPayeeService {
             }
             entity.setActive(request.getActive());
         }
-        if (request.getSeqNo() != null) {
-            entity.setSeqNo(request.getSeqNo());
-        }
+
+        entity.setSeqNo(request.getSeqNo());
+
         entity.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
         entity.setLastModifiedDate(LocalDateTime.now());
 
         repository.save(entity);
+
+        // Log the update
+        String key = entity.getPayingPoid().toString();
+        loggingService.logChanges(oldEntity, entity, BankPayee.class, 
+                UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "PAYING_POID");
 
         BankPayeeResponse response = new BankPayeeResponse();
         response.setPoid(entity.getPayingPoid());
@@ -142,6 +165,8 @@ public class BankPayeeServiceImpl implements IBankPayeeService {
         response.setActive(entity.getActive());
         response.setActive("Y".equalsIgnoreCase(entity.getActive()) ? "Y" : "N");
         response.setSeqNo(entity.getSeqNo());
+        response.setCreatedBy(entity.getCreatedBy());
+        response.setCreatedDate(entity.getCreatedDate());
 
         return response;
     }

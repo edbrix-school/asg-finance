@@ -1,8 +1,10 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.annotation.AuditIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Entity
@@ -12,14 +14,16 @@ public class SupplierMasterEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-
+    @AuditIgnore
     @Column(name = "SUPPLIER_POID")
     private Long supplierPoid;
 
     @Column(name = "GROUP_POID")
+    @AuditIgnore
     private Long groupPoid;
 
     @Column(name = "SUPPLIER_CODE")
+    @AuditIgnore
     private String supplierCode;
 
     @Column(name = "SUPPLIER_NAME")
@@ -59,21 +63,26 @@ public class SupplierMasterEntity {
     private Long seqNo;
 
     @Column(name = "CREATED_BY")
+    @AuditIgnore
     private String createdBy;
 
     @Column(name = "CREATED_DATE")
+    @AuditIgnore
     private LocalDate createdDate;
 
     @Column(name = "LASTMODIFIED_BY")
+    @AuditIgnore
     private String lastModifiedBy;
 
     @Column(name = "LASTMODIFIED_DATE")
+    @AuditIgnore
     private LocalDate lastModifiedDate;
 
     @Column(name = "GENERAL_REMARKS")
     private String generalRemarks;
 
     @Column(name = "DELETED")
+    @AuditIgnore
     private String deleted;
 
     @Column(name = "TEMP_PAYMENT_NAME")
@@ -83,7 +92,7 @@ public class SupplierMasterEntity {
     private String currencyCode;
 
     @Column(name = "CURRENCY_RATE")
-    private Long currencyRate;
+    private BigDecimal currencyRate;
 
     @Column(name = "RATE_EXPIRY_DATE")
     private LocalDate rateExpiryDate;
@@ -92,6 +101,7 @@ public class SupplierMasterEntity {
     private Long glPoid;
 
     @Column(name = "DEFAULT_WEIGHT_SELECTION_MTD")
+    @AuditIgnore
     private String defaultWeightSelectionMethod;
 
     @Column(name = "PRODUCT_INFO")
@@ -107,6 +117,7 @@ public class SupplierMasterEntity {
     private String exemptionReason;
 
     @Column(name = "TAX_REGISTERED_DATE")
+    @AuditIgnore
     private LocalDate taxRegisteredDate;
 
     @Column(name = "PURCHASER")

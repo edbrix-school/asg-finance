@@ -14,12 +14,15 @@ import com.asg.finance.entity.SupplierCategoryEntity;
 import com.asg.finance.repository.SupplierCategoryRepository;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.SupplierCategoryService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -36,6 +39,7 @@ public class SupplierCategoryServiceImpl implements SupplierCategoryService {
 
     private final SupplierCategoryRepository supplierCategoriesRepository;
     private final DocumentSearchService documentService;
+    private final LoggingService loggingService;
     private final DocumentDeleteService documentDeleteService;
 
     @PersistenceContext
@@ -50,7 +54,7 @@ public class SupplierCategoryServiceImpl implements SupplierCategoryService {
 
         documentDeleteService.deleteDocument(
                 supplierCategoryPoid,
-                "AP_SUPPLIER_CATEGORY",
+                "AP_SUPPLIER_CATEGORY_MASTER",
                 "SUPPLIER_CATEGORY_POID",
                 deleteReasonDto,
                 null
@@ -72,6 +76,8 @@ public class SupplierCategoryServiceImpl implements SupplierCategoryService {
         dto.setSeqNo(String.valueOf(entity.getSequenceNumber()));
         dto.setGeneralRemarks(entity.getGeneralRemarks());
         dto.setDeleted(entity.getDeleted());
+        dto.setCreatedBy(entity.getCreatedBy());
+        dto.setCreatedDate(entity.getCreatedDate());
 
         log.info("dto: {}", dto);
         return dto;
@@ -92,6 +98,10 @@ public class SupplierCategoryServiceImpl implements SupplierCategoryService {
         SupplierCategoryEntity entity = supplierCategoriesRepository.findById(supplierCategoryPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Supplier Category", "supplierCategoryPoid", supplierCategoryPoid));
 
+        // Create a copy of the existing entity for logging
+        SupplierCategoryEntity oldEntity = new SupplierCategoryEntity();
+        BeanUtils.copyProperties(entity, oldEntity);
+
         if (StringUtils.isNotBlank(supplierCategoryDto.getSupplierCategoryName()) && !supplierCategoryDto.getSupplierCategoryName().equals(entity.getSupplierCategoryName())) {
             if (supplierCategoriesRepository.existsBySupplierCategoryNameAndSupplierCategoryPoidNot(supplierCategoryDto.getSupplierCategoryName(), supplierCategoryPoid)) {
                 throw new ResourceAlreadyExistsException("Supplier Category Name", supplierCategoryDto.getSupplierCategoryName());
@@ -101,9 +111,9 @@ public class SupplierCategoryServiceImpl implements SupplierCategoryService {
         if (StringUtils.isNotBlank(supplierCategoryDto.getSupplierCategoryName())) {
             entity.setSupplierCategoryName(supplierCategoryDto.getSupplierCategoryName());
         }
-        if (StringUtils.isNotBlank(supplierCategoryDto.getSupplierCategoryName2())) {
-            entity.setSupplierCategoryName2(supplierCategoryDto.getSupplierCategoryName2());
-        }
+
+        entity.setSupplierCategoryName2(supplierCategoryDto.getSupplierCategoryName2());
+
         if (StringUtils.isNotBlank(supplierCategoryDto.getSeqNo())) {
 
             String seq = supplierCategoryDto.getSeqNo().trim();
@@ -113,13 +123,24 @@ public class SupplierCategoryServiceImpl implements SupplierCategoryService {
             }
 
             entity.setSequenceNumber(Integer.valueOf(seq));
+        } else {
+            entity.setSequenceNumber(null);
         }
+
         entity.setActive(StringUtils.isNotBlank(supplierCategoryDto.getActive()) ? supplierCategoryDto.getActive() : "Y");
 
 
         entity.setLastModifiedDate(LocalDateTime.now());
+        entity.setLastModifiedBy(UserContext.getUserName());
 
         SupplierCategoryEntity updatedEntity = supplierCategoriesRepository.save(entity);
+        
+        // Log the update
+        String key = updatedEntity.getSupplierCategoryPoid().toString();
+        String docId = UserContext.getDocumentId();
+        loggingService.logChanges(oldEntity, updatedEntity, SupplierCategoryEntity.class, 
+                docId, key, LogDetailsEnum.MODIFIED, "SUPPLIER_CATEGORY_POID");
+
         return mapToDto(updatedEntity);
     }
 
@@ -145,13 +166,19 @@ log.info("SupplierCategoryDto: {}", supplierCategoryDto);
         entity.setActive(StringUtils.isNotBlank(supplierCategoryDto.getActive()) ? supplierCategoryDto.getActive() : "Y");
         entity.setDeleted("N");
         entity.setCreatedDate(LocalDateTime.now());
+        entity.setCreatedBy(UserContext.getUserName());
         entity.setLastModifiedDate(LocalDateTime.now());
-
 
         SupplierCategoryEntity savedEntity = supplierCategoriesRepository.save(entity);
 
         entityManager.flush();
         entityManager.refresh(savedEntity);
+        
+        // Log the creation
+        String key = savedEntity.getSupplierCategoryPoid().toString();
+        String docId = UserContext.getDocumentId();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, key);
+        
         log.info("savedEntity: {}", savedEntity);
         return mapToDto(savedEntity);
     }

@@ -12,4 +12,6 @@ public interface ArCreditNoteDtlRepository extends JpaRepository<ArCreditNoteDtl
     List<ArCreditNoteDtl> findByTransactionPoidOrderByDetRowId(Long transactionPoid);
     
     void deleteByTransactionPoid(Long transactionPoid);
+
+    void deleteByTransactionPoidAndDetRowIdIn(Long transactionPoid, List<Long> detRowIds);
 }

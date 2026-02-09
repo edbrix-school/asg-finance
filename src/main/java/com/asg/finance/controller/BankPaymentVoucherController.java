@@ -3,8 +3,11 @@ package com.asg.finance.controller;
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.dto.ReconcileResultDto;
 import com.asg.finance.dto.*;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.finance.service.BankPaymentVoucherService;
@@ -37,6 +40,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 public class BankPaymentVoucherController {
 
     private final BankPaymentVoucherService service;
+    private final LoggingService loggingService;
 
     @Operation(
             summary = "Get Bank Payment Voucher by ID",
@@ -61,6 +65,7 @@ public class BankPaymentVoucherController {
             @PathVariable Long transactionPoid) {
 
         try {
+            loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
             return success("Voucher fetched successfully", service.getVoucherById(transactionPoid, UserContext.getDocumentId()));
         } catch (ValidationException ex) {
             return internalServerError(ex.getMessage());
@@ -380,6 +385,23 @@ public class BankPaymentVoucherController {
 
         } catch (Exception ex) {
             return internalServerError("Exception: " + ex.getMessage());
+        }
+    }
+
+    @Operation(
+            summary = "Get Reconciled / Clearing Date",
+            description = "Returns reconcile date (clearing date) and hold status for a Bank Payment Voucher by calling PROC_DEBIT_PAYMENT_RECON_DATE."
+    )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
+    @GetMapping("/{transactionPoid}/reconciled-date")
+    public ResponseEntity<?> getReconciledDate(
+            @Parameter(description = "Transaction POID of the Bank Payment Voucher", required = true)
+            @PathVariable Long transactionPoid) {
+        try {
+            ReconcileResultDto result = service.getReconciledDate(UserContext.getDocumentId(), transactionPoid);
+            return success("Reconciled date fetched successfully", result);
+        } catch (Exception ex) {
+            return internalServerError("Failed to fetch reconciled date: " + ex.getMessage());
         }
     }
 

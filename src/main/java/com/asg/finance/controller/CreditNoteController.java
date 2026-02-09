@@ -3,9 +3,12 @@ package com.asg.finance.controller;
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.CreditNoteHeaderDto;
 import com.asg.finance.dto.DefaultCreditValuesDto;
+import com.asg.finance.dto.FdaRefResponseDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.finance.service.CreditNoteService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -46,6 +49,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 
 public class CreditNoteController {
     private final CreditNoteService creditNoteService;
+    private final LoggingService loggingService;
 
     @Operation(
             summary = "Create Credit Note",
@@ -195,6 +199,7 @@ public class CreditNoteController {
     public ResponseEntity<?> getCreditNoteById(
             @PathVariable Long transactionPoid) {
         CreditNoteHeaderDto result = creditNoteService.getCreditNoteById(transactionPoid);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
         return success("Credit note fetched successfully", result);
     }
 
@@ -457,6 +462,7 @@ public class CreditNoteController {
             @PathVariable Long refNo,
             @RequestParam Long partyPoid) {
         var result = creditNoteService.getFFInvoiceCharges(refNo, partyPoid);
+
         return success("FF Invoice charges fetched successfully", result);
     }
 
@@ -577,6 +583,35 @@ public class CreditNoteController {
         } catch (Exception e) {
             log.error("Error fetching party GL POID for partyPoid: {}, partyType: {}", partyPoid, partyType, e);
             return internalServerError("Failed to fetch party GL POID: " + e.getMessage());
+        }
+    }
+
+    @Operation(
+            summary = "Get FDA Reference for Credit Note",
+            description = """
+                Fetches FDA reference details for credit note creation using:
+                PROC_AR_CN_SET_FDAREF
+
+                ### Input:
+                - Doc Key POID (Transaction POID)
+                - LOV Name (e.g., DN_INVOICE_FOR_CN)
+                - LOV Value (e.g., Debit Note POID)
+
+                ### Output:
+                - FDA Reference POID
+                """
+    )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
+    @GetMapping("/fda-ref")
+    public ResponseEntity<?> getFdaRefForCreditNote(
+            @RequestParam String lovName,
+            @RequestParam Long lovValue) {
+        try {
+            FdaRefResponseDto result = creditNoteService.getFdaRefForCreditNote(lovName, lovValue);
+            return success("FDA reference fetched successfully", result);
+        } catch (Exception e) {
+            log.error("Error fetching FDA reference for lovName: {}, lovValue: {}", lovName, lovValue, e);
+            return internalServerError("Failed to fetch FDA reference: " + e.getMessage());
         }
     }
 

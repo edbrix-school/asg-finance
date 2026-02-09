@@ -5,8 +5,10 @@ import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.exception.ResourceNotFoundException;
-import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.DocumentDeleteService;
+import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.finance.dto.*;
 import com.asg.finance.entity.PdcBatchExcelUploadTemp;
 import com.asg.finance.entity.PdcChqBatchDtlEntity;
@@ -24,12 +26,14 @@ import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.sql.Date;
 import java.time.LocalDate;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -46,6 +50,7 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
     private final DocumentDeleteService documentDeleteService;
     private final PdcBatchCreationRepository pdcBatchCreationRepository;
     private final PdcBatchExcelUploadTempRepository tempRepo;
+    private final LoggingService loggingService;
 
     @Transactional
     public PdcChqBatchHdrResponseDto createBatch(PdcChqBatchHdrRequestDto dto) {
@@ -60,6 +65,10 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
         List<PdcChqBatchDtlResponseDto> dtlResponses =
                 saveDetailRows(dto.getChequeDetails(), transactionPoid);
 
+        // Log the creation
+        String key = transactionPoid.toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, "400-113", key);
+
         return mapHeaderEntityToResponseDto(hdr, dtlResponses);
     }
 
@@ -71,6 +80,10 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
 
         PdcChqBatchHdrEntity hdr = hdrRepo.findById(transactionPoid)
                 .orElseThrow(() -> new RuntimeException("PDC Batch not found: " + transactionPoid));
+
+        // Create a copy of the existing entity for logging
+        PdcChqBatchHdrEntity oldEntity = new PdcChqBatchHdrEntity();
+        BeanUtils.copyProperties(hdr, oldEntity);
 
         hdr.setTransactionDate(dto.getTransactionDate());
         hdr.setGroupPoid(dto.getGroupPoid());
@@ -99,6 +112,11 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
         dtlRepo.deleteByTransactionPoid(transactionPoid);
         List<PdcChqBatchDtlResponseDto> dtls =
                 saveDetailRows(dto.getChequeDetails(), transactionPoid);
+
+        // Log the update
+        String key = transactionPoid.toString();
+        loggingService.logChanges(oldEntity, hdr, PdcChqBatchHdrEntity.class, 
+                "400-113", key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
         return mapHeaderEntityToResponseDto(hdr, dtls);
     }
@@ -181,6 +199,7 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
                 .costGroup(dto.getCostGroup())
                 .costPoid(dto.getCostPoid())
                 .prePrinted(dto.getPrePrinted())
+                .confidentialRemarks(dto.getConfidentialRemarks())
                 .accountPayee(dto.getAccountPayee())
                 .deleted("N")
                 .createdBy(getCurrentUser())
@@ -192,26 +211,76 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
             List<PdcChqBatchDtlRequestDto> dtos,
             Long transactionPoid) {
 
-        long nextRowId = 1;
-
-        PdcChqBatchDtlEntity last =
-                dtlRepo.findTopByTransactionPoidOrderByDetRowIdDesc(transactionPoid);
-
-        if (last != null) {
-            nextRowId = last.getDetRowId() + 1;
-        }
+        String docId = "400-113";
+        List<PdcChqBatchDtlEntity> existingList = dtlRepo.findByTransactionPoidOrderByDetRowIdAsc(transactionPoid);
+        Map<Long, PdcChqBatchDtlEntity> existingMap = existingList.stream()
+                .collect(Collectors.toMap(PdcChqBatchDtlEntity::getDetRowId, d -> d));
+        
+        Long[] maxDetRowId = {existingList.stream()
+                .map(PdcChqBatchDtlEntity::getDetRowId)
+                .max(Long::compareTo)
+                .orElse(0L)};
 
         List<PdcChqBatchDtlResponseDto> responseList = new ArrayList<>();
 
         for (PdcChqBatchDtlRequestDto dto : dtos) {
-
-            PdcChqBatchDtlEntity entity = mapDtlDtoToEntity(dto, transactionPoid, nextRowId++);
-            entity = dtlRepo.save(entity);
-
-            responseList.add(mapDtlEntityToResponseDto(entity));
+            String action = dto.getActionType() != null ? dto.getActionType().toUpperCase() : "ISCREATED";
+            
+            switch (action) {
+                case "ISCREATED":
+                    Long detRowId = ++maxDetRowId[0];
+                    PdcChqBatchDtlEntity newEntity = mapDtlDtoToEntity(dto, transactionPoid, detRowId);
+                    newEntity = dtlRepo.save(newEntity);
+                    responseList.add(mapDtlEntityToResponseDto(newEntity));
+                    String logDetail = String.format("Row Created on PDC Cheque Batch Detail with detRowId: %s", detRowId);
+                    loggingService.createLogSummaryEntry(docId, transactionPoid.toString(), logDetail);
+                    break;
+                    
+                case "ISUPDATED":
+                    PdcChqBatchDtlEntity existing = existingMap.get(dto.getDetRowId());
+                    if (existing == null) {
+                        throw new ResourceNotFoundException("PDC Batch Detail", "detRowId", dto.getDetRowId());
+                    }
+                    PdcChqBatchDtlEntity oldEntity = new PdcChqBatchDtlEntity();
+                    BeanUtils.copyProperties(existing, oldEntity);
+                    updateDetailEntity(existing, dto);
+                    existing = dtlRepo.save(existing);
+                    responseList.add(mapDtlEntityToResponseDto(existing));
+                    loggingService.logChanges(oldEntity, existing, PdcChqBatchDtlEntity.class, docId, transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+                    break;
+                    
+                case "ISDELETED":
+                    if (dto.getDetRowId() != null) {
+                        dtlRepo.deleteByTransactionPoidAndDetRowId(transactionPoid, dto.getDetRowId());
+                        loggingService.logDelete(dto, docId, transactionPoid.toString());
+                    }
+                    break;
+            }
         }
 
         return responseList;
+    }
+
+    private void updateDetailEntity(PdcChqBatchDtlEntity entity, PdcChqBatchDtlRequestDto dto) {
+        entity.setPdcChqDate(dto.getPdcChqDate());
+        entity.setChqNumber(dto.getChqNumber());
+        entity.setChqAmount(dto.getChqAmount());
+        entity.setRemarks(dto.getRemarks());
+        entity.setBankPaymentPoid(dto.getBankPaymentPoid());
+        entity.setBankPaymentRef(dto.getBankPaymentRef());
+        entity.setNarration(dto.getNarration());
+        entity.setBillRef(dto.getBillRef());
+        entity.setCostPoid(dto.getCostPoid());
+        entity.setDrGlPoid1(dto.getDrGlPoid1());
+        entity.setDrAmt1(dto.getDrAmt1());
+        entity.setDrGlPoid2(dto.getDrGlPoid2());
+        entity.setDrAmt2(dto.getDrAmt2());
+        entity.setDrGlPoid3(dto.getDrGlPoid3());
+        entity.setDrAmt3(dto.getDrAmt3());
+        entity.setCrGlPoid(dto.getCrGlPoid());
+        entity.setCrAmt(dto.getCrAmt());
+        entity.setLastModifiedBy(getCurrentUser());
+        entity.setLastModifiedDate(LocalDateTime.now());
     }
 
     private PdcChqBatchDtlEntity mapDtlDtoToEntity(
@@ -226,8 +295,8 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
                 .chqNumber(dto.getChqNumber())
                 .chqAmount(dto.getChqAmount())
                 .remarks(dto.getRemarks())
-                .bankPaymentPoid(null)
-                .bankPaymentRef(null)
+                .bankPaymentPoid(dto.getBankPaymentPoid())
+                .bankPaymentRef(dto.getBankPaymentRef())
                 .narration(dto.getNarration())
                 .billRef(dto.getBillRef())
                 .costPoid(dto.getCostPoid())
@@ -255,6 +324,8 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
                 .chqNumber(e.getChqNumber())
                 .chqAmount(e.getChqAmount())
                 .remarks(e.getRemarks())
+                .bankPaymentPoid(e.getBankPaymentPoid())
+                .bankPaymentRef(e.getBankPaymentRef())
                 .narration(e.getNarration())
                 .billRef(e.getBillRef())
                 .costPoid(e.getCostPoid())
@@ -286,11 +357,19 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
                 .prePrinted(hdr.getPrePrinted())
                 .accountPayee(hdr.getAccountPayee())
                 .chqStartNo(hdr.getChqStartNo())
+                .chqStartDate(hdr.getChqStartDate())
+                .billType(hdr.getBillType())
                 .chqAmount(hdr.getChqAmount())
                 .noOfChqs(hdr.getNoOfChqs())
                 .totalAmount(hdr.getTotalAmount())
+                .confidentialRemarks(hdr.getConfidentialRemarks())
+                .lastModifiedBy(hdr.getLastModifiedBy())
+                .lastModifiedDate(hdr.getLastModifiedDate())
+                .deleted(hdr.getDeleted())
                 .billRef(hdr.getBillRef())
                 .chequeDetails(dtlList)
+                .createdDate(hdr.getCreatedDate())
+                .createdBy(hdr.getCreatedBy())
                 .build();
     }
 

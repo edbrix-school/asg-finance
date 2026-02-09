@@ -1,5 +1,6 @@
 package com.asg.finance.dto;
 
+import com.asg.common.lib.dto.LovGetListDto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -45,7 +46,9 @@ public class SupplierMasterPaymentDtlDto {
     @Size(max = 250, message = "Special Instruction must be at most 250 characters")
     private String specialInstruction;
     private Long intermediaryCountryPoid;
+    private LovGetListDto intermediaryCountryDetail;
     private Long beneficiaryCountry;
+    private LovGetListDto beneficiaryCountryDetail;
     @Size(max = 1, message = "Active must be at most 1 characters")
     private String active;
     @Size(max = 1, message = "Defaults must be at most 1 characters")

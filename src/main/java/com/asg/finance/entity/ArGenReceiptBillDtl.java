@@ -1,5 +1,6 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.annotation.AuditIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -19,42 +20,52 @@ import java.time.LocalDateTime;
 public class ArGenReceiptBillDtl {
 
     @Id
+    @AuditIgnore
     @Column(name = "TRANSACTION_POID", nullable = false)
     private Long transactionPoid;
 
     @Id
+    @AuditIgnore
     @Column(name = "DET_ROW_ID", nullable = false)
     private Long detRowId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "TRANSACTION_POID", nullable = false, insertable = false, updatable = false)
+    @AuditIgnore
     private ArGenReceiptHdr receiptHdr;
 
     @Column(name = "GL_POID")
+    @AuditIgnore
     private Long glPoid;
 
     @Column(name = "BILL_REF_TYPE", length = 100)
     private String billRefType;
 
     @Column(name = "BILL_REFNO", length = 500)
+    @AuditIgnore
     private String billRefno;
 
     @Column(name = "BILL_DUE_DATE")
     private LocalDate billDueDate;
 
     @Column(name = "DESCRIPTION", length = 200)
+    @AuditIgnore
     private String description;
 
     @Column(name = "CREATED_BY", length = 20)
+    @AuditIgnore
     private String createdBy;
 
     @Column(name = "CREATED_DATE")
+    @AuditIgnore
     private LocalDateTime createdDate;
 
     @Column(name = "LASTMODIFIED_BY", length = 20)
+    @AuditIgnore
     private String lastModifiedBy;
 
     @Column(name = "LASTMODIFIED_DATE")
+    @AuditIgnore
     private LocalDateTime lastModifiedDate;
 
     @Column(name = "AMOUNT")
@@ -67,6 +78,7 @@ public class ArGenReceiptBillDtl {
     private String checkall;
 
     @Column(name = "GL_COMPANY_POID")
+    @AuditIgnore
     private Long glCompanyPoid;
 
     @Column(name = "REMARKS", length = 500)

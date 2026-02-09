@@ -2,11 +2,10 @@ package com.asg.finance.service.impl;
 
 import com.asg.common.lib.client.ParameterServiceClient;
 import com.asg.common.lib.dto.*;
+import com.asg.common.lib.dto.request.LogRequestDto;
+import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
-import com.asg.common.lib.service.DocumentDeleteService;
-import com.asg.common.lib.service.DocumentSearchService;
-import com.asg.common.lib.service.LovDataService;
-import com.asg.common.lib.service.PrintService;
+import com.asg.common.lib.service.*;
 import com.asg.common.lib.utility.ASGHelperUtils;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.dto.*;
@@ -23,6 +22,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.BeanUtils;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -30,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import javax.sql.DataSource;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.LocalDate;
@@ -38,6 +39,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -61,9 +63,11 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
     private final LovDataService lovService;
     private final PrintService printService;
     private final DataSource dataSource;
+    private final LoggingService loggingService;
     
-    @Autowired
-    private DocumentDeleteService documentDeleteService;
+    private final DocumentDeleteService documentDeleteService;
+    private final ApprovalService approvalService;
+
     
     @Autowired
     private ApplicationContext applicationContext;
@@ -157,6 +161,9 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
 
         // 7. Flush all changes to commit the receipt data
         entityManager.flush();
+        
+        // Log the creation
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), header.getTransactionPoid().toString());
         
         log.info("Successfully created general receipt: {}", header.getDocRef());
         
@@ -345,91 +352,6 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
     }
 
     /**
-     * Build WHERE clause from filter parameters
-     */
-    private String buildWhereClause(String type, String status, LocalDate fromDate, 
-                                   LocalDate toDate, Long companyId) {
-        List<String> conditions = new ArrayList<>();
-
-        // Base condition: not deleted (unless status explicitly requests deleted)
-        if (status == null || !"Deleted".equalsIgnoreCase(status)) {
-            conditions.add("(DELETED IS NULL OR DELETED = 'N')");
-        } else if ("Deleted".equalsIgnoreCase(status)) {
-            conditions.add("DELETED = 'Y'");
-        }
-
-        // Type filter (REF_TYPE)
-        if (type != null && !type.trim().isEmpty()) {
-            conditions.add("REF_TYPE = '" + type.replace("'", "''") + "'");
-        }
-
-        // Status filter (VERIFIED)
-        if (status != null && !status.trim().isEmpty() && !"Deleted".equalsIgnoreCase(status)) {
-            if ("Posted".equalsIgnoreCase(status)) {
-                conditions.add("VERIFIED = 'Y'");
-            } else if ("Pending".equalsIgnoreCase(status)) {
-                conditions.add("(VERIFIED IS NULL OR VERIFIED = 'N')");
-            }
-        }
-
-        // Date range filter
-        if (fromDate != null) {
-            conditions.add("TRANSACTION_DATE >= DATE '" + fromDate + "'");
-        }
-        if (toDate != null) {
-            conditions.add("TRANSACTION_DATE <= DATE '" + toDate + "'");
-        }
-
-        // Company filter
-        if (companyId != null) {
-            conditions.add("COMPANY_POID = " + companyId);
-        }
-
-        // Join conditions
-        if (conditions.isEmpty()) {
-            return "1=1"; // No filters
-        } else {
-            return String.join(" AND ", conditions);
-        }
-    }
-
-    /**
-     * Map procedure result row to GeneralReceiptResponse
-     * Column names match AR_GEN_RECEIPT_HDR table structure
-     */
-    private GeneralReceiptResponse mapRowToResponse(Map<String, Object> row) {
-        try {
-            if (row == null || row.isEmpty()) {
-                return null;
-            }
-
-            // Map columns from AR_GEN_RECEIPT_HDR table structure
-            GeneralReceiptResponse response = GeneralReceiptResponse.builder()
-                    .receiptNo(getStringValue(row, "DOC_REF"))
-                    .transactionPoid(getLongValue(row, "TRANSACTION_POID"))
-                    .transactionDate(getLocalDateValue(row, "TRANSACTION_DATE"))
-                    .companyPoid(getLongValue(row, "COMPANY_POID"))
-                    .receiptAmount(getBigDecimalValue(row, "RCPT_AMOUNT"))
-                    .currencyCode(getStringValue(row, "CURRENCY_CODE"))
-                    .currencyRate(getBigDecimalValue(row, "CURRENCY_RATE"))
-                    .receivedFrom(getStringValue(row, "RCVD_FROM_DTL_PRINT"))
-                    .refType(getStringValue(row, "REF_TYPE"))
-                    .narration(getStringValue(row, "REMARKS"))
-                    .verified(getStringValue(row, "VERIFIED"))
-                    .multicompany(getStringValue(row, "MULTICOMPANY"))
-                    .createdBy(getStringValue(row, "CREATED_BY"))
-                    .createdDate(getLocalDateTimeValue(row, "CREATED_DATE"))
-                    .build();
-
-            return response;
-
-        } catch (Exception e) {
-            log.warn("Error mapping row to response: {}", e.getMessage());
-            return null;
-        }
-    }
-
-    /**
      * Helper methods to extract values from row Map
      */
     private String getStringValue(Map<String, Object> row, String columnName) {
@@ -506,126 +428,409 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         ArGenReceiptHdr header = receiptHdrRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("General Receipt", "transactionPoid", transactionPoid));
 
+        // Create a copy of the old entity for logging
+        ArGenReceiptHdr oldEntity = new ArGenReceiptHdr();
+        BeanUtils.copyProperties(header, oldEntity);
+
         if ("Y".equals(header.getVerified())) {
             throw new ValidationException("Cannot update receipt that has been verified/posted to GL");
         }
 
-        validateGeneralReceiptRequest(request);
+        final String approvalStatus = approvalService.getApprovalStatus(UserContext.getDocumentId(), header.getTransactionPoid());
 
+        if ("APPROVED".equals(approvalStatus)) {
+            throw new ValidationException("Cannot update receipt that has been approved");
+        }
+
+        validateGeneralReceiptRequest(request);
         String currentUser = getCurrentUser();
         LocalDateTime now = LocalDateTime.now();
         updateHeaderEntity(header, request.getHeader(), currentUser, now);
         receiptHdrRepository.save(header);
 
-        pymtDetailsRepository.deleteByTransactionPoid(transactionPoid);
-        billDtlRepository.deleteByTransactionPoid(transactionPoid);
-        chargesDtlRepository.deleteByTransactionPoid(transactionPoid);
-        advanceDtlRepository.deleteByReceiptHdr_TransactionPoid(transactionPoid);
-
+        // Update child records using actionType pattern
         if (request.getPayments() != null && !request.getPayments().isEmpty()) {
-            List<ArGenReceiptPymtDetails> details = new ArrayList<>();
-            for (int i = 0; i < request.getPayments().size(); i++) {
-                GeneralReceiptPaymentDto payment = request.getPayments().get(i);
-                ArGenReceiptPymtDetails detail = ArGenReceiptPymtDetails.builder()
-                        .transactionPoid(transactionPoid)
-                        .detRowId((long) (i + 1))
-                        .pymtType(payment.getType())
-                        .amount(payment.getAmount())
-                        .chqCardno(payment.getChequeNo())
-                        .chqDate(payment.getChequeDate())
-                        .bankPoid(payment.getBankPoid())
-                        .accountPoid(payment.getAccountPoid())
-                        .accountName(payment.getAccountName())
-                        .accountNo(payment.getAccountNumber())
-                        .ttBankPoid(payment.getTtBankPoid())
-                        .ttRef(payment.getTtRef())
-                        .creditCardRef(payment.getCreditCardRef())
-                        .cardType(payment.getCardType())
-                        .cardPoid(payment.getCardPoid())
-                        .createdBy(currentUser)
-                        .createdDate(now)
-                        .build();
-                details.add(detail);
-            }
-            pymtDetailsRepository.saveAll(details);
+            updatePaymentDetails(request.getPayments(), transactionPoid);
         }
         if (request.getBills() != null && !request.getBills().isEmpty()) {
-            List<ArGenReceiptBillDtl> details = new ArrayList<>();
-            for (int i = 0; i < request.getBills().size(); i++) {
-                GeneralReceiptBillDto bill = request.getBills().get(i);
-                Long glPoid = bill.getGlPoid() != null ? bill.getGlPoid() : header.getRcvdOthPoid();
-                ArGenReceiptBillDtl detail = ArGenReceiptBillDtl.builder()
-                        .transactionPoid(transactionPoid)
-                        .detRowId((long) (i + 1))
-                        .glPoid(glPoid)
-                        .billRefType(bill.getBillRefType() != null ? bill.getBillRefType() : header.getRefType())
-                        .billRefno(bill.getBillReference())
-                        .billDueDate(bill.getBillDueDate())
-                        .description(bill.getDescription())
-                        .amount(bill.getAmount())
-                        .crDrType(bill.getDrCr())
-                        .glCompanyPoid(bill.getGlCompanyPoid() != null ? bill.getGlCompanyPoid() : header.getCompanyPoid())
-                        .remarks(bill.getRemarks())
-                        .checkall("N")
-                        .createdBy(currentUser)
-                        .createdDate(now)
-                        .build();
-                details.add(detail);
-            }
-            billDtlRepository.saveAll(details);
-            entityManager.flush();
-            callBillwiseCheckProcedure(transactionPoid, header.getCompanyPoid());
+            updateBillDetails(request.getBills(), transactionPoid);
         }
         if ("Y".equals(request.getHeader().getExtraCharges()) && 
             request.getExtraCharges() != null && !request.getExtraCharges().isEmpty()) {
-            List<ArGenReceiptChargesDtl> details = new ArrayList<>();
-            for (int i = 0; i < request.getExtraCharges().size(); i++) {
-                GeneralReceiptChargeDto charge = request.getExtraCharges().get(i);
-                List<GLMasterEntity> chargeGLList = glMastersRepository.findAllByGlCodeAndDeletedFlag(charge.getGl(), "N");
-                if (chargeGLList.isEmpty()) {
-                    throw new ValidationException("Charge GL not found: " + charge.getGl());
-                }
-                GLMasterEntity chargeGL = chargeGLList.get(0);
-                ArGenReceiptChargesDtl detail = ArGenReceiptChargesDtl.builder()
-                        .transactionPoid(transactionPoid)
-                        .detRowId((long) (i + 1))
-                        .chargeType(charge.getChargeType())
-                        .glPoid(chargeGL.getGlPoid())
-                        .amount(charge.getAmount())
-                        .bhdAmount(charge.getAmount().multiply(header.getCurrencyRate()))
-                        .taxPoid(charge.getTaxPoid())
-                        .taxPercentage(charge.getTaxPercent())
-                        .taxAmount(charge.getTaxAmount())
-                        .totalAmount(charge.getTotalAmount())
-                        .costPoid(charge.getCostCenter())
-                        .remarks(charge.getRemarks())
-                        .createdBy(currentUser)
-                        .createdDate(now)
-                        .build();
-                details.add(detail);
-            }
-            chargesDtlRepository.saveAll(details);
+            updateChargeDetails(request.getExtraCharges(), transactionPoid);
         }
         if (request.getAdvances() != null && !request.getAdvances().isEmpty()) {
-            List<ArGenReceiptAdvanceDtl> details = new ArrayList<>();
-            for (int i = 0; i < request.getAdvances().size(); i++) {
-                GeneralReceiptAdvanceDto advance = request.getAdvances().get(i);
-                ArGenReceiptAdvanceDtl detail = ArGenReceiptAdvanceDtl.builder()
-                        .transactionPoid(transactionPoid)
-                        .detRowId((long) (i + 1))
-                        .advanceRefDocId(advance.getAdvanceRefDocId())
-                        .advanceRefPoid(advance.getAdvanceRefPoid())
-                        .amount(advance.getAmount())
-                        .remarks(advance.getRemarks())
-                        .createdBy(currentUser)
-                        .createdDate(now)
-                        .build();
-                details.add(detail);
-            }
-            advanceDtlRepository.saveAll(details);
+            updateAdvanceDetails(request.getAdvances(), transactionPoid);
         }
 
         entityManager.flush();
+        
+        // Log the update
+        loggingService.logChanges(oldEntity, header, ArGenReceiptHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+    }
+
+    private void updatePaymentDetails(List<GeneralReceiptPaymentDto> payments, Long transactionPoid) {
+        String currentUser = getCurrentUser();
+        LocalDateTime now = LocalDateTime.now();
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = transactionPoid.toString();
+        
+        List<ArGenReceiptPymtDetails> toSave = new ArrayList<>();
+        List<ArGenReceiptPymtDetails> toUpdate = new ArrayList<>();
+        List<Long> toDelete = new ArrayList<>();
+        List<LogRequestDto<ArGenReceiptPymtDetails>> logRequests = new ArrayList<>();
+        
+        Long maxDetRowId = pymtDetailsRepository.findMaxDetRowIdByTransactionPoid(transactionPoid);
+        
+        for (GeneralReceiptPaymentDto payment : payments) {
+            String action = payment.getActionType() != null ? payment.getActionType().toUpperCase() : "NOCHANGE";
+            switch (action) {
+                case "ISCREATED":
+                    toSave.add(ArGenReceiptPymtDetails.builder()
+                            .transactionPoid(transactionPoid)
+                            .detRowId(++maxDetRowId)
+                            .pymtType(payment.getType())
+                            .amount(payment.getAmount())
+                            .chqCardno(payment.getChequeNo())
+                            .chqDate(payment.getChequeDate())
+                            .bankPoid(payment.getBankPoid())
+                            .accountPoid(payment.getAccountPoid())
+                            .accountName(payment.getAccountName())
+                            .accountNo(payment.getAccountNumber())
+                            .ttBankPoid(payment.getTtBankPoid())
+                            .ttRef(payment.getTtRef())
+                            .creditCardRef(payment.getCreditCardRef())
+                            .cardType(payment.getCardType())
+                            .cardPoid(payment.getCardPoid())
+                            .createdBy(currentUser)
+                            .createdDate(now)
+                            .build());
+                    break;
+                    
+                case "ISUPDATED":
+                    ArGenReceiptPymtDetails existingPayment = pymtDetailsRepository
+                            .findByTransactionPoidAndDetRowId(transactionPoid, payment.getDetRowId())
+                            .orElseThrow(() -> new ResourceNotFoundException("Payment not found", "detRowId", payment.getDetRowId()));
+                    
+                    ArGenReceiptPymtDetails oldPayment = new ArGenReceiptPymtDetails();
+                    BeanUtils.copyProperties(existingPayment, oldPayment);
+                    
+                    existingPayment.setPymtType(payment.getType());
+                    existingPayment.setAmount(payment.getAmount());
+                    existingPayment.setChqCardno(payment.getChequeNo());
+                    existingPayment.setChqDate(payment.getChequeDate());
+                    existingPayment.setBankPoid(payment.getBankPoid());
+                    existingPayment.setAccountPoid(payment.getAccountPoid());
+                    existingPayment.setAccountName(payment.getAccountName());
+                    existingPayment.setAccountNo(payment.getAccountNumber());
+                    existingPayment.setTtBankPoid(payment.getTtBankPoid());
+                    existingPayment.setTtRef(payment.getTtRef());
+                    existingPayment.setCreditCardRef(payment.getCreditCardRef());
+                    existingPayment.setCardType(payment.getCardType());
+                    existingPayment.setCardPoid(payment.getCardPoid());
+                    existingPayment.setLastModifiedBy(currentUser);
+                    existingPayment.setLastModifiedDate(now);
+                    toUpdate.add(existingPayment);
+                    
+                    String logDetailForUpdate = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", transactionPoid, payment.getDetRowId());
+                    logRequests.add(new LogRequestDto<>(oldPayment, existingPayment, ArGenReceiptPymtDetails.class, docId, docKeyPoid, logDetailForUpdate));
+                    break;
+                    
+                case "ISDELETED":
+                    toDelete.add(payment.getDetRowId());
+                    loggingService.logDelete(payment, docId, docKeyPoid);
+                    break;
+            }
+        }
+        
+        if (!toSave.isEmpty()) {
+            pymtDetailsRepository.saveAll(toSave);
+            toSave.forEach(e -> {
+                String logDetail = String.format("Row Created on Payment with detRowId: %s", e.getDetRowId());
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString(), logDetail);
+            });
+        }
+
+        if (!toUpdate.isEmpty()) {
+            pymtDetailsRepository.saveAll(toUpdate);
+            if (!logRequests.isEmpty()) {
+                loggingService.createLogBatch(logRequests);
+            }
+        }
+
+        if (!toDelete.isEmpty()) {
+            pymtDetailsRepository.deleteByTransactionPoidAndDetRowIdIn(transactionPoid, toDelete);
+        }
+    }
+
+    private void updateBillDetails(List<GeneralReceiptBillDto> bills, Long transactionPoid) {
+        String currentUser = getCurrentUser();
+        LocalDateTime now = LocalDateTime.now();
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = transactionPoid.toString();
+        
+        List<ArGenReceiptBillDtl> toSave = new ArrayList<>();
+        List<ArGenReceiptBillDtl> toUpdate = new ArrayList<>();
+        List<Long> toDelete = new ArrayList<>();
+        List<LogRequestDto<ArGenReceiptBillDtl>> logRequests = new ArrayList<>();
+        
+        ArGenReceiptHdr header = receiptHdrRepository.findById(transactionPoid)
+                .orElseThrow(() -> new ResourceNotFoundException("General Receipt", "transactionPoid", transactionPoid));
+        
+        for (GeneralReceiptBillDto bill : bills) {
+            String action = bill.getActionType() != null ? bill.getActionType().toUpperCase() : "ISCREATED";
+            switch (action) {
+                case "ISCREATED":
+                    Long glPoid = bill.getGlPoid() != null ? bill.getGlPoid() : header.getRcvdOthPoid();
+                    toSave.add(ArGenReceiptBillDtl.builder()
+                            .transactionPoid(transactionPoid)
+                            .detRowId(bill.getDetRowId())
+                            .glPoid(glPoid)
+                            .billRefType(bill.getBillRefType() != null ? bill.getBillRefType() : header.getRefType())
+                            .billRefno(bill.getBillReference())
+                            .billDueDate(bill.getBillDueDate())
+                            .description(bill.getDescription())
+                            .amount(bill.getAmount())
+                            .crDrType(bill.getDrCr())
+                            .glCompanyPoid(bill.getGlCompanyPoid() != null ? bill.getGlCompanyPoid() : header.getCompanyPoid())
+                            .remarks(bill.getRemarks())
+                            .checkall("N")
+                            .createdBy(currentUser)
+                            .createdDate(now)
+                            .build());
+                    break;
+                    
+                case "ISUPDATED":
+                    ArGenReceiptBillDtl existingBill = billDtlRepository
+                            .findByTransactionPoidAndDetRowId(transactionPoid, bill.getDetRowId())
+                            .orElseThrow(() -> new ResourceNotFoundException("Bill not found", "detRowId", bill.getDetRowId()));
+                    
+                    ArGenReceiptBillDtl oldBill = new ArGenReceiptBillDtl();
+                    BeanUtils.copyProperties(existingBill, oldBill);
+                    
+                    Long updatedGlPoid = bill.getGlPoid() != null ? bill.getGlPoid() : header.getRcvdOthPoid();
+                    existingBill.setGlPoid(updatedGlPoid);
+                    existingBill.setBillRefType(bill.getBillRefType() != null ? bill.getBillRefType() : header.getRefType());
+                    existingBill.setBillRefno(bill.getBillReference());
+                    existingBill.setBillDueDate(bill.getBillDueDate());
+                    existingBill.setDescription(bill.getDescription());
+                    existingBill.setAmount(bill.getAmount());
+                    existingBill.setCrDrType(bill.getDrCr());
+                    existingBill.setGlCompanyPoid(bill.getGlCompanyPoid() != null ? bill.getGlCompanyPoid() : header.getCompanyPoid());
+                    existingBill.setRemarks(bill.getRemarks());
+                    existingBill.setLastModifiedBy(currentUser);
+                    existingBill.setLastModifiedDate(now);
+                    toUpdate.add(existingBill);
+                    
+                    String logDetailForUpdate = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", transactionPoid, bill.getDetRowId());
+                    logRequests.add(new LogRequestDto<>(oldBill, existingBill, ArGenReceiptBillDtl.class, docId, docKeyPoid, logDetailForUpdate));
+                    break;
+                    
+                case "ISDELETED":
+                    toDelete.add(bill.getDetRowId());
+                    loggingService.logDelete(bill, docId, docKeyPoid);
+                    break;
+            }
+        }
+        
+        if (!toSave.isEmpty()) {
+            billDtlRepository.saveAll(toSave);
+            toSave.forEach(e -> {
+                String logDetail = String.format("Row Created on Bill with detRowId: %s", e.getDetRowId());
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString(), logDetail);
+            });
+        }
+
+        if (!toUpdate.isEmpty()) {
+            billDtlRepository.saveAll(toUpdate);
+            if (!logRequests.isEmpty()) {
+                loggingService.createLogBatch(logRequests);
+            }
+        }
+
+        if (!toDelete.isEmpty()) {
+            billDtlRepository.deleteByTransactionPoidAndDetRowIdIn(transactionPoid, toDelete);
+        }
+        
+        if (!toSave.isEmpty() || !toUpdate.isEmpty()) {
+            entityManager.flush();
+            callBillwiseCheckProcedure(transactionPoid, header.getCompanyPoid());
+        }
+    }
+
+    private void updateChargeDetails(List<GeneralReceiptChargeDto> charges, Long transactionPoid) {
+        String currentUser = getCurrentUser();
+        LocalDateTime now = LocalDateTime.now();
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = transactionPoid.toString();
+        
+        List<ArGenReceiptChargesDtl> toSave = new ArrayList<>();
+        List<ArGenReceiptChargesDtl> toUpdate = new ArrayList<>();
+        List<Long> toDelete = new ArrayList<>();
+        List<LogRequestDto<ArGenReceiptChargesDtl>> logRequests = new ArrayList<>();
+        
+        ArGenReceiptHdr header = receiptHdrRepository.findById(transactionPoid)
+                .orElseThrow(() -> new ResourceNotFoundException("General Receipt", "transactionPoid", transactionPoid));
+        
+        for (GeneralReceiptChargeDto charge : charges) {
+            String action = charge.getActionType() != null ? charge.getActionType().toUpperCase() : "ISCREATED";
+            switch (action) {
+                case "ISCREATED":
+                    List<GLMasterEntity> chargeGLList = glMastersRepository.findAllByGlCodeAndDeletedFlag(charge.getGl(), "N");
+                    if (chargeGLList.isEmpty()) {
+                        throw new ValidationException("Charge GL not found: " + charge.getGl());
+                    }
+                    GLMasterEntity chargeGL = chargeGLList.get(0);
+                    
+                    toSave.add(ArGenReceiptChargesDtl.builder()
+                            .transactionPoid(transactionPoid)
+                            .detRowId(charge.getDetRowId())
+                            .chargeType(charge.getChargeType())
+                            .glPoid(chargeGL.getGlPoid())
+                            .amount(charge.getAmount())
+                            .bhdAmount(charge.getAmount().multiply(header.getCurrencyRate()))
+                            .taxPoid(charge.getTaxPoid())
+                            .taxPercentage(charge.getTaxPercent())
+                            .taxAmount(charge.getTaxAmount())
+                            .totalAmount(charge.getTotalAmount())
+                            .costPoid(charge.getCostCenter())
+                            .remarks(charge.getRemarks())
+                            .createdBy(currentUser)
+                            .createdDate(now)
+                            .build());
+                    break;
+                    
+                case "ISUPDATED":
+                    ArGenReceiptChargesDtl existingCharge = chargesDtlRepository
+                            .findByTransactionPoidAndDetRowId(transactionPoid, charge.getDetRowId())
+                            .orElseThrow(() -> new ResourceNotFoundException("Charge not found", "detRowId", charge.getDetRowId()));
+                    
+                    ArGenReceiptChargesDtl oldCharge = new ArGenReceiptChargesDtl();
+                    BeanUtils.copyProperties(existingCharge, oldCharge);
+                    
+                    List<GLMasterEntity> updatedChargeGLList = glMastersRepository.findAllByGlCodeAndDeletedFlag(charge.getGl(), "N");
+                    if (updatedChargeGLList.isEmpty()) {
+                        throw new ValidationException("Charge GL not found: " + charge.getGl());
+                    }
+                    GLMasterEntity updatedChargeGL = updatedChargeGLList.get(0);
+                    
+                    existingCharge.setChargeType(charge.getChargeType());
+                    existingCharge.setGlPoid(updatedChargeGL.getGlPoid());
+                    existingCharge.setAmount(charge.getAmount());
+                    existingCharge.setBhdAmount(charge.getAmount().multiply(header.getCurrencyRate()));
+                    existingCharge.setTaxPoid(charge.getTaxPoid());
+                    existingCharge.setTaxPercentage(charge.getTaxPercent());
+                    existingCharge.setTaxAmount(charge.getTaxAmount());
+                    existingCharge.setTotalAmount(charge.getTotalAmount());
+                    existingCharge.setCostPoid(charge.getCostCenter());
+                    existingCharge.setRemarks(charge.getRemarks());
+                    existingCharge.setLastModifiedBy(currentUser);
+                    existingCharge.setLastModifiedDate(now);
+                    toUpdate.add(existingCharge);
+                    
+                    String logDetailForUpdate = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", transactionPoid, charge.getDetRowId());
+                    logRequests.add(new LogRequestDto<>(oldCharge, existingCharge, ArGenReceiptChargesDtl.class, docId, docKeyPoid, logDetailForUpdate));
+                    break;
+                    
+                case "ISDELETED":
+                    toDelete.add(charge.getDetRowId());
+                    loggingService.logDelete(charge, docId, docKeyPoid);
+                    break;
+            }
+        }
+        
+        if (!toSave.isEmpty()) {
+            chargesDtlRepository.saveAll(toSave);
+            toSave.forEach(e -> {
+                String logDetail = String.format("Row Created on Charge with detRowId: %s", e.getDetRowId());
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString(), logDetail);
+            });
+        }
+
+        if (!toUpdate.isEmpty()) {
+            chargesDtlRepository.saveAll(toUpdate);
+            if (!logRequests.isEmpty()) {
+                loggingService.createLogBatch(logRequests);
+            }
+        }
+
+        if (!toDelete.isEmpty()) {
+            chargesDtlRepository.deleteByTransactionPoidAndDetRowIdIn(transactionPoid, toDelete);
+        }
+    }
+
+    private void updateAdvanceDetails(List<GeneralReceiptAdvanceDto> advances, Long transactionPoid) {
+        String currentUser = getCurrentUser();
+        LocalDateTime now = LocalDateTime.now();
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = transactionPoid.toString();
+        
+        List<ArGenReceiptAdvanceDtl> toSave = new ArrayList<>();
+        List<ArGenReceiptAdvanceDtl> toUpdate = new ArrayList<>();
+        List<Long> toDelete = new ArrayList<>();
+        List<LogRequestDto<ArGenReceiptAdvanceDtl>> logRequests = new ArrayList<>();
+        
+        for (GeneralReceiptAdvanceDto advance : advances) {
+            String action = advance.getActionType() != null ? advance.getActionType().toUpperCase() : "ISCREATED";
+            switch (action) {
+                case "ISCREATED":
+                    toSave.add(ArGenReceiptAdvanceDtl.builder()
+                            .transactionPoid(transactionPoid)
+                            .detRowId(advance.getDetRowId())
+                            .advanceRefDocId(advance.getAdvanceRefDocId())
+                            .advanceRefPoid(advance.getAdvanceRefPoid())
+                            .amount(advance.getAmount())
+                            .remarks(advance.getRemarks())
+                            .createdBy(currentUser)
+                            .createdDate(now)
+                            .build());
+                    break;
+                    
+                case "ISUPDATED":
+                    ArGenReceiptAdvanceDtl existingAdvance = advanceDtlRepository
+                            .findByTransactionPoidAndDetRowId(transactionPoid, advance.getDetRowId())
+                            .orElseThrow(() -> new ResourceNotFoundException("Advance not found", "detRowId", advance.getDetRowId()));
+                    
+                    ArGenReceiptAdvanceDtl oldAdvance = new ArGenReceiptAdvanceDtl();
+                    BeanUtils.copyProperties(existingAdvance, oldAdvance);
+                    
+                    existingAdvance.setAdvanceRefDocId(advance.getAdvanceRefDocId());
+                    existingAdvance.setAdvanceRefPoid(advance.getAdvanceRefPoid());
+                    existingAdvance.setAmount(advance.getAmount());
+                    existingAdvance.setRemarks(advance.getRemarks());
+                    existingAdvance.setLastModifiedBy(currentUser);
+                    existingAdvance.setLastModifiedDate(now);
+                    toUpdate.add(existingAdvance);
+                    
+                    String logDetailForUpdate = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", transactionPoid, advance.getDetRowId());
+                    logRequests.add(new LogRequestDto<>(oldAdvance, existingAdvance, ArGenReceiptAdvanceDtl.class, docId, docKeyPoid, logDetailForUpdate));
+                    break;
+                    
+                case "ISDELETED":
+                    toDelete.add(advance.getDetRowId());
+                    loggingService.logDelete(advance, docId, docKeyPoid);
+                    break;
+            }
+        }
+        
+        if (!toSave.isEmpty()) {
+            advanceDtlRepository.saveAll(toSave);
+            toSave.forEach(e -> {
+                String logDetail = String.format("Row Created on Advance with detRowId: %s", e.getDetRowId());
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString(), logDetail);
+            });
+        }
+
+        if (!toUpdate.isEmpty()) {
+            advanceDtlRepository.saveAll(toUpdate);
+            if (!logRequests.isEmpty()) {
+                loggingService.createLogBatch(logRequests);
+            }
+        }
+
+        if (!toDelete.isEmpty()) {
+            advanceDtlRepository.deleteByTransactionPoidAndDetRowIdIn(transactionPoid, toDelete);
+        }
     }
 
     @Override
@@ -691,10 +896,10 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         if (request.getPayments() != null && !request.getPayments().isEmpty()) {
             BigDecimal paymentTotal = request.getPayments().stream()
                     .filter(payment -> {
-                        String actionType = payment.getActionType();
+                        String action = payment.getActionType();
                         // Exclude payments marked as deleted
-                        return actionType == null || 
-                               !"isDeleted".equalsIgnoreCase(actionType.trim());
+                        return action == null || 
+                               !"ISDELETED".equalsIgnoreCase(action.trim());
                     })
                     .map(GeneralReceiptPaymentDto::getAmount)
                     .filter(amount -> amount != null)
@@ -703,8 +908,8 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
             log.debug("Amount validation - Receipt amount: {}, Payment total: {}, Active payments count: {}", 
                     header.getReceiptAmount(), paymentTotal, 
                     request.getPayments().stream().filter(p -> {
-                        String actionType = p.getActionType();
-                        return actionType == null || !"isDeleted".equalsIgnoreCase(actionType.trim());
+                        String action = p.getActionType();
+                        return action == null || !"ISDELETED".equalsIgnoreCase(action.trim());
                     }).count());
 
             if (header.getReceiptAmount().compareTo(paymentTotal) != 0) {
@@ -848,6 +1053,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                 .multicompany(dto.getMulticompany() != null ? dto.getMulticompany() : "N")
                 .ttBankPoid(dto.getTtBankPoid())
                 .costCenterPoid(dto.getCostCenterPoid())
+                .printDocCompId(dto.getPrintDocCompId())
                 .deleted("N")
                 .verified("N")
                 .dataLoaded("N")
@@ -882,6 +1088,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         header.setCostCenterPoid(dto.getCostCenterPoid());
         header.setLastModifiedBy(currentUser);
         header.setLastModifiedDate(now);
+        header.setPrintDocCompId(dto.getPrintDocCompId());
     }
 
     private void savePaymentDetails(ArGenReceiptHdr header, List<GeneralReceiptPaymentDto> payments, 
@@ -944,7 +1151,13 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         
         // Batch save all payment details in one call
         if (!details.isEmpty()) {
-            pymtDetailsRepository.saveAll(details);
+            List<ArGenReceiptPymtDetails> savedDetails = pymtDetailsRepository.saveAll(details);
+            
+            // Log each payment detail creation
+            savedDetails.forEach(paymentDetail -> {
+                String logDetail = String.format("Row Created on Payment with detRowId: %s", paymentDetail.getDetRowId());
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), header.getTransactionPoid().toString(), logDetail);
+            });
         }
     }
 
@@ -1002,8 +1215,14 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         
         // Batch save all bill details in one call
         if (!details.isEmpty()) {
-            billDtlRepository.saveAll(details);
+            List<ArGenReceiptBillDtl> savedDetails = billDtlRepository.saveAll(details);
             entityManager.flush();  // Ensure details are persisted before calling procedure
+            
+            // Log each bill detail creation
+            savedDetails.forEach(billDetail -> {
+                String logDetail = String.format("Row Created on Bill with detRowId: %s", billDetail.getDetRowId());
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), header.getTransactionPoid().toString(), logDetail);
+            });
             
             // Call PROC_GEN_RECEIPT_BILLWISE_CHK to format bill references (trim at pipe delimiter)
             callBillwiseCheckProcedure(header.getTransactionPoid(), header.getCompanyPoid());
@@ -1068,7 +1287,13 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         
         // Batch save all charge details in one call
         if (!details.isEmpty()) {
-            chargesDtlRepository.saveAll(details);
+            List<ArGenReceiptChargesDtl> savedDetails = chargesDtlRepository.saveAll(details);
+            
+            // Log each charge detail creation
+            savedDetails.forEach(chargeDetail -> {
+                String logDetail = String.format("Row Created on Charge with detRowId: %s", chargeDetail.getDetRowId());
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), header.getTransactionPoid().toString(), logDetail);
+            });
         }
 
         // Set extra charges flag
@@ -1115,7 +1340,13 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         
         // Batch save all advance details
         if (!details.isEmpty()) {
-            advanceDtlRepository.saveAll(details);
+            List<ArGenReceiptAdvanceDtl> savedDetails = advanceDtlRepository.saveAll(details);
+            
+            // Log each advance detail creation
+            savedDetails.forEach(advanceDetail -> {
+                String logDetail = String.format("Row Created on Advance with detRowId: %s", advanceDetail.getDetRowId());
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), header.getTransactionPoid().toString(), logDetail);
+            });
         }
     }
 
@@ -1272,6 +1503,12 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
     }
 
     private GeneralReceiptResponse buildResponse(ArGenReceiptHdr header) {
+
+        BigDecimal currencyRate = null;
+        if (header.getCurrencyRate() != null) {
+            currencyRate = header.getCurrencyRate().setScale(3, RoundingMode.HALF_UP);
+        }
+
         // Calculate BHD Amount (receiptAmount * currencyRate)
         BigDecimal bhdAmount = null;
         if (header.getRcptAmount() != null && header.getCurrencyRate() != null) {
@@ -1279,18 +1516,29 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         }
 
         // Fetch approval status from GLOBAL_APPROVAL_STATUS table
-        String approvalStatus = fetchApprovalStatus(header.getTransactionPoid());
+        final String approvalStatus = approvalService.getApprovalStatus(UserContext.getDocumentId(), header.getTransactionPoid());
 
         // Fetch Credit GL details
         CreditGlDto creditGL = null;
         if (header.getRcvdOthPoid() != null) {
-            creditGL = glMastersRepository.findById(header.getRcvdOthPoid())
-                    .map(gl -> CreditGlDto.builder()
-                            .glPoid(gl.getGlPoid())
-                            .glCode(gl.getGlCode())
-                            .glDescription(gl.getDescription())
-                            .build())
-                    .orElse(null);
+            Optional<GLMasterEntity> glOptional = glMastersRepository.findById(header.getRcvdOthPoid());
+            if (glOptional.isPresent()) {
+                GLMasterEntity gl = glOptional.get();
+                String glDescription = gl.getDescription();
+                try {
+                    LovGetListDto lovDetails = lovService.getDetailsByPoidAndLovName(gl.getGlPoid(), "GEN_RECEIPT_CREDIT_GL");
+                    if (lovDetails != null && lovDetails.getDescription() != null) {
+                        glDescription = lovDetails.getDescription();
+                    }
+                } catch (Exception e) {
+                    log.warn("Failed to fetch LOV description for GL poid {}: {}", gl.getGlPoid(), e.getMessage());
+                }
+                creditGL = CreditGlDto.builder()
+                        .glPoid(gl.getGlPoid())
+                        .glCode(gl.getGlCode())
+                        .glDescription(glDescription)
+                        .build();
+            }
         }
 
         // Fetch Print Title (Company Name) from LOV
@@ -1315,11 +1563,12 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                 .companyPoid(header.getCompanyPoid())
                 .receiptAmount(header.getRcptAmount())
                 .currencyCode(header.getCurrencyCode())
-                .currencyRate(header.getCurrencyRate())
+                .currencyRate(currencyRate)
                 .bhdAmount(bhdAmount)
                 .receivedFrom(header.getRcvdFromDtlPrint())
                 .creditGL(creditGL)
                 .refType(header.getRefType())
+                .docRef(header.getDocRef())
                 .narration(header.getRemarks())
                 .printTitle(printTitle)
                 .approvalStatus(approvalStatus)
@@ -1332,42 +1581,8 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                 .bills(convertBillDetailsToDto(header.getBillDetails()))
                 .extraCharges(convertChargeDetailsToDto(header.getChargesDetails()))
                 .advances(convertAdvanceDetailsToDto(header.getAdvanceDetails()))
+                .printDocCompId(header.getPrintDocCompId())
                 .build();
-    }
-
-    /**
-     * Fetch approval status from GLOBAL_APPROVAL_STATUS table
-     * Returns the latest ACTION_STATUS ordered by ACTIONED_DATETIME DESC
-     * @param transactionPoid Transaction POID
-     * @return Approval status string (ACTION_STATUS) or null if not found
-     */
-    private String fetchApprovalStatus(Long transactionPoid) {
-        try {
-            // Get the latest ACTION_STATUS for this document
-            // There can be multiple approval records (one per approval level)
-            // We get the most recent one based on ACTIONED_DATETIME
-            String sql = "SELECT ACTION_STATUS FROM GLOBAL_APPROVAL_STATUS " +
-                        "WHERE DOC_ID = :docId AND DOC_KEY_POID = :transactionPoid " +
-                        "AND (DELETED IS NULL OR DELETED = 'N') " +
-                        "ORDER BY ACTIONED_DATETIME DESC NULLS LAST, APPROVAL_POID DESC " +
-                        "FETCH FIRST 1 ROW ONLY";
-            
-            @SuppressWarnings("unchecked")
-            List<Object> results = entityManager.createNativeQuery(sql)
-                    .setParameter("docId", DOC_ID)
-                    .setParameter("transactionPoid", transactionPoid)
-                    .getResultList();
-            
-            if (results != null && !results.isEmpty()) {
-                Object result = results.get(0);
-                return result != null ? result.toString() : null;
-            }
-            return null;
-        } catch (Exception e) {
-            // If no approval status found or error, return null (not all receipts may have approval)
-            log.debug("No approval status found for receipt {}: {}", transactionPoid, e.getMessage());
-            return null;
-        }
     }
 
     private List<GeneralReceiptPaymentDto> convertPaymentDetailsToDto(List<ArGenReceiptPymtDetails> details) {

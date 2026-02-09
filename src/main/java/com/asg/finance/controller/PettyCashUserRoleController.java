@@ -3,6 +3,8 @@ package com.asg.finance.controller;
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.LoggingService;
 
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.PettyCashUserRoleRequestDto;
@@ -18,6 +20,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
@@ -32,9 +35,11 @@ import static com.asg.common.lib.dto.response.ApiResponse.success;
 @RequestMapping("/v1/petty-cash-user-role")
 public class PettyCashUserRoleController {
     private final PettyCashUserRoleService pettyCashUserRoleService;
+    private final LoggingService loggingService;
 
-    public PettyCashUserRoleController(PettyCashUserRoleService pettyCashUserRoleService) {
+    public PettyCashUserRoleController(PettyCashUserRoleService pettyCashUserRoleService, LoggingService loggingService) {
         this.pettyCashUserRoleService = pettyCashUserRoleService;
+        this.loggingService = loggingService;
     }
 
     @Operation(
@@ -154,6 +159,7 @@ public class PettyCashUserRoleController {
             @PathVariable Long refTypePoid) {
 
         PettyCashUserroleResponseDto responseDto = pettyCashUserRoleService.getPettyCashUserRole(refTypePoid);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), refTypePoid.toString());
         return success("Petty Cash User Role fetched successfully", responseDto);
     }
 
@@ -270,6 +276,7 @@ public class PettyCashUserRoleController {
                                                    @RequestBody(required = false) FilterRequestDto filters) {
         try {
             Map<String, Object> data = pettyCashUserRoleService.listPettyCashUserRole(UserContext.getDocumentId(), filters, pageable);
+
             return success("Petty Cash User Role fetched successfully", data);
         } catch (Exception ex) {
             return internalServerError("Unable to fetch pettyCashUserRole list: " + ex.getMessage());

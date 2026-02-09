@@ -447,6 +447,8 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                 .supplierDetails(mapLovDetails(savedPO.getSupplierPoid(), "SUPPLIER_MASTER", true))
                 .paymentTermsDetails(mapLovDetailsWithFallback(savedPO.getPaymentTerms(), "PO_PAYMENT_TYPE"))
                 .deliveryMethodDetails(mapLovDetailsWithFallback(savedPO.getDeliveryMethod(), "DELIVERY_METHOD"))
+                .createdBy(savedPO.getCreatedBy())
+                .createdDate(savedPO.getCreatedDate())
                 .items(itemDtos)
                 .build();
     }

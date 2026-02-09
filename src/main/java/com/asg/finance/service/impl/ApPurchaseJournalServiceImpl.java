@@ -1,8 +1,6 @@
 package com.asg.finance.service.impl;
 
-import com.asg.common.lib.dto.DeleteReasonDto;
-import com.asg.common.lib.dto.FilterDto;
-import com.asg.common.lib.dto.RawSearchResult;
+import com.asg.common.lib.dto.*;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
 import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
@@ -43,7 +41,6 @@ import java.math.BigDecimal;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
-import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.common.lib.security.util.UserContext;
 import org.apache.commons.collections4.CollectionUtils;
@@ -389,6 +386,8 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
             }
         }
 
+
+
         if (refPoid == null) {
             refPoid = transactionPoid;
         }
@@ -402,12 +401,17 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         String jobValidation = validateBeforeSave(
                 documentId,
                 refType,
-                String.valueOf(transactionPoid)
+                "FF".equalsIgnoreCase(refType)
+                        ? apPurchaseInvoiceHdrDto.getFfRef()
+                        : apPurchaseInvoiceHdrDto.getFdaRef()
         );
 
         if (jobValidation != null &&
-                !jobValidation.equalsIgnoreCase("SUCCESS")) {
-            throw new RuntimeException("Before Save Validation Failed → " + jobValidation);
+                jobValidation.toUpperCase().startsWith("WARNING")) {
+
+            throw new RuntimeException(
+                    "Before Save Validation Failed → " + jobValidation
+            );
         }
 
 
@@ -841,7 +845,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         if (apPurchaseInvoiceHdrDto.getTransactionDate() != null)
             apPurchaseInvoiceHdrEntity.setTransactionDate(apPurchaseInvoiceHdrDto.getTransactionDate());
         apPurchaseInvoiceHdrEntity.setGroupPoid(apPurchaseInvoiceHdrDto.getGroupPoid());
-        apPurchaseInvoiceHdrEntity.setDocRef(apPurchaseInvoiceHdrDto.getDocRef());
+       // apPurchaseInvoiceHdrEntity.setDocRef(apPurchaseInvoiceHdrDto.getDocRef());
         apPurchaseInvoiceHdrEntity.setPoRef(apPurchaseInvoiceHdrDto.getPoRef());
         apPurchaseInvoiceHdrEntity.setFdaRef(apPurchaseInvoiceHdrDto.getFdaRef());
         apPurchaseInvoiceHdrEntity.setFfRef(apPurchaseInvoiceHdrDto.getFfRef());

@@ -121,7 +121,12 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
                             .build())
                     .collect(Collectors.toList());
 
-            dtlRepository.saveAll(refundDetails);
+            List<GlImcoChequeRefundDtl> savedRefundDetails = dtlRepository.saveAll(refundDetails);
+            
+            savedRefundDetails.forEach(refundDetail -> {
+                String logDetail = String.format("Row Created on Cheque Refund with detRowId: %s", refundDetail.getDetRowId());
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), hdrPoid.toString(), logDetail);
+            });
 
             List<GlImcoChequeBillDtl> billDetails = request.getChequeBillDetails().stream()
                     .map(dto -> GlImcoChequeBillDtl.builder()
@@ -137,7 +142,12 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
                             .build())
                     .collect(Collectors.toList());
 
-            billDtlRepository.saveAll(billDetails);
+            List<GlImcoChequeBillDtl> savedBillDetails = billDtlRepository.saveAll(billDetails);
+            
+            savedBillDetails.forEach(billDetail -> {
+                String logDetail = String.format("Row Created on Cheque Bill with detRowId: %s", billDetail.getDetRowId());
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), hdrPoid.toString(), logDetail);
+            });
 
             callAfterSaveProcedure(savedHeader);
 

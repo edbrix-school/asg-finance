@@ -249,7 +249,7 @@ public class TaxMasterController {
             @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto) {
 
         service.softDeleteTaxMaster(taxPoid, deleteReasonDto);
-        return success("Tax Master has been soft deleted successfully");
+        return success("Tax Master has been deleted successfully");
     }
 
     @Operation(

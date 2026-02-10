@@ -101,6 +101,10 @@ public class DebitNoteServiceImpl implements DebitNoteService {
 
         // Build response by reading saved header + details from DB (so DB-generated fields are included)
         DebitNoteHeaderDto result = mapToDto(savedEntity);
+        result.setCreatedBy(savedEntity.getCreatedBy());
+        result.setCreatedDate(savedEntity.getCreatedDate());
+        result.setLastModifiedBy(savedEntity.getLastModifiedBy());
+        result.setLastModifiedDate(savedEntity.getLastModifiedDate());
         loadDetails(result, savedEntity.getTransactionPoid(), savedEntity.getRefType());
 
         // Load breakups into response
@@ -156,6 +160,10 @@ public class DebitNoteServiceImpl implements DebitNoteService {
 
         // return database-backed DTO (with details loaded from DB)
         DebitNoteHeaderDto result = mapToDto(existingEntity);
+        result.setCreatedBy(existingEntity.getCreatedBy());
+        result.setCreatedDate(existingEntity.getCreatedDate());
+        result.setLastModifiedBy(existingEntity.getLastModifiedBy());
+        result.setLastModifiedDate(existingEntity.getLastModifiedDate());
         loadDetails(result, transactionPoid, existingEntity.getRefType());
 
         // Load breakups into response
@@ -199,6 +207,10 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                 .orElseThrow(() -> new ResourceNotFoundException("DebitNote", "transactionPoid", transactionPoid));
 
         DebitNoteHeaderDto dto = mapToDto(entity);
+        dto.setCreatedBy(entity.getCreatedBy());
+        dto.setCreatedDate(entity.getCreatedDate());
+        dto.setLastModifiedBy(entity.getLastModifiedBy());
+        dto.setLastModifiedDate(entity.getLastModifiedDate());
         loadDetails(dto, transactionPoid, entity.getRefType());
 
         // Load breakups into GL details

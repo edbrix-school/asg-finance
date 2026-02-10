@@ -1775,8 +1775,8 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         List<ApPiFromPoResponseDto> list =
                 apPurchaseJournalRepositoryImpl.createPiFromPo(
                         UserContext.getGroupPoid(),
-                        UserContext.getUserPoid(),
                         UserContext.getCompanyPoid(),
+                        UserContext.getUserPoid(),
                         poPoid, result);
 
         log.info("Result from PROC_AP_PI_CREATE_FROM_PO → {}", result);

@@ -7,6 +7,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -90,6 +91,15 @@ public class DebitNoteHeaderDto {
     private String deleted;
 
     private String voyageRef;
+    
+    // Audit fields
+    private String createdBy;
+    
+    private LocalDateTime createdDate;
+    
+    private String lastModifiedBy;
+    
+    private LocalDateTime lastModifiedDate;
     
     // Conditional detail lists based on refType
     @Valid

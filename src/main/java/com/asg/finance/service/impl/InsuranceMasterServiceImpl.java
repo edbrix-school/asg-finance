@@ -467,14 +467,31 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
     private List<InsuranceEmployeeDetail> buildEmployeeDetails(List<InsuranceEmployeeDetailRequestDto> dtos, InsuranceMaster parent) {
         if (dtos == null) return new ArrayList<>();
         List<InsuranceEmployeeDetail> result = new ArrayList<>();
-        long nextDetRowId = 1;
+        
+        // Get max existing detRowId
+        long maxDetRowId = parent.getEmployeeDetails() != null ? 
+            parent.getEmployeeDetails().stream()
+                .mapToLong(InsuranceEmployeeDetail::getDetRowId)
+                .max().orElse(0L) : 0L;
+        long nextDetRowId = maxDetRowId + 1;
         
         for (InsuranceEmployeeDetailRequestDto dto : dtos) {
             String action = normalizeAction(dto.getActionType());
             
             if ("ISDELETED".equals(action)) continue;
             
-            Long detRowId = dto.getDetRowId() != null ? dto.getDetRowId() : nextDetRowId++;
+            // Fix: Action type determines detRowId assignment
+            Long detRowId;
+            if ("ISCREATED".equals(action)) {
+                detRowId = nextDetRowId++; // Always assign new ID for CREATE
+            } else if ("ISUPDATED".equals(action)) {
+                if (dto.getDetRowId() == null) {
+                    throw new ValidationException("DetRowId is required for UPDATE action on Employee Detail");
+                }
+                detRowId = dto.getDetRowId(); // Must use provided ID for UPDATE
+            } else {
+                detRowId = dto.getDetRowId() != null ? dto.getDetRowId() : nextDetRowId++; // Use provided or assign new
+            }
             
             result.add(InsuranceEmployeeDetail.builder()
                     .transactionPoid(parent.getTransactionPoid())
@@ -494,14 +511,31 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
     private List<InsurancePropertyDetail> buildPropertyDetails(List<InsurancePropertyDetailRequestDto> dtos, InsuranceMaster parent) {
         if (dtos == null) return new ArrayList<>();
         List<InsurancePropertyDetail> result = new ArrayList<>();
-        long nextDetRowId = 1;
+        
+        // Get max existing detRowId
+        long maxDetRowId = parent.getPropertyDetails() != null ? 
+            parent.getPropertyDetails().stream()
+                .mapToLong(InsurancePropertyDetail::getDetRowId)
+                .max().orElse(0L) : 0L;
+        long nextDetRowId = maxDetRowId + 1;
         
         for (InsurancePropertyDetailRequestDto dto : dtos) {
             String action = normalizeAction(dto.getActionType());
             
             if ("ISDELETED".equals(action)) continue;
             
-            Long detRowId = dto.getDetRowId() != null ? dto.getDetRowId() : nextDetRowId++;
+            // Fix: Action type determines detRowId assignment
+            Long detRowId;
+            if ("ISCREATED".equals(action)) {
+                detRowId = nextDetRowId++; // Always assign new ID for CREATE
+            } else if ("ISUPDATED".equals(action)) {
+                if (dto.getDetRowId() == null) {
+                    throw new ValidationException("DetRowId is required for UPDATE action on Property Detail");
+                }
+                detRowId = dto.getDetRowId(); // Must use provided ID for UPDATE
+            } else {
+                detRowId = dto.getDetRowId() != null ? dto.getDetRowId() : nextDetRowId++; // Use provided or assign new
+            }
             
             result.add(InsurancePropertyDetail.builder()
                     .transactionPoid(parent.getTransactionPoid())
@@ -521,15 +555,33 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
     private List<InsurancePicDetail> buildPicDetails(List<InsurancePicDetailRequestDto> dtos, InsuranceMaster parent) {
         if (dtos == null) return new ArrayList<>();
         List<InsurancePicDetail> result = new ArrayList<>();
-        long nextDetRowId = 1;
+        
+        // Get max existing detRowId
+        long maxDetRowId = parent.getPicDetails() != null ? 
+            parent.getPicDetails().stream()
+                .mapToLong(InsurancePicDetail::getDetRowId)
+                .max().orElse(0L) : 0L;
+        long nextDetRowId = maxDetRowId + 1;
         
         for (InsurancePicDetailRequestDto dto : dtos) {
             String action = normalizeAction(dto.getActionType());
             
             if ("ISDELETED".equals(action)) continue;
             
+            // Fix: Action type determines detRowId assignment
+            Long detRowId;
+            if ("ISCREATED".equals(action)) {
+                detRowId = nextDetRowId++; // Always assign new ID for CREATE
+            } else if ("ISUPDATED".equals(action)) {
+                if (dto.getDetRowId() == null) {
+                    throw new ValidationException("DetRowId is required for UPDATE action on PIC Detail");
+                }
+                detRowId = dto.getDetRowId(); // Must use provided ID for UPDATE
+            } else {
+                detRowId = dto.getDetRowId() != null ? dto.getDetRowId() : nextDetRowId++; // Use provided or assign new
+            }
+            
             DetailsDto roleDetails = getRoleDetails(dto.getRolePoid());
-            Long detRowId = dto.getDetRowId() != null ? dto.getDetRowId() : nextDetRowId++;
             
             result.add(InsurancePicDetail.builder()
                     .transactionPoid(parent.getTransactionPoid())

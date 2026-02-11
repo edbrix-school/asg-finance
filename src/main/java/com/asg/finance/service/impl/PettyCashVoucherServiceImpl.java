@@ -20,6 +20,7 @@ import com.asg.finance.repository.TaxMasterRepository;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.finance.dto.*;
 import com.asg.finance.entity.GLPettyCashItemDtl;
+import com.asg.finance.dto.GlPettyCashItemDtlRequestDto;
 import com.asg.finance.entity.GlPettyCashChargeDtl;
 import com.asg.finance.entity.GlPettyCashPaymentDtl;
 import com.asg.finance.entity.GlPettyCashPaymentHdr;
@@ -378,8 +379,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
     private List<GlPettyCashPaymentDtl> mapPaymentDtls(PettyCashRequestBase requestDto, Long hdrPoid) {
         // For CREATE: filter out "noChanges" and "isDeleted", only process "isCreated" or null/empty
-        // Frontend will pass detRowId, so we use it directly (or null for auto-generation by database)
-        return Optional.ofNullable(requestDto.getGlPettyCashPaymentDtlRequestDtos())
+        List<GlPettyCashPaymentDtlRequestDto> filteredDtos = Optional.ofNullable(requestDto.getGlPettyCashPaymentDtlRequestDtos())
                 .orElse(Collections.emptyList())
                 .stream()
                 .filter(dtl -> {
@@ -391,10 +391,20 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     // Only process "ISCREATED", skip "NOCHANGES" and "ISDELETED" in CREATE
                     return "ISCREATED".equals(actionType);
                 })
+                .collect(Collectors.toList());
+        
+        final long[] detRowIdCounter = {1};
+        return filteredDtos.stream()
                 .map(dtl -> {
+                    // Auto-generate detRowId if not provided
+                    Long detRowId = dtl.getDetRowId();
+                    if (detRowId == null) {
+                        detRowId = detRowIdCounter[0]++;
+                    }
+                    
                     return GlPettyCashPaymentDtl.builder()
                             .transactionPoid(hdrPoid)
-                            .detRowId(dtl.getDetRowId())  // Use detRowId from frontend directly
+                            .detRowId(detRowId)  // Use auto-generated or provided detRowId
                             .type(dtl.getType())
                             .companyPoid(dtl.getCompanyPoid())
                             .glMaster(dtl.getGlPoid() != null ? GLMaster.builder()
@@ -425,7 +435,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
     private List<GLPettyCashItemDtl> mapItemDtls(PettyCashRequestBase requestDto, Long hdrPoid) {
         // For CREATE: filter out "noChanges" and "isDeleted", only process "isCreated" or null/empty
-        return Optional.ofNullable(requestDto.getGlPettyCashItemDtlRequestDtos())
+        List<GlPettyCashItemDtlRequestDto> filteredDtos = Optional.ofNullable(requestDto.getGlPettyCashItemDtlRequestDtos())
                 .orElse(Collections.emptyList())
                 .stream()
                 .filter(dtl -> {
@@ -437,10 +447,20 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     // Only process "ISCREATED", skip "NOCHANGES" and "ISDELETED" in CREATE
                     return "ISCREATED".equals(actionType);
                 })
-                .<GLPettyCashItemDtl>map(dtl -> {
+                .collect(Collectors.toList());
+        
+        final long[] detRowIdCounter = {1};
+        return filteredDtos.stream()
+                .map(dtl -> {
+                    // Auto-generate detRowId if not provided
+                    Long detRowId = dtl.getDetRowId();
+                    if (detRowId == null) {
+                        detRowId = detRowIdCounter[0]++;
+                    }
+                    
                     GLPettyCashItemDtl.GLPettyCashItemDtlBuilder builder = GLPettyCashItemDtl.builder()
                             .transactionPoid(hdrPoid)
-                            .detRowId(dtl.getDetRowId())
+                            .detRowId(detRowId)
                             .poQty(dtl.getPoQty())
                             .dnQty(dtl.getDnQty())
                             .qtyReceived(dtl.getQtyReceived())
@@ -474,7 +494,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
     private List<GlPettyCashChargeDtl> mapChargeDtls(PettyCashRequestBase requestDto, Long hdrPoid) {
         // For CREATE: filter out "noChanges" and "isDeleted", only process "isCreated" or null/empty
-        return Optional.ofNullable(requestDto.getGlPettyCashChargeDtlRequestDtos())
+        List<GlPettyCashChargeDtlRequestDto> filteredDtos = Optional.ofNullable(requestDto.getGlPettyCashChargeDtlRequestDtos())
                 .orElse(Collections.emptyList())
                 .stream()
                 .filter(dtl -> {
@@ -486,9 +506,20 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     // Only process "ISCREATED", skip "NOCHANGES" and "ISDELETED" in CREATE
                     return "ISCREATED".equals(actionType);
                 })
-                .map(dtl -> GlPettyCashChargeDtl.builder()
+                .collect(Collectors.toList());
+        
+        final long[] detRowIdCounter = {1};
+        return filteredDtos.stream()
+                .map(dtl -> {
+                    // Auto-generate detRowId if not provided
+                    Long detRowId = dtl.getDetRowId();
+                    if (detRowId == null) {
+                        detRowId = detRowIdCounter[0]++;
+                    }
+                    
+                    return GlPettyCashChargeDtl.builder()
                         .transactionPoid(hdrPoid)
-                        .detRowId(dtl.getDetRowId())
+                        .detRowId(detRowId)
                         .shipChargeMaster(dtl.getChargePoid() != null ?
                                 ShipChargeEntity.builder()
                                         .chargePoid(dtl.getChargePoid())
@@ -512,7 +543,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                         .createdDate(LocalDateTime.now())
                         .lastModifiedBy(getCurrentUser())
                         .lastModifiedDate(LocalDateTime.now())
-                        .build())
+                        .build();
+                })
                 .collect(Collectors.toList());
     }
 
@@ -1154,7 +1186,19 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     // Create new record
                     GlPettyCashPaymentDtl newEntity = new GlPettyCashPaymentDtl();
                     newEntity.setTransactionPoid(hdrPoid);
-                    newEntity.setDetRowId(dto.getDetRowId()); // May be null for new records
+                    
+                    // Auto-generate detRowId if not provided
+                    Long detRowId = dto.getDetRowId();
+                    if (detRowId == null) {
+                        // Find max existing detRowId and increment
+                        Long maxDetRowId = existing.stream()
+                                .map(GlPettyCashPaymentDtl::getDetRowId)
+                                .filter(Objects::nonNull)
+                                .max(Long::compareTo)
+                                .orElse(0L);
+                        detRowId = maxDetRowId + 1;
+                    }
+                    newEntity.setDetRowId(detRowId);
                     newEntity.setType(dto.getType());
                     newEntity.setCompanyPoid(dto.getCompanyPoid());
                     newEntity.setDrAmt(dto.getDrAmt());
@@ -1297,7 +1341,19 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     // Create new record
                     GlPettyCashChargeDtl newEntity = new GlPettyCashChargeDtl();
                     newEntity.setTransactionPoid(hdrPoid);
-                    newEntity.setDetRowId(dto.getDetRowId()); // May be null for new records
+                    
+                    // Auto-generate detRowId if not provided
+                    Long detRowId = dto.getDetRowId();
+                    if (detRowId == null) {
+                        // Find max existing detRowId and increment
+                        Long maxDetRowId = existing.stream()
+                                .map(GlPettyCashChargeDtl::getDetRowId)
+                                .filter(Objects::nonNull)
+                                .max(Long::compareTo)
+                                .orElse(0L);
+                        detRowId = maxDetRowId + 1;
+                    }
+                    newEntity.setDetRowId(detRowId);
                     newEntity.setDescription(dto.getDescription());
                     newEntity.setRemarks(dto.getRemarks());
                     newEntity.setChargeAmount(dto.getChargeAmount());
@@ -1438,7 +1494,19 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     // Create new record
                     GLPettyCashItemDtl newEntity = new GLPettyCashItemDtl();
                     newEntity.setTransactionPoid(hdrPoid);
-                    newEntity.setDetRowId(dto.getDetRowId()); // May be null for new records
+                    
+                    // Auto-generate detRowId if not provided
+                    Long detRowId = dto.getDetRowId();
+                    if (detRowId == null) {
+                        // Find max existing detRowId and increment
+                        Long maxDetRowId = existing.stream()
+                                .map(GLPettyCashItemDtl::getDetRowId)
+                                .filter(Objects::nonNull)
+                                .max(Long::compareTo)
+                                .orElse(0L);
+                        detRowId = maxDetRowId + 1;
+                    }
+                    newEntity.setDetRowId(detRowId);
                     newEntity.setPoQty(dto.getPoQty());
                     newEntity.setDnQty(dto.getDnQty());
                     newEntity.setQtyReceived(dto.getQtyReceived());

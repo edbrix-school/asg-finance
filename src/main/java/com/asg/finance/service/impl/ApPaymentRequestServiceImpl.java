@@ -64,11 +64,15 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
 
         Long transactionPoid = hdr.getTransactionPoid();
 
-        List<ApPaymentRequestDtl> details =
-                requestDto.getDetails().stream()
-                        .map(d -> ApPaymentRequestMapper
-                                .toDtlEntity(transactionPoid, d))
-                        .collect(Collectors.toList());
+        // Auto-generate detRowId for new records
+        List<ApPaymentRequestDtl> details = new java.util.ArrayList<>();
+        long detRowId = 1;
+        
+        for (var detailDto : requestDto.getDetails()) {
+            detailDto.setDetRowId(detRowId++); // Auto-generate detRowId
+            ApPaymentRequestDtl detail = ApPaymentRequestMapper.toDtlEntity(transactionPoid, detailDto);
+            details.add(detail);
+        }
 
         dtlRepository.saveAll(details);
 
@@ -232,11 +236,18 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
         List<LogRequestDto<ApPaymentRequestDtl>> logRequests = new java.util.ArrayList<>();
         String docId = UserContext.getDocumentId();
         
+        // Auto-generate detRowId for new records
+        Long maxDetRowId = dtlRepository.findByIdTransactionPoid(transactionPoid).stream()
+                .mapToLong(d -> d.getId().getDetRowId())
+                .max().orElse(0L);
+        
         for (com.asg.finance.dto.ApPaymentRequestDtlRequestDto detail : details) {
             String actionType = detail.getActionType() != null ? detail.getActionType().toUpperCase() : "ISCREATED";
             
             switch (actionType) {
                 case "ISCREATED" -> {
+                    // Auto-generate detRowId for new records
+                    detail.setDetRowId(++maxDetRowId);
                     ApPaymentRequestDtl entity = ApPaymentRequestMapper.toDtlEntity(transactionPoid, detail);
                     dtlRepository.save(entity);
                     String logDetail = String.format("Row Created on AP Payment Request Detail with detRowId: %s", entity.getId().getDetRowId());

@@ -1244,10 +1244,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
             Long incomingDetRowId = glDto.getDetRowId();
             if (incomingDetRowId == null) {
-                throw new ValidationException("detRowId is required");
+                incomingDetRowId = ++detRowId;
+                glDto.setDetRowId(incomingDetRowId);
+            } else {
+                detRowId = Math.max(detRowId, incomingDetRowId);
             }
-            detRowId = Math.max(detRowId, incomingDetRowId);
-            glDto.setDetRowId(incomingDetRowId);
 
             if ("N".equalsIgnoreCase(issueType)) {
                 // Normal + Reversal (SRS requirement)
@@ -1372,10 +1373,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
             Long incomingDetRowId = dto.getDetRowId();
             if (incomingDetRowId == null) {
-                throw new ValidationException("detRowId is required");
+                incomingDetRowId = ++detRowId;
+                dto.setDetRowId(incomingDetRowId);
+            } else {
+                detRowId = Math.max(detRowId, incomingDetRowId);
             }
-            detRowId = Math.max(detRowId, incomingDetRowId);
-            dto.setDetRowId(incomingDetRowId);
 
             ArCreditNoteChargeDtl entity = new ArCreditNoteChargeDtl();
             entity.setTransactionPoid(transactionPoid);
@@ -1494,7 +1496,8 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                 case "ISCREATED": {
                     Long detRowId = dto.getDetRowId();
                     if (detRowId == null) {
-                        throw new ValidationException("detRowId is required");
+                        detRowId = ++nextDetRowId;
+                        dto.setDetRowId(detRowId);
                     }
                     if (detRowId > nextDetRowId) {
                         nextDetRowId = detRowId;
@@ -1627,7 +1630,8 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                 case "ISCREATED": {
                     Long detRowId = dto.getDetRowId();
                     if (detRowId == null) {
-                        throw new ValidationException("detRowId is required");
+                        detRowId = ++nextDetRowId;
+                        dto.setDetRowId(detRowId);
                     }
                     if (detRowId > nextDetRowId) {
                         nextDetRowId = detRowId;

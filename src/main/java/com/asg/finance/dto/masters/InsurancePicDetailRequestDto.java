@@ -17,14 +17,14 @@ public class InsurancePicDetailRequestDto {
     
     private Long detRowId;
     
-    @NotNull(message = "Serial number is mandatory")
+    @NotNull(message = "Role is mandatory")
     private Long rolePoid;
     
     @NotBlank(message = "Contact Type is mandatory")
     private String contactType;
     
-    @NotBlank(message = "PIC Person is mandatory")
-    private String picPerson;
+    @NotNull(message = "PIC Person is mandatory")
+    private Long picPersonPoid;
     
     @NotNull(message = "From Date is mandatory")
     private LocalDate fromDate;

@@ -39,8 +39,8 @@ public class InsurancePicDetail {
     @Column(name = "CONTACT_TYPE", length = 25)
     private String contactType;
 
-    @Column(name = "PIC_PERSON", length = 25)
-    private String picPerson;
+    @Column(name = "PIC_PERSON")
+    private Long picPersonPoid;
 
     @Column(name = "FROM_DATE")
     private LocalDate fromDate;

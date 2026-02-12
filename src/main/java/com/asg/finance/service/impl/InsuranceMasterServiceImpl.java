@@ -196,7 +196,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         } catch (Exception e) {
             System.err.println("Error in createInsuranceMaster: " + e.getMessage());
             e.printStackTrace();
-            throw new RuntimeException("Failed to create Insurance Master: " + e.getMessage(), e);
+            throw e;
         }
     }
 
@@ -348,7 +348,14 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
     private List<InsuranceEmployeeDetail> buildEmployeeDetails(List<InsuranceEmployeeDetailRequestDto> dtos, InsuranceMaster parent) {
         if (dtos == null) return new ArrayList<>();
         List<InsuranceEmployeeDetail> result = new ArrayList<>();
-        long nextDetRowId = 1;
+        
+        // Find max detRowId from existing records
+        long maxDetRowId = dtos.stream()
+            .filter(dto -> dto.getDetRowId() != null)
+            .mapToLong(InsuranceEmployeeDetailRequestDto::getDetRowId)
+            .max()
+            .orElse(0L);
+        long nextDetRowId = maxDetRowId + 1;
         
         for (InsuranceEmployeeDetailRequestDto dto : dtos) {
             String action = normalizeAction(dto.getActionType());
@@ -375,7 +382,14 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
     private List<InsurancePropertyDetail> buildPropertyDetails(List<InsurancePropertyDetailRequestDto> dtos, InsuranceMaster parent) {
         if (dtos == null) return new ArrayList<>();
         List<InsurancePropertyDetail> result = new ArrayList<>();
-        long nextDetRowId = 1;
+        
+        // Find max detRowId from existing records
+        long maxDetRowId = dtos.stream()
+            .filter(dto -> dto.getDetRowId() != null)
+            .mapToLong(InsurancePropertyDetailRequestDto::getDetRowId)
+            .max()
+            .orElse(0L);
+        long nextDetRowId = maxDetRowId + 1;
         
         for (InsurancePropertyDetailRequestDto dto : dtos) {
             String action = normalizeAction(dto.getActionType());
@@ -402,7 +416,14 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
     private List<InsurancePicDetail> buildPicDetails(List<InsurancePicDetailRequestDto> dtos, InsuranceMaster parent) {
         if (dtos == null) return new ArrayList<>();
         List<InsurancePicDetail> result = new ArrayList<>();
-        long nextDetRowId = 1;
+        
+        // Find max detRowId from existing records
+        long maxDetRowId = dtos.stream()
+            .filter(dto -> dto.getDetRowId() != null)
+            .mapToLong(InsurancePicDetailRequestDto::getDetRowId)
+            .max()
+            .orElse(0L);
+        long nextDetRowId = maxDetRowId + 1;
         
         for (InsurancePicDetailRequestDto dto : dtos) {
             String action = normalizeAction(dto.getActionType());

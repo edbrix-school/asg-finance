@@ -496,7 +496,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                         }
                     }
                     return InsuranceEmployeeDetailResponseDto.builder()
-                            .employeeDetailPoid(e.getDetRowId())
+                            .detRowId(e.getDetRowId())
                             .employee(employeeLov)
                             .amount(e.getAmount())
                             .remarks(e.getRemarks())
@@ -514,7 +514,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                         propertyLov = getLovByPoid(e.getPropertyPoid(), "INSURANCE_PROPERTY_MASTER");
                     }
                     return InsurancePropertyDetailResponseDto.builder()
-                            .propertyDetailPoid(e.getDetRowId())
+                            .detRowId(e.getDetRowId())
                             .property(propertyLov)
                             .amount(e.getAmount())
                             .remarks(e.getRemarks())

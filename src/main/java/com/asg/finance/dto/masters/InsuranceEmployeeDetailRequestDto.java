@@ -16,6 +16,8 @@ public class InsuranceEmployeeDetailRequestDto {
     
     private Long detRowId;
     
+    private Long employeePoid;
+    
     @NotNull(message = "Amount is mandatory")
     private BigDecimal amount;
     

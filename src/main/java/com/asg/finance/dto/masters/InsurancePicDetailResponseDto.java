@@ -1,5 +1,7 @@
 package com.asg.finance.dto.masters;
 
+import com.asg.common.lib.dto.DetailsDto;
+import com.asg.common.lib.dto.LovGetListDto;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -12,9 +14,10 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @Builder
 public class InsurancePicDetailResponseDto {
-    private Long rolePoid;
+    private Long detRowId;
+    private DetailsDto role;
     private String contactType;
-    private String picPerson;
+    private LovGetListDto picPerson;
     private LocalDate fromDate;
     private LocalDate toDate;
 }

@@ -229,21 +229,24 @@ WHERE TRANSACTION_POID=$P{DOC_KEY_POID}]]>
                 <textFieldExpression><![CDATA[$F{RCPT_AMOUNT}]]></textFieldExpression>
             </textField>
             <staticText>
-                <reportElement positionType="Float" x="61" y="90" width="6" height="18" uuid="afedd4c7-ef76-49e7-b3a9-f6d1c8550813"/>
+                <reportElement positionType="Float" x="70" y="90" width="6" height="18" uuid="afedd4c7-ef76-49e7-b3a9-f6d1c8550813"/>
                 <textElement textAlignment="Center" verticalAlignment="Top">
                     <font isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[:]]></text>
             </staticText>
             <staticText>
-                <reportElement positionType="Float" x="10" y="90" width="51" height="18" uuid="3cfd336b-9feb-4f0c-ad94-de762db28158"/>
+                <reportElement positionType="Float" x="10" y="90" width="60" height="18" uuid="3cfd336b-9feb-4f0c-ad94-de762db28158"/>
                 <textElement verticalAlignment="Top">
                     <font size="10" isBold="true" pdfFontName="Helvetica-Bold"/>
                 </textElement>
                 <text><![CDATA[Narration]]></text>
             </staticText>
             <textField isStretchWithOverflow="true" isBlankWhenNull="true">
-                <reportElement positionType="Float" x="69" y="90" width="471" height="18" uuid="49e0d343-f7d2-44f8-8dfe-be31addf6f71"/>
+                <reportElement positionType="Float" x="78" y="90" width="462" height="18" uuid="49e0d343-f7d2-44f8-8dfe-be31addf6f71"/>
+                <textElement>
+                    <font size="10"/>
+                </textElement>
                 <textFieldExpression><![CDATA[$F{REMARKS}]]></textFieldExpression>
             </textField>
         </band>

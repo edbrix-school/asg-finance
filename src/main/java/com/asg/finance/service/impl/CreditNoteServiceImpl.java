@@ -549,6 +549,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         validateMandatoryFields(dto);
         validateMultiCompanyFields(dto);
         validateTaxFields(dto);
+        validateGrandTotalWithCharges(dto);
 
         // Call GL voucher validation to check reference document status
         executeGLVoucherValidation(dto);
@@ -623,6 +624,37 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                 if (chargeDetail.getTaxPoid() == null) {
                     throw new RuntimeException("Tax Poid is mandatory for Charge Detail row " + (i + 1));
                 }
+            }
+        }
+    }
+
+    private void validateGrandTotalWithCharges(CreditNoteHeaderDto dto) {
+        if (dto.getGrandTotal() == null) {
+            return;
+        }
+
+        BigDecimal totalCharges = BigDecimal.ZERO;
+        BigDecimal totalGlDetails = BigDecimal.ZERO;
+
+        if (dto.getChargeDetails() != null && !dto.getChargeDetails().isEmpty()) {
+            totalCharges = dto.getChargeDetails().stream()
+                    .map(charge -> charge.getTotalAmount() != null ? charge.getTotalAmount() : BigDecimal.ZERO)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            if (dto.getGrandTotal().compareTo(totalCharges) != 0) {
+                throw new ValidationException(
+                        "Amount (" + dto.getGrandTotal() + ") is not matching with total charges (" + totalCharges + ") amount.");
+            }
+        }
+
+        if (dto.getGlDetails() != null && !dto.getGlDetails().isEmpty()) {
+            totalGlDetails = dto.getGlDetails().stream()
+                    .map(gl -> gl.getTotalAmount() != null ? gl.getTotalAmount() : BigDecimal.ZERO)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            if (dto.getGrandTotal().compareTo(totalGlDetails) != 0) {
+                throw new ValidationException(
+                        "Amount (" + dto.getGrandTotal() + ") is not matching with total charges (" + totalGlDetails + ") amount.");
             }
         }
     }
@@ -1212,10 +1244,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
             Long incomingDetRowId = glDto.getDetRowId();
             if (incomingDetRowId == null) {
-                throw new ValidationException("detRowId is required");
+                incomingDetRowId = ++detRowId;
+                glDto.setDetRowId(incomingDetRowId);
+            } else {
+                detRowId = Math.max(detRowId, incomingDetRowId);
             }
-            detRowId = Math.max(detRowId, incomingDetRowId);
-            glDto.setDetRowId(incomingDetRowId);
 
             if ("N".equalsIgnoreCase(issueType)) {
                 // Normal + Reversal (SRS requirement)
@@ -1340,10 +1373,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
             Long incomingDetRowId = dto.getDetRowId();
             if (incomingDetRowId == null) {
-                throw new ValidationException("detRowId is required");
+                incomingDetRowId = ++detRowId;
+                dto.setDetRowId(incomingDetRowId);
+            } else {
+                detRowId = Math.max(detRowId, incomingDetRowId);
             }
-            detRowId = Math.max(detRowId, incomingDetRowId);
-            dto.setDetRowId(incomingDetRowId);
 
             ArCreditNoteChargeDtl entity = new ArCreditNoteChargeDtl();
             entity.setTransactionPoid(transactionPoid);
@@ -1462,7 +1496,8 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                 case "ISCREATED": {
                     Long detRowId = dto.getDetRowId();
                     if (detRowId == null) {
-                        throw new ValidationException("detRowId is required");
+                        detRowId = ++nextDetRowId;
+                        dto.setDetRowId(detRowId);
                     }
                     if (detRowId > nextDetRowId) {
                         nextDetRowId = detRowId;
@@ -1595,7 +1630,8 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                 case "ISCREATED": {
                     Long detRowId = dto.getDetRowId();
                     if (detRowId == null) {
-                        throw new ValidationException("detRowId is required");
+                        detRowId = ++nextDetRowId;
+                        dto.setDetRowId(detRowId);
                     }
                     if (detRowId > nextDetRowId) {
                         nextDetRowId = detRowId;

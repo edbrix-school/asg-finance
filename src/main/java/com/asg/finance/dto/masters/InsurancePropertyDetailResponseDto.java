@@ -13,7 +13,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @Builder
 public class InsurancePropertyDetailResponseDto {
-    private Long propertyDetailPoid;
+    private Long detRowId;
     private LovGetListDto property;
     private BigDecimal amount;
     private String remarks;

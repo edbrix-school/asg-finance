@@ -13,7 +13,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @Builder
 public class InsuranceEmployeeDetailResponseDto {
-    private Long employeeDetailPoid;
+    private Long detRowId;
     private LovGetListDto employee;
     private BigDecimal amount;
     private String remarks;

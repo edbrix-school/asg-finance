@@ -27,6 +27,8 @@ public class InsuranceVehicleDetail {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "TRANSACTION_POID", insertable = false, updatable = false)
+    @lombok.ToString.Exclude
+    @lombok.EqualsAndHashCode.Exclude
     private InsuranceMaster insuranceMaster;
 
     @Column(name = "FIXED_ASSET_POID")

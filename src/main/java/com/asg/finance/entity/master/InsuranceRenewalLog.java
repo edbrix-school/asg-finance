@@ -32,6 +32,8 @@ public class InsuranceRenewalLog {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "TRANSACTION_POID", insertable = false, updatable = false)
     @AuditIgnore
+    @lombok.ToString.Exclude
+    @lombok.EqualsAndHashCode.Exclude
     private InsuranceMaster insuranceMaster;
 
     @Column(name = "RENEWAL_DATE")

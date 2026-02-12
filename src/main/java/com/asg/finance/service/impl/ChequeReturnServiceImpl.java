@@ -723,11 +723,11 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
                 .remarks(e.getRemarks())
                 .build();
         gl.setCompanyDtl(
-                lovService.getDetailsByPoidAndLovName(gl.getCompanyPoid(), "COMPANY")
+                lovService.getDetailsByPoidAndLovNameFast(gl.getCompanyPoid(), "COMPANY")
         );
 
         gl.setGlDtl(
-                lovService.getDetailsByPoidAndLovName(gl.getGlPoid(), "GL_MASTER_LEDGERS")
+                lovService.getDetailsByPoidAndLovNameFast(gl.getGlPoid(), "GL_MASTER_LEDGERS")
         );
         return gl;
     }

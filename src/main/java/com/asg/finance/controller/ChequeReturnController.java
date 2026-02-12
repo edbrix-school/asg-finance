@@ -96,7 +96,7 @@ public class ChequeReturnController {
             )
     )
     @AllowedAction(UserRolesRightsEnum.EDIT)
-    @PatchMapping("/{transactionPoid}")
+    @PostMapping("/{transactionPoid}")
     public ResponseEntity<?> partiallyUpdateChequeReturn(
             @Parameter(description = "TRANSACTION_POID", required = true)
             @PathVariable Long transactionPoid,

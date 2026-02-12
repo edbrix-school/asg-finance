@@ -14,7 +14,7 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @Builder
 public class InsurancePicDetailResponseDto {
-    private Long picDetailPoid;
+    private Long detRowId;
     private DetailsDto role;
     private String contactType;
     private LovGetListDto picPerson;

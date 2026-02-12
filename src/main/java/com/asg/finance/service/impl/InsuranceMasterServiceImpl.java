@@ -27,6 +27,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -185,7 +186,11 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
             InsuranceMaster finalSaved = insuranceMasterRepository.save(saved);
             
             // Logging for create operation
-            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), finalSaved.getTransactionPoid().toString());
+            try {
+                loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), finalSaved.getTransactionPoid().toString());
+            } catch (Exception e) {
+                System.err.println("Warning: Failed to log creation: " + e.getMessage());
+            }
             
             return mapToResponseDto(finalSaved);
         } catch (Exception e) {
@@ -282,12 +287,11 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         existing.setLastModifiedBy(getCurrentUser());
         existing.setLastModifiedDate(LocalDateTime.now());
 
-        // Clear existing child details
-        existing.getEmployeeDetails().clear();
-        existing.getPropertyDetails().clear();
-        existing.getPicDetails().clear();
+        // Update child details properly
+        existing.getEmployeeDetails().removeIf(e -> true);
+        existing.getPropertyDetails().removeIf(e -> true);
+        existing.getPicDetails().removeIf(e -> true);
 
-        // Add updated child details
         buildAndSetChildDetails(request, existing);
         if (existing.getPjRefPoid() != null) {
             existing.setPjRefPoid(existing.getPjRefPoid());
@@ -298,30 +302,44 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         InsuranceMaster updated = insuranceMasterRepository.save(existing);
         
         // Logging for update operation
-        loggingService.logChanges(oldEntity, updated, InsuranceMaster.class, UserContext.getDocumentId(), insuranceId.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+        try {
+            loggingService.logChanges(oldEntity, updated, InsuranceMaster.class, UserContext.getDocumentId(), insuranceId.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+        } catch (Exception e) {
+            System.err.println("Warning: Failed to log changes: " + e.getMessage());
+        }
         
-        return mapToResponseDto(updated);
+        try {
+            return mapToResponseDto(updated);
+        } catch (Exception e) {
+            System.err.println("Warning: Failed to map response: " + e.getMessage());
+            throw new RuntimeException("Failed to map response after update", e);
+        }
     }
 
     private void buildAndSetChildDetails(InsuranceMasterRequestDto request, InsuranceMaster savedParent) {
-        try {
-            if (request.getEmployeeDetails() != null && !request.getEmployeeDetails().isEmpty()) {
-                System.out.println("Building " + request.getEmployeeDetails().size() + " employee details");
-                savedParent.setEmployeeDetails(buildEmployeeDetails(request.getEmployeeDetails(), savedParent));
+        if (request.getEmployeeDetails() != null && !request.getEmployeeDetails().isEmpty()) {
+            List<InsuranceEmployeeDetail> newDetails = buildEmployeeDetails(request.getEmployeeDetails(), savedParent);
+            newDetails.forEach(d -> d.setInsuranceMaster(savedParent));
+            if (savedParent.getEmployeeDetails() == null) {
+                savedParent.setEmployeeDetails(new ArrayList<>());
             }
-            if (request.getPropertyDetails() != null && !request.getPropertyDetails().isEmpty()) {
-                System.out.println("Building " + request.getPropertyDetails().size() + " property details");
-                savedParent.setPropertyDetails(buildPropertyDetails(request.getPropertyDetails(), savedParent));
+            savedParent.getEmployeeDetails().addAll(newDetails);
+        }
+        if (request.getPropertyDetails() != null && !request.getPropertyDetails().isEmpty()) {
+            List<InsurancePropertyDetail> newDetails = buildPropertyDetails(request.getPropertyDetails(), savedParent);
+            newDetails.forEach(d -> d.setInsuranceMaster(savedParent));
+            if (savedParent.getPropertyDetails() == null) {
+                savedParent.setPropertyDetails(new ArrayList<>());
             }
-
-            if (request.getPicDetails() != null && !request.getPicDetails().isEmpty()) {
-                System.out.println("Building " + request.getPicDetails().size() + " PIC details");
-                savedParent.setPicDetails(buildPicDetails(request.getPicDetails(), savedParent));
+            savedParent.getPropertyDetails().addAll(newDetails);
+        }
+        if (request.getPicDetails() != null && !request.getPicDetails().isEmpty()) {
+            List<InsurancePicDetail> newDetails = buildPicDetails(request.getPicDetails(), savedParent);
+            newDetails.forEach(d -> d.setInsuranceMaster(savedParent));
+            if (savedParent.getPicDetails() == null) {
+                savedParent.setPicDetails(new ArrayList<>());
             }
-        } catch (Exception e) {
-            System.err.println("Error building child details: " + e.getMessage());
-            e.printStackTrace();
-            throw e;
+            savedParent.getPicDetails().addAll(newDetails);
         }
     }
 
@@ -388,16 +406,14 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         
         for (InsurancePicDetailRequestDto dto : dtos) {
             String action = normalizeAction(dto.getActionType());
-            
             if ("ISDELETED".equals(action)) continue;
             
-            DetailsDto roleDetails = getRoleDetails(dto.getRolePoid());
             Long detRowId = dto.getDetRowId() != null ? dto.getDetRowId() : nextDetRowId++;
             
             result.add(InsurancePicDetail.builder()
                     .transactionPoid(parent.getTransactionPoid())
                     .detRowId(detRowId)
-                    .rolePoid(roleDetails.poid())
+                    .rolePoid(dto.getRolePoid())
                     .contactType(dto.getContactType())
                     .picPersonPoid(dto.getPicPersonPoid())
                     .fromDate(dto.getFromDate())
@@ -526,7 +542,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                         picPersonLov = getLovByPoid(e.getPicPersonPoid(), "INSURANCE_PROPERTY_PIC");
                     }
                     return InsurancePicDetailResponseDto.builder()
-                            .picDetailPoid(e.getDetRowId())
+                            .detRowId(e.getDetRowId())
                             .role(roleDetails)
                             .contactType(e.getContactType())
                             .picPerson(picPersonLov)
@@ -590,19 +606,43 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         };
     }
 
-    public DetailsDto getRoleDetails(Long rolePoid) {
-        RoleDto roleDto = roleServiceClient.findById(rolePoid);
-        if (roleDto == null) {
-            throw new ValidationException("Please select a valid User Role in PIC Details");
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public DetailsDto validateAndGetRoleDetails(Long rolePoid) {
+        try {
+            RoleDto roleDto = roleServiceClient.findById(rolePoid);
+            if (roleDto == null) {
+                throw new ValidationException("Please select a valid User Role in PIC Details");
+            }
+            return new DetailsDto(
+                    roleDto.getUserRolePoid(),
+                    roleDto.getUserRoleId(),
+                    roleDto.getUserRoleName(),
+                    roleDto.getUserRolePoid(),
+                    roleDto.getUserRoleName(),
+                    roleDto.getSeqNo()
+            );
+        } catch (ValidationException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new ValidationException("Failed to fetch role details: " + e.getMessage());
         }
-        return new DetailsDto(
-                roleDto.getUserRolePoid(),     // poid
-                roleDto.getUserRoleId(),       // code
-                roleDto.getUserRoleName(),     // label
-                roleDto.getUserRolePoid(),     // value
-                roleDto.getUserRoleName(),    // description
-                roleDto.getSeqNo()             // seqNo
-        );
+    }
+
+    public DetailsDto getRoleDetails(Long rolePoid) {
+        try {
+            RoleDto roleDto = roleServiceClient.findById(rolePoid);
+            if (roleDto == null) return null;
+            return new DetailsDto(
+                    roleDto.getUserRolePoid(),
+                    roleDto.getUserRoleId(),
+                    roleDto.getUserRoleName(),
+                    roleDto.getUserRolePoid(),
+                    roleDto.getUserRoleName(),
+                    roleDto.getSeqNo()
+            );
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private LovGetListDto getLovByPoid(Long poid, String lovName) {

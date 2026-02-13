@@ -45,6 +45,8 @@ public class DebitNoteHeaderDto {
 
     private BigDecimal otherCurrAmount;
 
+    private String remarks;
+
     @NotBlank(message = "Posting narration is mandatory")
     private String postingNarration;
 

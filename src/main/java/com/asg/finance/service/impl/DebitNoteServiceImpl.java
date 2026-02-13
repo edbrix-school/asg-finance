@@ -143,7 +143,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         BeanUtils.copyProperties(debitNoteDto, existingEntity, "transactionPoid", "createdBy", "createdDate", "groupPoid", "companyPoid", "transactionDate");
 
         existingEntity.setGroupPoid(UserContext.getGroupPoid());
-        existingEntity.setCompanyPoid(UserContext.getCompanyPoid());
+        existingEntity.setCompanyPoid(debitNoteDto.getCompanyPoid());
         existingEntity.setOtherCurrAmount(debitNoteDto.getOtherCurrAmount());
 
         existingEntity.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
@@ -594,7 +594,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
     private void mapGlDtoToEntity(DebitNoteGlDetailDto dto, ArDebitNoteDtl entity, Long transactionPoid) {
         entity.setTransactionPoid(transactionPoid);
         entity.setType(dto.getType());
-        entity.setCompanyPoid(UserContext.getCompanyPoid());
+        entity.setCompanyPoid(dto.getCompanyPoid());
         entity.setGlPoid(dto.getGlId());
         entity.setDrAmt(dto.getDebitAmount());
         entity.setCrAmt(dto.getCreditAmount());
@@ -642,7 +642,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
 
         entity.setTransactionDate(LocalDate.now());
         entity.setGroupPoid(UserContext.getGroupPoid());
-        entity.setCompanyPoid(UserContext.getCompanyPoid());
+        entity.setCompanyPoid(dto.getCompanyPoid());
         entity.setCurrencyCode(dto.getCurrencyCode());
         entity.setCurrencyRate(dto.getCurrencyRate());
         entity.setPartyType(dto.getPartyType());
@@ -658,11 +658,13 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         entity.setFdaRef(dto.getFdaRefPoid().toString());
         entity.setFdaDirectRef(dto.getFdaDirectRefPoid().toString());
         entity.setPoRef(dto.getPoRef());
+        entity.setRemarks(dto.getRemarks());
         entity.setBankPoid(dto.getBankPoid());
         entity.setTinNumber(dto.getTinNumber());
         entity.setBhdAmount(dto.getBhdAmount());
         entity.setVoucherType(dto.getVoucherType());
         entity.setCostRefNumber(dto.getCostRefNumber());
+        entity.setCostGroup(dto.getCostGroupPoid().toString());
         entity.setPrintDivisionPoid(dto.getPrintDivisionPoid() != null ? dto.getPrintDivisionPoid() : 1L);
         entity.setMultiCompany(dto.getMultiCompany() != null && dto.getMultiCompany() ? "Y" : "N");
         entity.setRemarksPrintable(dto.getRemarksPrintable() != null && dto.getRemarksPrintable() ? "Y" : "N");
@@ -685,6 +687,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         dto.setCompanyPoid(entity.getCompanyPoid());
         dto.setCurrencyCode(entity.getCurrencyCode());
         dto.setCurrencyRate(entity.getCurrencyRate());
+        dto.setRemarks(entity.getRemarks());
         dto.setPartyType(entity.getPartyType());
         dto.setPartyPoid(entity.getPartyPoid());
         dto.setRefType(entity.getRefType());
@@ -706,6 +709,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         dto.setOtherCurrAmount(entity.getOtherCurrAmount());
         dto.setVoucherType(entity.getVoucherType());
         dto.setCostRefNumber(entity.getCostRefNumber());
+        dto.setCostGroupPoid(Long.valueOf(entity.getCostGroup()));
         dto.setPrintDivisionPoid(entity.getPrintDivisionPoid());
         dto.setMultiCompany("Y".equals(entity.getMultiCompany()));
         dto.setRemarksPrintable("Y".equals(entity.getRemarksPrintable()));

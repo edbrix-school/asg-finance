@@ -664,7 +664,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         entity.setBhdAmount(dto.getBhdAmount());
         entity.setVoucherType(dto.getVoucherType());
         entity.setCostRefNumber(dto.getCostRefNumber());
-        entity.setCostGroup(dto.getCostGroupPoid().toString());
+        entity.setCostGroup(dto.getCostGroupPoid() != null ? dto.getCostGroupPoid().toString() : null);
         entity.setPrintDivisionPoid(dto.getPrintDivisionPoid() != null ? dto.getPrintDivisionPoid() : 1L);
         entity.setMultiCompany(dto.getMultiCompany() != null && dto.getMultiCompany() ? "Y" : "N");
         entity.setRemarksPrintable(dto.getRemarksPrintable() != null && dto.getRemarksPrintable() ? "Y" : "N");
@@ -709,7 +709,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         dto.setOtherCurrAmount(entity.getOtherCurrAmount());
         dto.setVoucherType(entity.getVoucherType());
         dto.setCostRefNumber(entity.getCostRefNumber());
-        dto.setCostGroupPoid(Long.valueOf(entity.getCostGroup()));
+        dto.setCostGroupPoid(entity.getCostGroup() != null && !entity.getCostGroup().isEmpty() ? Long.valueOf(entity.getCostGroup()) : null);
         dto.setPrintDivisionPoid(entity.getPrintDivisionPoid());
         dto.setMultiCompany("Y".equals(entity.getMultiCompany()));
         dto.setRemarksPrintable("Y".equals(entity.getRemarksPrintable()));

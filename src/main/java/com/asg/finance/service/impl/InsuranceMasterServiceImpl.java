@@ -67,7 +67,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
     public Map<String, Object> listInsuranceMasters(String documentId, FilterRequestDto filters, LocalDate startDate, LocalDate endDate, Pageable pageable) {
         String operator = documentService.resolveOperator(filters);
         String isDeleted = documentService.resolveIsDeleted(filters);
-        List<FilterDto> filterList = documentService.resolveDateFilters(filters,"TRANSACTION_POID",startDate, endDate);
+        List<FilterDto> filterList = documentService.resolveDateFilters(filters,"TRANSACTION_DATE",startDate, endDate);
 
         RawSearchResult raw = documentService.search(documentId, filterList, operator, pageable, isDeleted,
                 "POLICY_NO",
@@ -451,6 +451,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
     private InsuranceMasterResponseDto mapToResponseDto(InsuranceMaster entity) {
         return InsuranceMasterResponseDto.builder()
                 .insurancePoid(entity.getTransactionPoid())
+                .docRef(entity.getDocRef())
                 .groupPoid(entity.getGroupPoid())
                 .companyPoid(entity.getCompanyPoid())
                 .insuranceType(entity.getInsuranceType())

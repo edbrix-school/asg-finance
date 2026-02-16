@@ -892,30 +892,27 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         }
         GLMasterEntity creditGL = creditGLList.get(0);
 
-        // 3. Validate amount matching - exclude deleted payments
+        // 3. Validate amount matching - compare BHD amounts
         if (request.getPayments() != null && !request.getPayments().isEmpty()) {
             BigDecimal paymentTotal = request.getPayments().stream()
                     .filter(payment -> {
                         String action = payment.getActionType();
-                        // Exclude payments marked as deleted
-                        return action == null || 
-                               !"ISDELETED".equalsIgnoreCase(action.trim());
+                        return action == null || !"ISDELETED".equalsIgnoreCase(action.trim());
                     })
                     .map(GeneralReceiptPaymentDto::getAmount)
                     .filter(amount -> amount != null)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            log.debug("Amount validation - Receipt amount: {}, Payment total: {}, Active payments count: {}", 
-                    header.getReceiptAmount(), paymentTotal, 
-                    request.getPayments().stream().filter(p -> {
-                        String action = p.getActionType();
-                        return action == null || !"ISDELETED".equalsIgnoreCase(action.trim());
-                    }).count());
+            BigDecimal currencyRate = header.getRate() != null ? header.getRate() : BigDecimal.ONE;
+            BigDecimal receiptBhdAmount = header.getReceiptAmount().multiply(currencyRate);
+            BigDecimal paymentBhdTotal = paymentTotal.multiply(currencyRate);
 
-            if (header.getReceiptAmount().compareTo(paymentTotal) != 0) {
-                throw new ValidationException(String.format(
-                        "Receipt amount (%.2f) does not match sum of active payment amounts (%.2f). Please update the receipt amount to match the total payments.",
-                        header.getReceiptAmount(), paymentTotal));
+            if (paymentBhdTotal.compareTo(BigDecimal.ZERO) != 0) {
+                if (paymentBhdTotal.compareTo(receiptBhdAmount) != 0) {
+                    throw new ValidationException(String.format(
+                            "Total Amount (%.3f) not matching with Payment Details (%.3f), please check",
+                            receiptBhdAmount, paymentBhdTotal));
+                }
             }
         }
 

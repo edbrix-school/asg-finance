@@ -83,10 +83,8 @@ public class InsuranceMasterController {
         try {
             InsuranceMasterResponseDto response = insuranceMasterService.createInsuranceMaster(request);
             return success("Insurance Master created successfully", response);
-        } catch (ValidationException ex) {
-            return internalServerError(ex.getMessage());
         } catch (Exception ex) {
-            return internalServerError("Failed to create Insurance Master: " + ex.getMessage());
+            return internalServerError(ex.getMessage());
         }
     }
 
@@ -194,10 +192,8 @@ public class InsuranceMasterController {
         try {
             InsuranceMasterResponseDto response = insuranceMasterService.updateInsuranceMaster(insuranceId, request);
             return success("Insurance Master updated successfully", response);
-        } catch (ValidationException ex) {
-            return internalServerError(ex.getMessage());
         } catch (Exception ex) {
-            return internalServerError("Failed to update Insurance Master: " + ex.getMessage());
+            return internalServerError(ex.getMessage());
         }
     }
 
@@ -322,7 +318,7 @@ public class InsuranceMasterController {
             InsuranceMasterResponseDto response = insuranceMasterService.renewInsurance(insuranceId, request);
             return success("Insurance renewed successfully", response);
         } catch (Exception ex) {
-            return internalServerError("Failed to renew Insurance: " + ex.getMessage());
+            return internalServerError(ex.getMessage());
         }
     }
 }

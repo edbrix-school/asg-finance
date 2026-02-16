@@ -67,7 +67,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
     public Map<String, Object> listInsuranceMasters(String documentId, FilterRequestDto filters, LocalDate startDate, LocalDate endDate, Pageable pageable) {
         String operator = documentService.resolveOperator(filters);
         String isDeleted = documentService.resolveIsDeleted(filters);
-        List<FilterDto> filterList = documentService.resolveDateFilters(filters,"FROM_DATE",startDate, endDate);
+        List<FilterDto> filterList = documentService.resolveDateFilters(filters,"TRANSACTION_POID",startDate, endDate);
 
         RawSearchResult raw = documentService.search(documentId, filterList, operator, pageable, isDeleted,
                 "POLICY_NO",
@@ -139,9 +139,31 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                 throw new ValidationException("From Date cannot be greater than Expiry Date");
             }
 
+            // Validate Employee Details
+            if (request.getEmployeeDetails() != null) {
+                for (InsuranceEmployeeDetailRequestDto emp : request.getEmployeeDetails()) {
+                    if (emp.getEmployeePoid() == null || emp.getEmployeePoid() <= 0) {
+                        throw new ValidationException("Employee is mandatory in Employee Details");
+                    }
+                }
+            }
+
+            // Validate Property Details
+            if (request.getPropertyDetails() != null) {
+                for (InsurancePropertyDetailRequestDto prop : request.getPropertyDetails()) {
+                    if (prop.getPropertyPoid() == null || prop.getPropertyPoid() <= 0) {
+                        throw new ValidationException("Property is mandatory in Property Details");
+                    }
+                }
+            }
+
             // Validate PIC dates (if present)
             if (request.getPicDetails() != null) {
                 for (InsurancePicDetailRequestDto pic : request.getPicDetails()) {
+                    // Validate Role is provided
+                    if (pic.getRolePoid() == null || pic.getRolePoid() <= 0) {
+                        throw new ValidationException("Role is mandatory in PIC Details");
+                    }
 
                     // Validate PIC from ≤ to
                     if (pic.getFromDate().isAfter(pic.getToDate())) {
@@ -279,9 +301,31 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
             throw new ValidationException("From Date cannot be greater than Expiry Date");
         }
 
+        // Validate Employee Details
+        if (request.getEmployeeDetails() != null) {
+            for (InsuranceEmployeeDetailRequestDto emp : request.getEmployeeDetails()) {
+                if (emp.getEmployeePoid() == null || emp.getEmployeePoid() <= 0) {
+                    throw new ValidationException("Employee is mandatory in Employee Details");
+                }
+            }
+        }
+
+        // Validate Property Details
+        if (request.getPropertyDetails() != null) {
+            for (InsurancePropertyDetailRequestDto prop : request.getPropertyDetails()) {
+                if (prop.getPropertyPoid() == null || prop.getPropertyPoid() <= 0) {
+                    throw new ValidationException("Property is mandatory in Property Details");
+                }
+            }
+        }
+
         // Validate PIC dates (if present)
         if (request.getPicDetails() != null) {
             for (InsurancePicDetailRequestDto pic : request.getPicDetails()) {
+                // Validate Role is provided
+                if (pic.getRolePoid() == null || pic.getRolePoid() <= 0) {
+                    throw new ValidationException("Role is mandatory in PIC Details");
+                }
 
                 // Validate PIC from ≤ to
                 if (pic.getFromDate().isAfter(pic.getToDate())) {

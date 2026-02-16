@@ -67,7 +67,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
     public Map<String, Object> listInsuranceMasters(String documentId, FilterRequestDto filters, LocalDate startDate, LocalDate endDate, Pageable pageable) {
         String operator = documentService.resolveOperator(filters);
         String isDeleted = documentService.resolveIsDeleted(filters);
-        List<FilterDto> filterList = documentService.resolveDateFilters(filters,"TRANSACTION_DATE",startDate, endDate);
+        List<FilterDto> filterList = documentService.resolveDateFilters(filters,"FROM_DATE",startDate, endDate);
 
         RawSearchResult raw = documentService.search(documentId, filterList, operator, pageable, isDeleted,
                 "POLICY_NO",
@@ -93,7 +93,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                 "GLOBAL_INSURANCE_HDR",
                 "TRANSACTION_POID",
                 deleteReasonDto,
-                null
+                insuranceMaster.getCreatedDate() != null ? insuranceMaster.getCreatedDate().toLocalDate() : null
         );
     }
 
@@ -185,11 +185,35 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
             buildAndSetChildDetails(request, saved);
             InsuranceMaster finalSaved = insuranceMasterRepository.save(saved);
             
-            // Logging for create operation
-            try {
-                loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), finalSaved.getTransactionPoid().toString());
-            } catch (Exception e) {
-                System.err.println("Warning: Failed to log creation: " + e.getMessage());
+            String docId = UserContext.getDocumentId();
+            String docKeyPoid = finalSaved.getTransactionPoid().toString();
+            Timestamp now = new Timestamp(System.currentTimeMillis());
+            
+            // Log header creation
+            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, docKeyPoid);
+            
+            // Log grid row creations
+            List<GlobalLogSummary> gridLogs = new ArrayList<>();
+            if (finalSaved.getEmployeeDetails() != null) {
+                for (InsuranceEmployeeDetail detail : finalSaved.getEmployeeDetails()) {
+                    String msg = String.format("Row Created on Insurance Employee Detail with DetRowId: %s", detail.getDetRowId());
+                    gridLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, msg, now));
+                }
+            }
+            if (finalSaved.getPropertyDetails() != null) {
+                for (InsurancePropertyDetail detail : finalSaved.getPropertyDetails()) {
+                    String msg = String.format("Row Created on Insurance Property Detail with DetRowId: %s", detail.getDetRowId());
+                    gridLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, msg, now));
+                }
+            }
+            if (finalSaved.getPicDetails() != null) {
+                for (InsurancePicDetail detail : finalSaved.getPicDetails()) {
+                    String msg = String.format("Row Created on Insurance PIC Detail with DetRowId: %s", detail.getDetRowId());
+                    gridLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, msg, now));
+                }
+            }
+            if (!gridLogs.isEmpty()) {
+                globalLogSummaryRepository.saveAll(gridLogs);
             }
             
             return mapToResponseDto(finalSaved);
@@ -203,15 +227,17 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
     @Override
     @Transactional
     public InsuranceMasterResponseDto updateInsuranceMaster(Long insuranceId, InsuranceMasterRequestDto request) {
-        // Preserve existing PJ_REF_POID if already linked
-
-
         InsuranceMaster existing = insuranceMasterRepository.findById(insuranceId)
                 .orElseThrow(() -> new ResourceNotFoundException("Insurance Master", "ID", insuranceId));
 
         // Create copy of old entity for logging
         InsuranceMaster oldEntity = new InsuranceMaster();
         BeanUtils.copyProperties(existing, oldEntity);
+        
+        // Snapshot child details for logging
+        List<InsuranceEmployeeDetail> oldEmployeeDetails = snapshotEmployeeDetails(existing.getEmployeeDetails());
+        List<InsurancePropertyDetail> oldPropertyDetails = snapshotPropertyDetails(existing.getPropertyDetails());
+        List<InsurancePicDetail> oldPicDetails = snapshotPicDetails(existing.getPicDetails());
 
         // Validate unique policy number per company (excluding current record)
 
@@ -296,24 +322,95 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         if (existing.getPjRefPoid() != null) {
             existing.setPjRefPoid(existing.getPjRefPoid());
         } else {
-            existing.setPjRefPoid(null); // don't allow overwriting or random assignment
+            existing.setPjRefPoid(null);
         }
 
         InsuranceMaster updated = insuranceMasterRepository.save(existing);
         
-        // Logging for update operation
-        try {
-            loggingService.logChanges(oldEntity, updated, InsuranceMaster.class, UserContext.getDocumentId(), insuranceId.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
-        } catch (Exception e) {
-            System.err.println("Warning: Failed to log changes: " + e.getMessage());
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = insuranceId.toString();
+        Timestamp now = new Timestamp(System.currentTimeMillis());
+        
+        // Log header changes
+        loggingService.logChanges(oldEntity, updated, InsuranceMaster.class, docId, docKeyPoid, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+        
+        // Log grid changes
+        List<GlobalLogSummary> gridLogs = new ArrayList<>();
+        
+        // Process Employee Details
+        if (request.getEmployeeDetails() != null) {
+            for (InsuranceEmployeeDetailRequestDto dto : request.getEmployeeDetails()) {
+                String action = normalizeAction(dto.getActionType());
+                if ("ISDELETED".equals(action)) {
+                    InsuranceEmployeeDetail oldE = findOldEmployeeByDetRowId(oldEmployeeDetails, dto.getDetRowId());
+                    if (oldE != null) {
+                        String msg = String.format("Row Deleted on Insurance Employee Detail with DetRowId: %s", dto.getDetRowId());
+                        gridLogs.add(createSummaryLogEntry(LogDetailsEnum.DELETED, docId, docKeyPoid, msg, now));
+                    }
+                } else if ("ISCREATED".equals(action)) {
+                    String msg = String.format("Row Created on Insurance Employee Detail with DetRowId: %s", dto.getDetRowId());
+                    gridLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, msg, now));
+                } else if ("ISUPDATED".equals(action)) {
+                    InsuranceEmployeeDetail oldE = findOldEmployeeByDetRowId(oldEmployeeDetails, dto.getDetRowId());
+                    InsuranceEmployeeDetail newE = findOldEmployeeByDetRowId(updated.getEmployeeDetails(), dto.getDetRowId());
+                    if (oldE != null && newE != null) {
+                        addDetailLogAndModified(oldE, newE, docId, docKeyPoid, now, gridLogs);
+                    }
+                }
+            }
         }
         
-        try {
-            return mapToResponseDto(updated);
-        } catch (Exception e) {
-            System.err.println("Warning: Failed to map response: " + e.getMessage());
-            throw new RuntimeException("Failed to map response after update", e);
+        // Process Property Details
+        if (request.getPropertyDetails() != null) {
+            for (InsurancePropertyDetailRequestDto dto : request.getPropertyDetails()) {
+                String action = normalizeAction(dto.getActionType());
+                if ("ISDELETED".equals(action)) {
+                    InsurancePropertyDetail oldP = findOldPropertyByDetRowId(oldPropertyDetails, dto.getDetRowId());
+                    if (oldP != null) {
+                        String msg = String.format("Row Deleted on Insurance Property Detail with DetRowId: %s", dto.getDetRowId());
+                        gridLogs.add(createSummaryLogEntry(LogDetailsEnum.DELETED, docId, docKeyPoid, msg, now));
+                    }
+                } else if ("ISCREATED".equals(action)) {
+                    String msg = String.format("Row Created on Insurance Property Detail with DetRowId: %s", dto.getDetRowId());
+                    gridLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, msg, now));
+                } else if ("ISUPDATED".equals(action)) {
+                    InsurancePropertyDetail oldP = findOldPropertyByDetRowId(oldPropertyDetails, dto.getDetRowId());
+                    InsurancePropertyDetail newP = findOldPropertyByDetRowId(updated.getPropertyDetails(), dto.getDetRowId());
+                    if (oldP != null && newP != null) {
+                        addDetailLogAndModified(oldP, newP, docId, docKeyPoid, now, gridLogs);
+                    }
+                }
+            }
         }
+        
+        // Process PIC Details
+        if (request.getPicDetails() != null) {
+            for (InsurancePicDetailRequestDto dto : request.getPicDetails()) {
+                String action = normalizeAction(dto.getActionType());
+                if ("ISDELETED".equals(action)) {
+                    InsurancePicDetail oldP = findOldPicByDetRowId(oldPicDetails, dto.getDetRowId());
+                    if (oldP != null) {
+                        String msg = String.format("Row Deleted on Insurance PIC Detail with DetRowId: %s", dto.getDetRowId());
+                        gridLogs.add(createSummaryLogEntry(LogDetailsEnum.DELETED, docId, docKeyPoid, msg, now));
+                    }
+                } else if ("ISCREATED".equals(action)) {
+                    String msg = String.format("Row Created on Insurance PIC Detail with DetRowId: %s", dto.getDetRowId());
+                    gridLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, msg, now));
+                } else if ("ISUPDATED".equals(action)) {
+                    InsurancePicDetail oldP = findOldPicByDetRowId(oldPicDetails, dto.getDetRowId());
+                    InsurancePicDetail newP = findOldPicByDetRowId(updated.getPicDetails(), dto.getDetRowId());
+                    if (oldP != null && newP != null) {
+                        addDetailLogAndModified(oldP, newP, docId, docKeyPoid, now, gridLogs);
+                    }
+                }
+            }
+        }
+        
+        if (!gridLogs.isEmpty()) {
+            globalLogSummaryRepository.saveAll(gridLogs);
+        }
+        
+        return mapToResponseDto(updated);
     }
 
     private void buildAndSetChildDetails(InsuranceMasterRequestDto request, InsuranceMaster savedParent) {
@@ -350,11 +447,11 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         List<InsuranceEmployeeDetail> result = new ArrayList<>();
         
         // Find max detRowId from existing records
-        long maxDetRowId = dtos.stream()
-            .filter(dto -> dto.getDetRowId() != null)
-            .mapToLong(InsuranceEmployeeDetailRequestDto::getDetRowId)
-            .max()
-            .orElse(0L);
+        long maxDetRowId = parent.getEmployeeDetails() != null ? 
+            parent.getEmployeeDetails().stream()
+                .mapToLong(InsuranceEmployeeDetail::getDetRowId)
+                .max()
+                .orElse(0L) : 0L;
         long nextDetRowId = maxDetRowId + 1;
         
         for (InsuranceEmployeeDetailRequestDto dto : dtos) {
@@ -384,11 +481,11 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         List<InsurancePropertyDetail> result = new ArrayList<>();
         
         // Find max detRowId from existing records
-        long maxDetRowId = dtos.stream()
-            .filter(dto -> dto.getDetRowId() != null)
-            .mapToLong(InsurancePropertyDetailRequestDto::getDetRowId)
-            .max()
-            .orElse(0L);
+        long maxDetRowId = parent.getPropertyDetails() != null ? 
+            parent.getPropertyDetails().stream()
+                .mapToLong(InsurancePropertyDetail::getDetRowId)
+                .max()
+                .orElse(0L) : 0L;
         long nextDetRowId = maxDetRowId + 1;
         
         for (InsurancePropertyDetailRequestDto dto : dtos) {
@@ -418,11 +515,11 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         List<InsurancePicDetail> result = new ArrayList<>();
         
         // Find max detRowId from existing records
-        long maxDetRowId = dtos.stream()
-            .filter(dto -> dto.getDetRowId() != null)
-            .mapToLong(InsurancePicDetailRequestDto::getDetRowId)
-            .max()
-            .orElse(0L);
+        long maxDetRowId = parent.getPicDetails() != null ? 
+            parent.getPicDetails().stream()
+                .mapToLong(InsurancePicDetail::getDetRowId)
+                .max()
+                .orElse(0L) : 0L;
         long nextDetRowId = maxDetRowId + 1;
         
         for (InsurancePicDetailRequestDto dto : dtos) {

@@ -34,6 +34,7 @@ public class CreditNoteHeaderDto {
     private BigDecimal currencyRate;
     private BigDecimal bhdAmount;
     private BigDecimal amount;
+    private LovGetListDto fdaRefDet;
 
     /**
      * Reference-specific field(s)

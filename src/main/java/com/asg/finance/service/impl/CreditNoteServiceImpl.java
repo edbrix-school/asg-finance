@@ -278,6 +278,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             loadBillwiseAndCostCenterBreakup(glDetailDtos, transactionPoid, "300-111");
             result.setGlDetails(glDetailDtos);
 
+            List<ArCreditNoteChargeDtl> chargeDetails = creditNoteChargeDtlRepository.findByTransactionPoidOrderByDetRowId(transactionPoid);
+            result.setChargeDetails(chargeDetails.stream().map(charge -> mapChargeToDto(charge, result.getRefType())).collect(Collectors.toList()));
+
             // Log the update
             loggingService.logChanges(oldEntity, existing, ArCreditNoteHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
             loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), transactionPoid.toString());
@@ -373,7 +376,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     dto.setRemarks(rs.getString("REMARKS"));
                     dto.setIssueInvoice("N");
 
-                    dto.setChargeDet(lovService.getDetailsByPoidAndLovName(dto.getChargePoid(), "CHARGE_MASTER_IN_CN_FOR_FF"));
+                    dto.setChargeDet(lovService.getDetailsByPoidAndLovNameFast(dto.getChargePoid(), "CHARGE_MASTER_IN_CN_FOR_FF"));
                     dto.setTaxDet(taxMasterRepository.findByTaxPoid(dto.getTaxPoid())
                             .map(tm -> new LovGetListDto(tm.getTaxPoid(), tm.getTaxCode(), tm.getTaxName(), tm.getTaxPoid(), tm.getTaxName(), tm.getSeqNo(), null))
                             .orElse(null));
@@ -422,7 +425,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     dto.setRemarks(rs.getString("REMARKS"));
                     dto.setIssueInvoice("N");
 
-                    dto.setChargeDet(lovService.getDetailsByPoidAndLovName(dto.getChargePoid(), "CHARGE_MASTER_IN_CN_FOR_SH"));
+                    dto.setChargeDet(lovService.getDetailsByPoidAndLovNameFast(dto.getChargePoid(), "CHARGE_MASTER_IN_CN_FOR_SH"));
                     dto.setTaxDet(taxMasterRepository.findByTaxPoid(dto.getTaxPoid())
                             .map(tm -> new LovGetListDto(tm.getTaxPoid(), tm.getTaxCode(), tm.getTaxName(), tm.getTaxPoid(), tm.getTaxName(), tm.getSeqNo(), null))
                             .orElse(null));
@@ -492,7 +495,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     dto.setTotalAmount(rs.getBigDecimal("TOTAL_AMOUNT"));
                     dto.setRemarks(rs.getString("REMARKS"));
                     dto.setIssueInvoice("N");
-                    dto.setChargeDet(lovService.getDetailsByPoidAndLovName(dto.getChargePoid(), "CHARGE_MASTER_IN_CN_FOR_DN"));
+                    dto.setChargeDet(lovService.getDetailsByPoidAndLovNameFast(dto.getChargePoid(), "CHARGE_MASTER_IN_CN_FOR_DN"));
                     dto.setTaxDet(taxMasterRepository.findByTaxPoid(dto.getTaxPoid())
                             .map(tm -> new LovGetListDto(tm.getTaxPoid(), tm.getTaxCode(), tm.getTaxName(), tm.getTaxPoid(), tm.getTaxName(), tm.getSeqNo(), null))
                             .orElse(null));
@@ -1388,6 +1391,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             entity.setRemarks(dto.getRemarks());
             entity.setTaxAmount(dto.getTaxAmount());
             entity.setTotalAmount(dto.getTotalAmount());
+            entity.setCheckAll(dto.getSelected());
             entity.setIssueInvoice(dto.getIssueInvoice());
             entity.setRefDocId("300-111");
             entity.setCreatedBy(ASGHelperUtils.getCurrentUser());
@@ -1638,12 +1642,12 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     }
 
                     ArCreditNoteChargeDtl newEntity = new ArCreditNoteChargeDtl();
-                    mapChargeDtoToEntity(dto, newEntity, transactionPoid);
                     newEntity.setDetRowId(detRowId);
                     newEntity.setCreatedBy(currentUser);
                     newEntity.setCreatedDate(now);
                     newEntity.setLastModifiedBy(currentUser);
                     newEntity.setLastModifiedDate(now);
+                    mapChargeDtoToEntity(dto, newEntity, transactionPoid);
                     toSave.add(newEntity);
                     newlyCreated.add(newEntity);
                     break;
@@ -1660,12 +1664,12 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                             nextDetRowId = newDetRowId;
                         }
                         ArCreditNoteChargeDtl newEntity = new ArCreditNoteChargeDtl();
-                        mapChargeDtoToEntity(dto, newEntity, transactionPoid);
                         newEntity.setDetRowId(newDetRowId);
                         newEntity.setCreatedBy(currentUser);
                         newEntity.setCreatedDate(now);
                         newEntity.setLastModifiedBy(currentUser);
                         newEntity.setLastModifiedDate(now);
+                        mapChargeDtoToEntity(dto, newEntity, transactionPoid);
                         toSave.add(newEntity);
                         newlyCreated.add(newEntity);
                         break;
@@ -1673,9 +1677,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
                     ArCreditNoteChargeDtl oldEntity = new ArCreditNoteChargeDtl();
                     BeanUtils.copyProperties(existing, oldEntity);
-                    mapChargeDtoToEntity(dto, existing, transactionPoid);
                     existing.setLastModifiedBy(currentUser);
                     existing.setLastModifiedDate(now);
+                    mapChargeDtoToEntity(dto, existing, transactionPoid);
                     toSave.add(existing);
 
                     String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", docKeyPoid, detRowId);
@@ -1741,6 +1745,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         entity.setChargeAmount(dto.getChargeAmount());
         entity.setChargeCostAmount(dto.getChargeCostAmount());
         entity.setRemarks(dto.getRemarks());
+        entity.setCheckAll(dto.getSelected());
         entity.setTaxAmount(dto.getTaxAmount());
         entity.setTotalAmount(dto.getTotalAmount());
         entity.setIssueInvoice(dto.getIssueInvoice());
@@ -1824,15 +1829,15 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         dto.setCurrencyCode(entity.getCurrencyCode());
         dto.setCurrencyRate(entity.getCurrencyRate());
         dto.setPartyType(entity.getPartyType());
-        if (entity.getPartyType() != null) {
-            LovGetListDto party = lovService.getDetailsByCodeAndLovName(entity.getPartyType(), "CREDIT_PARTY_TYPE");
-            dto.setPartyTypeDet(party);
-        }
+//        if (entity.getPartyType() != null) {
+//            LovGetListDto party = lovService.getDetailsByCodeAndLovName(entity.getPartyType(), "CREDIT_PARTY_TYPE");
+//            dto.setPartyTypeDet(party);
+//        }
         dto.setPartyPoid(entity.getPartyPoid());
-        if (entity.getPartyPoid() != null) {
-            LovGetListDto party = lovService.getDetailsByPoidAndLovName(entity.getPartyPoid(), getLovNameForPartyType(entity.getPartyType()));
-            dto.setPartyDet(party);
-        }
+//        if (entity.getPartyPoid() != null) {
+//            LovGetListDto party = lovService.getDetailsByPoidAndLovName(entity.getPartyPoid(), getLovNameForPartyType(entity.getPartyType()));
+//            dto.setPartyDet(party);
+//        }
         dto.setRefType(entity.getRefType());
         dto.setPostingNarration(entity.getPostingNarration());
         dto.setRemarks(entity.getRemarks());
@@ -1841,6 +1846,14 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         dto.setDnInvoicePoid(entity.getDnInvoicePoid());
         dto.setFfInvoicePoid(entity.getFfInvoicePoid());
         dto.setFdaRefPoid(entity.getFdaRefPoid());
+        dto.setFdaRefDet(
+                entity.getFdaRefPoid() != null
+                        ? lovService.getDetailsByPoidAndLovNameFast(
+                        entity.getFdaRefPoid(),
+                        "DN_FDA_REF_FOR_CN"
+                )
+                        : null
+        );
         dto.setDueDate(entity.getDueDate() != null ? entity.getDueDate() : LocalDate.now());
         dto.setCreditPeriod(entity.getCreditPeriod());
         dto.setBillRefType(entity.getBillRefType());
@@ -1864,17 +1877,17 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         dto.setDetRowId(entity.getDetRowId());
         dto.setType(entity.getType());
         dto.setGlPoid(entity.getGlPoid());
-        dto.setGlDet(lovService.getDetailsByPoidAndLovName(entity.getGlPoid(), "GL_MASTER_LEDGERS_CN"));
+        dto.setGlDet(lovService.getDetailsByPoidAndLovNameFast(entity.getGlPoid(), "GL_MASTER_LEDGERS_CN"));
         dto.setDrAmt(entity.getDrAmt());
         dto.setCrAmt(entity.getCrAmt());
         dto.setRemarks(entity.getRemarks());
         dto.setTaxPoid(entity.getTaxPoid());
-        dto.setTaxDet(lovService.getDetailsByPoidAndLovName(entity.getTaxPoid(), "CR_TAX_MASTER"));
+        dto.setTaxDet(lovService.getDetailsByPoidAndLovNameFast(entity.getTaxPoid(), "CR_TAX_MASTER"));
         dto.setTaxPercentage(entity.getTaxPercentage());
         dto.setTaxAmount(entity.getTaxAmount());
         dto.setTotalAmount(entity.getTotalAmount());
         dto.setCompanyPoid(entity.getCompanyPoid());
-        dto.setCompanyDet(lovService.getDetailsByPoidAndLovName(entity.getCompanyPoid(), "COMPANY"));
+        dto.setCompanyDet(lovService.getDetailsByPoidAndLovNameFast(entity.getCompanyPoid(), "COMPANY"));
         return dto;
     }
 
@@ -1896,6 +1909,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         dto.setTaxPercentage(entity.getTaxPercentage());
         dto.setIssueInvoice(entity.getIssueInvoice());
         dto.setPdaAmount(entity.getPdaAmount());
+        dto.setSelected(entity.getCheckAll());
         return dto;
     }
 
@@ -2176,7 +2190,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     Long fdaRefPoid = rs.getLong("FDA_REF_POID");
                     return FdaRefResponseDto.builder()
                             .fdaRefPoid(fdaRefPoid)
-                            .fdaRefDet(lovService.getDetailsByPoidAndLovName(fdaRefPoid, "DN_FDA_REF_FOR_CN"))
+                            .fdaRefDet(lovService.getDetailsByPoidAndLovNameFast(fdaRefPoid, "DN_FDA_REF_FOR_CN"))
                             .build();
                 }
             }

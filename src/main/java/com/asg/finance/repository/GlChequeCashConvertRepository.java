@@ -1,15 +1,13 @@
 package com.asg.finance.repository;
 
 import com.asg.common.lib.security.util.UserContext;
+import jakarta.persistence.StoredProcedureQuery;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 import oracle.jdbc.OracleTypes;
 import javax.sql.DataSource;
-import java.sql.CallableStatement;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -119,5 +117,46 @@ public class GlChequeCashConvertRepository {
             log.error("Error executing stored procedure PROC_CHEQUE_CONVERSION_LOAD", e);
             throw new RuntimeException("Error executing PROC_CHEQUE_CONVERSION_LOAD", e);
         }
+    }
+
+    public String checkChequeConvertStatus(
+            Long groupPoid,
+            Long companyPoid,
+            Long transactionPoid,
+            String documentId,
+            Long userPoid,
+            String username
+    ) {
+
+        String result = null;
+
+        String sql = "{call PRODUCTION.PROC_CHEQUE_CONVERT_STATUS_CHK(?,?,?,?,?,?,?)}";
+
+        try (Connection connection = dataSource.getConnection();
+             CallableStatement callableStatement = connection.prepareCall(sql)) {
+
+            // IN parameters
+            callableStatement.setLong(1, groupPoid);
+            callableStatement.setLong(2, companyPoid);
+            callableStatement.setLong(3, transactionPoid);
+            callableStatement.setString(4, documentId);
+            callableStatement.setLong(5, userPoid);
+            callableStatement.setString(6, username);
+
+            // OUT parameter
+            callableStatement.registerOutParameter(7, Types.VARCHAR);
+
+            // Execute
+            callableStatement.execute();
+
+            // Get OUT value
+            result = callableStatement.getString(7);
+
+        } catch (SQLException e) {
+            e.printStackTrace(); // Replace with proper logging
+            throw new RuntimeException("Error calling PROC_CHEQUE_CONVERT_STATUS_CHK", e);
+        }
+
+        return result;
     }
 }

@@ -326,9 +326,9 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                 }
             }
             saveBillwiseForGl(transactionPoid, dto.getGlDetails().stream()
-                .filter(g -> !"isdeleted".equals(normalizeActionType(g.getActionType()))).collect(Collectors.toList()), UserContext.getDocumentId());
+                .filter(g -> !"isdeleted".equals(normalizeActionType(g.getActionType()))).collect(Collectors.toList()), UserContext.getDocumentId(), true);
             saveCostCenterForGl(transactionPoid, dto.getGlDetails().stream()
-                .filter(g -> !"isdeleted".equals(normalizeActionType(g.getActionType()))).collect(Collectors.toList()), UserContext.getDocumentId());
+                .filter(g -> !"isdeleted".equals(normalizeActionType(g.getActionType()))).collect(Collectors.toList()), UserContext.getDocumentId(), true);
         }
         
         // Batch process all update logs
@@ -405,8 +405,8 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
             }
             log.info("Saved {} GL details for transactionPoid: {}", dto.getGlDetails().size(), transactionPoid);
             
-            saveBillwiseForGl(transactionPoid, dto.getGlDetails(), UserContext.getDocumentId());
-            saveCostCenterForGl(transactionPoid, dto.getGlDetails(), UserContext.getDocumentId());
+            saveBillwiseForGl(transactionPoid, dto.getGlDetails(), UserContext.getDocumentId(), false);
+            saveCostCenterForGl(transactionPoid, dto.getGlDetails(), UserContext.getDocumentId(), false);
         }
     }
     
@@ -460,7 +460,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         }
     }
 
-    public void saveBillwiseForGl(Long transactionPoid, List<ApPurchaseCnGlDtlDto> glDetails, String docId) {
+    public void saveBillwiseForGl(Long transactionPoid, List<ApPurchaseCnGlDtlDto> glDetails, String docId, boolean isUpdate) {
         if (glDetails == null || glDetails.isEmpty()) {
             return;
         }
@@ -512,12 +512,19 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         }
 
         if (!billwiseList.isEmpty()) {
-            billwiseBreakupService.insertBillwiseBreakup(billwiseList);
+            if (isUpdate) {
+                billwiseBreakupService.updateBillwiseBreakups(billwiseList, userPoid);
+            } else {
+                billwiseBreakupService.insertBillwiseBreakup(billwiseList);
+            }
             log.info("Saved {} billwise breakup entries for transactionPoid: {}", billwiseList.size(), transactionPoid);
         }
     }
 
-    public void saveCostCenterForGl(Long transactionPoid, List<ApPurchaseCnGlDtlDto> glDetails, String docId) {
+    public void saveCostCenterForGl(Long transactionPoid,
+                                    List<ApPurchaseCnGlDtlDto> glDetails,
+                                    String docId,
+                                    boolean isUpdate) {
         if (glDetails == null || glDetails.isEmpty()) {
             return;
         }
@@ -541,7 +548,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                     dto.setTransactionPoid(transactionPoid);
                     dto.setMainDetRowId(glDto.getDetRowId());
                     dto.setGlPoid(glDto.getGlPoid());
-                    dto.setCostDetRowId(glDto.getDetRowId());
+                    dto.setCostDetRowId(popup.getCostDetRowId());
                     dto.setCostGroup(popup.getCostGroup());
                     dto.setCostPoid(popup.getCostPoid());
                     dto.setAmount(popup.getAmount());
@@ -552,7 +559,11 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         }
 
         if (!costCenterList.isEmpty()) {
-            costCenterBreakupService.saveCostCenterBreakups(costCenterList);
+            if (isUpdate) {
+                costCenterBreakupService.updateCostCenterBreakups(costCenterList, userPoid);
+            } else  {
+                costCenterBreakupService.saveCostCenterBreakups(costCenterList);
+            }
             log.info("Saved {} cost center breakup entries for transactionPoid: {}", costCenterList.size(), transactionPoid);
         }
     }

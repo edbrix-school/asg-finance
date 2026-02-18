@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
@@ -19,4 +20,6 @@ public class InsuranceRenewalLogResponseDto {
     private LocalDate expiryDate;
     private BigDecimal insuranceAmount;
     private BigDecimal premiumAmount;
+    private String createdBy;
+    private String lastModifiedBy;
 }

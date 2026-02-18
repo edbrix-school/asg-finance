@@ -724,6 +724,8 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                         .expiryDate(e.getExpiryDate())
                         .insuranceAmount(e.getInsuranceAmount())
                         .premiumAmount(e.getPremiumAmount())
+                        .createdBy(e.getCreatedBy())
+                        .lastModifiedBy(e.getLastModifiedBy())
                         .build())
                 .toList();
     }
@@ -944,21 +946,24 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
 
     @Override
     @Transactional
-    public InsuranceMasterResponseDto renewInsurance(Long insuranceId, InsuranceMasterRequestDto request) {
+    public InsuranceMasterResponseDto renewInsurance(Long insuranceId, InsuranceMasterRequestDto request, Boolean addToHistory) {
         InsuranceMaster existing = insuranceMasterRepository.findById(insuranceId)
                 .orElseThrow(() -> new ResourceNotFoundException("Insurance Master", "ID", insuranceId));
 
-        LocalDate today = LocalDate.now();
-
-        // Validate insurance can be renewed (must be expired or expiring)
-        if (existing.getExpiryDate().isAfter(today)) {
-            throw new ValidationException("Insurance can only be renewed on or after expiry date");
+        // Scenario 2: Check if already renewed
+        if (existing.getRenewalLogs() != null && !existing.getRenewalLogs().isEmpty()) {
+            throw new ValidationException("Details are already added to the renewal history");
         }
 
-        // Archive current details to renewal log
+        // Scenario 1: If addToHistory is null or false, ask for confirmation
+        if (addToHistory == null || !addToHistory) {
+            throw new ValidationException("CONFIRMATION_REQUIRED");
+        }
+
+        // User confirmed - proceed with renewal
         InsuranceRenewalLog renewalLog = InsuranceRenewalLog.builder()
                 .transactionPoid(existing.getTransactionPoid())
-                .detRowId((long) (existing.getRenewalLogs().size() + 1))
+                .detRowId(1L)
                 .renewalDate(LocalDate.now())
                 .fromDate(existing.getFromDate())
                 .expiryDate(existing.getExpiryDate())
@@ -970,6 +975,9 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                 .lastModifiedDate(LocalDateTime.now())
                 .build();
 
+        if (existing.getRenewalLogs() == null) {
+            existing.setRenewalLogs(new ArrayList<>());
+        }
         existing.getRenewalLogs().add(renewalLog);
 
         // Update with new renewal details

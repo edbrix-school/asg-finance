@@ -15,5 +15,5 @@ public interface InsuranceMasterService {
     void softDeleteInsuranceMaster(Long insuranceId, DeleteReasonDto deleteReasonDto);
     InsuranceMasterResponseDto getInsuranceMasterById(Long insuranceId);
     Map<String, Object> listInsuranceMasters(String documentId, FilterRequestDto filters, LocalDate startDate, LocalDate endDate, Pageable pageable);
-    InsuranceMasterResponseDto renewInsurance(Long insuranceId, InsuranceMasterRequestDto request);
+    InsuranceMasterResponseDto renewInsurance(Long insuranceId, InsuranceMasterRequestDto request, Boolean addToHistory);
 }

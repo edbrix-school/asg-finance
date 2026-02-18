@@ -1,6 +1,7 @@
 package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.*;
+import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentSearchService;
@@ -9,7 +10,6 @@ import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.finance.client.RoleServiceClient;
 import com.asg.finance.dto.masters.*;
-import com.asg.finance.entity.GlobalLogDetails;
 import com.asg.finance.entity.GlobalLogSummary;
 import com.asg.finance.entity.master.*;
 import com.asg.finance.repository.GlobalLogDetailsRepository;
@@ -48,7 +48,6 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
     private final RoleServiceClient roleServiceClient;
     private final LoggingService loggingService;
     private final GlobalLogSummaryRepository globalLogSummaryRepository;
-    private final GlobalLogDetailsRepository globalLogDetailsRepository;
     private final HrEmployeeMasterRepository hrEmployeeMasterRepository;
     private final LovDataService lovService;
 
@@ -373,32 +372,30 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         
         String docId = UserContext.getDocumentId();
         String docKeyPoid = insuranceId.toString();
-        Timestamp now = new Timestamp(System.currentTimeMillis());
         
         // Log header changes
         loggingService.logChanges(oldEntity, updated, InsuranceMaster.class, docId, docKeyPoid, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
         
-        // Log grid changes
-        List<GlobalLogSummary> gridLogs = new ArrayList<>();
+        // Log child record changes using batch logging
+        List<LogRequestDto<InsuranceEmployeeDetail>> empLogRequests = new ArrayList<>();
+        List<LogRequestDto<InsurancePropertyDetail>> propLogRequests = new ArrayList<>();
+        List<LogRequestDto<InsurancePicDetail>> picLogRequests = new ArrayList<>();
         
         // Process Employee Details
         if (request.getEmployeeDetails() != null) {
             for (InsuranceEmployeeDetailRequestDto dto : request.getEmployeeDetails()) {
                 String action = normalizeAction(dto.getActionType());
                 if ("ISDELETED".equals(action)) {
-                    InsuranceEmployeeDetail oldE = findOldEmployeeByDetRowId(oldEmployeeDetails, dto.getDetRowId());
-                    if (oldE != null) {
-                        String msg = String.format("Row Deleted on Insurance Employee Detail with DetRowId: %s", dto.getDetRowId());
-                        gridLogs.add(createSummaryLogEntry(LogDetailsEnum.DELETED, docId, docKeyPoid, msg, now));
-                    }
+                    loggingService.logDelete(dto, docId, docKeyPoid);
                 } else if ("ISCREATED".equals(action)) {
-                    String msg = String.format("Row Created on Insurance Employee Detail with DetRowId: %s", dto.getDetRowId());
-                    gridLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, msg, now));
+                    String msg = String.format("Row Created on Insurance Employee Detail with detRowId: %s", dto.getDetRowId());
+                    loggingService.createLogSummaryEntry(docId, docKeyPoid, msg);
                 } else if ("ISUPDATED".equals(action)) {
                     InsuranceEmployeeDetail oldE = findOldEmployeeByDetRowId(oldEmployeeDetails, dto.getDetRowId());
                     InsuranceEmployeeDetail newE = findOldEmployeeByDetRowId(updated.getEmployeeDetails(), dto.getDetRowId());
                     if (oldE != null && newE != null) {
-                        addDetailLogAndModified(oldE, newE, docId, docKeyPoid, now, gridLogs);
+                        String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", docKeyPoid, dto.getDetRowId());
+                        empLogRequests.add(new LogRequestDto<>(oldE, newE, InsuranceEmployeeDetail.class, docId, docKeyPoid, logDetail));
                     }
                 }
             }
@@ -409,19 +406,16 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
             for (InsurancePropertyDetailRequestDto dto : request.getPropertyDetails()) {
                 String action = normalizeAction(dto.getActionType());
                 if ("ISDELETED".equals(action)) {
-                    InsurancePropertyDetail oldP = findOldPropertyByDetRowId(oldPropertyDetails, dto.getDetRowId());
-                    if (oldP != null) {
-                        String msg = String.format("Row Deleted on Insurance Property Detail with DetRowId: %s", dto.getDetRowId());
-                        gridLogs.add(createSummaryLogEntry(LogDetailsEnum.DELETED, docId, docKeyPoid, msg, now));
-                    }
+                    loggingService.logDelete(dto, docId, docKeyPoid);
                 } else if ("ISCREATED".equals(action)) {
-                    String msg = String.format("Row Created on Insurance Property Detail with DetRowId: %s", dto.getDetRowId());
-                    gridLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, msg, now));
+                    String msg = String.format("Row Created on Insurance Property Detail with detRowId: %s", dto.getDetRowId());
+                    loggingService.createLogSummaryEntry(docId, docKeyPoid, msg);
                 } else if ("ISUPDATED".equals(action)) {
                     InsurancePropertyDetail oldP = findOldPropertyByDetRowId(oldPropertyDetails, dto.getDetRowId());
                     InsurancePropertyDetail newP = findOldPropertyByDetRowId(updated.getPropertyDetails(), dto.getDetRowId());
                     if (oldP != null && newP != null) {
-                        addDetailLogAndModified(oldP, newP, docId, docKeyPoid, now, gridLogs);
+                        String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", docKeyPoid, dto.getDetRowId());
+                        propLogRequests.add(new LogRequestDto<>(oldP, newP, InsurancePropertyDetail.class, docId, docKeyPoid, logDetail));
                     }
                 }
             }
@@ -432,26 +426,30 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
             for (InsurancePicDetailRequestDto dto : request.getPicDetails()) {
                 String action = normalizeAction(dto.getActionType());
                 if ("ISDELETED".equals(action)) {
-                    InsurancePicDetail oldP = findOldPicByDetRowId(oldPicDetails, dto.getDetRowId());
-                    if (oldP != null) {
-                        String msg = String.format("Row Deleted on Insurance PIC Detail with DetRowId: %s", dto.getDetRowId());
-                        gridLogs.add(createSummaryLogEntry(LogDetailsEnum.DELETED, docId, docKeyPoid, msg, now));
-                    }
+                    loggingService.logDelete(dto, docId, docKeyPoid);
                 } else if ("ISCREATED".equals(action)) {
-                    String msg = String.format("Row Created on Insurance PIC Detail with DetRowId: %s", dto.getDetRowId());
-                    gridLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, msg, now));
+                    String msg = String.format("Row Created on Insurance PIC Detail with detRowId: %s", dto.getDetRowId());
+                    loggingService.createLogSummaryEntry(docId, docKeyPoid, msg);
                 } else if ("ISUPDATED".equals(action)) {
                     InsurancePicDetail oldP = findOldPicByDetRowId(oldPicDetails, dto.getDetRowId());
                     InsurancePicDetail newP = findOldPicByDetRowId(updated.getPicDetails(), dto.getDetRowId());
                     if (oldP != null && newP != null) {
-                        addDetailLogAndModified(oldP, newP, docId, docKeyPoid, now, gridLogs);
+                        String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", docKeyPoid, dto.getDetRowId());
+                        picLogRequests.add(new LogRequestDto<>(oldP, newP, InsurancePicDetail.class, docId, docKeyPoid, logDetail));
                     }
                 }
             }
         }
         
-        if (!gridLogs.isEmpty()) {
-            globalLogSummaryRepository.saveAll(gridLogs);
+        // Batch process all update logs
+        if (!empLogRequests.isEmpty()) {
+            loggingService.createLogBatch(empLogRequests);
+        }
+        if (!propLogRequests.isEmpty()) {
+            loggingService.createLogBatch(propLogRequests);
+        }
+        if (!picLogRequests.isEmpty()) {
+            loggingService.createLogBatch(picLogRequests);
         }
         
         return mapToResponseDto(updated);
@@ -929,85 +927,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         return snapshots;
     }
 
-    private void addDetailLogAndModified(InsuranceEmployeeDetail oldE, InsuranceEmployeeDetail newE, String docId, String docKeyPoid, Timestamp now, List<GlobalLogSummary> summaryLogs) {
-        saveEmployeeDetailLogsToGlobalLogDetails(oldE, newE, docId, docKeyPoid, now);
-    }
-    private void addDetailLogAndModified(InsurancePropertyDetail oldE, InsurancePropertyDetail newE, String docId, String docKeyPoid, Timestamp now, List<GlobalLogSummary> summaryLogs) {
-        savePropertyDetailLogsToGlobalLogDetails(oldE, newE, docId, docKeyPoid, now);
-    }
-    private void addDetailLogAndModified(InsurancePicDetail oldE, InsurancePicDetail newE, String docId, String docKeyPoid, Timestamp now, List<GlobalLogSummary> summaryLogs) {
-        savePicDetailLogsToGlobalLogDetails(oldE, newE, docId, docKeyPoid, now);
-    }
-    private void addDetailLogAndModified(InsuranceVehicleDetail oldE, InsuranceVehicleDetail newE, String docId, String docKeyPoid, Timestamp now, List<GlobalLogSummary> summaryLogs) {
-        saveVehicleDetailLogsToGlobalLogDetails(oldE, newE, docId, docKeyPoid, now);
-    }
 
-    private static String toLogValue(Object o) {
-        if (o == null) return null;
-        return o.toString();
-    }
-
-    private void saveDetailLogRow(String docId, String docKeyPoid, String logDetailsKey, String logTable, String fieldName, Object oldVal, Object newVal, Timestamp now) {
-        GlobalLogDetails d = new GlobalLogDetails();
-        d.setLogUserPoid(UserContext.getUserPoid());
-        d.setLogDateTime(now);
-        d.setLogDocId(docId);
-        d.setLogDocKeyPoid(docKeyPoid);
-        d.setFieldName(fieldName);
-        d.setOldValue(toLogValue(oldVal));
-        d.setNewValue(toLogValue(newVal));
-        d.setLogDetails(logDetailsKey);
-        d.setLogTable(logTable);
-        globalLogDetailsRepository.save(d);
-    }
-
-    private void saveEmployeeDetailLogsToGlobalLogDetails(InsuranceEmployeeDetail oldE, InsuranceEmployeeDetail newE, String docId, String docKeyPoid, Timestamp now) {
-        String logDetailsKey = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", docKeyPoid, oldE.getDetRowId());
-        String table = "GLOBAL_INSURANCE_EMPLOYEE_DTL";
-        if (!Objects.equals(oldE.getEmployeePoid(), newE.getEmployeePoid()))
-            saveDetailLogRow(docId, docKeyPoid, logDetailsKey, table, "employeePoid", oldE.getEmployeePoid(), newE.getEmployeePoid(), now);
-        if (!Objects.equals(oldE.getAmount(), newE.getAmount()))
-            saveDetailLogRow(docId, docKeyPoid, logDetailsKey, table, "amount", oldE.getAmount(), newE.getAmount(), now);
-        if (!Objects.equals(oldE.getRemarks(), newE.getRemarks()))
-            saveDetailLogRow(docId, docKeyPoid, logDetailsKey, table, "remarks", oldE.getRemarks(), newE.getRemarks(), now);
-    }
-
-    private void savePropertyDetailLogsToGlobalLogDetails(InsurancePropertyDetail oldE, InsurancePropertyDetail newE, String docId, String docKeyPoid, Timestamp now) {
-        String logDetailsKey = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", docKeyPoid, oldE.getDetRowId());
-        String table = "GLOBAL_INSURANCE_PROPERTY_DTL";
-        if (!Objects.equals(oldE.getPropertyPoid(), newE.getPropertyPoid()))
-            saveDetailLogRow(docId, docKeyPoid, logDetailsKey, table, "propertyPoid", oldE.getPropertyPoid(), newE.getPropertyPoid(), now);
-        if (!Objects.equals(oldE.getAmount(), newE.getAmount()))
-            saveDetailLogRow(docId, docKeyPoid, logDetailsKey, table, "amount", oldE.getAmount(), newE.getAmount(), now);
-        if (!Objects.equals(oldE.getRemarks(), newE.getRemarks()))
-            saveDetailLogRow(docId, docKeyPoid, logDetailsKey, table, "remarks", oldE.getRemarks(), newE.getRemarks(), now);
-    }
-
-    private void savePicDetailLogsToGlobalLogDetails(InsurancePicDetail oldE, InsurancePicDetail newE, String docId, String docKeyPoid, Timestamp now) {
-        String logDetailsKey = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", docKeyPoid, oldE.getDetRowId());
-        String table = "GLOBAL_INSURANCE_PIC_DTL";
-        if (!Objects.equals(oldE.getRolePoid(), newE.getRolePoid()))
-            saveDetailLogRow(docId, docKeyPoid, logDetailsKey, table, "rolePoid", oldE.getRolePoid(), newE.getRolePoid(), now);
-        if (!Objects.equals(oldE.getContactType(), newE.getContactType()))
-            saveDetailLogRow(docId, docKeyPoid, logDetailsKey, table, "contactType", oldE.getContactType(), newE.getContactType(), now);
-        if (!Objects.equals(oldE.getPicPersonPoid(), newE.getPicPersonPoid()))
-            saveDetailLogRow(docId, docKeyPoid, logDetailsKey, table, "picPersonPoid", oldE.getPicPersonPoid(), newE.getPicPersonPoid(), now);
-        if (!Objects.equals(oldE.getFromDate(), newE.getFromDate()))
-            saveDetailLogRow(docId, docKeyPoid, logDetailsKey, table, "fromDate", oldE.getFromDate(), newE.getFromDate(), now);
-        if (!Objects.equals(oldE.getToDate(), newE.getToDate()))
-            saveDetailLogRow(docId, docKeyPoid, logDetailsKey, table, "toDate", oldE.getToDate(), newE.getToDate(), now);
-    }
-
-    private void saveVehicleDetailLogsToGlobalLogDetails(InsuranceVehicleDetail oldE, InsuranceVehicleDetail newE, String docId, String docKeyPoid, Timestamp now) {
-        String logDetailsKey = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", docKeyPoid, oldE.getDetRowId());
-        String table = "GLOBAL_INSURANCE_VEHICLE_DTL";
-        if (!Objects.equals(oldE.getFixedAssetPoid(), newE.getFixedAssetPoid()))
-            saveDetailLogRow(docId, docKeyPoid, logDetailsKey, table, "fixedAssetPoid", oldE.getFixedAssetPoid(), newE.getFixedAssetPoid(), now);
-        if (!Objects.equals(oldE.getAmount(), newE.getAmount()))
-            saveDetailLogRow(docId, docKeyPoid, logDetailsKey, table, "amount", oldE.getAmount(), newE.getAmount(), now);
-        if (!Objects.equals(oldE.getRemarks(), newE.getRemarks()))
-            saveDetailLogRow(docId, docKeyPoid, logDetailsKey, table, "remarks", oldE.getRemarks(), newE.getRemarks(), now);
-    }
 
 
     private InsuranceMaster copyHeaderOnlyForLog(InsuranceMaster source) {

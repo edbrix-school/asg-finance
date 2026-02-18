@@ -4,6 +4,7 @@ import com.asg.common.lib.dto.*;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
 import com.asg.common.lib.dto.request.GlobalTermsInsertRequestDto;
+import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.GlobalTermsResponseDto;
 import com.asg.common.lib.exception.ResourceAlreadyExistsException;
@@ -360,6 +361,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         String key = transactionPoid.toString();
         List<BillwiseBreakupRequestDto> billwiseRequestDtoList = new ArrayList<>();
         List<CostCenterBreakupRequestDto> costCenterRequestDtoList = new ArrayList<>();
+        List<LogRequestDto<GlBankDebitDtlGl>> logRequests = new ArrayList<>();
 
         for (PaymentGlDetails dtl : details) {
 
@@ -467,7 +469,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                     paymentGlRepository.save(entity);
                     
                     String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", transactionPoid, dtl.getDetRowId());
-                    loggingService.createLog(oldEntity, entity, GlBankDebitDtlGl.class, docId, key, logDetail);
+                    logRequests.add(new LogRequestDto<>(oldEntity, entity, GlBankDebitDtlGl.class, docId, key, logDetail));
 
                     if (dtl.getBreakupList() != null && !dtl.getBreakupList().isEmpty()) {
                         List<BillwiseBreakupRequestDto> bwList = dtl.getBreakupList().stream().map(p -> {
@@ -515,6 +517,9 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
             }
         }
 
+        if (!logRequests.isEmpty()) {
+            loggingService.createLogBatch(logRequests);
+        }
         if(CollectionUtils.isNotEmpty(costCenterRequestDtoList)) {
             costCenterBreakupService.updateCostCenterBreakups(costCenterRequestDtoList, UserContext.getUserPoid());
         }
@@ -529,6 +534,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
         String docId = UserContext.getDocumentId();
         String key = transactionPoid.toString();
+        List<LogRequestDto<GlBankDebitChargeDtl>> logRequests = new ArrayList<>();
 
         for (ChargeDetailDto dto : details) {
 
@@ -593,9 +599,13 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                     chargeDetailRepository.save(entity);
                     
                     String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", transactionPoid, dto.getDetRowId());
-                    loggingService.createLog(oldEntity, entity, GlBankDebitChargeDtl.class, docId, key, logDetail);
+                    logRequests.add(new LogRequestDto<>(oldEntity, entity, GlBankDebitChargeDtl.class, docId, key, logDetail));
                 }
             }
+        }
+
+        if (!logRequests.isEmpty()) {
+            loggingService.createLogBatch(logRequests);
         }
     }
 

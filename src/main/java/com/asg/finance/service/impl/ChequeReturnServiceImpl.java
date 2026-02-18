@@ -413,9 +413,13 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
     private List<ChequeReturnDetail> updateDetailsWithActionType(Long trnPoid, ChequeReturn header,
                                                                   List<ChequeReturnRequest.ChequeDetailDto> dtos,
                                                                   Date dbDate) {
+        String docId = DOC_ID_CHEQUE_RETURN;
+        String docKeyPoid = trnPoid.toString();
+        
         List<ChequeReturnDetail> toSave = new ArrayList<>();
         List<ChequeReturnDetail> toUpdate = new ArrayList<>();
         List<Long> toDelete = new ArrayList<>();
+        List<LogRequestDto<ChequeReturnDetail>> logRequests = new ArrayList<>();
         
         Long maxDetRowId = detailRepo.countById_TransactionPoid(trnPoid);
         
@@ -436,11 +440,13 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
                     BeanUtils.copyProperties(existing, oldDetail);
                     updateDetailEntity(existing, d, dbDate);
                     toUpdate.add(existing);
-                    loggingService.logChanges(oldDetail, existing, ChequeReturnDetail.class, DOC_ID_CHEQUE_RETURN, trnPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+                    
+                    String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", trnPoid, d.getDetRowId());
+                    logRequests.add(new LogRequestDto<>(oldDetail, existing, ChequeReturnDetail.class, docId, docKeyPoid, logDetail));
                     break;
                 case "ISDELETED":
                     toDelete.add(d.getDetRowId());
-                    loggingService.logDelete(d, DOC_ID_CHEQUE_RETURN, trnPoid.toString());
+                    loggingService.logDelete(d, docId, docKeyPoid);
                     break;
                 case "NOCHANGE":
                 default:
@@ -454,11 +460,15 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
             allDetails.addAll(saved);
             saved.forEach(detail -> {
                 String logDetail = String.format("Row Created on Cheque Return Detail with detRowId: %s", detail.getId().getDetRowId());
-                loggingService.createLogSummaryEntry(DOC_ID_CHEQUE_RETURN, trnPoid.toString(), logDetail);
+                loggingService.createLogSummaryEntry(docId, docKeyPoid, logDetail);
             });
         }
         if (!toUpdate.isEmpty()) {
-            allDetails.addAll(detailRepo.saveAll(toUpdate));
+            List<ChequeReturnDetail> updated = detailRepo.saveAll(toUpdate);
+            allDetails.addAll(updated);
+            if (!logRequests.isEmpty()) {
+                loggingService.createLogBatch(logRequests);
+            }
         }
         if (!toDelete.isEmpty()) {
             toDelete.forEach(id -> detailRepo.deleteById(new ChequeReturnDetailId(trnPoid, id)));

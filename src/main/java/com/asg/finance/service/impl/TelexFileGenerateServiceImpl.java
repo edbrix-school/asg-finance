@@ -1,6 +1,7 @@
 package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.DeleteReasonDto;
+import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
@@ -295,12 +296,13 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
     }
 
     private void processDetails(Long transactionPoid, List<TelexFileDtlDto> details) {
-        List<GlBankFileDtl> toSave = new ArrayList<>();
-        List<GlBankFileDtl> toUpdate = new ArrayList<>();
-        List<GlBankFileDtl> oldUpdates = new ArrayList<>();
-        List<Long> toDelete = new ArrayList<>();
         String docId = UserContext.getDocumentId();
         String key = transactionPoid.toString();
+        
+        List<GlBankFileDtl> toSave = new ArrayList<>();
+        List<GlBankFileDtl> toUpdate = new ArrayList<>();
+        List<Long> toDelete = new ArrayList<>();
+        List<LogRequestDto<GlBankFileDtl>> logRequests = new ArrayList<>();
         
         Long maxDetRowId = dtlRepository.findMaxDetRowIdByTransactionPoid(transactionPoid);
         Long nextDetRowId = (maxDetRowId == null) ? 1L : maxDetRowId + 1;
@@ -321,7 +323,6 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
                     
                     GlBankFileDtl oldDetail = new GlBankFileDtl();
                     BeanUtils.copyProperties(existing, oldDetail);
-                    oldUpdates.add(oldDetail);
                     
                     existing.setDebitTransactionPoid(dto.getDebitTransactionPoid());
                     existing.setDebitTransactionDate(dto.getDebitTransactionDate());
@@ -340,15 +341,14 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
                     existing.setLastModifiedBy(getCurrentUser());
                     existing.setLastModifiedDate(LocalDateTime.now());
                     toUpdate.add(existing);
+                    
+                    String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", transactionPoid, dto.getDetRowId());
+                    logRequests.add(new LogRequestDto<>(oldDetail, existing, GlBankFileDtl.class, docId, key, logDetail));
                     break;
                     
                 case "ISDELETED":
-                    GlBankFileDtl toDeleteEntity = dtlRepository.findByTransactionPoidAndDetRowId(transactionPoid, dto.getDetRowId())
-                            .orElse(null);
-                    if (toDeleteEntity != null) {
-                        loggingService.logDelete(toDeleteEntity, docId, key);
-                    }
                     toDelete.add(dto.getDetRowId());
+                    loggingService.logDelete(dto, docId, key);
                     break;
             }
         }
@@ -362,9 +362,8 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
         }
         if (!toUpdate.isEmpty()) {
             dtlRepository.saveAll(toUpdate);
-            for (int i = 0; i < toUpdate.size(); i++) {
-                String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", transactionPoid, toUpdate.get(i).getDetRowId());
-                loggingService.createLog(oldUpdates.get(i), toUpdate.get(i), GlBankFileDtl.class, docId, key, logDetail);
+            if (!logRequests.isEmpty()) {
+                loggingService.createLogBatch(logRequests);
             }
         }
         if (!toDelete.isEmpty()) {

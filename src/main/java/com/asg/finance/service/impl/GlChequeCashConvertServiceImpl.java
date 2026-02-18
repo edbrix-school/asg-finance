@@ -743,7 +743,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         String type = dto.getType();
 
         // ================= CHEQUE_TO_CHEQUE =================
-        if ("CHEQUE_TO_CHEQUE".equalsIgnoreCase(type)) {
+        if ("1".equalsIgnoreCase(type)) {
 
             if (dto.getInDtls() == null || dto.getInDtls().isEmpty()) {
                 throw new ValidationException("No Detail present in cheque conversion TO");
@@ -761,7 +761,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         }
 
         // ================= CHEQUE_TO_BANK =================
-        if ("CHEQUE_TO_BANK".equalsIgnoreCase(type)) {
+        if ("5".equalsIgnoreCase(type)) {
 
             Long inTotal = dto.getInDtls().stream()
                     .map(i -> i.getAmount() == null ? 0L : i.getAmount())
@@ -775,7 +775,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         }
 
         // ================= CHEQUE_TO_CASH =================
-        if ("CHEQUE_TO_CASH".equalsIgnoreCase(type)) {
+        if ("2".equalsIgnoreCase(type)) {
 
             if (dto.getCash() == null) {
                 throw new ValidationException("Please enter Cash amount");
@@ -792,7 +792,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         }
 
         // ================= CASH_TO_CHEQUE =================
-        if ("CASH_TO_CHEQUE".equalsIgnoreCase(type)) {
+        if ("3".equalsIgnoreCase(type)) {
 
             Long inTotal = dto.getInDtls().stream()
                     .map(i -> i.getAmount() == null ? 0L : i.getAmount())
@@ -802,6 +802,27 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
                 throw new ValidationException(
                         "Cash Amount (" + outTotal +
                                 ") and Cheque Amount (" + inTotal + ") are not matching...");
+            }
+        }
+
+        // ================= CHEQUE_TO_IMCOCHEQUE =================
+        if ("4".equalsIgnoreCase(type)) {
+
+            Long inTotal = dto.getInDtls().stream()
+                    .map(i -> i.getAmount() == null ? 0L : i.getAmount())
+                    .reduce(0L, Long::sum);
+
+            if (!outTotal.equals(inTotal)) {
+                throw new ValidationException(
+                        "Total cheque amount (" + outTotal +
+                                ") is not matched with converted bank amount (" + inTotal + ")");
+            }
+            // Voucher Type Validation
+            for (GlChequeCashConvertInDtlDto in : dto.getInDtls()) {
+                if (in.getVoucherType() == null ||
+                        !in.getVoucherType().equalsIgnoreCase("IMCOCHEQUE")) {
+                    throw new ValidationException("Voucher Type should be IMCOCHEQUE");
+                }
             }
         }
 

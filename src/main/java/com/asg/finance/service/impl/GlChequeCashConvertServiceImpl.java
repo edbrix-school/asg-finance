@@ -190,7 +190,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
 
         String operator = documentService.resolveOperator(filters);
         String isDeleted = documentService.resolveIsDeleted(filters);
-        List<FilterDto> filterList = documentService.resolveDateFilters(filters, "TRANSACTION_POID",startDate, endDate);
+        List<FilterDto> filterList = documentService.resolveDateFilters(filters, "TRANSACTION_DATE",startDate, endDate);
 
         RawSearchResult raw = documentService.search(documentId, filterList, operator, pageable, isDeleted,
                 "TRANSACTION_POID",
@@ -342,6 +342,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
     @Transactional
     public GlChequeCashConvertHdrDto updateGlChequeCashConvert(Long transactionPoid, GlChequeCashConvertHdrDto dto) {
 
+        validateStatusForEdit(transactionPoid);
         try {
         GlChequeCashConvertHdrEntity existingHdr = glChequeCashConvertHdrRepository.findById(transactionPoid)
                 .orElseThrow(() -> new RuntimeException("Record not found for transactionPoid: " + transactionPoid));
@@ -829,6 +830,33 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         // ================= Rounding Limit =================
         if (dto.getRoundingAmt() != null && dto.getRoundingAmt() > 99) {
             throw new ValidationException("RoundingAmount is greater than allowed limit");
+        }
+    }
+
+    private void validateStatusForEdit(Long transactionPoid) {
+
+        String status = glChequeCashConvertRepository.checkChequeConvertStatus(
+                UserContext.getGroupPoid(),
+                UserContext.getCompanyPoid(),
+                transactionPoid,
+                UserContext.getDocumentId(),
+                UserContext.getUserPoid(),
+                getCurrentUser()
+        );
+
+        if (status != null) {
+
+            if (status.contains("ERROR")) {
+                throw new ValidationException(
+                        "Some error occured in PROC_CHEQUE_CONVERT_STATUS_CHK : " + status
+                );
+            }
+
+            if (status.contains("INFO")) {
+                throw new ValidationException(
+                        "Cheque/cash is not in PENDING status, not allowed to edit.."
+                );
+            }
         }
     }
 

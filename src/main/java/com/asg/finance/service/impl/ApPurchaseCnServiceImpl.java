@@ -4,6 +4,7 @@ import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
+import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
@@ -227,16 +228,19 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
 
     private void updateDetailsByActionType(Long transactionPoid, ApPurchaseCnHdrDto dto) {
         validateRefTypeRequirements(dto);
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = transactionPoid.toString();
+        
+        List<LogRequestDto<ApPurchaseCnItemDtl>> itemLogRequests = new ArrayList<>();
+        List<LogRequestDto<ApPurchaseCnChargeDtl>> chargeLogRequests = new ArrayList<>();
+        List<LogRequestDto<ApPurchaseCnGlDtl>> glLogRequests = new ArrayList<>();
         
         if (dto.getItemDetails() != null) {
             for (ApPurchaseCnItemDtlDto itemDto : dto.getItemDetails()) {
                 String actionType = normalizeActionType(itemDto.getActionType());
                 if ("isdeleted".equals(actionType) && itemDto.getDetRowId() != null) {
-                    ApPurchaseCnItemDtl oldItem = itemDtlRepository.findById(new com.asg.finance.entity.key.ApPurchaseCnItemDtlKey(transactionPoid, itemDto.getDetRowId())).orElse(null);
-                    if (oldItem != null) {
-                        loggingService.logChanges(oldItem, null, ApPurchaseCnItemDtl.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.DELETED, "TRANSACTION_POID");
-                    }
                     itemDtlRepository.deleteById(new com.asg.finance.entity.key.ApPurchaseCnItemDtlKey(transactionPoid, itemDto.getDetRowId()));
+                    loggingService.logDelete(itemDto, docId, docKeyPoid);
                 } else if ("isupdated".equals(actionType) && itemDto.getDetRowId() != null) {
                     ApPurchaseCnItemDtl oldItem = itemDtlRepository.findById(new com.asg.finance.entity.key.ApPurchaseCnItemDtlKey(transactionPoid, itemDto.getDetRowId())).orElse(null);
                     ApPurchaseCnItemDtl item = mapItemToEntity(itemDto);
@@ -246,7 +250,8 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                     item.setLastModifiedDate(Timestamp.valueOf(LocalDateTime.now()));
                     itemDtlRepository.save(item);
                     if (oldItem != null) {
-                        loggingService.logChanges(oldItem, item, ApPurchaseCnItemDtl.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+                        String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", transactionPoid, itemDto.getDetRowId());
+                        itemLogRequests.add(new LogRequestDto<>(oldItem, item, ApPurchaseCnItemDtl.class, docId, docKeyPoid, logDetail));
                     }
                 } else if ("iscreated".equals(actionType)) {
                     ApPurchaseCnItemDtl item = mapItemToEntity(itemDto);
@@ -255,7 +260,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                     item.setCreatedBy(UserContext.getUserId());
                     item.setCreatedDate(Timestamp.valueOf(LocalDateTime.now()));
                     itemDtlRepository.save(item);
-                    loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString(), "Row Created on Supplier Credit Note Item Detail with detRowId: " + item.getDetRowId());
+                    loggingService.createLogSummaryEntry(docId, docKeyPoid, "Row Created on Supplier Credit Note Item Detail with detRowId: " + item.getDetRowId());
                 }
             }
         }
@@ -264,11 +269,8 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
             for (ApPurchaseCnChargeDtlDto chargeDto : dto.getChargeDetails()) {
                 String actionType = normalizeActionType(chargeDto.getActionType());
                 if ("isdeleted".equals(actionType) && chargeDto.getDetRowId() != null) {
-                    ApPurchaseCnChargeDtl oldCharge = chargeDtlRepository.findById(new com.asg.finance.entity.key.ApPurchaseCnChargeDtlKey(transactionPoid, chargeDto.getDetRowId())).orElse(null);
-                    if (oldCharge != null) {
-                        loggingService.logChanges(oldCharge, null, ApPurchaseCnChargeDtl.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.DELETED, "TRANSACTION_POID");
-                    }
                     chargeDtlRepository.deleteById(new com.asg.finance.entity.key.ApPurchaseCnChargeDtlKey(transactionPoid, chargeDto.getDetRowId()));
+                    loggingService.logDelete(chargeDto, docId, docKeyPoid);
                 } else if ("isupdated".equals(actionType) && chargeDto.getDetRowId() != null) {
                     ApPurchaseCnChargeDtl oldCharge = chargeDtlRepository.findById(new com.asg.finance.entity.key.ApPurchaseCnChargeDtlKey(transactionPoid, chargeDto.getDetRowId())).orElse(null);
                     ApPurchaseCnChargeDtl charge = mapChargeToEntity(chargeDto);
@@ -278,7 +280,8 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                     charge.setLastModifiedDate(Timestamp.valueOf(LocalDateTime.now()));
                     chargeDtlRepository.save(charge);
                     if (oldCharge != null) {
-                        loggingService.logChanges(oldCharge, charge, ApPurchaseCnChargeDtl.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+                        String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", transactionPoid, chargeDto.getDetRowId());
+                        chargeLogRequests.add(new LogRequestDto<>(oldCharge, charge, ApPurchaseCnChargeDtl.class, docId, docKeyPoid, logDetail));
                     }
                 } else if ("iscreated".equals(actionType)) {
                     ApPurchaseCnChargeDtl charge = mapChargeToEntity(chargeDto);
@@ -287,7 +290,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                     charge.setCreatedBy(UserContext.getUserId());
                     charge.setCreatedDate(Timestamp.valueOf(LocalDateTime.now()));
                     chargeDtlRepository.save(charge);
-                    loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString(), "Row Created on Supplier Credit Note Charge Detail with detRowId: " + charge.getDetRowId());
+                    loggingService.createLogSummaryEntry(docId, docKeyPoid, "Row Created on Supplier Credit Note Charge Detail with detRowId: " + charge.getDetRowId());
                 }
             }
         }
@@ -296,11 +299,8 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
             for (ApPurchaseCnGlDtlDto glDto : dto.getGlDetails()) {
                 String actionType = normalizeActionType(glDto.getActionType());
                 if ("isdeleted".equals(actionType) && glDto.getDetRowId() != null) {
-                    ApPurchaseCnGlDtl oldGl = glDtlRepository.findById(new com.asg.finance.entity.key.ApPurchaseCnGlDtlKey(transactionPoid, glDto.getDetRowId())).orElse(null);
-                    if (oldGl != null) {
-                        loggingService.logChanges(oldGl, null, ApPurchaseCnGlDtl.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.DELETED, "TRANSACTION_POID");
-                    }
                     glDtlRepository.deleteById(new com.asg.finance.entity.key.ApPurchaseCnGlDtlKey(transactionPoid, glDto.getDetRowId()));
+                    loggingService.logDelete(glDto, docId, docKeyPoid);
                 } else if ("isupdated".equals(actionType) && glDto.getDetRowId() != null) {
                     ApPurchaseCnGlDtl oldGl = glDtlRepository.findById(new com.asg.finance.entity.key.ApPurchaseCnGlDtlKey(transactionPoid, glDto.getDetRowId())).orElse(null);
                     ApPurchaseCnGlDtl gl = mapGlToEntity(glDto);
@@ -311,7 +311,8 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                     glDtlRepository.save(gl);
                     glDto.setDetRowId(gl.getDetRowId());
                     if (oldGl != null) {
-                        loggingService.logChanges(oldGl, gl, ApPurchaseCnGlDtl.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+                        String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", transactionPoid, glDto.getDetRowId());
+                        glLogRequests.add(new LogRequestDto<>(oldGl, gl, ApPurchaseCnGlDtl.class, docId, docKeyPoid, logDetail));
                     }
                 } else if ("iscreated".equals(actionType)) {
                     ApPurchaseCnGlDtl gl = mapGlToEntity(glDto);
@@ -321,13 +322,24 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                     gl.setCreatedDate(Timestamp.valueOf(LocalDateTime.now()));
                     glDtlRepository.save(gl);
                     glDto.setDetRowId(gl.getDetRowId());
-                    loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString(), "Row Created on Supplier Credit Note GL Detail with detRowId: " + gl.getDetRowId());
+                    loggingService.createLogSummaryEntry(docId, docKeyPoid, "Row Created on Supplier Credit Note GL Detail with detRowId: " + gl.getDetRowId());
                 }
             }
             saveBillwiseForGl(transactionPoid, dto.getGlDetails().stream()
                 .filter(g -> !"isdeleted".equals(normalizeActionType(g.getActionType()))).collect(Collectors.toList()), UserContext.getDocumentId());
             saveCostCenterForGl(transactionPoid, dto.getGlDetails().stream()
                 .filter(g -> !"isdeleted".equals(normalizeActionType(g.getActionType()))).collect(Collectors.toList()), UserContext.getDocumentId());
+        }
+        
+        // Batch process all update logs
+        if (!itemLogRequests.isEmpty()) {
+            loggingService.createLogBatch(itemLogRequests);
+        }
+        if (!chargeLogRequests.isEmpty()) {
+            loggingService.createLogBatch(chargeLogRequests);
+        }
+        if (!glLogRequests.isEmpty()) {
+            loggingService.createLogBatch(glLogRequests);
         }
     }
 

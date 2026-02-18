@@ -4,6 +4,7 @@ import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
+import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
@@ -222,6 +223,7 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
                 .orElse(0L)};
 
         List<PdcChqBatchDtlResponseDto> responseList = new ArrayList<>();
+        List<LogRequestDto<PdcChqBatchDtlEntity>> logRequests = new ArrayList<>();
 
         for (PdcChqBatchDtlRequestDto dto : dtos) {
             String action = dto.getActionType() != null ? dto.getActionType().toUpperCase() : "ISCREATED";
@@ -246,7 +248,8 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
                     updateDetailEntity(existing, dto);
                     existing = dtlRepo.save(existing);
                     responseList.add(mapDtlEntityToResponseDto(existing));
-                    loggingService.logChanges(oldEntity, existing, PdcChqBatchDtlEntity.class, docId, transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+                    String logDetailUpdate = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", transactionPoid, dto.getDetRowId());
+                    logRequests.add(new LogRequestDto<>(oldEntity, existing, PdcChqBatchDtlEntity.class, docId, transactionPoid.toString(), logDetailUpdate));
                     break;
                     
                 case "ISDELETED":
@@ -256,6 +259,10 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
                     }
                     break;
             }
+        }
+
+        if (!logRequests.isEmpty()) {
+            loggingService.createLogBatch(logRequests);
         }
 
         return responseList;

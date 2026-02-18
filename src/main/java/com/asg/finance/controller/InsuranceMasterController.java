@@ -312,11 +312,13 @@ public class InsuranceMasterController {
     public ResponseEntity<?> renewInsurance(
             @Parameter(description = "Insurance Master ID", required = true)
             @PathVariable Long insuranceId,
+            @Parameter(description = "Add to renewal history confirmation")
+            @RequestParam(required = false) Boolean addToHistory,
             @Valid @RequestBody InsuranceMasterRequestDto request
     ) {
         try {
-            InsuranceMasterResponseDto response = insuranceMasterService.renewInsurance(insuranceId, request);
-            return success("Insurance renewed successfully", response);
+            InsuranceMasterResponseDto response = insuranceMasterService.renewInsurance(insuranceId, request, addToHistory);
+            return success("Details successfully added", response);
         } catch (Exception ex) {
             return internalServerError(ex.getMessage());
         }

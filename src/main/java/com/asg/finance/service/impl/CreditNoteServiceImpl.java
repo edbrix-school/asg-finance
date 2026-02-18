@@ -1832,15 +1832,15 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         dto.setCurrencyCode(entity.getCurrencyCode());
         dto.setCurrencyRate(entity.getCurrencyRate());
         dto.setPartyType(entity.getPartyType());
-//        if (entity.getPartyType() != null) {
-//            LovGetListDto party = lovService.getDetailsByCodeAndLovName(entity.getPartyType(), "CREDIT_PARTY_TYPE");
-//            dto.setPartyTypeDet(party);
-//        }
+       if (entity.getPartyType() != null) {
+           LovGetListDto party = lovService.getDetailsByCodeAndLovName(entity.getPartyType(), "CREDIT_PARTY_TYPE");
+            dto.setPartyTypeDet(party);
+       }
         dto.setPartyPoid(entity.getPartyPoid());
-//        if (entity.getPartyPoid() != null) {
-//            LovGetListDto party = lovService.getDetailsByPoidAndLovName(entity.getPartyPoid(), getLovNameForPartyType(entity.getPartyType()));
-//            dto.setPartyDet(party);
-//        }
+        if (entity.getPartyPoid() != null) {
+            LovGetListDto party = lovService.getDetailsByPoidAndLovName(entity.getPartyPoid(), getLovNameForPartyType(entity.getPartyType()));
+            dto.setPartyDet(party);
+        }
         dto.setRefType(entity.getRefType());
         dto.setPostingNarration(entity.getPostingNarration());
         dto.setRemarks(entity.getRemarks());

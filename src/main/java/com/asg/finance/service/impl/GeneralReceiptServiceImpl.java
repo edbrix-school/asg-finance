@@ -891,28 +891,19 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
             throw new ValidationException("Credit GL not found: " + header.getCreditGL());
         }
         GLMasterEntity creditGL = creditGLList.get(0);
-
-        // 3. Validate amount matching - compare BHD amounts
         if (request.getPayments() != null && !request.getPayments().isEmpty()) {
             BigDecimal paymentTotal = request.getPayments().stream()
-                    .filter(payment -> {
-                        String action = payment.getActionType();
-                        return action == null || !"ISDELETED".equalsIgnoreCase(action.trim());
-                    })
                     .map(GeneralReceiptPaymentDto::getAmount)
                     .filter(amount -> amount != null)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            BigDecimal currencyRate = header.getRate() != null ? header.getRate() : BigDecimal.ONE;
-            BigDecimal receiptBhdAmount = header.getReceiptAmount().multiply(currencyRate);
-            BigDecimal paymentBhdTotal = paymentTotal.multiply(currencyRate);
+            log.debug("Amount validation - Receipt amount: {}, Payment total: {}",
+                    header.getReceiptAmount(), paymentTotal);
 
-            if (paymentBhdTotal.compareTo(BigDecimal.ZERO) != 0) {
-                if (paymentBhdTotal.compareTo(receiptBhdAmount) != 0) {
-                    throw new ValidationException(String.format(
-                            "Total Amount (%.3f) not matching with Payment Details (%.3f), please check",
-                            receiptBhdAmount, paymentBhdTotal));
-                }
+            if (header.getReceiptAmount().compareTo(paymentTotal) != 0) {
+                throw new ValidationException(String.format(
+                        "Total amount (%.3f) does not match sum of payment amounts (%.3f)",
+                        header.getReceiptAmount(), paymentTotal));
             }
         }
 

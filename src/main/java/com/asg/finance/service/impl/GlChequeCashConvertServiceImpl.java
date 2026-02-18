@@ -190,7 +190,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
 
         String operator = documentService.resolveOperator(filters);
         String isDeleted = documentService.resolveIsDeleted(filters);
-        List<FilterDto> filterList = documentService.resolveDateFilters(filters, "TRANSACTION_POID",startDate, endDate);
+        List<FilterDto> filterList = documentService.resolveDateFilters(filters, "TRANSACTION_DATE",startDate, endDate);
 
         RawSearchResult raw = documentService.search(documentId, filterList, operator, pageable, isDeleted,
                 "TRANSACTION_POID",
@@ -213,6 +213,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
             throw new ValidationException("transactionDate is required and must be within the open financial period");
         }
         validateTransactionDate(dto.getTransactionDate());
+        validateAmounts(dto);
         hdrEntity.setTransactionDate(dto.getTransactionDate());
 
         hdrEntity.setGroupPoid(UserContext.getGroupPoid());
@@ -341,6 +342,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
     @Transactional
     public GlChequeCashConvertHdrDto updateGlChequeCashConvert(Long transactionPoid, GlChequeCashConvertHdrDto dto) {
 
+        validateStatusForEdit(transactionPoid);
         try {
         GlChequeCashConvertHdrEntity existingHdr = glChequeCashConvertHdrRepository.findById(transactionPoid)
                 .orElseThrow(() -> new RuntimeException("Record not found for transactionPoid: " + transactionPoid));
@@ -350,6 +352,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         BeanUtils.copyProperties(existingHdr, oldEntity);
 
         validateTransactionDate(dto.getTransactionDate());
+        validateAmounts(dto);
         existingHdr.setPostingNarration(dto.getPostingNarration());
         existingHdr.setCash(dto.getCash());
         existingHdr.setRemarks(dto.getRemarks());
@@ -722,6 +725,141 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         JasperReport mainReport = printService.load("Finance/GL/Cheque_Cash_Conversion.jrxml");
         return printService.fillReportToPdf(mainReport, params, dataSource);
     }
+
+    private void validateAmounts(GlChequeCashConvertHdrDto dto) {
+
+        if (dto.getOutDtls() == null || dto.getOutDtls().isEmpty()) {
+            throw new ValidationException("No Detail present for the cheque");
+        }
+
+        Long outTotal = dto.getOutDtls().stream()
+                .filter(o -> !"N".equalsIgnoreCase(o.getSelected()))
+                .map(o -> o.getAmount() == null ? 0L : o.getAmount())
+                .reduce(0L, Long::sum);
+
+        if (outTotal == 0) {
+            throw new ValidationException("No Detail present for the cheque");
+        }
+
+        String type = dto.getType();
+
+        // ================= CHEQUE_TO_CHEQUE =================
+        if ("1".equalsIgnoreCase(type)) {
+
+            if (dto.getInDtls() == null || dto.getInDtls().isEmpty()) {
+                throw new ValidationException("No Detail present in cheque conversion TO");
+            }
+
+            Long inTotal = dto.getInDtls().stream()
+                    .map(i -> i.getAmount() == null ? 0L : i.getAmount())
+                    .reduce(0L, Long::sum);
+
+            if (!outTotal.equals(inTotal)) {
+                throw new ValidationException(
+                        "Total cheque amount (" + outTotal +
+                                ") is not matched with converted cheque amount (" + inTotal + ")");
+            }
+        }
+
+        // ================= CHEQUE_TO_BANK =================
+        if ("5".equalsIgnoreCase(type)) {
+
+            Long inTotal = dto.getInDtls().stream()
+                    .map(i -> i.getAmount() == null ? 0L : i.getAmount())
+                    .reduce(0L, Long::sum);
+
+            if (!outTotal.equals(inTotal)) {
+                throw new ValidationException(
+                        "Total cheque amount (" + outTotal +
+                                ") is not matched with converted bank amount (" + inTotal + ")");
+            }
+        }
+
+        // ================= CHEQUE_TO_CASH =================
+        if ("2".equalsIgnoreCase(type)) {
+
+            if (dto.getCash() == null) {
+                throw new ValidationException("Please enter Cash amount");
+            }
+
+            Long cashAmount = dto.getCash();
+            Long rounding = dto.getRoundingAmt() == null ? 0L : dto.getRoundingAmt();
+
+            if (!outTotal.equals(cashAmount + rounding)) {
+                throw new ValidationException(
+                        "Total cheque amount (" + outTotal +
+                                ") is not matched with converted cash amount (" + (cashAmount + rounding) + ")");
+            }
+        }
+
+        // ================= CASH_TO_CHEQUE =================
+        if ("3".equalsIgnoreCase(type)) {
+
+            Long inTotal = dto.getInDtls().stream()
+                    .map(i -> i.getAmount() == null ? 0L : i.getAmount())
+                    .reduce(0L, Long::sum);
+
+            if (!outTotal.equals(inTotal)) {
+                throw new ValidationException(
+                        "Cash Amount (" + outTotal +
+                                ") and Cheque Amount (" + inTotal + ") are not matching...");
+            }
+        }
+
+        // ================= CHEQUE_TO_IMCOCHEQUE =================
+        if ("4".equalsIgnoreCase(type)) {
+
+            Long inTotal = dto.getInDtls().stream()
+                    .map(i -> i.getAmount() == null ? 0L : i.getAmount())
+                    .reduce(0L, Long::sum);
+
+            if (!outTotal.equals(inTotal)) {
+                throw new ValidationException(
+                        "Total cheque amount (" + outTotal +
+                                ") is not matched with converted bank amount (" + inTotal + ")");
+            }
+            // Voucher Type Validation
+            for (GlChequeCashConvertInDtlDto in : dto.getInDtls()) {
+                if (in.getVoucherType() == null ||
+                        !in.getVoucherType().equalsIgnoreCase("IMCOCHEQUE")) {
+                    throw new ValidationException("Voucher Type should be IMCOCHEQUE");
+                }
+            }
+        }
+
+        // ================= Rounding Limit =================
+        if (dto.getRoundingAmt() != null && dto.getRoundingAmt() > 99) {
+            throw new ValidationException("RoundingAmount is greater than allowed limit");
+        }
+    }
+
+    private void validateStatusForEdit(Long transactionPoid) {
+
+        String status = glChequeCashConvertRepository.checkChequeConvertStatus(
+                UserContext.getGroupPoid(),
+                UserContext.getCompanyPoid(),
+                transactionPoid,
+                UserContext.getDocumentId(),
+                UserContext.getUserPoid(),
+                getCurrentUser()
+        );
+
+        if (status != null) {
+
+            if (status.contains("ERROR")) {
+                throw new ValidationException(
+                        "Some error occured in PROC_CHEQUE_CONVERT_STATUS_CHK : " + status
+                );
+            }
+
+            if (status.contains("INFO")) {
+                throw new ValidationException(
+                        "Cheque/cash is not in PENDING status, not allowed to edit.."
+                );
+            }
+        }
+    }
+
 }
 
 

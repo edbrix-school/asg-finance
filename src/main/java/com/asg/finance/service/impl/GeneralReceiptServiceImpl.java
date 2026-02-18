@@ -891,30 +891,18 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
             throw new ValidationException("Credit GL not found: " + header.getCreditGL());
         }
         GLMasterEntity creditGL = creditGLList.get(0);
-
-        // 3. Validate amount matching - exclude deleted payments
         if (request.getPayments() != null && !request.getPayments().isEmpty()) {
             BigDecimal paymentTotal = request.getPayments().stream()
-                    .filter(payment -> {
-                        String action = payment.getActionType();
-                        // Exclude payments marked as deleted
-                        return action == null || 
-                               !"ISDELETED".equalsIgnoreCase(action.trim());
-                    })
                     .map(GeneralReceiptPaymentDto::getAmount)
                     .filter(amount -> amount != null)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            log.debug("Amount validation - Receipt amount: {}, Payment total: {}, Active payments count: {}", 
-                    header.getReceiptAmount(), paymentTotal, 
-                    request.getPayments().stream().filter(p -> {
-                        String action = p.getActionType();
-                        return action == null || !"ISDELETED".equalsIgnoreCase(action.trim());
-                    }).count());
+            log.debug("Amount validation - Receipt amount: {}, Payment total: {}",
+                    header.getReceiptAmount(), paymentTotal);
 
             if (header.getReceiptAmount().compareTo(paymentTotal) != 0) {
                 throw new ValidationException(String.format(
-                        "Receipt amount (%.2f) does not match sum of active payment amounts (%.2f). Please update the receipt amount to match the total payments.",
+                        "Total amount (%.3f) does not match sum of payment amounts (%.3f)",
                         header.getReceiptAmount(), paymentTotal));
             }
         }

@@ -27,7 +27,7 @@ public class UniversalChargeDetailDto {
     private BigDecimal totalAmount;
     private String remarks;
     private String issueInvoice;   // "Y" or "N"
-    private Boolean selected = false;
+    private String selected;
 
     private String actionType; 
 }

@@ -4,6 +4,7 @@ import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
+import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
@@ -412,20 +413,25 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
     private List<ChequeReturnDetail> updateDetailsWithActionType(Long trnPoid, ChequeReturn header,
                                                                   List<ChequeReturnRequest.ChequeDetailDto> dtos,
                                                                   Date dbDate) {
+        String docId = DOC_ID_CHEQUE_RETURN;
+        String docKeyPoid = trnPoid.toString();
+        
         List<ChequeReturnDetail> toSave = new ArrayList<>();
         List<ChequeReturnDetail> toUpdate = new ArrayList<>();
         List<Long> toDelete = new ArrayList<>();
+        List<LogRequestDto<ChequeReturnDetail>> logRequests = new ArrayList<>();
         
         Long maxDetRowId = detailRepo.countById_TransactionPoid(trnPoid);
         
         for (ChequeReturnRequest.ChequeDetailDto d : dtos) {
-            String action = d.getActionType() != null ? d.getActionType().toUpperCase() : "ISCREATED";
+            String action = d.getActionType() != null ? d.getActionType().toUpperCase() : "NOCHANGE";
             switch (action) {
                 case "ISCREATED":
                     Long detId = d.getDetRowId() != null ? d.getDetRowId() : ++maxDetRowId;
                     d.setDetRowId(detId);
                     d.setTransactionPoid(trnPoid);
-                    toSave.add(buildDetailEntity(trnPoid, header, d, dbDate, detId));
+                    ChequeReturnDetail newDetail = buildDetailEntity(trnPoid, header, d, dbDate, detId);
+                    toSave.add(newDetail);
                     break;
                 case "ISUPDATED":
                     ChequeReturnDetail existing = detailRepo.findById(new ChequeReturnDetailId(trnPoid, d.getDetRowId()))
@@ -434,11 +440,16 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
                     BeanUtils.copyProperties(existing, oldDetail);
                     updateDetailEntity(existing, d, dbDate);
                     toUpdate.add(existing);
-                    loggingService.logChanges(oldDetail, existing, ChequeReturnDetail.class, UserContext.getDocumentId(), trnPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+                    
+                    String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", trnPoid, d.getDetRowId());
+                    logRequests.add(new LogRequestDto<>(oldDetail, existing, ChequeReturnDetail.class, docId, docKeyPoid, logDetail));
                     break;
                 case "ISDELETED":
                     toDelete.add(d.getDetRowId());
-                    loggingService.logDelete(d, UserContext.getDocumentId(), trnPoid.toString());
+                    loggingService.logDelete(d, docId, docKeyPoid);
+                    break;
+                case "NOCHANGE":
+                default:
                     break;
             }
         }
@@ -449,17 +460,20 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
             allDetails.addAll(saved);
             saved.forEach(detail -> {
                 String logDetail = String.format("Row Created on Cheque Return Detail with detRowId: %s", detail.getId().getDetRowId());
-                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), trnPoid.toString(), logDetail);
+                loggingService.createLogSummaryEntry(docId, docKeyPoid, logDetail);
             });
         }
         if (!toUpdate.isEmpty()) {
-            allDetails.addAll(detailRepo.saveAll(toUpdate));
+            List<ChequeReturnDetail> updated = detailRepo.saveAll(toUpdate);
+            allDetails.addAll(updated);
+            if (!logRequests.isEmpty()) {
+                loggingService.createLogBatch(logRequests);
+            }
         }
         if (!toDelete.isEmpty()) {
             toDelete.forEach(id -> detailRepo.deleteById(new ChequeReturnDetailId(trnPoid, id)));
         }
         
-        // If no changes were made, return existing details from database
         if (allDetails.isEmpty()) {
             allDetails = detailRepo.findByChequeReturn_TransactionPoid(trnPoid);
         }
@@ -523,41 +537,127 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
     private List<ChequeReturnGlDetail> buildAndSaveGlDetails(Long trnPoid, ChequeReturn header,
                                                              List<ChequeReturnRequest.GlDetailDto> dtos,
                                                              Date dbDate, boolean freshInsert) {
-        long startIndex = freshInsert ? 1 : (glDetailRepo.countById_TransactionPoid(trnPoid) + 1);
-        List<ChequeReturnGlDetail> entities = new ArrayList<>();
-        long i = startIndex;
-
-        for (ChequeReturnRequest.GlDetailDto g : dtos) {
-            Long detId = freshInsert ? i++ : (g.getDetRowId() != null ? g.getDetRowId() : i++);
-            g.setDetRowId(detId);
-            g.setTransactionPoid(trnPoid);
-            double dr = "DR".equalsIgnoreCase(g.getType()) ? g.getAmount() : 0d;
-            double cr = "CR".equalsIgnoreCase(g.getType()) ? g.getAmount() : 0d;
-
-            ChequeReturnGlDetail entity = ChequeReturnGlDetail.builder()
-                    .id(new ChequeReturnGlDetailId(trnPoid, detId))
-                    .chequeReturn(header)
-                    .type(g.getType().toUpperCase())
-                    .companyPoid(g.getCompanyPoid())
-                    .glPoid(g.getGlPoid())
-                    .drAmt(dr)
-                    .crAmt(cr)
-                    .remarks(g.getRemarks())
-                    .createdDate(dbDate)
-                    .lastModifiedDate(dbDate)
-                    .createdBy(UserContext.getUserId())
-                    .lastModifiedBy(UserContext.getUserId())
-                    .build();
-            entities.add(entity);
+        if (freshInsert) {
+            long i = 1;
+            List<ChequeReturnGlDetail> entities = new ArrayList<>();
+            for (ChequeReturnRequest.GlDetailDto g : dtos) {
+                Long detId = i++;
+                g.setDetRowId(detId);
+                g.setTransactionPoid(trnPoid);
+                ChequeReturnGlDetail entity = buildGlDetailEntity(trnPoid, header, g, dbDate, detId);
+                entities.add(entity);
+            }
+            List<ChequeReturnGlDetail> savedGlDetails = glDetailRepo.saveAll(entities);
+            savedGlDetails.forEach(glDetail -> {
+                String logDetail = String.format("Row Created on Cheque Return GL Detail with detRowId: %s", glDetail.getId().getDetRowId());
+                loggingService.createLogSummaryEntry(DOC_ID_CHEQUE_RETURN, trnPoid.toString(), logDetail);
+            });
+            return savedGlDetails;
+        } else {
+            return updateGlDetailsWithActionType(trnPoid, header, dtos, dbDate);
         }
-        List<ChequeReturnGlDetail> savedGlDetails = glDetailRepo.saveAll(entities);
+    }
+
+    private List<ChequeReturnGlDetail> updateGlDetailsWithActionType(Long trnPoid, ChequeReturn header,
+                                                                      List<ChequeReturnRequest.GlDetailDto> dtos,
+                                                                      Date dbDate) {
+        String docId = DOC_ID_CHEQUE_RETURN;
+        String docKeyPoid = trnPoid.toString();
         
-        savedGlDetails.forEach(glDetail -> {
-            String logDetail = String.format("Row Created on Cheque Return GL Detail with detRowId: %s", glDetail.getId().getDetRowId());
-            loggingService.createLogSummaryEntry(UserContext.getDocumentId(), trnPoid.toString(), logDetail);
-        });
+        List<ChequeReturnGlDetail> toSave = new ArrayList<>();
+        List<ChequeReturnGlDetail> toUpdate = new ArrayList<>();
+        List<Long> toDelete = new ArrayList<>();
+        List<LogRequestDto<ChequeReturnGlDetail>> logRequests = new ArrayList<>();
         
-        return savedGlDetails;
+        Long maxDetRowId = glDetailRepo.countById_TransactionPoid(trnPoid);
+        
+        for (ChequeReturnRequest.GlDetailDto g : dtos) {
+            String action = g.getActionType() != null ? g.getActionType().toUpperCase() : "NOCHANGE";
+            switch (action) {
+                case "ISCREATED":
+                    Long detId = g.getDetRowId() != null ? g.getDetRowId() : ++maxDetRowId;
+                    g.setDetRowId(detId);
+                    g.setTransactionPoid(trnPoid);
+                    toSave.add(buildGlDetailEntity(trnPoid, header, g, dbDate, detId));
+                    break;
+                case "ISUPDATED":
+                    ChequeReturnGlDetail existing = glDetailRepo.findById(new ChequeReturnGlDetailId(trnPoid, g.getDetRowId()))
+                            .orElseThrow(() -> new EntityNotFoundException("GL Detail not found: " + g.getDetRowId()));
+                    ChequeReturnGlDetail oldGlDetail = new ChequeReturnGlDetail();
+                    BeanUtils.copyProperties(existing, oldGlDetail);
+                    updateGlDetailEntity(existing, g, dbDate);
+                    toUpdate.add(existing);
+                    
+                    String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", oldGlDetail.getId().getTransactionPoid(), g.getDetRowId());
+                    logRequests.add(new LogRequestDto<>(oldGlDetail, existing, ChequeReturnGlDetail.class, docId, docKeyPoid, logDetail));
+                    break;
+                case "ISDELETED":
+                    toDelete.add(g.getDetRowId());
+                    loggingService.logDelete(g, docId, docKeyPoid);
+                    break;
+                case "NOCHANGE":
+                default:
+                    break;
+            }
+        }
+        
+        List<ChequeReturnGlDetail> allGlDetails = new ArrayList<>();
+        if (!toSave.isEmpty()) {
+            List<ChequeReturnGlDetail> saved = glDetailRepo.saveAll(toSave);
+            allGlDetails.addAll(saved);
+            saved.forEach(glDetail -> {
+                String logDetailForCreated = String.format("Row Created on Cheque Return GL Detail with detRowId: %s", glDetail.getId().getDetRowId());
+                loggingService.createLogSummaryEntry(docId, docKeyPoid, logDetailForCreated);
+            });
+        }
+        if (!toUpdate.isEmpty()) {
+            List<ChequeReturnGlDetail> updated = glDetailRepo.saveAll(toUpdate);
+            allGlDetails.addAll(updated);
+            if (!logRequests.isEmpty()) {
+                loggingService.createLogBatch(logRequests);
+            }
+        }
+        if (!toDelete.isEmpty()) {
+            toDelete.forEach(id -> glDetailRepo.deleteById(new ChequeReturnGlDetailId(trnPoid, id)));
+        }
+        
+        if (allGlDetails.isEmpty()) {
+            allGlDetails = glDetailRepo.findByChequeReturn_TransactionPoid(trnPoid);
+        }
+        
+        return allGlDetails;
+    }
+
+    private ChequeReturnGlDetail buildGlDetailEntity(Long trnPoid, ChequeReturn header,
+                                                     ChequeReturnRequest.GlDetailDto g,
+                                                     Date dbDate, Long detId) {
+        double dr = "DR".equalsIgnoreCase(g.getType()) ? g.getAmount() : 0d;
+        double cr = "CR".equalsIgnoreCase(g.getType()) ? g.getAmount() : 0d;
+        return ChequeReturnGlDetail.builder()
+                .id(new ChequeReturnGlDetailId(trnPoid, detId))
+                .chequeReturn(header)
+                .type(g.getType().toUpperCase())
+                .companyPoid(g.getCompanyPoid())
+                .glPoid(g.getGlPoid())
+                .drAmt(dr)
+                .crAmt(cr)
+                .remarks(g.getRemarks())
+                .createdDate(dbDate)
+                .lastModifiedDate(dbDate)
+                .createdBy(UserContext.getUserId())
+                .lastModifiedBy(UserContext.getUserId())
+                .build();
+    }
+
+    private void updateGlDetailEntity(ChequeReturnGlDetail entity, ChequeReturnRequest.GlDetailDto g, Date dbDate) {
+        entity.setType(g.getType().toUpperCase());
+        entity.setCompanyPoid(g.getCompanyPoid());
+        entity.setGlPoid(g.getGlPoid());
+        entity.setDrAmt("DR".equalsIgnoreCase(g.getType()) ? g.getAmount() : 0d);
+        entity.setCrAmt("CR".equalsIgnoreCase(g.getType()) ? g.getAmount() : 0d);
+        entity.setRemarks(g.getRemarks());
+        entity.setLastModifiedDate(dbDate);
+        entity.setLastModifiedBy(UserContext.getUserId());
     }
 
     // ============================================================

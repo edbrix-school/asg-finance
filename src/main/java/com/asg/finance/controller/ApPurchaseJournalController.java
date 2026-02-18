@@ -106,7 +106,7 @@ public class ApPurchaseJournalController {
             @RequestBody ApPurchaseInvoiceHdrDto apPurchaseInvoiceHdrDto) {
         try {
             ApPurchaseInvoiceHdrDto result = service.createApPurchaseInvoice(apPurchaseInvoiceHdrDto, UserContext.getDocumentId());
-            return success("AP Purchase Journal created successfully", result);
+            return success("Purchase Journal created successfully", result);
         } catch (ValidationException ex) {
             return internalServerError(ex.getMessage());
         } catch (Exception e) {
@@ -169,7 +169,7 @@ public class ApPurchaseJournalController {
 
             @RequestBody ApPurchaseInvoiceHdrDto apPurchaseInvoiceHdrDto) {
         ApPurchaseInvoiceHdrDto result = service.updateApPurchaseInvoice(transactionPoid, apPurchaseInvoiceHdrDto);
-        return success("AP Purchase Journal updated successfully", result);
+        return success("Purchase Journal updated successfully", result);
     }
 
     @AllowedAction(UserRolesRightsEnum.DELETE)
@@ -196,7 +196,7 @@ public class ApPurchaseJournalController {
 
         service.softDeleteApPurchaseInvoice(transactionPoid, deleteReasonDto);
 
-        return success("AP Purchase Journal deleted successfully");
+        return success("Purchase Journal deleted successfully");
     }
 
     @AllowedAction(UserRolesRightsEnum.VIEW)
@@ -320,7 +320,7 @@ public class ApPurchaseJournalController {
 
         Map<String, Object> result = service.listOfRecordsAndGenericSearch(UserContext.getDocumentId(), filters, startDate, endDate, pageable);
 
-            return success("AP Purchase Journal list fetched successfully", result);
+            return success("Purchase Journal list fetched successfully", result);
     }
 
     @AllowedAction(UserRolesRightsEnum.CREATE)

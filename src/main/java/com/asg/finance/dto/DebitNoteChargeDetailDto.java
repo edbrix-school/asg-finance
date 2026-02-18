@@ -1,5 +1,7 @@
 package com.asg.finance.dto;
 
+import com.asg.common.lib.annotation.AuditIgnore;
+import jakarta.persistence.Column;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -13,7 +15,7 @@ public class DebitNoteChargeDetailDto {
     private Long chargeId; // CHARGE_MASTER_IN_DN_FOR_SH
     
     private BigDecimal costAmount;
-    
+
     private BigDecimal chargeAmount;
     
     private Long taxId; // DR_TAX_MASTER
@@ -28,5 +30,11 @@ public class DebitNoteChargeDetailDto {
     
     private Boolean selected = false;
 
-    private String actionType; 
+    private String actionType;
+
+    private String checkAll;
+
+    private String costPoid;
+
+    private String costGroup;
 }

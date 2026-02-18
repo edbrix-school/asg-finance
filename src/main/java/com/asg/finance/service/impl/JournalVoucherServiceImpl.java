@@ -2,6 +2,7 @@ package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.*;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
+import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.LoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
@@ -314,6 +315,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
 
         List<CostCenterBreakupRequestDto> costCenterRequestDtoList = new ArrayList<>();
         List<BillwiseBreakupRequestDto> billwiseRequestDtoList = new ArrayList<>();
+        List<LogRequestDto<GlJournalVoucherDtl>> logRequests = new ArrayList<>();
 
         for (JournalVoucherGlDetailDto dto : glDetails) {
 
@@ -387,7 +389,8 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                     detail.setLastModifiedDate(LocalDateTime.now());
                     glJournalVoucherDtlRepository.save(detail);
                     
-                    loggingService.logChanges(oldDetail, detail, GlJournalVoucherDtl.class, docId, transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+                    String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", transactionPoid, dto.getDetRowId());
+                    logRequests.add(new LogRequestDto<>(oldDetail, detail, GlJournalVoucherDtl.class, docId, transactionPoid.toString(), logDetail));
 
                     if (dto.getCostCenterBreakup() != null && !dto.getCostCenterBreakup().isEmpty()) {
                         costCenterRequestDtoList.addAll(buildCostCenterBreakups(transactionPoid, dto.getDetRowId(), docId, dto.getGlPoid(), dto.getCostCenterBreakup()));
@@ -399,6 +402,9 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
             }
         }
 
+        if (!logRequests.isEmpty()) {
+            loggingService.createLogBatch(logRequests);
+        }
         if (!costCenterRequestDtoList.isEmpty()) {
             costCenterBreakupService.updateCostCenterBreakups(costCenterRequestDtoList, getUserPoid());
         }
@@ -463,6 +469,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         List<GlJournalVoucherAssetDtl> toSave = new ArrayList<>();
         List<GlJournalVoucherAssetDtl> toUpdate = new ArrayList<>();
         List<Long> toDelete = new ArrayList<>();
+        List<LogRequestDto<GlJournalVoucherAssetDtl>> logRequests = new ArrayList<>();
         
         List<GlJournalVoucherAssetDtl> existingList = glJournalVoucherAssetDtlRepository.findAll((root, query, cb) -> 
                 cb.equal(root.get("transactionPoid"), transactionPoid));
@@ -519,7 +526,8 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                     existing.setLastModifiedBy(getCurrentUser());
                     existing.setLastModifiedDate(LocalDateTime.now());
                     toUpdate.add(existing);
-                    loggingService.logChanges(oldDetail, existing, GlJournalVoucherAssetDtl.class, docId, transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+                    String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", transactionPoid, dto.getSn());
+                    logRequests.add(new LogRequestDto<>(oldDetail, existing, GlJournalVoucherAssetDtl.class, docId, transactionPoid.toString(), logDetail));
                     break;
                 case "ISDELETED":
                     toDelete.add(dto.getSn());
@@ -537,6 +545,9 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         }
         if (!toUpdate.isEmpty()) {
             glJournalVoucherAssetDtlRepository.saveAll(toUpdate);
+            if (!logRequests.isEmpty()) {
+                loggingService.createLogBatch(logRequests);
+            }
         }
         if (!toDelete.isEmpty()) {
             existingList.stream()
@@ -550,6 +561,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         List<GlJournalFaCapitalization> toSave = new ArrayList<>();
         List<GlJournalFaCapitalization> toUpdate = new ArrayList<>();
         List<Long> toDelete = new ArrayList<>();
+        List<LogRequestDto<GlJournalFaCapitalization>> logRequests = new ArrayList<>();
         
         List<GlJournalFaCapitalization> existingList = glJournalFaCapitalizationRepository.findAll((root, query, cb) -> 
                 cb.equal(root.get("transactionPoid"), transactionPoid));
@@ -596,7 +608,8 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                     existing.setLastModifiedBy(getCurrentUser());
                     existing.setLastModifiedDate(LocalDateTime.now());
                     toUpdate.add(existing);
-                    loggingService.logChanges(oldDetail, existing, GlJournalFaCapitalization.class, docId, transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+                    String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", transactionPoid, dto.getSn());
+                    logRequests.add(new LogRequestDto<>(oldDetail, existing, GlJournalFaCapitalization.class, docId, transactionPoid.toString(), logDetail));
                     break;
                 case "ISDELETED":
                     toDelete.add(dto.getSn());
@@ -614,6 +627,9 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         }
         if (!toUpdate.isEmpty()) {
             glJournalFaCapitalizationRepository.saveAll(toUpdate);
+            if (!logRequests.isEmpty()) {
+                loggingService.createLogBatch(logRequests);
+            }
         }
         if (!toDelete.isEmpty()) {
             existingList.stream()

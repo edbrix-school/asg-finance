@@ -5,6 +5,7 @@ import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.LovGetListDto;
 import com.asg.common.lib.dto.RawSearchResult;
+import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.service.DocumentDeleteService;
@@ -165,6 +166,7 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
             List<GlBankDepositVoucherDtl> toSave = new ArrayList<>();
             List<GlBankDepositVoucherDtl> toUpdate = new ArrayList<>();
             List<Long> toDelete = new ArrayList<>();
+            List<LogRequestDto<GlBankDepositVoucherDtl>> logRequests = new ArrayList<>();
             
             List<GlBankDepositVoucherDtl> existingDetailsList = dtlRepository.findByTransactionPoid(transactionPoid);
             Map<Long, GlBankDepositVoucherDtl> existingDetailsMap = existingDetailsList.stream()
@@ -193,7 +195,8 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
                         BeanUtils.copyProperties(existing, oldDetail);
                         updateDetailEntity(existing, dto);
                         toUpdate.add(existing);
-                        loggingService.logChanges(oldDetail, existing, GlBankDepositVoucherDtl.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+                        String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", transactionPoid, dto.getDetRowId());
+                        logRequests.add(new LogRequestDto<>(oldDetail, existing, GlBankDepositVoucherDtl.class, UserContext.getDocumentId(), transactionPoid.toString(), logDetail));
                         break;
                     case "ISDELETED":
                         toDelete.add(dto.getDetRowId());
@@ -211,6 +214,9 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
             }
             if (!toUpdate.isEmpty()) {
                 dtlRepository.saveAll(toUpdate);
+                if (!logRequests.isEmpty()) {
+                    loggingService.createLogBatch(logRequests);
+                }
             }
             if (!toDelete.isEmpty()) {
                 existingDetailsList.stream()

@@ -1,6 +1,7 @@
 package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.*;
+import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentSearchService;
@@ -9,7 +10,6 @@ import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.finance.client.RoleServiceClient;
 import com.asg.finance.dto.masters.*;
-import com.asg.finance.entity.GlobalLogDetails;
 import com.asg.finance.entity.GlobalLogSummary;
 import com.asg.finance.entity.master.*;
 import com.asg.finance.repository.GlobalLogDetailsRepository;
@@ -48,7 +48,6 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
     private final RoleServiceClient roleServiceClient;
     private final LoggingService loggingService;
     private final GlobalLogSummaryRepository globalLogSummaryRepository;
-    private final GlobalLogDetailsRepository globalLogDetailsRepository;
     private final HrEmployeeMasterRepository hrEmployeeMasterRepository;
     private final LovDataService lovService;
 
@@ -93,7 +92,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                 "GLOBAL_INSURANCE_HDR",
                 "TRANSACTION_POID",
                 deleteReasonDto,
-                null
+                insuranceMaster.getCreatedDate() != null ? insuranceMaster.getCreatedDate().toLocalDate() : null
         );
     }
 
@@ -139,9 +138,31 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                 throw new ValidationException("From Date cannot be greater than Expiry Date");
             }
 
+            // Validate Employee Details
+            if (request.getEmployeeDetails() != null) {
+                for (InsuranceEmployeeDetailRequestDto emp : request.getEmployeeDetails()) {
+                    if (emp.getEmployeePoid() == null || emp.getEmployeePoid() <= 0) {
+                        throw new ValidationException("Employee is mandatory in Employee Details");
+                    }
+                }
+            }
+
+            // Validate Property Details
+            if (request.getPropertyDetails() != null) {
+                for (InsurancePropertyDetailRequestDto prop : request.getPropertyDetails()) {
+                    if (prop.getPropertyPoid() == null || prop.getPropertyPoid() <= 0) {
+                        throw new ValidationException("Property is mandatory in Property Details");
+                    }
+                }
+            }
+
             // Validate PIC dates (if present)
             if (request.getPicDetails() != null) {
                 for (InsurancePicDetailRequestDto pic : request.getPicDetails()) {
+                    // Validate Role is provided
+                    if (pic.getRolePoid() == null || pic.getRolePoid() <= 0) {
+                        throw new ValidationException("Role is mandatory in PIC Details");
+                    }
 
                     // Validate PIC from ≤ to
                     if (pic.getFromDate().isAfter(pic.getToDate())) {
@@ -185,33 +206,59 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
             buildAndSetChildDetails(request, saved);
             InsuranceMaster finalSaved = insuranceMasterRepository.save(saved);
             
-            // Logging for create operation
-            try {
-                loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), finalSaved.getTransactionPoid().toString());
-            } catch (Exception e) {
-                System.err.println("Warning: Failed to log creation: " + e.getMessage());
+            String docId = UserContext.getDocumentId();
+            String docKeyPoid = finalSaved.getTransactionPoid().toString();
+            Timestamp now = new Timestamp(System.currentTimeMillis());
+            
+            // Log header creation
+            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, docKeyPoid);
+            
+            // Log grid row creations
+            List<GlobalLogSummary> gridLogs = new ArrayList<>();
+            if (finalSaved.getEmployeeDetails() != null) {
+                for (InsuranceEmployeeDetail detail : finalSaved.getEmployeeDetails()) {
+                    String msg = String.format("Row Created on Insurance Employee Detail with DetRowId: %s", detail.getDetRowId());
+                    gridLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, msg, now));
+                }
+            }
+            if (finalSaved.getPropertyDetails() != null) {
+                for (InsurancePropertyDetail detail : finalSaved.getPropertyDetails()) {
+                    String msg = String.format("Row Created on Insurance Property Detail with DetRowId: %s", detail.getDetRowId());
+                    gridLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, msg, now));
+                }
+            }
+            if (finalSaved.getPicDetails() != null) {
+                for (InsurancePicDetail detail : finalSaved.getPicDetails()) {
+                    String msg = String.format("Row Created on Insurance PIC Detail with DetRowId: %s", detail.getDetRowId());
+                    gridLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, msg, now));
+                }
+            }
+            if (!gridLogs.isEmpty()) {
+                globalLogSummaryRepository.saveAll(gridLogs);
             }
             
             return mapToResponseDto(finalSaved);
         } catch (Exception e) {
             System.err.println("Error in createInsuranceMaster: " + e.getMessage());
             e.printStackTrace();
-            throw new RuntimeException("Failed to create Insurance Master: " + e.getMessage(), e);
+            throw e;
         }
     }
 
     @Override
     @Transactional
     public InsuranceMasterResponseDto updateInsuranceMaster(Long insuranceId, InsuranceMasterRequestDto request) {
-        // Preserve existing PJ_REF_POID if already linked
-
-
         InsuranceMaster existing = insuranceMasterRepository.findById(insuranceId)
                 .orElseThrow(() -> new ResourceNotFoundException("Insurance Master", "ID", insuranceId));
 
         // Create copy of old entity for logging
         InsuranceMaster oldEntity = new InsuranceMaster();
         BeanUtils.copyProperties(existing, oldEntity);
+        
+        // Snapshot child details for logging
+        List<InsuranceEmployeeDetail> oldEmployeeDetails = snapshotEmployeeDetails(existing.getEmployeeDetails());
+        List<InsurancePropertyDetail> oldPropertyDetails = snapshotPropertyDetails(existing.getPropertyDetails());
+        List<InsurancePicDetail> oldPicDetails = snapshotPicDetails(existing.getPicDetails());
 
         // Validate unique policy number per company (excluding current record)
 
@@ -253,9 +300,31 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
             throw new ValidationException("From Date cannot be greater than Expiry Date");
         }
 
+        // Validate Employee Details
+        if (request.getEmployeeDetails() != null) {
+            for (InsuranceEmployeeDetailRequestDto emp : request.getEmployeeDetails()) {
+                if (emp.getEmployeePoid() == null || emp.getEmployeePoid() <= 0) {
+                    throw new ValidationException("Employee is mandatory in Employee Details");
+                }
+            }
+        }
+
+        // Validate Property Details
+        if (request.getPropertyDetails() != null) {
+            for (InsurancePropertyDetailRequestDto prop : request.getPropertyDetails()) {
+                if (prop.getPropertyPoid() == null || prop.getPropertyPoid() <= 0) {
+                    throw new ValidationException("Property is mandatory in Property Details");
+                }
+            }
+        }
+
         // Validate PIC dates (if present)
         if (request.getPicDetails() != null) {
             for (InsurancePicDetailRequestDto pic : request.getPicDetails()) {
+                // Validate Role is provided
+                if (pic.getRolePoid() == null || pic.getRolePoid() <= 0) {
+                    throw new ValidationException("Role is mandatory in PIC Details");
+                }
 
                 // Validate PIC from ≤ to
                 if (pic.getFromDate().isAfter(pic.getToDate())) {
@@ -296,24 +365,94 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         if (existing.getPjRefPoid() != null) {
             existing.setPjRefPoid(existing.getPjRefPoid());
         } else {
-            existing.setPjRefPoid(null); // don't allow overwriting or random assignment
+            existing.setPjRefPoid(null);
         }
 
         InsuranceMaster updated = insuranceMasterRepository.save(existing);
         
-        // Logging for update operation
-        try {
-            loggingService.logChanges(oldEntity, updated, InsuranceMaster.class, UserContext.getDocumentId(), insuranceId.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
-        } catch (Exception e) {
-            System.err.println("Warning: Failed to log changes: " + e.getMessage());
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = insuranceId.toString();
+        
+        // Log header changes
+        loggingService.logChanges(oldEntity, updated, InsuranceMaster.class, docId, docKeyPoid, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+        
+        // Log child record changes using batch logging
+        List<LogRequestDto<InsuranceEmployeeDetail>> empLogRequests = new ArrayList<>();
+        List<LogRequestDto<InsurancePropertyDetail>> propLogRequests = new ArrayList<>();
+        List<LogRequestDto<InsurancePicDetail>> picLogRequests = new ArrayList<>();
+        
+        // Process Employee Details
+        if (request.getEmployeeDetails() != null) {
+            for (InsuranceEmployeeDetailRequestDto dto : request.getEmployeeDetails()) {
+                String action = normalizeAction(dto.getActionType());
+                if ("ISDELETED".equals(action)) {
+                    loggingService.logDelete(dto, docId, docKeyPoid);
+                } else if ("ISCREATED".equals(action)) {
+                    String msg = String.format("Row Created on Insurance Employee Detail with detRowId: %s", dto.getDetRowId());
+                    loggingService.createLogSummaryEntry(docId, docKeyPoid, msg);
+                } else if ("ISUPDATED".equals(action)) {
+                    InsuranceEmployeeDetail oldE = findOldEmployeeByDetRowId(oldEmployeeDetails, dto.getDetRowId());
+                    InsuranceEmployeeDetail newE = findOldEmployeeByDetRowId(updated.getEmployeeDetails(), dto.getDetRowId());
+                    if (oldE != null && newE != null) {
+                        String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", docKeyPoid, dto.getDetRowId());
+                        empLogRequests.add(new LogRequestDto<>(oldE, newE, InsuranceEmployeeDetail.class, docId, docKeyPoid, logDetail));
+                    }
+                }
+            }
         }
         
-        try {
-            return mapToResponseDto(updated);
-        } catch (Exception e) {
-            System.err.println("Warning: Failed to map response: " + e.getMessage());
-            throw new RuntimeException("Failed to map response after update", e);
+        // Process Property Details
+        if (request.getPropertyDetails() != null) {
+            for (InsurancePropertyDetailRequestDto dto : request.getPropertyDetails()) {
+                String action = normalizeAction(dto.getActionType());
+                if ("ISDELETED".equals(action)) {
+                    loggingService.logDelete(dto, docId, docKeyPoid);
+                } else if ("ISCREATED".equals(action)) {
+                    String msg = String.format("Row Created on Insurance Property Detail with detRowId: %s", dto.getDetRowId());
+                    loggingService.createLogSummaryEntry(docId, docKeyPoid, msg);
+                } else if ("ISUPDATED".equals(action)) {
+                    InsurancePropertyDetail oldP = findOldPropertyByDetRowId(oldPropertyDetails, dto.getDetRowId());
+                    InsurancePropertyDetail newP = findOldPropertyByDetRowId(updated.getPropertyDetails(), dto.getDetRowId());
+                    if (oldP != null && newP != null) {
+                        String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", docKeyPoid, dto.getDetRowId());
+                        propLogRequests.add(new LogRequestDto<>(oldP, newP, InsurancePropertyDetail.class, docId, docKeyPoid, logDetail));
+                    }
+                }
+            }
         }
+        
+        // Process PIC Details
+        if (request.getPicDetails() != null) {
+            for (InsurancePicDetailRequestDto dto : request.getPicDetails()) {
+                String action = normalizeAction(dto.getActionType());
+                if ("ISDELETED".equals(action)) {
+                    loggingService.logDelete(dto, docId, docKeyPoid);
+                } else if ("ISCREATED".equals(action)) {
+                    String msg = String.format("Row Created on Insurance PIC Detail with detRowId: %s", dto.getDetRowId());
+                    loggingService.createLogSummaryEntry(docId, docKeyPoid, msg);
+                } else if ("ISUPDATED".equals(action)) {
+                    InsurancePicDetail oldP = findOldPicByDetRowId(oldPicDetails, dto.getDetRowId());
+                    InsurancePicDetail newP = findOldPicByDetRowId(updated.getPicDetails(), dto.getDetRowId());
+                    if (oldP != null && newP != null) {
+                        String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", docKeyPoid, dto.getDetRowId());
+                        picLogRequests.add(new LogRequestDto<>(oldP, newP, InsurancePicDetail.class, docId, docKeyPoid, logDetail));
+                    }
+                }
+            }
+        }
+        
+        // Batch process all update logs
+        if (!empLogRequests.isEmpty()) {
+            loggingService.createLogBatch(empLogRequests);
+        }
+        if (!propLogRequests.isEmpty()) {
+            loggingService.createLogBatch(propLogRequests);
+        }
+        if (!picLogRequests.isEmpty()) {
+            loggingService.createLogBatch(picLogRequests);
+        }
+        
+        return mapToResponseDto(updated);
     }
 
     private void buildAndSetChildDetails(InsuranceMasterRequestDto request, InsuranceMaster savedParent) {
@@ -348,7 +487,14 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
     private List<InsuranceEmployeeDetail> buildEmployeeDetails(List<InsuranceEmployeeDetailRequestDto> dtos, InsuranceMaster parent) {
         if (dtos == null) return new ArrayList<>();
         List<InsuranceEmployeeDetail> result = new ArrayList<>();
-        long nextDetRowId = 1;
+        
+        // Find max detRowId from existing records
+        long maxDetRowId = parent.getEmployeeDetails() != null ? 
+            parent.getEmployeeDetails().stream()
+                .mapToLong(InsuranceEmployeeDetail::getDetRowId)
+                .max()
+                .orElse(0L) : 0L;
+        long nextDetRowId = maxDetRowId + 1;
         
         for (InsuranceEmployeeDetailRequestDto dto : dtos) {
             String action = normalizeAction(dto.getActionType());
@@ -375,7 +521,14 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
     private List<InsurancePropertyDetail> buildPropertyDetails(List<InsurancePropertyDetailRequestDto> dtos, InsuranceMaster parent) {
         if (dtos == null) return new ArrayList<>();
         List<InsurancePropertyDetail> result = new ArrayList<>();
-        long nextDetRowId = 1;
+        
+        // Find max detRowId from existing records
+        long maxDetRowId = parent.getPropertyDetails() != null ? 
+            parent.getPropertyDetails().stream()
+                .mapToLong(InsurancePropertyDetail::getDetRowId)
+                .max()
+                .orElse(0L) : 0L;
+        long nextDetRowId = maxDetRowId + 1;
         
         for (InsurancePropertyDetailRequestDto dto : dtos) {
             String action = normalizeAction(dto.getActionType());
@@ -402,7 +555,14 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
     private List<InsurancePicDetail> buildPicDetails(List<InsurancePicDetailRequestDto> dtos, InsuranceMaster parent) {
         if (dtos == null) return new ArrayList<>();
         List<InsurancePicDetail> result = new ArrayList<>();
-        long nextDetRowId = 1;
+        
+        // Find max detRowId from existing records
+        long maxDetRowId = parent.getPicDetails() != null ? 
+            parent.getPicDetails().stream()
+                .mapToLong(InsurancePicDetail::getDetRowId)
+                .max()
+                .orElse(0L) : 0L;
+        long nextDetRowId = maxDetRowId + 1;
         
         for (InsurancePicDetailRequestDto dto : dtos) {
             String action = normalizeAction(dto.getActionType());
@@ -430,6 +590,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
     private InsuranceMasterResponseDto mapToResponseDto(InsuranceMaster entity) {
         return InsuranceMasterResponseDto.builder()
                 .insurancePoid(entity.getTransactionPoid())
+                .docRef(entity.getDocRef())
                 .groupPoid(entity.getGroupPoid())
                 .companyPoid(entity.getCompanyPoid())
                 .insuranceType(entity.getInsuranceType())
@@ -563,6 +724,8 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                         .expiryDate(e.getExpiryDate())
                         .insuranceAmount(e.getInsuranceAmount())
                         .premiumAmount(e.getPremiumAmount())
+                        .createdBy(e.getCreatedBy())
+                        .lastModifiedBy(e.getLastModifiedBy())
                         .build())
                 .toList();
     }
@@ -766,85 +929,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         return snapshots;
     }
 
-    private void addDetailLogAndModified(InsuranceEmployeeDetail oldE, InsuranceEmployeeDetail newE, String docId, String docKeyPoid, Timestamp now, List<GlobalLogSummary> summaryLogs) {
-        saveEmployeeDetailLogsToGlobalLogDetails(oldE, newE, docId, docKeyPoid, now);
-    }
-    private void addDetailLogAndModified(InsurancePropertyDetail oldE, InsurancePropertyDetail newE, String docId, String docKeyPoid, Timestamp now, List<GlobalLogSummary> summaryLogs) {
-        savePropertyDetailLogsToGlobalLogDetails(oldE, newE, docId, docKeyPoid, now);
-    }
-    private void addDetailLogAndModified(InsurancePicDetail oldE, InsurancePicDetail newE, String docId, String docKeyPoid, Timestamp now, List<GlobalLogSummary> summaryLogs) {
-        savePicDetailLogsToGlobalLogDetails(oldE, newE, docId, docKeyPoid, now);
-    }
-    private void addDetailLogAndModified(InsuranceVehicleDetail oldE, InsuranceVehicleDetail newE, String docId, String docKeyPoid, Timestamp now, List<GlobalLogSummary> summaryLogs) {
-        saveVehicleDetailLogsToGlobalLogDetails(oldE, newE, docId, docKeyPoid, now);
-    }
 
-    private static String toLogValue(Object o) {
-        if (o == null) return null;
-        return o.toString();
-    }
-
-    private void saveDetailLogRow(String docId, String docKeyPoid, String logDetailsKey, String logTable, String fieldName, Object oldVal, Object newVal, Timestamp now) {
-        GlobalLogDetails d = new GlobalLogDetails();
-        d.setLogUserPoid(UserContext.getUserPoid());
-        d.setLogDateTime(now);
-        d.setLogDocId(docId);
-        d.setLogDocKeyPoid(docKeyPoid);
-        d.setFieldName(fieldName);
-        d.setOldValue(toLogValue(oldVal));
-        d.setNewValue(toLogValue(newVal));
-        d.setLogDetails(logDetailsKey);
-        d.setLogTable(logTable);
-        globalLogDetailsRepository.save(d);
-    }
-
-    private void saveEmployeeDetailLogsToGlobalLogDetails(InsuranceEmployeeDetail oldE, InsuranceEmployeeDetail newE, String docId, String docKeyPoid, Timestamp now) {
-        String logDetailsKey = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", docKeyPoid, oldE.getDetRowId());
-        String table = "GLOBAL_INSURANCE_EMPLOYEE_DTL";
-        if (!Objects.equals(oldE.getEmployeePoid(), newE.getEmployeePoid()))
-            saveDetailLogRow(docId, docKeyPoid, logDetailsKey, table, "employeePoid", oldE.getEmployeePoid(), newE.getEmployeePoid(), now);
-        if (!Objects.equals(oldE.getAmount(), newE.getAmount()))
-            saveDetailLogRow(docId, docKeyPoid, logDetailsKey, table, "amount", oldE.getAmount(), newE.getAmount(), now);
-        if (!Objects.equals(oldE.getRemarks(), newE.getRemarks()))
-            saveDetailLogRow(docId, docKeyPoid, logDetailsKey, table, "remarks", oldE.getRemarks(), newE.getRemarks(), now);
-    }
-
-    private void savePropertyDetailLogsToGlobalLogDetails(InsurancePropertyDetail oldE, InsurancePropertyDetail newE, String docId, String docKeyPoid, Timestamp now) {
-        String logDetailsKey = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", docKeyPoid, oldE.getDetRowId());
-        String table = "GLOBAL_INSURANCE_PROPERTY_DTL";
-        if (!Objects.equals(oldE.getPropertyPoid(), newE.getPropertyPoid()))
-            saveDetailLogRow(docId, docKeyPoid, logDetailsKey, table, "propertyPoid", oldE.getPropertyPoid(), newE.getPropertyPoid(), now);
-        if (!Objects.equals(oldE.getAmount(), newE.getAmount()))
-            saveDetailLogRow(docId, docKeyPoid, logDetailsKey, table, "amount", oldE.getAmount(), newE.getAmount(), now);
-        if (!Objects.equals(oldE.getRemarks(), newE.getRemarks()))
-            saveDetailLogRow(docId, docKeyPoid, logDetailsKey, table, "remarks", oldE.getRemarks(), newE.getRemarks(), now);
-    }
-
-    private void savePicDetailLogsToGlobalLogDetails(InsurancePicDetail oldE, InsurancePicDetail newE, String docId, String docKeyPoid, Timestamp now) {
-        String logDetailsKey = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", docKeyPoid, oldE.getDetRowId());
-        String table = "GLOBAL_INSURANCE_PIC_DTL";
-        if (!Objects.equals(oldE.getRolePoid(), newE.getRolePoid()))
-            saveDetailLogRow(docId, docKeyPoid, logDetailsKey, table, "rolePoid", oldE.getRolePoid(), newE.getRolePoid(), now);
-        if (!Objects.equals(oldE.getContactType(), newE.getContactType()))
-            saveDetailLogRow(docId, docKeyPoid, logDetailsKey, table, "contactType", oldE.getContactType(), newE.getContactType(), now);
-        if (!Objects.equals(oldE.getPicPersonPoid(), newE.getPicPersonPoid()))
-            saveDetailLogRow(docId, docKeyPoid, logDetailsKey, table, "picPersonPoid", oldE.getPicPersonPoid(), newE.getPicPersonPoid(), now);
-        if (!Objects.equals(oldE.getFromDate(), newE.getFromDate()))
-            saveDetailLogRow(docId, docKeyPoid, logDetailsKey, table, "fromDate", oldE.getFromDate(), newE.getFromDate(), now);
-        if (!Objects.equals(oldE.getToDate(), newE.getToDate()))
-            saveDetailLogRow(docId, docKeyPoid, logDetailsKey, table, "toDate", oldE.getToDate(), newE.getToDate(), now);
-    }
-
-    private void saveVehicleDetailLogsToGlobalLogDetails(InsuranceVehicleDetail oldE, InsuranceVehicleDetail newE, String docId, String docKeyPoid, Timestamp now) {
-        String logDetailsKey = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", docKeyPoid, oldE.getDetRowId());
-        String table = "GLOBAL_INSURANCE_VEHICLE_DTL";
-        if (!Objects.equals(oldE.getFixedAssetPoid(), newE.getFixedAssetPoid()))
-            saveDetailLogRow(docId, docKeyPoid, logDetailsKey, table, "fixedAssetPoid", oldE.getFixedAssetPoid(), newE.getFixedAssetPoid(), now);
-        if (!Objects.equals(oldE.getAmount(), newE.getAmount()))
-            saveDetailLogRow(docId, docKeyPoid, logDetailsKey, table, "amount", oldE.getAmount(), newE.getAmount(), now);
-        if (!Objects.equals(oldE.getRemarks(), newE.getRemarks()))
-            saveDetailLogRow(docId, docKeyPoid, logDetailsKey, table, "remarks", oldE.getRemarks(), newE.getRemarks(), now);
-    }
 
 
     private InsuranceMaster copyHeaderOnlyForLog(InsuranceMaster source) {
@@ -861,21 +946,24 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
 
     @Override
     @Transactional
-    public InsuranceMasterResponseDto renewInsurance(Long insuranceId, InsuranceMasterRequestDto request) {
+    public InsuranceMasterResponseDto renewInsurance(Long insuranceId, InsuranceMasterRequestDto request, Boolean addToHistory) {
         InsuranceMaster existing = insuranceMasterRepository.findById(insuranceId)
                 .orElseThrow(() -> new ResourceNotFoundException("Insurance Master", "ID", insuranceId));
 
-        LocalDate today = LocalDate.now();
-
-        // Validate insurance can be renewed (must be expired or expiring)
-        if (existing.getExpiryDate().isAfter(today)) {
-            throw new ValidationException("Insurance can only be renewed on or after expiry date");
+        // Scenario 2: Check if already renewed
+        if (existing.getRenewalLogs() != null && !existing.getRenewalLogs().isEmpty()) {
+            throw new ValidationException("Details are already added to the renewal history");
         }
 
-        // Archive current details to renewal log
+        // Scenario 1: If addToHistory is null or false, ask for confirmation
+        if (addToHistory == null || !addToHistory) {
+            throw new ValidationException("CONFIRMATION_REQUIRED");
+        }
+
+        // User confirmed - proceed with renewal
         InsuranceRenewalLog renewalLog = InsuranceRenewalLog.builder()
                 .transactionPoid(existing.getTransactionPoid())
-                .detRowId((long) (existing.getRenewalLogs().size() + 1))
+                .detRowId(1L)
                 .renewalDate(LocalDate.now())
                 .fromDate(existing.getFromDate())
                 .expiryDate(existing.getExpiryDate())
@@ -887,6 +975,9 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                 .lastModifiedDate(LocalDateTime.now())
                 .build();
 
+        if (existing.getRenewalLogs() == null) {
+            existing.setRenewalLogs(new ArrayList<>());
+        }
         existing.getRenewalLogs().add(renewalLog);
 
         // Update with new renewal details

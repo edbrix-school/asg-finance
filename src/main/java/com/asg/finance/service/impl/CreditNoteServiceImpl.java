@@ -1677,9 +1677,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
                     ArCreditNoteChargeDtl oldEntity = new ArCreditNoteChargeDtl();
                     BeanUtils.copyProperties(existing, oldEntity);
+                    mapChargeDtoToEntity(dto, existing, transactionPoid);
                     existing.setLastModifiedBy(currentUser);
                     existing.setLastModifiedDate(now);
-                    mapChargeDtoToEntity(dto, existing, transactionPoid);
                     toSave.add(existing);
 
                     String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", docKeyPoid, detRowId);
@@ -1745,7 +1745,10 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         entity.setChargeAmount(dto.getChargeAmount());
         entity.setChargeCostAmount(dto.getChargeCostAmount());
         entity.setRemarks(dto.getRemarks());
-        entity.setCheckAll(dto.getSelected());
+        entity.setCheckAll( dto.getSelected() != null && !dto.getSelected().trim().isEmpty()
+                        ? dto.getSelected().trim()
+                        : "N");
+        System.out.println("DTO Selected = " + dto.getSelected());
         entity.setTaxAmount(dto.getTaxAmount());
         entity.setTotalAmount(dto.getTotalAmount());
         entity.setIssueInvoice(dto.getIssueInvoice());
@@ -1909,7 +1912,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         dto.setTaxPercentage(entity.getTaxPercentage());
         dto.setIssueInvoice(entity.getIssueInvoice());
         dto.setPdaAmount(entity.getPdaAmount());
-        dto.setSelected(entity.getCheckAll());
+        dto.setSelected(entity.getCheckAll() != null && !entity.getCheckAll().trim().isEmpty()
+                ? entity.getCheckAll().trim()
+                : "N");
         return dto;
     }
 

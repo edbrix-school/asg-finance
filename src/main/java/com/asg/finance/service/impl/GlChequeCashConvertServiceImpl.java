@@ -213,6 +213,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
             throw new ValidationException("transactionDate is required and must be within the open financial period");
         }
         validateTransactionDate(dto.getTransactionDate());
+        validateAmounts(dto);
         hdrEntity.setTransactionDate(dto.getTransactionDate());
 
         hdrEntity.setGroupPoid(UserContext.getGroupPoid());
@@ -350,6 +351,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         BeanUtils.copyProperties(existingHdr, oldEntity);
 
         validateTransactionDate(dto.getTransactionDate());
+        validateAmounts(dto);
         existingHdr.setPostingNarration(dto.getPostingNarration());
         existingHdr.setCash(dto.getCash());
         existingHdr.setRemarks(dto.getRemarks());
@@ -722,6 +724,93 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         JasperReport mainReport = printService.load("Finance/GL/Cheque_Cash_Conversion.jrxml");
         return printService.fillReportToPdf(mainReport, params, dataSource);
     }
+
+    private void validateAmounts(GlChequeCashConvertHdrDto dto) {
+
+        if (dto.getOutDtls() == null || dto.getOutDtls().isEmpty()) {
+            throw new ValidationException("No Detail present for the cheque");
+        }
+
+        Long outTotal = dto.getOutDtls().stream()
+                .filter(o -> !"N".equalsIgnoreCase(o.getSelected()))
+                .map(o -> o.getAmount() == null ? 0L : o.getAmount())
+                .reduce(0L, Long::sum);
+
+        if (outTotal == 0) {
+            throw new ValidationException("No Detail present for the cheque");
+        }
+
+        String type = dto.getType();
+
+        // ================= CHEQUE_TO_CHEQUE =================
+        if ("CHEQUE_TO_CHEQUE".equalsIgnoreCase(type)) {
+
+            if (dto.getInDtls() == null || dto.getInDtls().isEmpty()) {
+                throw new ValidationException("No Detail present in cheque conversion TO");
+            }
+
+            Long inTotal = dto.getInDtls().stream()
+                    .map(i -> i.getAmount() == null ? 0L : i.getAmount())
+                    .reduce(0L, Long::sum);
+
+            if (!outTotal.equals(inTotal)) {
+                throw new ValidationException(
+                        "Total cheque amount (" + outTotal +
+                                ") is not matched with converted cheque amount (" + inTotal + ")");
+            }
+        }
+
+        // ================= CHEQUE_TO_BANK =================
+        if ("CHEQUE_TO_BANK".equalsIgnoreCase(type)) {
+
+            Long inTotal = dto.getInDtls().stream()
+                    .map(i -> i.getAmount() == null ? 0L : i.getAmount())
+                    .reduce(0L, Long::sum);
+
+            if (!outTotal.equals(inTotal)) {
+                throw new ValidationException(
+                        "Total cheque amount (" + outTotal +
+                                ") is not matched with converted bank amount (" + inTotal + ")");
+            }
+        }
+
+        // ================= CHEQUE_TO_CASH =================
+        if ("CHEQUE_TO_CASH".equalsIgnoreCase(type)) {
+
+            if (dto.getCash() == null) {
+                throw new ValidationException("Please enter Cash amount");
+            }
+
+            Long cashAmount = dto.getCash();
+            Long rounding = dto.getRoundingAmt() == null ? 0L : dto.getRoundingAmt();
+
+            if (!outTotal.equals(cashAmount + rounding)) {
+                throw new ValidationException(
+                        "Total cheque amount (" + outTotal +
+                                ") is not matched with converted cash amount (" + (cashAmount + rounding) + ")");
+            }
+        }
+
+        // ================= CASH_TO_CHEQUE =================
+        if ("CASH_TO_CHEQUE".equalsIgnoreCase(type)) {
+
+            Long inTotal = dto.getInDtls().stream()
+                    .map(i -> i.getAmount() == null ? 0L : i.getAmount())
+                    .reduce(0L, Long::sum);
+
+            if (!outTotal.equals(inTotal)) {
+                throw new ValidationException(
+                        "Cash Amount (" + outTotal +
+                                ") and Cheque Amount (" + inTotal + ") are not matching...");
+            }
+        }
+
+        // ================= Rounding Limit =================
+        if (dto.getRoundingAmt() != null && dto.getRoundingAmt() > 99) {
+            throw new ValidationException("RoundingAmount is greater than allowed limit");
+        }
+    }
+
 }
 
 

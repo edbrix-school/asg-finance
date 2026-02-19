@@ -1380,16 +1380,20 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         if (list == null) return Collections.emptyList();
 
-        return list.stream().map(src ->
-                BillwiseBreakupPopupRequestDto.builder()
-                        .billRefType(src.getBillRefType())
-                        .billRef(src.getBillRef())
-                        .billDueDate(src.getBillDueDate())
-                        .type(src.getDrAmt().toString())
-                        .amount(src.getCrAmt())
-                        .billRemarks(src.getBillRemarks())
-                        .build()
-        ).collect(Collectors.toList());
+        return list.stream().map(src -> {
+            boolean isDebit = src.getDrAmt() != null && src.getDrAmt().compareTo(BigDecimal.ZERO) > 0;
+            String type = isDebit ? "DR" : "CR";
+            BigDecimal amount = src.getDrAmt() != null ? src.getDrAmt() : src.getCrAmt();
+            return BillwiseBreakupPopupRequestDto.builder()
+                    .billDetRowId(src.getBillDetRowId())
+                    .billRefType(src.getBillRefType())
+                    .billRef(src.getBillRef())
+                    .billDueDate(src.getBillDueDate())
+                    .type(type)
+                    .amount(amount)
+                    .billRemarks(src.getBillRemarks())
+                    .build();
+        }).collect(Collectors.toList());
     }
 
     private List<CostCenterBreakupPopupRequestDto> mapToCostCenterPopupDto(List<CostCenterBreakupResponseDto> list) {

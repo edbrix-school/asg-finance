@@ -708,17 +708,15 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         dto.setDueDate(entity.getDueDate());
         dto.setCreditPeriod(entity.getCreditPeriod());
         dto.setPoRef(entity.getPoRef());
-        dto.setFdaRefPoid(
-                entity.getFdaRef() != null ? Long.valueOf(entity.getFdaRef()) : null
-        );
-        dto.setFdaDirectRefPoid(entity.getFdaDirectRef() != null ? Long.valueOf(entity.getFdaDirectRef()) : null);
+        dto.setFdaRefPoid(parseLongSafely(entity.getFdaRef()));
+        dto.setFdaDirectRefPoid(parseLongSafely(entity.getFdaDirectRef()));
         dto.setBankPoid(entity.getBankPoid());
         dto.setTinNumber(entity.getTinNumber());
         dto.setBhdAmount(entity.getBhdAmount());
         dto.setOtherCurrAmount(entity.getOtherCurrAmount());
         dto.setVoucherType(entity.getVoucherType());
         dto.setCostRefNumber(entity.getCostRefNumber());
-        dto.setCostGroupPoid(entity.getCostGroup() != null && !entity.getCostGroup().isEmpty() ? Long.valueOf(entity.getCostGroup()) : null);
+        dto.setCostGroupPoid(parseLongSafely(entity.getCostGroup()));
         dto.setPrintDivisionPoid(entity.getPrintDivisionPoid());
         dto.setMultiCompany("Y".equals(entity.getMultiCompany()));
         dto.setRemarksPrintable("Y".equals(entity.getRemarksPrintable()));
@@ -727,6 +725,16 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         dto.setDocRef(entity.getDocRef());
         dto.setVoyageRef(entity.getVoyageRef());
         return dto;
+    }
+
+    private Long parseLongSafely(String value) {
+        if (value == null || value.trim().isEmpty()) return null;
+        try {
+            return Long.valueOf(value.trim());
+        } catch (NumberFormatException e) {
+            log.warn("Failed to parse Long from value: {}", value);
+            return null;
+        }
     }
 
     private DebitNoteGlDetailDto mapGlDetailToDto(ArDebitNoteDtl entity) {

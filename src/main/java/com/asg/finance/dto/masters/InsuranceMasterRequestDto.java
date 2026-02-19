@@ -73,5 +73,4 @@ public class InsuranceMasterRequestDto {
     @Valid
     private List<InsurancePicDetailRequestDto> picDetails;
 
-    private String vehicleNumber;
 }

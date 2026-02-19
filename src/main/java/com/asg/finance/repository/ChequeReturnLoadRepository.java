@@ -26,6 +26,7 @@ public class ChequeReturnLoadRepository {
     private final LovDataService lovService;
 
     public ChequeReturnLoadResponseDto loadChequeReturnDto(String chequeNum, String receiptNo) {
+
         Long groupPoid = UserContext.getGroupPoid();
         Long companyPoid = UserContext.getCompanyPoid();
         String loginUser = UserContext.getUserId();
@@ -34,36 +35,48 @@ public class ChequeReturnLoadRepository {
             throw new IllegalArgumentException("chequeNumber is required");
         }
 
-        String sql = "{ call PROC_CHEQUE_RETURN_LOAD(?, ?, ?, ?, ?, ?, ?) }";
+        String sql = "{ call PROC_CHEQUE_RETURN_LOAD_V2(?, ?, ?, ?, ?, ?, ?, ?) }";
 
         try (Connection connection = dataSource.getConnection();
              CallableStatement cs = connection.prepareCall(sql)) {
 
-            log.info("Calling PROC_CHEQUE_RETURN_LOAD (DTO) groupPoid={}, companyPoid={}, loginUser={}, chequeNum={}, receiptNo={}",
+            log.info("Calling PROC_CHEQUE_RETURN_LOAD_V2 groupPoid={}, companyPoid={}, loginUser={}, chequeNum={}, receiptNo={}",
                     groupPoid, companyPoid, loginUser, chequeNum, receiptNo);
 
+            // IN parameters
             cs.setLong(1, groupPoid);
             cs.setLong(2, companyPoid);
             cs.setString(3, loginUser);
             cs.setString(4, chequeNum);
+
+            // OUT cursors
             cs.registerOutParameter(5, OracleTypes.CURSOR);
             cs.registerOutParameter(6, OracleTypes.CURSOR);
+
+            // IN receipt no (nullable)
             cs.setString(7, receiptNo);
+
+            // NEW OUT result parameter
+            cs.registerOutParameter(8, Types.VARCHAR);
 
             cs.execute();
 
-            ChequeReturnDataDto chequeData= null ;
-            boolean hasChequeData = false;
-            try (ResultSet rs = (ResultSet) cs.getObject(5)) {
-                if (rs == null) {
-                    log.warn("No recent deposit details found for cheque {}", chequeNum);
-                    throw new IllegalStateException(
-                            "No recent deposit details found for this cheque in the current login company..."
-                    );
-                }
+            // FIRST check result message
+            String resultMessage = cs.getString(8);
+            if (resultMessage != null && !resultMessage.trim().isEmpty()) {
+                log.warn("Procedure returned message: {}", resultMessage);
+                throw new IllegalStateException(resultMessage);
+            }
 
-                while (rs.next()) {
-                    hasChequeData = true;
+            // ==============================
+            // Process Cheque Details Cursor
+            // ==============================
+            ChequeReturnDataDto chequeData = null;
+
+            try (ResultSet rs = (ResultSet) cs.getObject(5)) {
+
+                if (rs != null && rs.next()) {
+
                     chequeData = new ChequeReturnDataDto();
                     chequeData.setPaymentMainPoid(getLong(rs, 1));
                     chequeData.setAmount(getDouble(rs, 2));
@@ -81,57 +94,71 @@ public class ChequeReturnLoadRepository {
                     chequeData.setRefDocRef(rs.getString(14));
                     chequeData.setRefDocId(rs.getString(15));
                     chequeData.setRefDocPoid(getLong(rs, 16));
+
+                } else {
+                    throw new IllegalStateException(
+                            "No recent deposit details found for this cheque in the current login company."
+                    );
                 }
             }
-            if (!hasChequeData) {
-                log.warn("Cheque cursor returned no rows for cheque {}", chequeNum);
-                throw new IllegalStateException(
-                        "No recent deposit details found for this cheque in the current login company..."
-                );
-            }
 
+            // ==============================
+            // Process GL Details Cursor
+            // ==============================
             List<ChequeReturnGlEntryDto> glEntries = new ArrayList<>();
+
             try (ResultSet rs2 = (ResultSet) cs.getObject(6)) {
 
                 if (rs2 == null) {
-                    log.warn("GL cursor returned NULL for cheque {}", chequeNum);
                     throw new IllegalStateException(
-                            "No recent deposit details found for this cheque in the current login company..."
+                            "No GL entries returned for this cheque."
                     );
                 }
 
-
                 while (rs2.next()) {
+
                     ChequeReturnGlEntryDto gl = new ChequeReturnGlEntryDto();
+
                     String type = rs2.getString(1);
                     gl.setType(type);
                     gl.setCompanyPoid(getLong(rs2, 2));
-                    gl.setCompanyDtl(lovService.getDetailsByPoidAndLovName(gl.getCompanyPoid(), "COMPANY"));
+                    gl.setCompanyDtl(
+                            lovService.getDetailsByPoidAndLovName(
+                                    gl.getCompanyPoid(), "COMPANY"));
+
                     gl.setGlPoid(getLong(rs2, 3));
-                    gl.setGlDtl(lovService.getDetailsByPoidAndLovName(gl.getGlPoid(), "GL_MASTER_LEDGERS"));
+                    gl.setGlDtl(
+                            lovService.getDetailsByPoidAndLovName(
+                                    gl.getGlPoid(), "GL_MASTER_LEDGERS"));
+
                     if ("DR".equalsIgnoreCase(type)) {
                         gl.setAmount(getDouble(rs2, 4));
                     } else {
                         gl.setAmount(getDouble(rs2, 5));
                     }
+
                     glEntries.add(gl);
                 }
+
                 if (glEntries.isEmpty()) {
-                    log.warn("GL cursor returned no rows for cheque {}", chequeNum);
                     throw new IllegalStateException(
-                            "No recent deposit details found for this cheque in the current login company..."
+                            "No GL entries returned for this cheque."
                     );
                 }
             }
 
+            // ==============================
+            // Build Response
+            // ==============================
             ChequeReturnLoadResponseDto resp = new ChequeReturnLoadResponseDto();
             resp.setChequeDetails(chequeData);
             resp.setGlDetails(glEntries);
+
             return resp;
 
         } catch (SQLException e) {
-            log.error("Error executing PROC_CHEQUE_RETURN_LOAD (DTO)", e);
-            throw new RuntimeException("Error executing PROC_CHEQUE_RETURN_LOAD", e);
+            log.error("Error executing PROC_CHEQUE_RETURN_LOAD_V2", e);
+            throw new RuntimeException("Error executing PROC_CHEQUE_RETURN_LOAD_V2", e);
         }
     }
 

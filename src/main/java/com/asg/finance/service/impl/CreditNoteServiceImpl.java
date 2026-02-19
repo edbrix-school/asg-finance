@@ -143,6 +143,13 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             if (creditNoteDto.getGlDetails() != null) {
                 log.info("Starting to save GL details for transactionPoid: {}", transactionPoid);
                 String issueType = creditNoteDto.getIssueType() != null ? creditNoteDto.getIssueType() : "Y";
+            /*    applyAutoBalancing(
+                        transactionPoid,
+                        creditNoteDto.getGlDetails(),
+                        creditNoteDto.getPartyPoid(),
+                        creditNoteDto.getPartyType()
+                );*/
+
                 saveGLDetailsWithIssueType(transactionPoid, creditNoteDto.getGlDetails(), issueType);
                 log.info("GL details saved successfully for transactionPoid: {}", transactionPoid);
             }
@@ -1391,7 +1398,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             entity.setRemarks(dto.getRemarks());
             entity.setTaxAmount(dto.getTaxAmount());
             entity.setTotalAmount(dto.getTotalAmount());
-            entity.setCheckAll(dto.getSelected());
+            entity.setCheckAll(dto.getSelected() != null && !dto.getSelected().trim().isEmpty()
+                    ? dto.getSelected().trim()
+                    : "N");
             entity.setIssueInvoice(dto.getIssueInvoice());
             entity.setRefDocId("300-111");
             entity.setCreatedBy(ASGHelperUtils.getCurrentUser());
@@ -1745,10 +1754,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         entity.setChargeAmount(dto.getChargeAmount());
         entity.setChargeCostAmount(dto.getChargeCostAmount());
         entity.setRemarks(dto.getRemarks());
-        entity.setCheckAll( dto.getSelected() != null && !dto.getSelected().trim().isEmpty()
-                        ? dto.getSelected().trim()
-                        : "N");
-        System.out.println("DTO Selected = " + dto.getSelected());
+        entity.setCheckAll(dto.getSelected() != null && !dto.getSelected().trim().isEmpty()
+                ? dto.getSelected().trim()
+                : "N");
         entity.setTaxAmount(dto.getTaxAmount());
         entity.setTotalAmount(dto.getTotalAmount());
         entity.setIssueInvoice(dto.getIssueInvoice());
@@ -2203,4 +2211,59 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             return FdaRefResponseDto.builder().build();
         }
     }
+
+   /* private void applyAutoBalancing(Long transactionPoid,
+                                    List<CreditNoteGLDetailDto> glDetails,
+                                    Long partyPoid,
+                                    String partyType) throws SQLException {
+
+        if (glDetails == null || glDetails.isEmpty()) return;
+
+        BigDecimal totalDr = BigDecimal.ZERO;
+        BigDecimal totalCr = BigDecimal.ZERO;
+
+        for (CreditNoteGLDetailDto dto : glDetails) {
+            if (dto.getDrAmt() != null)
+                totalDr = totalDr.add(dto.getDrAmt());
+
+            if (dto.getCrAmt() != null)
+                totalCr = totalCr.add(dto.getCrAmt());
+        }
+
+        if (totalDr.compareTo(totalCr) == 0) {
+            return; // already balanced
+        }
+
+        Long partyGlPoid = getPartyGLPoid(partyPoid, partyType);
+
+        //  Tax copy source (first row)
+        CreditNoteGLDetailDto sourceRow = glDetails.get(0);
+
+        CreditNoteGLDetailDto balancingRow = new CreditNoteGLDetailDto();
+        balancingRow.setGlPoid(partyGlPoid);
+        balancingRow.setCompanyPoid(UserContext.getCompanyPoid());
+        balancingRow.setRemarks("Auto Balance Entry");
+
+        BigDecimal difference = totalDr.subtract(totalCr);
+
+        if (difference.compareTo(BigDecimal.ZERO) > 0) {
+            balancingRow.setType("CR");
+            balancingRow.setCrAmt(difference);
+            balancingRow.setDrAmt(BigDecimal.ZERO);
+        } else {
+            balancingRow.setType("DR");
+            balancingRow.setDrAmt(difference.abs());
+            balancingRow.setCrAmt(BigDecimal.ZERO);
+        }
+
+        balancingRow.setTotalAmount(difference.abs());
+
+        // SAME TAX COPY
+        balancingRow.setTaxPoid(sourceRow.getTaxPoid());
+        balancingRow.setTaxPercentage(sourceRow.getTaxPercentage());
+        balancingRow.setTaxAmount(sourceRow.getTaxAmount());
+
+        glDetails.add(balancingRow);
+    }*/
+
 }

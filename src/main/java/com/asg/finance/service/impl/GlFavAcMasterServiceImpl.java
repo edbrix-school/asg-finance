@@ -517,10 +517,6 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                             oldGlAcDtl.getFavAcPoid(), oldGlAcDtl.getDetRowId());
                         glAcLogRequests.add(new LogRequestDto<>(oldGlAcDtl, existingGlAcDtl, GlFavAcMasterGlAcDtl.class, 
                             docId, docKeyPoid, logDetail));
-                        
-                        String updateSummaryMessage = String.format("Modified - - DOC:%s KEY:%s", docId, docKeyPoid);
-                        GlobalLogSummary updateSummaryLog = createSummaryLogEntry(LogDetailsEnum.MODIFIED, docId, docKeyPoid, updateSummaryMessage);
-                        glAcSummaryLogs.add(updateSummaryLog);
                         break;
                         
                     case "ISDELETED":
@@ -650,10 +646,6 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                             oldUserRoleDtl.getFavAcPoid(), oldUserRoleDtl.getDetRowId());
                         userRoleLogRequests.add(new LogRequestDto<>(oldUserRoleDtl, existingUserRoleDtl, GlFavAcMasterUserRoleDtl.class, 
                             docId, docKeyPoid, logDetail));
-                        
-                        String updateSummaryMessage = String.format("Modified - - DOC:%s KEY:%s", docId, docKeyPoid);
-                        GlobalLogSummary updateSummaryLog = createSummaryLogEntry(LogDetailsEnum.MODIFIED, docId, docKeyPoid, updateSummaryMessage);
-                        userRoleSummaryLogs.add(updateSummaryLog);
                         break;
                         
                     case "ISDELETED":

@@ -102,11 +102,6 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         try {
             System.out.println("Creating insurance master for policy: " + request.getPolicyNo());
 
-            // Validate policy number format
-            if (!request.getPolicyNo().matches("^POL[0-9]{8}$")) {
-                throw new ValidationException("Policy number must be in format POL12345678");
-            }
-
             // Validate insurance type against LOV
             List<String> validInsuranceTypes = Arrays.asList(
                 "VEHICLE_INSURANCE", "MEDICAL_INSURANCE", "PROPERTY_INSURANCE", 
@@ -259,13 +254,6 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         List<InsuranceEmployeeDetail> oldEmployeeDetails = snapshotEmployeeDetails(existing.getEmployeeDetails());
         List<InsurancePropertyDetail> oldPropertyDetails = snapshotPropertyDetails(existing.getPropertyDetails());
         List<InsurancePicDetail> oldPicDetails = snapshotPicDetails(existing.getPicDetails());
-
-        // Validate unique policy number per company (excluding current record)
-
-        // Validate policy number format
-        if (!request.getPolicyNo().matches("^POL[0-9]{8}$")) {
-            throw new ValidationException("Policy number must be in format POL12345678");
-        }
 
         // Validate insurance type against LOV
         List<String> validInsuranceTypes = Arrays.asList(

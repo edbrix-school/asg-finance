@@ -470,7 +470,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
             if (glDto.getTaxPoid() != null && !taxMasterRepository.existsByTaxPoid(glDto.getTaxPoid())) {
                 throw new ResourceNotFoundException("Tax", "taxPoid", glDto.getTaxPoid());
             }
-
+            long inital = 1L;
             if (glDto.getBreakupList() != null && !glDto.getBreakupList().isEmpty()) {
                 for (BillwiseBreakupPopupRequestDto popup : glDto.getBreakupList()) {
                     BillwiseBreakupRequestDto req = new BillwiseBreakupRequestDto();
@@ -478,7 +478,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                     req.setCompanyPoid(companyPoid);
                     req.setDocId(docId);
                     req.setTransactionPoid(transactionPoid);
-                    req.setBillDetRowId(popup.getBillDetRowId());
+                    req.setBillDetRowId(isUpdate ? popup.getBillDetRowId() : inital);
                     req.setBillRefType(popup.getBillRefType());
                     req.setBillRef(popup.getBillRef());
                     req.setBillDueDate(popup.getBillDueDate());
@@ -495,6 +495,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                     req.setGlCompanyPoid(companyPoid);
                     req.setGlPoid(glDto.getGlPoid());
                     billwiseList.add(req);
+                    inital++;
                 }
             }
         }
@@ -522,6 +523,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         Long companyPoid = UserContext.getCompanyPoid() != null ? UserContext.getCompanyPoid() : 1L;
         Long userPoid = UserContext.getUserPoid() != null ? UserContext.getUserPoid() : 1L;
 
+        long inital = 1L;
         for (ApPurchaseCnGlDtlDto glDto : glDetails) {
             if (glDto == null || glDto.getDetRowId() == null) {
                 continue;
@@ -536,12 +538,13 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                     dto.setTransactionPoid(transactionPoid);
                     dto.setMainDetRowId(glDto.getDetRowId());
                     dto.setGlPoid(glDto.getGlPoid());
-                    dto.setCostDetRowId(popup.getCostDetRowId());
+                    dto.setCostDetRowId(isUpdate ? popup.getCostDetRowId() : inital);
                     dto.setCostGroup(popup.getCostGroup());
                     dto.setCostPoid(popup.getCostPoid());
                     dto.setAmount(popup.getAmount());
                     dto.setLoginUserPoid(userPoid);
                     costCenterList.add(dto);
+                    inital++;
                 }
             }
         }

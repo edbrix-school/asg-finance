@@ -199,14 +199,6 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         );
     }
 
-    private String getOldJobPoid(ArDebitNoteHdr entity, String refType) {
-        return switch (refType != null ? refType.toUpperCase() : "") {
-            case "FDA JOBS" -> entity.getFdaRef();
-            case "FF JOBS" -> entity.getFfRef() != null ? entity.getFfRef() : null;
-            default -> null;
-        };
-    }
-
     @Override
     public DebitNoteHeaderDto getDebitNote(Long transactionPoid) {
         ArDebitNoteHdr entity = debitNoteHdrRepository.findById(transactionPoid)
@@ -777,6 +769,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         dto.setCostPoid(entity.getCostPoid());
         dto.setCostGroup(entity.getCostGroup());
         dto.setCheckAll(entity.getCheckAll());
+        dto.setCostAmount(entity.getCostAmount());
         return dto;
     }
 
@@ -985,17 +978,15 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                         billwiseResponse.getLoadBillwiseBreakupResponseDtoList().stream()
                                 .filter(x -> Objects.equals(x.getMainDetRowId(), detRowId))
                                 .map(x -> {
-                                    BillwiseBreakupPopupRequestDto bw = new BillwiseBreakupPopupRequestDto();
-
-                                    // billwise DTO does NOT have GL-level fields
-                                    bw.setBillDetRowId(x.getBillDetRowId());
-                                    bw.setBillRefType(x.getBillRefType());
-                                    bw.setBillRef(x.getBillRef());
-                                    bw.setBillDueDate(x.getBillDueDate());
-                                    bw.setAmount(bw.getAmount());
-                                    bw.setBillRemarks(x.getBillRemarks());
-
-                                    return bw;
+                                    BillwiseBreakupPopupRequestDto popup = new BillwiseBreakupPopupRequestDto();
+                                    popup.setBillDetRowId(x.getBillDetRowId());
+                                    popup.setBillRefType(x.getBillRefType());
+                                    popup.setBillRef(x.getBillRef());
+                                    popup.setBillDueDate(x.getBillDueDate());
+                                    popup.setType(x.getDrAmt().compareTo(BigDecimal.ZERO) > 0 ? "DR" : "CR");
+                                    popup.setAmount(x.getDrAmt().compareTo(BigDecimal.ZERO) > 0 ? x.getDrAmt() : x.getCrAmt());
+                                    popup.setBillRemarks(x.getBillRemarks());
+                                    return popup;
                                 })
                                 .collect(Collectors.toList());
 

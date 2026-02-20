@@ -102,11 +102,6 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         try {
             System.out.println("Creating insurance master for policy: " + request.getPolicyNo());
 
-            // Validate policy number format
-            if (!request.getPolicyNo().matches("^POL[0-9]{8}$")) {
-                throw new ValidationException("Policy number must be in format POL12345678");
-            }
-
             // Validate insurance type against LOV
             List<String> validInsuranceTypes = Arrays.asList(
                 "VEHICLE_INSURANCE", "MEDICAL_INSURANCE", "PROPERTY_INSURANCE", 
@@ -194,6 +189,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                     .paymentFrequency(request.getPaymentFrequency())
                     .oneTime("N")
                     .description(request.getDescription())
+                    .faPoid(request.getFaPoid() != null ? request.getFaPoid() : null)
                     .deleted("N")
                     .createdBy(getCurrentUser())
                     .createdDate(LocalDateTime.now())
@@ -259,13 +255,6 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         List<InsuranceEmployeeDetail> oldEmployeeDetails = snapshotEmployeeDetails(existing.getEmployeeDetails());
         List<InsurancePropertyDetail> oldPropertyDetails = snapshotPropertyDetails(existing.getPropertyDetails());
         List<InsurancePicDetail> oldPicDetails = snapshotPicDetails(existing.getPicDetails());
-
-        // Validate unique policy number per company (excluding current record)
-
-        // Validate policy number format
-        if (!request.getPolicyNo().matches("^POL[0-9]{8}$")) {
-            throw new ValidationException("Policy number must be in format POL12345678");
-        }
 
         // Validate insurance type against LOV
         List<String> validInsuranceTypes = Arrays.asList(
@@ -353,6 +342,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         existing.setPremiumAmount(request.getPremiumAmount());
         existing.setPaymentFrequency(request.getPaymentFrequency());
         existing.setDescription(request.getDescription());
+        existing.setFaPoid(request.getFaPoid() != null ? request.getFaPoid() : null);
         existing.setLastModifiedBy(getCurrentUser());
         existing.setLastModifiedDate(LocalDateTime.now());
 
@@ -607,6 +597,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                 .paymentFrequency(entity.getPaymentFrequency())
                 .oneTime(entity.getOneTime())
                 .description(entity.getDescription())
+                .faPoid(entity.getFaPoid())
                 .pjRefPoid(entity.getPjRefPoid())
                 .deleted(entity.getDeleted())
                 .createdBy(entity.getCreatedBy())
@@ -946,18 +937,13 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
 
     @Override
     @Transactional
-    public InsuranceMasterResponseDto renewInsurance(Long insuranceId, InsuranceMasterRequestDto request, Boolean addToHistory) {
+    public InsuranceMasterResponseDto renewInsurance(Long insuranceId, InsuranceMasterRequestDto request) {
         InsuranceMaster existing = insuranceMasterRepository.findById(insuranceId)
                 .orElseThrow(() -> new ResourceNotFoundException("Insurance Master", "ID", insuranceId));
 
         // Scenario 2: Check if already renewed
         if (existing.getRenewalLogs() != null && !existing.getRenewalLogs().isEmpty()) {
             throw new ValidationException("Details are already added to the renewal history");
-        }
-
-        // Scenario 1: If addToHistory is null or false, ask for confirmation
-        if (addToHistory == null || !addToHistory) {
-            throw new ValidationException("CONFIRMATION_REQUIRED");
         }
 
         // User confirmed - proceed with renewal

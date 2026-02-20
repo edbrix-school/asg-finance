@@ -490,7 +490,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                     req.setCompanyPoid(companyPoid);
                     req.setDocId(docId);
                     req.setTransactionPoid(transactionPoid);
-                    req.setBillDetRowId(isUpdate ? popup.getBillDetRowId() : inital);
+                    req.setBillDetRowId(inital);
                     req.setBillRefType(popup.getBillRefType());
                     req.setBillRef(popup.getBillRef());
                     req.setBillDueDate(popup.getBillDueDate());
@@ -550,7 +550,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                     dto.setTransactionPoid(transactionPoid);
                     dto.setMainDetRowId(glDto.getDetRowId());
                     dto.setGlPoid(glDto.getGlPoid());
-                    dto.setCostDetRowId(isUpdate ? popup.getCostDetRowId() : inital);
+                    dto.setCostDetRowId(inital);
                     dto.setCostGroup(popup.getCostGroup());
                     dto.setCostPoid(popup.getCostPoid());
                     dto.setAmount(popup.getAmount());

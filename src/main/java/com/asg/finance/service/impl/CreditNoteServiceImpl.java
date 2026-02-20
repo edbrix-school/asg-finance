@@ -143,12 +143,12 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             if (creditNoteDto.getGlDetails() != null) {
                 log.info("Starting to save GL details for transactionPoid: {}", transactionPoid);
                 String issueType = creditNoteDto.getIssueType() != null ? creditNoteDto.getIssueType() : "Y";
-            /*    applyAutoBalancing(
+               applyAutoBalancing(
                         transactionPoid,
                         creditNoteDto.getGlDetails(),
                         creditNoteDto.getPartyPoid(),
                         creditNoteDto.getPartyType()
-                );*/
+                );
 
                 saveGLDetailsWithIssueType(transactionPoid, creditNoteDto.getGlDetails(), issueType);
                 log.info("GL details saved successfully for transactionPoid: {}", transactionPoid);
@@ -558,7 +558,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     private void executeBeforeSaveValidation(CreditNoteHeaderDto dto) throws SQLException {
         validateMandatoryFields(dto);
         validateMultiCompanyFields(dto);
-        validateTaxFields(dto);
+       // validateTaxFields(dto);
         validateGrandTotalWithCharges(dto);
 
         // Call GL voucher validation to check reference document status
@@ -639,32 +639,34 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     }
 
     private void validateGrandTotalWithCharges(CreditNoteHeaderDto dto) {
-        if (dto.getGrandTotal() == null) {
-            return;
-        }
+
+        if (dto.getGrandTotal() == null) return;
 
         BigDecimal totalCharges = BigDecimal.ZERO;
         BigDecimal totalGlDetails = BigDecimal.ZERO;
 
         if (dto.getChargeDetails() != null && !dto.getChargeDetails().isEmpty()) {
+
             totalCharges = dto.getChargeDetails().stream()
-                    .map(charge -> charge.getTotalAmount() != null ? charge.getTotalAmount() : BigDecimal.ZERO)
+                    .map(c -> c.getTotalAmount() != null ? c.getTotalAmount() : BigDecimal.ZERO)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
             if (dto.getGrandTotal().compareTo(totalCharges) != 0) {
                 throw new ValidationException(
-                        "Amount (" + dto.getGrandTotal() + ") is not matching with total charges (" + totalCharges + ") amount.");
+                        "Grand Total is not matching with total charge amount."
+                );
             }
-        }
 
-        if (dto.getGlDetails() != null && !dto.getGlDetails().isEmpty()) {
+        } else if (dto.getGlDetails() != null && !dto.getGlDetails().isEmpty()) {
+
             totalGlDetails = dto.getGlDetails().stream()
                     .map(gl -> gl.getTotalAmount() != null ? gl.getTotalAmount() : BigDecimal.ZERO)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
             if (dto.getGrandTotal().compareTo(totalGlDetails) != 0) {
                 throw new ValidationException(
-                        "Amount (" + dto.getGrandTotal() + ") is not matching with total charges (" + totalGlDetails + ") amount.");
+                        "Grand Total is not matching with total GL amount."
+                );
             }
         }
     }
@@ -1952,9 +1954,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             if (!glMasterRepository.existsByGlPoid(glDto.getGlPoid())) {
                 throw new ResourceNotFoundException("Gl Master", "glPoid", glDto.getGlPoid());
             }
-            if (!taxMasterRepository.existsByTaxPoid(glDto.getTaxPoid())) {
+          /*  if (!taxMasterRepository.existsByTaxPoid(glDto.getTaxPoid())) {
                 throw new ResourceNotFoundException("Tax", "taxPoid", glDto.getTaxPoid());
-            }
+            }*/
 
             long inital = 1L;
             if (glDto.getBreakupList() != null && !glDto.getBreakupList().isEmpty()) {
@@ -2234,4 +2236,54 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             return FdaRefResponseDto.builder().build();
         }
     }
+
+    private void applyAutoBalancing(Long transactionPoid,
+                                    List<CreditNoteGLDetailDto> glDetails,
+                                    Long partyPoid,
+                                    String partyType) throws SQLException {
+
+        if (glDetails == null || glDetails.isEmpty()) return;
+
+        BigDecimal totalDr = BigDecimal.ZERO;
+        BigDecimal totalCr = BigDecimal.ZERO;
+
+        for (CreditNoteGLDetailDto dto : glDetails) {
+            if (dto.getDrAmt() != null)
+                totalDr = totalDr.add(dto.getDrAmt());
+
+            if (dto.getCrAmt() != null)
+                totalCr = totalCr.add(dto.getCrAmt());
+        }
+
+        if (totalDr.compareTo(totalCr) == 0) {
+            return; // already balanced
+        }
+
+        Long partyGlPoid = getPartyGLPoid(partyPoid, partyType);
+
+        //  Tax copy source (first row)
+        CreditNoteGLDetailDto sourceRow = glDetails.get(0);
+
+        CreditNoteGLDetailDto balancingRow = new CreditNoteGLDetailDto();
+        balancingRow.setGlPoid(partyGlPoid);
+        balancingRow.setCompanyPoid(UserContext.getCompanyPoid());
+        balancingRow.setRemarks("Auto Balance Entry");
+
+        BigDecimal difference = totalDr.subtract(totalCr);
+
+        if (difference.compareTo(BigDecimal.ZERO) > 0) {
+            balancingRow.setType("CR");
+            balancingRow.setCrAmt(difference);
+            balancingRow.setDrAmt(BigDecimal.ZERO);
+        } else {
+            balancingRow.setType("DR");
+            balancingRow.setDrAmt(difference.abs());
+            balancingRow.setCrAmt(BigDecimal.ZERO);
+        }
+
+        balancingRow.setTotalAmount(difference.abs());
+
+        glDetails.add(balancingRow);
+    }
+
 }

@@ -80,7 +80,7 @@ public class ImcoDepositRefundRepositoryImpl implements  ImcoDepositRefundReposi
                 dto.setDrAmt(rs.getBigDecimal("DR_AMT"));
                 dto.setCrAmt(rs.getBigDecimal("CR_AMT"));
                 dto.setPostedBy(rs.getString("POSTED_BY"));
-                dto.setPostedDate(convertToLocalDate(rs.getDate("POSTED_DATE")).atStartOfDay());
+                dto.setPostedDate(LocalDate.from(convertToLocalDate(rs.getDate("POSTED_DATE")).atStartOfDay()));
                 entries.add(dto);
             }
         } catch (SQLException e) {

@@ -175,8 +175,8 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             List<ArCreditNoteDtl> glDetails = creditNoteDtlRepository.findByTransactionPoidOrderByDetRowId(transactionPoid);
             List<CreditNoteGLDetailDto> glDetailDtos = glDetails.stream().map(this::mapGLToDto).collect(Collectors.toList());
 
-            saveBillwiseForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111");
-            saveCostCenterForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111");
+            saveBillwiseForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111", false);
+            saveCostCenterForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111", false);
 
             loadBillwiseAndCostCenterBreakup(glDetailDtos, transactionPoid, "300-111");
             result.setGlDetails(glDetailDtos);
@@ -273,8 +273,8 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                 executeChargeTaxCalculation(transactionPoid, creditNoteDto.getPartyType(), creditNoteDto.getPartyPoid());
             }
 
-            saveBillwiseForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111");
-            saveCostCenterForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111");
+            saveBillwiseForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111", true);
+            saveCostCenterForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111", true);
 
             // Re-trigger manifest updates if charge amount or issue type changed
             executePostSaveUpdates(transactionPoid, creditNoteDto);
@@ -1931,7 +1931,12 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         return chargeDetails.stream().anyMatch(charge -> ("Y".equals(charge.getIssueInvoice())));
     }
 
-    public void saveBillwiseForGl(Long transactionPoid, List<CreditNoteGLDetailDto> glDetails, String docId) {
+    public void saveBillwiseForGl(
+            Long transactionPoid,
+            List<CreditNoteGLDetailDto> glDetails,
+            String docId,
+            boolean isUpdate
+    ) {
         if (glDetails == null || glDetails.isEmpty()) {
             return;
         }
@@ -1941,7 +1946,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         Long userPoid = UserContext.getUserPoid() != null ? UserContext.getUserPoid() : 1L;
 
         for (CreditNoteGLDetailDto glDto : glDetails) {
-            if (glDto == null || glDto.getDetRowId() == null) {
+            if (glDto == null || glDto.getDetRowId() == null || glDto.getActionType() == null || !glDto.getActionType().equalsIgnoreCase("isupdated")) {
                 continue;
             }
             if (!glMasterRepository.existsByGlPoid(glDto.getGlPoid())) {
@@ -1951,6 +1956,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                 throw new ResourceNotFoundException("Tax", "taxPoid", glDto.getTaxPoid());
             }
 
+            long inital = 1L;
             if (glDto.getBreakupList() != null && !glDto.getBreakupList().isEmpty()) {
                 for (BillwiseBreakupPopupRequestDto popup : glDto.getBreakupList()) {
                     BillwiseBreakupRequestDto req = new BillwiseBreakupRequestDto();
@@ -1971,16 +1977,23 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     }
                     req.setBillRemarks(popup.getBillRemarks());
                     req.setLoginUserPoid(userPoid);
-                    req.setMainDetRowId(glDto.getDetRowId());
+                    req.setMainDetRowId(inital);
                     req.setGlCompanyPoid(companyPoid);
                     req.setGlPoid(glDto.getGlPoid());
                     billwiseList.add(req);
+                    inital++;
                 }
             }
         }
 
         if (!billwiseList.isEmpty()) {
-            billwiseBreakupService.insertBillwiseBreakup(billwiseList);
+
+            if (isUpdate) {
+                billwiseBreakupService.updateBillwiseBreakups(billwiseList, userPoid);
+            } else {
+                billwiseBreakupService.insertBillwiseBreakup(billwiseList);
+            }
+
             log.info("Saved {} billwise breakup entries for transactionPoid: {}", billwiseList.size(), transactionPoid);
         }
     }
@@ -2022,7 +2035,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         return result;
     }
 
-    public void saveCostCenterForGl(Long transactionPoid, List<CreditNoteGLDetailDto> glDetails, String docId) {
+    public void saveCostCenterForGl(Long transactionPoid,
+                                    List<CreditNoteGLDetailDto> glDetails,
+                                    String docId,
+                                    boolean isUpdate
+    ) {
         if (glDetails == null || glDetails.isEmpty()) {
             return;
         }
@@ -2031,9 +2048,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         Long groupPoid = UserContext.getGroupPoid() != null ? UserContext.getGroupPoid() : 1L;
         Long companyPoid = UserContext.getCompanyPoid() != null ? UserContext.getCompanyPoid() : 3L;
         Long userPoid = UserContext.getUserPoid() != null ? UserContext.getUserPoid() : 1L;
-
+        long inital = 1L;
         for (CreditNoteGLDetailDto glDto : glDetails) {
-            if (glDto == null || glDto.getDetRowId() == null) {
+            if (glDto == null || glDto.getDetRowId() == null || glDto.getActionType() == null || !glDto.getActionType().equalsIgnoreCase("isupdated")) {
                 continue;
             }
 
@@ -2046,18 +2063,24 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     dto.setTransactionPoid(transactionPoid);
                     dto.setMainDetRowId(glDto.getDetRowId());
                     dto.setGlPoid(glDto.getGlPoid());
-                    dto.setCostDetRowId(glDto.getDetRowId());
+                    dto.setCostDetRowId(inital);
                     dto.setCostGroup(popup.getCostGroup());
                     dto.setCostPoid(popup.getCostPoid());
                     dto.setAmount(popup.getAmount());
                     dto.setLoginUserPoid(userPoid);
                     costCenterList.add(dto);
+                    inital++;
                 }
             }
         }
 
         if (!costCenterList.isEmpty()) {
-            costCenterBreakupService.saveCostCenterBreakups(costCenterList);
+
+            if (isUpdate) {
+                costCenterBreakupService.updateCostCenterBreakups(costCenterList, userPoid);
+            } else {
+                costCenterBreakupService.saveCostCenterBreakups(costCenterList);
+            }
             log.info("Saved {} cost center breakup entries for transactionPoid: {}", costCenterList.size(), transactionPoid);
         }
     }
@@ -2211,59 +2234,4 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             return FdaRefResponseDto.builder().build();
         }
     }
-
-   /* private void applyAutoBalancing(Long transactionPoid,
-                                    List<CreditNoteGLDetailDto> glDetails,
-                                    Long partyPoid,
-                                    String partyType) throws SQLException {
-
-        if (glDetails == null || glDetails.isEmpty()) return;
-
-        BigDecimal totalDr = BigDecimal.ZERO;
-        BigDecimal totalCr = BigDecimal.ZERO;
-
-        for (CreditNoteGLDetailDto dto : glDetails) {
-            if (dto.getDrAmt() != null)
-                totalDr = totalDr.add(dto.getDrAmt());
-
-            if (dto.getCrAmt() != null)
-                totalCr = totalCr.add(dto.getCrAmt());
-        }
-
-        if (totalDr.compareTo(totalCr) == 0) {
-            return; // already balanced
-        }
-
-        Long partyGlPoid = getPartyGLPoid(partyPoid, partyType);
-
-        //  Tax copy source (first row)
-        CreditNoteGLDetailDto sourceRow = glDetails.get(0);
-
-        CreditNoteGLDetailDto balancingRow = new CreditNoteGLDetailDto();
-        balancingRow.setGlPoid(partyGlPoid);
-        balancingRow.setCompanyPoid(UserContext.getCompanyPoid());
-        balancingRow.setRemarks("Auto Balance Entry");
-
-        BigDecimal difference = totalDr.subtract(totalCr);
-
-        if (difference.compareTo(BigDecimal.ZERO) > 0) {
-            balancingRow.setType("CR");
-            balancingRow.setCrAmt(difference);
-            balancingRow.setDrAmt(BigDecimal.ZERO);
-        } else {
-            balancingRow.setType("DR");
-            balancingRow.setDrAmt(difference.abs());
-            balancingRow.setCrAmt(BigDecimal.ZERO);
-        }
-
-        balancingRow.setTotalAmount(difference.abs());
-
-        // SAME TAX COPY
-        balancingRow.setTaxPoid(sourceRow.getTaxPoid());
-        balancingRow.setTaxPercentage(sourceRow.getTaxPercentage());
-        balancingRow.setTaxAmount(sourceRow.getTaxAmount());
-
-        glDetails.add(balancingRow);
-    }*/
-
 }

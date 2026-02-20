@@ -321,7 +321,7 @@ public class ChequeReturnController {
     @GetMapping("/load")
     public ResponseEntity<?> loadChequeReturn(
             @RequestParam @Parameter(description = "Cheque number", required = true, example = "348138") String chequeNumber,
-            @RequestParam(required = false) @Parameter(description = "Receipt number(Optional)", required = false, example = "") String receiptNo
+            @RequestParam @Parameter(description = "Receipt number(Optional)", required = true, example = "112233") String receiptNo
     ) {
         ChequeReturnLoadResponseDto data = service.loadChequeData(chequeNumber, receiptNo);
         loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), receiptNo);

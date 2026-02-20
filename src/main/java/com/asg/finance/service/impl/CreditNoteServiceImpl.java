@@ -143,12 +143,12 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             if (creditNoteDto.getGlDetails() != null) {
                 log.info("Starting to save GL details for transactionPoid: {}", transactionPoid);
                 String issueType = creditNoteDto.getIssueType() != null ? creditNoteDto.getIssueType() : "Y";
-            /*    applyAutoBalancing(
+               applyAutoBalancing(
                         transactionPoid,
                         creditNoteDto.getGlDetails(),
                         creditNoteDto.getPartyPoid(),
                         creditNoteDto.getPartyType()
-                );*/
+                );
 
                 saveGLDetailsWithIssueType(transactionPoid, creditNoteDto.getGlDetails(), issueType);
                 log.info("GL details saved successfully for transactionPoid: {}", transactionPoid);
@@ -558,7 +558,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     private void executeBeforeSaveValidation(CreditNoteHeaderDto dto) throws SQLException {
         validateMandatoryFields(dto);
         validateMultiCompanyFields(dto);
-        validateTaxFields(dto);
+       // validateTaxFields(dto);
         validateGrandTotalWithCharges(dto);
 
         // Call GL voucher validation to check reference document status
@@ -639,32 +639,34 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     }
 
     private void validateGrandTotalWithCharges(CreditNoteHeaderDto dto) {
-        if (dto.getGrandTotal() == null) {
-            return;
-        }
+
+        if (dto.getGrandTotal() == null) return;
 
         BigDecimal totalCharges = BigDecimal.ZERO;
         BigDecimal totalGlDetails = BigDecimal.ZERO;
 
         if (dto.getChargeDetails() != null && !dto.getChargeDetails().isEmpty()) {
+
             totalCharges = dto.getChargeDetails().stream()
-                    .map(charge -> charge.getTotalAmount() != null ? charge.getTotalAmount() : BigDecimal.ZERO)
+                    .map(c -> c.getTotalAmount() != null ? c.getTotalAmount() : BigDecimal.ZERO)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
             if (dto.getGrandTotal().compareTo(totalCharges) != 0) {
                 throw new ValidationException(
-                        "Amount (" + dto.getGrandTotal() + ") is not matching with total charges (" + totalCharges + ") amount.");
+                        "Grand Total is not matching with total charge amount."
+                );
             }
-        }
 
-        if (dto.getGlDetails() != null && !dto.getGlDetails().isEmpty()) {
+        } else if (dto.getGlDetails() != null && !dto.getGlDetails().isEmpty()) {
+
             totalGlDetails = dto.getGlDetails().stream()
                     .map(gl -> gl.getTotalAmount() != null ? gl.getTotalAmount() : BigDecimal.ZERO)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
             if (dto.getGrandTotal().compareTo(totalGlDetails) != 0) {
                 throw new ValidationException(
-                        "Amount (" + dto.getGrandTotal() + ") is not matching with total charges (" + totalGlDetails + ") amount.");
+                        "Grand Total is not matching with total GL amount."
+                );
             }
         }
     }
@@ -1947,9 +1949,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             if (!glMasterRepository.existsByGlPoid(glDto.getGlPoid())) {
                 throw new ResourceNotFoundException("Gl Master", "glPoid", glDto.getGlPoid());
             }
-            if (!taxMasterRepository.existsByTaxPoid(glDto.getTaxPoid())) {
+          /*  if (!taxMasterRepository.existsByTaxPoid(glDto.getTaxPoid())) {
                 throw new ResourceNotFoundException("Tax", "taxPoid", glDto.getTaxPoid());
-            }
+            }*/
 
             if (glDto.getBreakupList() != null && !glDto.getBreakupList().isEmpty()) {
                 for (BillwiseBreakupPopupRequestDto popup : glDto.getBreakupList()) {
@@ -2212,7 +2214,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         }
     }
 
-   /* private void applyAutoBalancing(Long transactionPoid,
+    private void applyAutoBalancing(Long transactionPoid,
                                     List<CreditNoteGLDetailDto> glDetails,
                                     Long partyPoid,
                                     String partyType) throws SQLException {
@@ -2258,12 +2260,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
         balancingRow.setTotalAmount(difference.abs());
 
-        // SAME TAX COPY
-        balancingRow.setTaxPoid(sourceRow.getTaxPoid());
-        balancingRow.setTaxPercentage(sourceRow.getTaxPercentage());
-        balancingRow.setTaxAmount(sourceRow.getTaxAmount());
-
         glDetails.add(balancingRow);
-    }*/
+    }
 
 }

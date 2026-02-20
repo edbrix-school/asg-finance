@@ -660,7 +660,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         } else if (dto.getGlDetails() != null && !dto.getGlDetails().isEmpty()) {
 
             totalGlDetails = dto.getGlDetails().stream()
-                    .map(gl -> gl.getTotalAmount() != null ? gl.getTotalAmount() : BigDecimal.ZERO)
+                    .map(gl -> gl.getDrAmt() != null ? gl.getDrAmt() : BigDecimal.ZERO)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
             if (dto.getGrandTotal().compareTo(totalGlDetails) != 0) {

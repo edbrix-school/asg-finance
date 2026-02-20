@@ -142,6 +142,10 @@ public class DebitNoteServiceImpl implements DebitNoteService {
 
         BeanUtils.copyProperties(debitNoteDto, existingEntity, "transactionPoid", "createdBy", "createdDate", "groupPoid", "companyPoid", "transactionDate");
 
+        existingEntity.setMultiCompany(debitNoteDto.getMultiCompany() != null && debitNoteDto.getMultiCompany() ? "Y" : "N");
+        existingEntity.setRemarksPrintable(debitNoteDto.getRemarksPrintable() != null && debitNoteDto.getRemarksPrintable() ? "Y" : "N");
+        existingEntity.setShowBankDetailsInPrint(debitNoteDto.getShowBankDetailsInPrint() != null && debitNoteDto.getShowBankDetailsInPrint() ? "Y" : "N");
+
         existingEntity.setGroupPoid(UserContext.getGroupPoid());
         existingEntity.setCompanyPoid(UserContext.getCompanyPoid());
         existingEntity.setOtherCurrAmount(debitNoteDto.getOtherCurrAmount());

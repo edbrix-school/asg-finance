@@ -769,7 +769,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         dto.setCostPoid(entity.getCostPoid());
         dto.setCostGroup(entity.getCostGroup());
         dto.setCheckAll(entity.getCheckAll());
-        dto.setCostAmount(entity.getCostAmount());
+        dto.setCostAmount(entity.getPdaAmount());
         return dto;
     }
 

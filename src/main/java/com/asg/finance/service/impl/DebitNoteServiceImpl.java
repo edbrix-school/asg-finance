@@ -113,7 +113,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         // Log the creation
         loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), savedEntity.getTransactionPoid().toString());
 
-        return result;
+        return getDebitNote(savedEntity.getTransactionPoid());
     }
 
     @Override
@@ -182,7 +182,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
             globalLogSummaryRepository.saveAll(detailSummaryLogs);
         }
 
-        return result;
+        return getDebitNote(transactionPoid);
     }
 
     @Override

@@ -145,10 +145,11 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         existingEntity.setMultiCompany(debitNoteDto.getMultiCompany() != null && debitNoteDto.getMultiCompany() ? "Y" : "N");
         existingEntity.setRemarksPrintable(debitNoteDto.getRemarksPrintable() != null && debitNoteDto.getRemarksPrintable() ? "Y" : "N");
         existingEntity.setShowBankDetailsInPrint(debitNoteDto.getShowBankDetailsInPrint() != null && debitNoteDto.getShowBankDetailsInPrint() ? "Y" : "N");
-
         existingEntity.setGroupPoid(UserContext.getGroupPoid());
         existingEntity.setCompanyPoid(UserContext.getCompanyPoid());
         existingEntity.setOtherCurrAmount(debitNoteDto.getOtherCurrAmount());
+        existingEntity.setFdaRef(debitNoteDto.getFdaRefPoid().toString());
+        existingEntity.setFdaDirectRef(debitNoteDto.getFdaDirectRefPoid().toString());
 
         existingEntity.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
         existingEntity.setLastModifiedDate(LocalDateTime.now());

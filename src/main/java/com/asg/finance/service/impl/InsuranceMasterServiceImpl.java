@@ -66,7 +66,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
     public Map<String, Object> listInsuranceMasters(String documentId, FilterRequestDto filters, LocalDate startDate, LocalDate endDate, Pageable pageable) {
         String operator = documentService.resolveOperator(filters);
         String isDeleted = documentService.resolveIsDeleted(filters);
-        List<FilterDto> filterList = documentService.resolveDateFilters(filters,"TRANSACTION_POID",startDate, endDate);
+        List<FilterDto> filterList = documentService.resolveDateFilters(filters,"TRANSACTION_DATE",startDate, endDate);
 
         RawSearchResult raw = documentService.search(documentId, filterList, operator, pageable, isDeleted,
                 "POLICY_NO",
@@ -478,12 +478,18 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         if (dtos == null) return new ArrayList<>();
         List<InsuranceEmployeeDetail> result = new ArrayList<>();
         
-        // Find max detRowId from existing records
-        long maxDetRowId = parent.getEmployeeDetails() != null ? 
+        // Find max detRowId from existing records AND incoming DTOs
+        long maxFromExisting = parent.getEmployeeDetails() != null ? 
             parent.getEmployeeDetails().stream()
                 .mapToLong(InsuranceEmployeeDetail::getDetRowId)
                 .max()
                 .orElse(0L) : 0L;
+        long maxFromDtos = dtos.stream()
+            .filter(dto -> dto.getDetRowId() != null)
+            .mapToLong(InsuranceEmployeeDetailRequestDto::getDetRowId)
+            .max()
+            .orElse(0L);
+        long maxDetRowId = Math.max(maxFromExisting, maxFromDtos);
         long nextDetRowId = maxDetRowId + 1;
         
         for (InsuranceEmployeeDetailRequestDto dto : dtos) {
@@ -491,7 +497,19 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
             
             if ("ISDELETED".equals(action)) continue;
             
-            Long detRowId = dto.getDetRowId() != null ? dto.getDetRowId() : nextDetRowId++;
+            // Skip empty rows
+            if (dto.getEmployeePoid() == null && dto.getAmount() == null) {
+                continue;
+            }
+            
+            Long detRowId;
+            if ("ISCREATED".equals(action)) {
+                detRowId = nextDetRowId++;
+            } else if ("ISUPDATED".equals(action)) {
+                detRowId = dto.getDetRowId();
+            } else {
+                detRowId = dto.getDetRowId() != null ? dto.getDetRowId() : nextDetRowId++;
+            }
             
             result.add(InsuranceEmployeeDetail.builder()
                     .transactionPoid(parent.getTransactionPoid())
@@ -512,12 +530,18 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         if (dtos == null) return new ArrayList<>();
         List<InsurancePropertyDetail> result = new ArrayList<>();
         
-        // Find max detRowId from existing records
-        long maxDetRowId = parent.getPropertyDetails() != null ? 
+        // Find max detRowId from existing records AND incoming DTOs
+        long maxFromExisting = parent.getPropertyDetails() != null ? 
             parent.getPropertyDetails().stream()
                 .mapToLong(InsurancePropertyDetail::getDetRowId)
                 .max()
                 .orElse(0L) : 0L;
+        long maxFromDtos = dtos.stream()
+            .filter(dto -> dto.getDetRowId() != null)
+            .mapToLong(InsurancePropertyDetailRequestDto::getDetRowId)
+            .max()
+            .orElse(0L);
+        long maxDetRowId = Math.max(maxFromExisting, maxFromDtos);
         long nextDetRowId = maxDetRowId + 1;
         
         for (InsurancePropertyDetailRequestDto dto : dtos) {
@@ -525,7 +549,19 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
             
             if ("ISDELETED".equals(action)) continue;
             
-            Long detRowId = dto.getDetRowId() != null ? dto.getDetRowId() : nextDetRowId++;
+            // Skip empty rows
+            if (dto.getPropertyPoid() == null && dto.getAmount() == null) {
+                continue;
+            }
+            
+            Long detRowId;
+            if ("ISCREATED".equals(action)) {
+                detRowId = nextDetRowId++;
+            } else if ("ISUPDATED".equals(action)) {
+                detRowId = dto.getDetRowId();
+            } else {
+                detRowId = dto.getDetRowId() != null ? dto.getDetRowId() : nextDetRowId++;
+            }
             
             result.add(InsurancePropertyDetail.builder()
                     .transactionPoid(parent.getTransactionPoid())
@@ -546,19 +582,38 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         if (dtos == null) return new ArrayList<>();
         List<InsurancePicDetail> result = new ArrayList<>();
         
-        // Find max detRowId from existing records
-        long maxDetRowId = parent.getPicDetails() != null ? 
+        // Find max detRowId from existing records AND incoming DTOs
+        long maxFromExisting = parent.getPicDetails() != null ? 
             parent.getPicDetails().stream()
                 .mapToLong(InsurancePicDetail::getDetRowId)
                 .max()
                 .orElse(0L) : 0L;
+        long maxFromDtos = dtos.stream()
+            .filter(dto -> dto.getDetRowId() != null)
+            .mapToLong(InsurancePicDetailRequestDto::getDetRowId)
+            .max()
+            .orElse(0L);
+        long maxDetRowId = Math.max(maxFromExisting, maxFromDtos);
         long nextDetRowId = maxDetRowId + 1;
         
         for (InsurancePicDetailRequestDto dto : dtos) {
             String action = normalizeAction(dto.getActionType());
             if ("ISDELETED".equals(action)) continue;
             
-            Long detRowId = dto.getDetRowId() != null ? dto.getDetRowId() : nextDetRowId++;
+            // Skip empty rows
+            if (dto.getRolePoid() == null && dto.getPicPersonPoid() == null && 
+                dto.getFromDate() == null && dto.getToDate() == null) {
+                continue;
+            }
+            
+            Long detRowId;
+            if ("ISCREATED".equals(action)) {
+                detRowId = nextDetRowId++;
+            } else if ("ISUPDATED".equals(action)) {
+                detRowId = dto.getDetRowId();
+            } else {
+                detRowId = dto.getDetRowId() != null ? dto.getDetRowId() : nextDetRowId++;
+            }
             
             result.add(InsurancePicDetail.builder()
                     .transactionPoid(parent.getTransactionPoid())

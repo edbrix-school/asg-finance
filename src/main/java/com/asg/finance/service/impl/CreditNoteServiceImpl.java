@@ -110,6 +110,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     @Transactional(propagation = Propagation.REQUIRED)
     public CreditNoteHeaderDto createCreditNote(CreditNoteHeaderDto creditNoteDto) {
         try {
+            filterUnselectedCharges(creditNoteDto);
             executeBeforeSaveValidation(creditNoteDto);
             calculateDueDateFromCreditPeriod(creditNoteDto);
             // Save header and flush immediately
@@ -249,6 +250,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                 .orElseThrow(() -> new ResourceNotFoundException("Credit Note", "transactionPoid", transactionPoid));
 
         try {
+            filterUnselectedCharges(creditNoteDto);
             executeBeforeSaveValidation(creditNoteDto);
             calculateDueDateFromCreditPeriod(creditNoteDto);
 
@@ -1617,6 +1619,12 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         List<LogRequestDto<ArCreditNoteChargeDtl>> logRequests = new ArrayList<>();
 
         List<ArCreditNoteChargeDtl> existingDetails = creditNoteChargeDtlRepository.findByTransactionPoidOrderByDetRowId(transactionPoid);
+
+        Set<Long> incomingDetRowIds = chargeDetails.stream()
+                .map(UniversalChargeDetailDto::getDetRowId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
         Map<Long, ArCreditNoteChargeDtl> existingMap = existingDetails.stream()
                 .collect(Collectors.toMap(ArCreditNoteChargeDtl::getDetRowId, Function.identity(), (a, b) -> a));
 
@@ -1628,6 +1636,10 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
         for (UniversalChargeDetailDto dto : chargeDetails) {
             if (dto == null) continue;
+            // 🔥 Treat unselected rows as deleted (Legacy behavior)
+            if ("N".equalsIgnoreCase(dto.getSelected())) {
+                dto.setActionType("ISDELETED");
+            }
             String actionType = dto.getActionType();
             if (actionType == null || actionType.trim().isEmpty()) {
                 actionType = (dto.getDetRowId() == null) ? "ISCREATED" : "ISUPDATED";
@@ -1716,6 +1728,13 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                 case "NOCHANGE":
                 default:
                     break;
+            }
+        }
+
+        // 🔥 Delete rows that exist in DB but not sent from UI
+        for (ArCreditNoteChargeDtl existing : existingDetails) {
+            if (!incomingDetRowIds.contains(existing.getDetRowId())) {
+                toDelete.add(existing.getDetRowId());
             }
         }
 
@@ -2284,6 +2303,18 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         balancingRow.setTotalAmount(difference.abs());
 
         glDetails.add(balancingRow);
+    }
+
+    private void filterUnselectedCharges(CreditNoteHeaderDto dto) {
+        if (dto.getChargeDetails() == null) return;
+
+        List<UniversalChargeDetailDto> filtered =
+                dto.getChargeDetails()
+                        .stream()
+                        .filter(c -> "Y".equalsIgnoreCase(c.getSelected()))
+                        .collect(Collectors.toList());
+
+        dto.setChargeDetails(filtered);
     }
 
 }

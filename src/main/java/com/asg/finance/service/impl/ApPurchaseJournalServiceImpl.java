@@ -459,7 +459,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         Long maxDetRowId = apPurchaseInvoiceItemDtlRepository
                 .findMaxDetRowIdByTransactionPoid(transactionPoid);
 
-        long detRowId = (maxDetRowId != null ? maxDetRowId : 1L);
+        long detRowId = (maxDetRowId != null ? maxDetRowId + 1 : 1L);
 
         List<ApPurchaseInvoiceItemDtlEntity> items = new ArrayList<>();
 
@@ -527,7 +527,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         Long maxDetRowId = apPurchaseInvoiceGlDtlRepository
                 .findMaxDetRowIdByTransactionPoid(transactionPoid);
 
-        long detRowId = (maxDetRowId != null ? maxDetRowId : 1L);
+        long detRowId = (maxDetRowId != null ? maxDetRowId + 1 : 1L);
 
         List<ApPurchaseInvoiceGlDtlEntity> list = new ArrayList<>();
         List<BillwiseBreakupRequestDto> billwiseList = new ArrayList<>();
@@ -661,7 +661,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         Long maxDetRowId = purchaseInvoiceChargeDtlRepository
                 .findMaxDetRowIdByTransactionPoid(transactionPoid);
 
-        long detRowId = (maxDetRowId != null ? maxDetRowId : 1L);
+        long detRowId = (maxDetRowId != null ? maxDetRowId + 1 : 1L);
 
         List<PurchaseInvoiceChargeDtl> list = new ArrayList<>();
 
@@ -933,7 +933,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                     }
 
                     Long maxGlDet = apPurchaseInvoiceGlDtlRepository.findMaxDetRowIdByTransactionPoid(transactionPoid);
-                    long nextGlDet = (maxGlDet != null ? maxGlDet : 1L);
+                    long nextGlDet = (maxGlDet != null ? maxGlDet + 1 : 1L);
 
                     List<BillwiseBreakupRequestDto> billwiseList = new ArrayList<>();
                     List<CostCenterBreakupRequestDto> costCenterList = new ArrayList<>();
@@ -1090,7 +1090,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                     Long maxChargeDet = purchaseInvoiceChargeDtlRepository
                             .findMaxDetRowIdByTransactionPoid(transactionPoid);
 
-                    long nextChargeDet = (maxChargeDet != null ? maxChargeDet : 1L);
+                    long nextChargeDet = (maxChargeDet != null ? maxChargeDet + 1 : 1L);
 
                     for (PurchaseInvoiceChargeDtlRequestDto cdto : apPurchaseInvoiceHdrDto.getChargeDtls()) {
                         String actionTypeStr = cdto.getActionType();
@@ -1173,7 +1173,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                 if (apPurchaseInvoiceHdrDto.getItemDtls() != null && !apPurchaseInvoiceHdrDto.getItemDtls().isEmpty()) {
 
                     Long maxItemDet = apPurchaseInvoiceItemDtlRepository.findMaxDetRowIdByTransactionPoid(transactionPoid);
-                    long nextItemDet = (maxItemDet != null ? maxItemDet : 1L);
+                    long nextItemDet = (maxItemDet != null ? maxItemDet + 1 : 1L);
 
                     for (ApPurchaseInvoiceItemDtlDto idto : apPurchaseInvoiceHdrDto.getItemDtls()) {
                         String actionTypeStr = idto.getActionType();

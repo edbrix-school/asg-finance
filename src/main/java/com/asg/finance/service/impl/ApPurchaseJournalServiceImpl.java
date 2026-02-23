@@ -1876,8 +1876,10 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
         String refPoid = getRefPoid(dto);
 
-        if (refPoid == null || refPoid.trim().isEmpty()) {
-            throw new ValidationException("Reference POID is missing for " + dto.getRefType());
+        if (requiresRefPoid(dto.getRefType())) {
+            if (refPoid == null || refPoid.trim().isEmpty()) {
+                throw new ValidationException("Reference POID is missing for " + dto.getRefType());
+            }
         }
 
         validateVoucher(documentId, dto.getRefType(), refPoid);
@@ -2153,15 +2155,25 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
             case "GENERAL":
             case "CUSTOM":
-                return dto.getTransactionPoid() != null
-                        ? String.valueOf(dto.getTransactionPoid())
-                        : null;
+                return null;
 
             default:
                 return dto.getTransactionPoid() != null
                         ? String.valueOf(dto.getTransactionPoid())
                         : null;
         }
+    }
+
+    private boolean requiresRefPoid(String refType) {
+
+        if (refType == null) return false;
+
+        String type = refType.trim().toUpperCase();
+
+        return type.equals("FF JOBS")
+                || type.equals("FDA JOBS")
+                || type.equals("MTA PO")
+                || type.equals("GENERAL PO");
     }
 
 }

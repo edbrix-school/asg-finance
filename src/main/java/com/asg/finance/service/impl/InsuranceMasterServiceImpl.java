@@ -373,13 +373,17 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         
         // Process Employee Details
         if (request.getEmployeeDetails() != null) {
+            int newEmpIndex = 0;
             for (InsuranceEmployeeDetailRequestDto dto : request.getEmployeeDetails()) {
                 String action = normalizeAction(dto.getActionType());
                 if ("ISDELETED".equals(action)) {
                     loggingService.logDelete(dto, docId, docKeyPoid);
                 } else if ("ISCREATED".equals(action)) {
-                    String msg = String.format("Row Created on Insurance Employee Detail with detRowId: %s", dto.getDetRowId());
-                    loggingService.createLogSummaryEntry(docId, docKeyPoid, msg);
+                    InsuranceEmployeeDetail newE = findNewEmployeeByIndex(updated.getEmployeeDetails(), oldEmployeeDetails, newEmpIndex++);
+                    if (newE != null) {
+                        String msg = String.format("Row Created on Insurance Employee Detail with detRowId: %s", newE.getDetRowId());
+                        loggingService.createLogSummaryEntry(docId, docKeyPoid, msg);
+                    }
                 } else if ("ISUPDATED".equals(action)) {
                     InsuranceEmployeeDetail oldE = findOldEmployeeByDetRowId(oldEmployeeDetails, dto.getDetRowId());
                     InsuranceEmployeeDetail newE = findOldEmployeeByDetRowId(updated.getEmployeeDetails(), dto.getDetRowId());
@@ -393,13 +397,17 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         
         // Process Property Details
         if (request.getPropertyDetails() != null) {
+            int newPropIndex = 0;
             for (InsurancePropertyDetailRequestDto dto : request.getPropertyDetails()) {
                 String action = normalizeAction(dto.getActionType());
                 if ("ISDELETED".equals(action)) {
                     loggingService.logDelete(dto, docId, docKeyPoid);
                 } else if ("ISCREATED".equals(action)) {
-                    String msg = String.format("Row Created on Insurance Property Detail with detRowId: %s", dto.getDetRowId());
-                    loggingService.createLogSummaryEntry(docId, docKeyPoid, msg);
+                    InsurancePropertyDetail newP = findNewPropertyByIndex(updated.getPropertyDetails(), oldPropertyDetails, newPropIndex++);
+                    if (newP != null) {
+                        String msg = String.format("Row Created on Insurance Property Detail with detRowId: %s", newP.getDetRowId());
+                        loggingService.createLogSummaryEntry(docId, docKeyPoid, msg);
+                    }
                 } else if ("ISUPDATED".equals(action)) {
                     InsurancePropertyDetail oldP = findOldPropertyByDetRowId(oldPropertyDetails, dto.getDetRowId());
                     InsurancePropertyDetail newP = findOldPropertyByDetRowId(updated.getPropertyDetails(), dto.getDetRowId());
@@ -413,13 +421,17 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         
         // Process PIC Details
         if (request.getPicDetails() != null) {
+            int newPicIndex = 0;
             for (InsurancePicDetailRequestDto dto : request.getPicDetails()) {
                 String action = normalizeAction(dto.getActionType());
                 if ("ISDELETED".equals(action)) {
                     loggingService.logDelete(dto, docId, docKeyPoid);
                 } else if ("ISCREATED".equals(action)) {
-                    String msg = String.format("Row Created on Insurance PIC Detail with detRowId: %s", dto.getDetRowId());
-                    loggingService.createLogSummaryEntry(docId, docKeyPoid, msg);
+                    InsurancePicDetail newP = findNewPicByIndex(updated.getPicDetails(), oldPicDetails, newPicIndex++);
+                    if (newP != null) {
+                        String msg = String.format("Row Created on Insurance PIC Detail with detRowId: %s", newP.getDetRowId());
+                        loggingService.createLogSummaryEntry(docId, docKeyPoid, msg);
+                    }
                 } else if ("ISUPDATED".equals(action)) {
                     InsurancePicDetail oldP = findOldPicByDetRowId(oldPicDetails, dto.getDetRowId());
                     InsurancePicDetail newP = findOldPicByDetRowId(updated.getPicDetails(), dto.getDetRowId());
@@ -920,6 +932,27 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
     private InsuranceVehicleDetail findOldVehicleByDetRowId(List<InsuranceVehicleDetail> list, Long detRowId) {
         if (list == null || detRowId == null) return null;
         return list.stream().filter(v -> detRowId.equals(v.getDetRowId())).findFirst().orElse(null);
+    }
+
+    private InsuranceEmployeeDetail findNewEmployeeByIndex(List<InsuranceEmployeeDetail> newList, List<InsuranceEmployeeDetail> oldList, int index) {
+        if (newList == null) return null;
+        Set<Long> oldDetRowIds = oldList != null ? oldList.stream().map(InsuranceEmployeeDetail::getDetRowId).collect(Collectors.toSet()) : new HashSet<>();
+        List<InsuranceEmployeeDetail> newRecords = newList.stream().filter(e -> !oldDetRowIds.contains(e.getDetRowId())).toList();
+        return index < newRecords.size() ? newRecords.get(index) : null;
+    }
+
+    private InsurancePropertyDetail findNewPropertyByIndex(List<InsurancePropertyDetail> newList, List<InsurancePropertyDetail> oldList, int index) {
+        if (newList == null) return null;
+        Set<Long> oldDetRowIds = oldList != null ? oldList.stream().map(InsurancePropertyDetail::getDetRowId).collect(Collectors.toSet()) : new HashSet<>();
+        List<InsurancePropertyDetail> newRecords = newList.stream().filter(p -> !oldDetRowIds.contains(p.getDetRowId())).toList();
+        return index < newRecords.size() ? newRecords.get(index) : null;
+    }
+
+    private InsurancePicDetail findNewPicByIndex(List<InsurancePicDetail> newList, List<InsurancePicDetail> oldList, int index) {
+        if (newList == null) return null;
+        Set<Long> oldDetRowIds = oldList != null ? oldList.stream().map(InsurancePicDetail::getDetRowId).collect(Collectors.toSet()) : new HashSet<>();
+        List<InsurancePicDetail> newRecords = newList.stream().filter(p -> !oldDetRowIds.contains(p.getDetRowId())).toList();
+        return index < newRecords.size() ? newRecords.get(index) : null;
     }
 
     private List<InsuranceEmployeeDetail> snapshotEmployeeDetails(List<InsuranceEmployeeDetail> list) {

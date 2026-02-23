@@ -67,7 +67,6 @@ public interface ArGenReceiptHdrRepository extends JpaRepository<ArGenReceiptHdr
      */
     @Query(value = "SELECT * FROM AR_GEN_RECEIPT_HDR " +
            "WHERE TRANSACTION_POID = :transactionPoid " +
-           "AND (DELETED IS NULL OR DELETED = 'N') " +
            "FETCH FIRST 1 ROW ONLY", nativeQuery = true)
     Optional<ArGenReceiptHdr> findByTransactionPoidWithDetails(@Param("transactionPoid") Long transactionPoid);
 }

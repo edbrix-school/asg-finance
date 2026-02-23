@@ -474,9 +474,11 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                 continue;
             }
 
+            Long useDet = (d.getDetRowId() != null && d.getDetRowId() > 0) ? d.getDetRowId() : detRowId++;
+
             ApPurchaseInvoiceItemDtlKey key = new ApPurchaseInvoiceItemDtlKey(
                     transactionPoid,
-                    detRowId++
+                    useDet
             );
 
             ApPurchaseInvoiceItemDtlEntity e = new ApPurchaseInvoiceItemDtlEntity();
@@ -544,10 +546,11 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                 continue;
             }
 
-            Long mainDetRowId = detRowId;
+            Long useDet = (g.getDetRowId() != null && g.getDetRowId() > 0) ? g.getDetRowId() : detRowId++;
+            Long mainDetRowId = useDet;
             ApPurchaseInvoiceGlDtlKey key = new ApPurchaseInvoiceGlDtlKey(
                     transactionPoid,
-                    detRowId++
+                    useDet
             );
 
             ApPurchaseInvoiceGlDtlEntity e = new ApPurchaseInvoiceGlDtlEntity();
@@ -676,9 +679,11 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                 continue;
             }
 
+            Long useDet = (c.getDetRowId() != null && c.getDetRowId() > 0) ? c.getDetRowId() : detRowId++;
+
             PurchaseInvoiceChargeDtlId key = new PurchaseInvoiceChargeDtlId(
                     transactionPoid,
-                    detRowId++
+                    useDet
             );
 
             PurchaseInvoiceChargeDtl e = new PurchaseInvoiceChargeDtl();
@@ -2145,6 +2150,12 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
             case "MTA PO":
             case "GENERAL PO":
                 return dto.getPoRef();
+
+            case "GENERAL":
+            case "CUSTOM":
+                return dto.getTransactionPoid() != null
+                        ? String.valueOf(dto.getTransactionPoid())
+                        : null;
 
             default:
                 return dto.getTransactionPoid() != null

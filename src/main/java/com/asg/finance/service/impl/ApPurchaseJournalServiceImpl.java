@@ -5,6 +5,7 @@ import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
 import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
@@ -316,6 +317,9 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
     @Transactional
     public ApPurchaseInvoiceHdrDto createApPurchaseInvoice(ApPurchaseInvoiceHdrDto apPurchaseInvoiceHdrDto, String documentId) {
 
+        validateBeforePersist(apPurchaseInvoiceHdrDto, documentId);
+        validateRefTypeSpecific(apPurchaseInvoiceHdrDto, documentId);
+
         ApPurchaseInvoiceHdrEntity apPurchaseInvoiceHdrEntity = new ApPurchaseInvoiceHdrEntity();
         apPurchaseInvoiceHdrEntity.setTransactionDate(apPurchaseInvoiceHdrDto.getTransactionDate() != null ? apPurchaseInvoiceHdrDto.getTransactionDate() : LocalDate.now());
         apPurchaseInvoiceHdrEntity.setGroupPoid(apPurchaseInvoiceHdrDto.getGroupPoid());
@@ -392,13 +396,13 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
             refPoid = transactionPoid;
         }
 
-        String validateStatus = validateVoucher(
+       /* String validateStatus = validateVoucher(
                 documentId,
                 refType,
                 String.valueOf(refPoid)
-        );
+        );*/
 
-        String jobValidation = validateBeforeSave(
+        /*String jobValidation = validateBeforeSave(
                 documentId,
                 refType,
                 "FF".equalsIgnoreCase(refType)
@@ -412,7 +416,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
             throw new RuntimeException(
                     "Before Save Validation Failed → " + jobValidation
             );
-        }
+        }*/
 
 
         switch (refType) {
@@ -843,6 +847,8 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         BeanUtils.copyProperties(apPurchaseInvoiceHdrEntity, oldEntity);
 
         if (apPurchaseInvoiceHdrDto.getTransactionDate() != null)
+            validateBeforePersist(apPurchaseInvoiceHdrDto, UserContext.getDocumentId());
+        validateRefTypeSpecific(apPurchaseInvoiceHdrDto, UserContext.getDocumentId());
             apPurchaseInvoiceHdrEntity.setTransactionDate(apPurchaseInvoiceHdrDto.getTransactionDate());
         apPurchaseInvoiceHdrEntity.setGroupPoid(apPurchaseInvoiceHdrDto.getGroupPoid());
        // apPurchaseInvoiceHdrEntity.setDocRef(apPurchaseInvoiceHdrDto.getDocRef());
@@ -1852,6 +1858,299 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         params.put("SUBREPORT_CHARGE", printService.load("Finance/AP/PurchaseInvoiceChargeSubReport.jrxml"));
         JasperReport mainReport = printService.load("Finance/AP/PurchaseInvoiceReport.jrxml");
         return printService.fillReportToPdf(mainReport, params, dataSource);
+    }
+
+
+    private void validateBeforePersist(
+            ApPurchaseInvoiceHdrDto dto,
+            String documentId) {
+
+        //validateMandatoryFields(dto);
+
+        validateDuplicateInvoice(dto);
+
+        String refPoid = getRefPoid(dto);
+
+        if (refPoid == null || refPoid.trim().isEmpty()) {
+            throw new ValidationException("Reference POID is missing for " + dto.getRefType());
+        }
+
+        validateVoucher(documentId, dto.getRefType(), refPoid);
+
+        validateBeforeSave(documentId, dto.getRefType(), refPoid);
+
+        validateGlDetails(dto, documentId);
+
+        //validateVat(dto, documentId);
+
+        validateDrCrBalance(dto);
+    }
+
+    private void validateMandatoryFields(ApPurchaseInvoiceHdrDto dto) {
+
+        if (dto.getSupplierPoid() == null)
+            throw new ValidationException("Supplier is mandatory");
+
+        if (dto.getSupplierInvNo() == null || dto.getSupplierInvNo().trim().isEmpty())
+            throw new ValidationException("Supplier Invoice No is mandatory");
+
+        if (dto.getTransactionDate() == null)
+            throw new ValidationException("Transaction Date is mandatory");
+
+        if (dto.getCreditPeriod() != null && dto.getDueDate() != null) {
+
+            LocalDate expected = dto.getTransactionDate().plusDays(dto.getCreditPeriod());
+            if (!expected.equals(dto.getDueDate())) {
+                throw new ValidationException("Due date mismatch with credit period");
+            }
+        }
+    }
+
+    private void validateDuplicateInvoice(ApPurchaseInvoiceHdrDto dto) {
+
+        String result = apPurchaseJournalRepositoryImpl.checkDuplicatePi(
+                UserContext.getGroupPoid(),
+                UserContext.getCompanyPoid(),
+                UserContext.getUserPoid(),
+                dto.getPartyType(),
+                dto.getSupplierPoid(),
+                dto.getSupplierInvNo(),
+                dto.getTransactionPoid(),
+                dto.getBillType()
+        );
+
+        if (result != null && result.toUpperCase().contains("ERROR")) {
+            throw new ValidationException(result);
+        }
+    }
+
+    private void validateGlDetails(ApPurchaseInvoiceHdrDto dto, String documentId) {
+
+        if (dto.getGlDtls() == null) return;
+
+        for (ApPurchaseInvoiceGlDtlDto gl : dto.getGlDtls()) {
+
+            if (gl.getGlPoid() == null)
+                throw new ValidationException("GL is mandatory");
+
+            Map<String, String> output =
+                    apPurchaseJournalRepositoryImpl.validateGlDetailBeforeSave(
+                            UserContext.getGroupPoid(),
+                            UserContext.getUserPoid(),
+                            UserContext.getCompanyPoid(),
+                            documentId,
+                            dto.getRefType(),
+                            String.valueOf(gl.getGlPoid()),
+                            null,
+                            null,
+                            dto.getPartyType(),
+                            dto.getSupplierPoid()
+                    );
+
+            if (output.get("result") != null &&
+                    output.get("result").toUpperCase().contains("ERROR")) {
+
+                throw new ValidationException(output.get("result"));
+            }
+        }
+    }
+
+    private void validateDrCrBalance(ApPurchaseInvoiceHdrDto dto) {
+
+        if (dto.getGlDtls() == null || dto.getGlDtls().isEmpty()) {
+            return;
+        }
+
+        long totalDr = 0L;
+        long totalCr = 0L;
+
+        for (ApPurchaseInvoiceGlDtlDto gl : dto.getGlDtls()) {
+
+            if (gl.getDrAmount() != null) {
+                totalDr += gl.getDrAmount();
+            }
+
+            if (gl.getCrAmount() != null) {
+                totalCr += gl.getCrAmount();
+            }
+        }
+
+        if (totalDr != totalCr) {
+            throw new ValidationException(
+                    "Debit and Credit are not balanced. TotalDr="
+                            + totalDr + ", TotalCr=" + totalCr
+            );
+        }
+    }
+
+    private void validateVat(ApPurchaseInvoiceHdrDto dto, String documentId) {
+
+        if (dto.getGlTotal() == null) return;
+
+        String result = apPurchaseJournalRepositoryImpl.validateInputVat(
+                UserContext.getGroupPoid(),
+                UserContext.getCompanyPoid(),
+                UserContext.getUserPoid(),
+                documentId,
+                dto.getTransactionPoid(),
+                dto.getPartyType(),
+                dto.getSupplierPoid(),
+                dto.getGlTotal().doubleValue()
+        );
+
+        if (result != null && result.toUpperCase().contains("ERROR")) {
+            throw new ValidationException(result);
+        }
+    }
+
+    private void validateRefTypeSpecific(
+            ApPurchaseInvoiceHdrDto dto,
+            String documentId) {
+
+        String refType = dto.getRefType() == null
+                ? ""
+                : dto.getRefType().trim().toUpperCase();
+
+        switch (refType) {
+
+            case "FF JOBS":
+                validateFfJob(dto, documentId);
+                break;
+
+            case "FDA JOBS":
+                validateFdaJob(dto, documentId);
+                break;
+
+            case "MTA PO":
+                validateMtaPo(dto, documentId);
+                break;
+
+            default:
+                break;
+        }
+    }
+
+    private void validateFfJob(
+            ApPurchaseInvoiceHdrDto dto,
+            String documentId) {
+
+        if (dto.getFfRef() == null || dto.getFfRef().trim().isEmpty()) {
+            throw new ValidationException("FF Reference is mandatory.");
+        }
+
+        if (dto.getChargeDtls() == null || dto.getChargeDtls().isEmpty()) {
+            throw new ValidationException("At least one charge row is required for FF Jobs.");
+        }
+
+
+        if (dto.getGlDtls() != null && !dto.getGlDtls().isEmpty()) {
+            throw new ValidationException("GL entries are not allowed for FF Jobs.");
+        }
+
+        // 🔹 Job validation procedure
+        String jobValidation = validateBeforeSave(
+                documentId,
+                "FF JOBS",
+                dto.getFfRef());
+
+        if (jobValidation != null &&
+                jobValidation.toUpperCase().contains("ERROR")) {
+
+            throw new ValidationException(jobValidation);
+        }
+    }
+
+    private void validateFdaJob(
+            ApPurchaseInvoiceHdrDto dto,
+            String documentId) {
+
+        if (dto.getFdaRef() == null || dto.getFdaRef().trim().isEmpty()) {
+            throw new ValidationException("FDA Reference is mandatory.");
+        }
+
+        if (dto.getChargeDtls() == null || dto.getChargeDtls().isEmpty()) {
+            throw new ValidationException("At least one charge row is required for FDA Jobs.");
+        }
+
+        if (dto.getGlDtls() != null && !dto.getGlDtls().isEmpty()) {
+            throw new ValidationException("GL entries are not allowed for FDA Jobs.");
+        }
+
+        String jobValidation = validateBeforeSave(
+                documentId,
+                "FDA JOBS",
+                dto.getFdaRef());
+
+        if (jobValidation != null &&
+                jobValidation.toUpperCase().contains("ERROR")) {
+
+            throw new ValidationException(jobValidation);
+        }
+    }
+
+    private void validateMtaPo(
+            ApPurchaseInvoiceHdrDto dto,
+            String documentId) {
+
+        if (dto.getPoRef() == null || dto.getPoRef().trim().isEmpty()) {
+            throw new ValidationException("PO Reference is mandatory for MTA PO.");
+        }
+
+        if (dto.getItemDtls() == null || dto.getItemDtls().isEmpty()) {
+            throw new ValidationException("At least one item row is required for MTA PO.");
+        }
+
+
+        if (dto.getChargeDtls() != null && !dto.getChargeDtls().isEmpty()) {
+            throw new ValidationException("Charges are not allowed for MTA PO.");
+        }
+
+        // Supplier must match PO supplier
+        String supplierFromPo = supplierPoidFromPo(dto.getPoRef());
+
+        if (supplierFromPo != null &&
+                !supplierFromPo.equals(String.valueOf(dto.getSupplierPoid()))) {
+
+            throw new ValidationException("Supplier does not match PO supplier.");
+        }
+
+        // Outstanding PO validation
+        String outstanding = validateOutstandingPo(dto.getSupplierPoid());
+
+        if (outstanding != null &&
+                outstanding.toUpperCase().contains("ERROR")) {
+
+            throw new ValidationException(outstanding);
+        }
+    }
+
+    private String getRefPoid(ApPurchaseInvoiceHdrDto dto) {
+
+        if (dto.getRefType() == null) {
+            return dto.getTransactionPoid() != null
+                    ? String.valueOf(dto.getTransactionPoid())
+                    : null;
+        }
+
+        String refType = dto.getRefType().trim().toUpperCase();
+
+        switch (refType) {
+
+            case "FF JOBS":
+                return dto.getFfRef();
+
+            case "FDA JOBS":
+                return dto.getFdaRef();
+
+            case "MTA PO":
+            case "GENERAL PO":
+                return dto.getPoRef();
+
+            default:
+                return dto.getTransactionPoid() != null
+                        ? String.valueOf(dto.getTransactionPoid())
+                        : null;
+        }
     }
 
 }

@@ -37,6 +37,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import javax.sql.DataSource;
 import java.math.BigDecimal;
+import java.sql.CallableStatement;
+import java.sql.Connection;
+import java.sql.Types;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -88,6 +91,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         validateDebitNoteInput(debitNoteDto);
 
         applyBusinessLogic(debitNoteDto);
+        applyAutoBalancing(debitNoteDto);
 
         ArDebitNoteHdr entity = mapToEntity(debitNoteDto);
         ArDebitNoteHdr savedEntity = debitNoteHdrRepository.saveAndFlush(entity);
@@ -1099,6 +1103,89 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         params.put("SUB_CHARGE_VAT", printService.load("Finance/AR/DebitNoteChargeSubreportVAT2019.jrxml"));
         JasperReport mainReport = printService.load("Finance/AR/DebitNote.jrxml");
         return printService.fillReportToPdf(mainReport, params, dataSource);
+    }
+
+    private Long getPartyGLPoid(Long partyPoid, String partyType) {
+
+        String sql = "BEGIN PROC_GL_GET_DR_PARTY_GLPOID(?, ?, ?, ?, ?, ?, ?); END;";
+
+        try (Connection conn = dataSource.getConnection();
+             CallableStatement cs = conn.prepareCall(sql)) {
+
+            cs.setLong(1, UserContext.getGroupPoid());
+            cs.setLong(2, UserContext.getCompanyPoid());
+            cs.setLong(3, UserContext.getUserPoid());
+            cs.setLong(4, partyPoid != null ? partyPoid : 0);
+            cs.setString(5, partyType);
+            cs.registerOutParameter(6, Types.NUMERIC);
+            cs.registerOutParameter(7, Types.VARCHAR);
+
+            cs.execute();
+
+            Long partyGl = cs.getLong(6);
+
+            if (partyGl == null || partyGl == 0) {
+                throw new RuntimeException("Party GL not found.");
+            }
+
+            return partyGl;
+
+        } catch (Exception e) {
+            throw new RuntimeException("Error fetching Party GL", e);
+        }
+    }
+
+    private void applyAutoBalancing(DebitNoteHeaderDto dto) {
+
+        if (dto.getGlDetails() == null || dto.getGlDetails().isEmpty())
+            return;
+
+        BigDecimal totalDr = BigDecimal.ZERO;
+        BigDecimal totalCr = BigDecimal.ZERO;
+
+        for (DebitNoteGlDetailDto gl : dto.getGlDetails()) {
+
+            BigDecimal dr = gl.getDebitAmount() == null ? BigDecimal.ZERO : gl.getDebitAmount();
+            BigDecimal cr = gl.getCreditAmount() == null ? BigDecimal.ZERO : gl.getCreditAmount();
+
+            totalDr = totalDr.add(dr);
+            totalCr = totalCr.add(cr);
+        }
+
+        if (totalDr.compareTo(totalCr) == 0)
+            return; // already balanced
+
+        Long partyGlPoid = getPartyGLPoid(dto.getPartyPoid(), dto.getPartyType());
+
+        // check if party GL already exists
+        boolean partyRowExists = dto.getGlDetails().stream()
+                .anyMatch(gl -> Objects.equals(gl.getGlId(), partyGlPoid));
+
+        if (partyRowExists)
+            return;
+
+        BigDecimal difference = totalDr.subtract(totalCr).abs();
+
+        DebitNoteGlDetailDto balancingRow = new DebitNoteGlDetailDto();
+        balancingRow.setGlId(partyGlPoid);
+        balancingRow.setCompanyPoid(UserContext.getCompanyPoid());
+        balancingRow.setRemarks("Auto Balance Entry");
+
+        if (totalDr.compareTo(totalCr) > 0) {
+            balancingRow.setType("CR");
+            balancingRow.setCreditAmount(difference);
+            balancingRow.setDebitAmount(BigDecimal.ZERO);
+        } else {
+            balancingRow.setType("DR");
+            balancingRow.setDebitAmount(difference);
+            balancingRow.setCreditAmount(BigDecimal.ZERO);
+        }
+
+        balancingRow.setTotalAmount(difference);
+        balancingRow.setDetRowId(null); // auto assign later
+        balancingRow.setActionType("isCreated");
+
+        dto.getGlDetails().add(balancingRow);
     }
 
 }

@@ -1,5 +1,6 @@
 package com.asg.finance.dto;
 
+import com.asg.common.lib.dto.LovGetListDto;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
@@ -40,4 +41,9 @@ public class DebitNoteGlDetailDto {
     private List<BillwiseBreakupPopupRequestDto> breakupList;
     private List<CostCenterBreakupPopupRequestDto> costCenterList;
 
+    // LOV Details
+    private LovGetListDto typeDetails;
+    private LovGetListDto glDetails;
+    private LovGetListDto taxDetails;
+    private LovGetListDto companyDetails;
 }

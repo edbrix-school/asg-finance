@@ -3,6 +3,7 @@ package com.asg.finance.dto;
 import com.asg.common.lib.dto.LovGetListDto;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -16,7 +17,7 @@ import java.time.LocalDateTime;
     private String chqAcNo;
     private String chqCardNo;
     private LocalDate chqDate;
-    private Long amount;
+    private BigDecimal amount;
     private String remarks;
     private String voucherType;
     private Long chequeCompanyPoid;

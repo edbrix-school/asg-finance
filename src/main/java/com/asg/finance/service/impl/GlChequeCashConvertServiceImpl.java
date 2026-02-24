@@ -45,12 +45,14 @@ import org.springframework.stereotype.Service;
 
 
 import javax.sql.DataSource;
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -728,12 +730,12 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
             throw new ValidationException("No Detail present for the cheque");
         }
 
-        Long outTotal = dto.getOutDtls().stream()
+        BigDecimal outTotal = dto.getOutDtls().stream()
                 .filter(o -> !"N".equalsIgnoreCase(o.getSelected()))
-                .map(o -> o.getAmount() == null ? 0L : o.getAmount())
-                .reduce(0L, Long::sum);
+                .map(o -> o.getAmount() == null ? BigDecimal.ZERO : o.getAmount())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        if (outTotal == 0) {
+        if (outTotal.compareTo(BigDecimal.ZERO) == 0) {
             throw new ValidationException("No Detail present for the cheque");
         }
 
@@ -746,9 +748,9 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
                 throw new ValidationException("No Detail present in cheque conversion TO");
             }
 
-            Long inTotal = dto.getInDtls().stream()
-                    .map(i -> i.getAmount() == null ? 0L : i.getAmount())
-                    .reduce(0L, Long::sum);
+            BigDecimal inTotal = dto.getInDtls().stream()
+                    .map(o -> o.getAmount() == null ? BigDecimal.ZERO : o.getAmount())
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
 
             if (!outTotal.equals(inTotal)) {
                 throw new ValidationException(
@@ -760,9 +762,9 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         // ================= CHEQUE_TO_BANK =================
         if ("5".equalsIgnoreCase(type)) {
 
-            Long inTotal = dto.getInDtls().stream()
-                    .map(i -> i.getAmount() == null ? 0L : i.getAmount())
-                    .reduce(0L, Long::sum);
+            BigDecimal inTotal = dto.getInDtls().stream()
+                    .map(o -> o.getAmount() == null ? BigDecimal.ZERO : o.getAmount())
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
 
             if (!outTotal.equals(inTotal)) {
                 throw new ValidationException(
@@ -778,24 +780,27 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
                 throw new ValidationException("Please enter Cash amount");
             }
 
-            Long cashAmount = dto.getCash();
-            Long rounding = dto.getRoundingAmt() == null ? 0L : dto.getRoundingAmt();
+            BigDecimal cashAmount = dto.getCash();
+            BigDecimal rounding = Optional.ofNullable(dto.getRoundingAmt())
+                    .orElse(BigDecimal.ZERO);
 
-            if (!outTotal.equals(cashAmount + rounding)) {
+            BigDecimal totalCash = cashAmount.add(rounding);
+
+            if (outTotal.compareTo(totalCash) != 0) {
                 throw new ValidationException(
                         "Total cheque amount (" + outTotal +
-                                ") is not matched with converted cash amount (" + (cashAmount + rounding) + ")");
+                                ") is not matched with converted cash amount (" + totalCash + ")");
             }
         }
 
         // ================= CASH_TO_CHEQUE =================
         if ("3".equalsIgnoreCase(type)) {
 
-            Long inTotal = dto.getInDtls().stream()
-                    .map(i -> i.getAmount() == null ? 0L : i.getAmount())
-                    .reduce(0L, Long::sum);
+            BigDecimal inTotal = dto.getInDtls().stream()
+                    .map(i -> Optional.ofNullable(i.getAmount()).orElse(BigDecimal.ZERO))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            if (!outTotal.equals(inTotal)) {
+            if (outTotal.compareTo(inTotal) != 0) {
                 throw new ValidationException(
                         "Cash Amount (" + outTotal +
                                 ") and Cheque Amount (" + inTotal + ") are not matching...");
@@ -805,26 +810,29 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         // ================= CHEQUE_TO_IMCOCHEQUE =================
         if ("4".equalsIgnoreCase(type)) {
 
-            Long inTotal = dto.getInDtls().stream()
-                    .map(i -> i.getAmount() == null ? 0L : i.getAmount())
-                    .reduce(0L, Long::sum);
+            BigDecimal inTotal = dto.getInDtls().stream()
+                    .map(i -> Optional.ofNullable(i.getAmount()).orElse(BigDecimal.ZERO))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            if (!outTotal.equals(inTotal)) {
+            if (outTotal.compareTo(inTotal) != 0) {
                 throw new ValidationException(
                         "Total cheque amount (" + outTotal +
                                 ") is not matched with converted bank amount (" + inTotal + ")");
             }
+
             // Voucher Type Validation
             for (GlChequeCashConvertInDtlDto in : dto.getInDtls()) {
                 if (in.getVoucherType() == null ||
-                        !in.getVoucherType().equalsIgnoreCase("IMCOCHEQUE")) {
+                        !"IMCOCHEQUE".equalsIgnoreCase(in.getVoucherType())) {
                     throw new ValidationException("Voucher Type should be IMCOCHEQUE");
                 }
             }
         }
 
         // ================= Rounding Limit =================
-        if (dto.getRoundingAmt() != null && dto.getRoundingAmt() > 99) {
+        if (dto.getRoundingAmt() != null &&
+                dto.getRoundingAmt().compareTo(new BigDecimal("99")) > 0) {
+
             throw new ValidationException("RoundingAmount is greater than allowed limit");
         }
     }

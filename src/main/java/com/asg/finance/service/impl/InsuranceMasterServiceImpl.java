@@ -159,16 +159,17 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                         throw new ValidationException("Role is mandatory in PIC Details");
                     }
 
-                    // Validate PIC from ≤ to
-                    if (pic.getFromDate().isAfter(pic.getToDate())) {
+                    // Validate PIC from ≤ to (only if toDate is provided)
+                    if (pic.getFromDate() != null && pic.getToDate() != null && pic.getFromDate().isAfter(pic.getToDate())) {
                         throw new ValidationException("PIC From Date cannot be greater than PIC To Date");
                     }
 
                     // Validate PIC within insurance period
-                    if (pic.getFromDate().isBefore(request.getFromDate()) ||
-                            pic.getToDate().isAfter(request.getExpiryDate())) {
-
-                        throw new ValidationException("PIC dates must be within the insurance policy period");
+                    if (pic.getFromDate() != null && pic.getFromDate().isBefore(request.getFromDate())) {
+                        throw new ValidationException("PIC From Date must be within the insurance policy period");
+                    }
+                    if (pic.getToDate() != null && pic.getToDate().isAfter(request.getExpiryDate())) {
+                        throw new ValidationException("PIC To Date must be within the insurance policy period");
                     }
                 }
             }
@@ -189,7 +190,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                     .paymentFrequency(request.getPaymentFrequency())
                     .oneTime("N")
                     .description(request.getDescription())
-                    .faPoid(request.getFaPoid() != null ? request.getFaPoid() : null)
+                    .faPoid(request.getFaPoid())
                     .deleted("N")
                     .createdBy(getCurrentUser())
                     .createdDate(LocalDateTime.now())
@@ -197,7 +198,6 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                     .lastModifiedDate(LocalDateTime.now())
                     .build();
 
-            insuranceMaster.setPjRefPoid(null);
             InsuranceMaster saved = insuranceMasterRepository.save(insuranceMaster);
             buildAndSetChildDetails(request, saved);
             InsuranceMaster finalSaved = insuranceMasterRepository.save(saved);
@@ -315,16 +315,17 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                     throw new ValidationException("Role is mandatory in PIC Details");
                 }
 
-                // Validate PIC from ≤ to
-                if (pic.getFromDate().isAfter(pic.getToDate())) {
+                // Validate PIC from ≤ to (only if toDate is provided)
+                if (pic.getFromDate() != null && pic.getToDate() != null && pic.getFromDate().isAfter(pic.getToDate())) {
                     throw new ValidationException("PIC From Date cannot be greater than PIC To Date");
                 }
 
                 // Validate PIC within insurance period
-                if (pic.getFromDate().isBefore(request.getFromDate()) ||
-                        pic.getToDate().isAfter(request.getExpiryDate())) {
-
-                    throw new ValidationException("PIC dates must be within the insurance policy period");
+                if (pic.getFromDate() != null && pic.getFromDate().isBefore(request.getFromDate())) {
+                    throw new ValidationException("PIC From Date must be within the insurance policy period");
+                }
+                if (pic.getToDate() != null && pic.getToDate().isAfter(request.getExpiryDate())) {
+                    throw new ValidationException("PIC To Date must be within the insurance policy period");
                 }
             }
         }
@@ -338,11 +339,13 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         existing.setInsuranceProvider(request.getInsuranceProvider());
         existing.setFromDate(request.getFromDate());
         existing.setExpiryDate(request.getExpiryDate());
+        existing.setCurrencyPoid(request.getCurrency());
+        existing.setExchangeRate(request.getRate());
         existing.setInsuranceAmount(request.getInsuranceAmount());
         existing.setPremiumAmount(request.getPremiumAmount());
         existing.setPaymentFrequency(request.getPaymentFrequency());
         existing.setDescription(request.getDescription());
-        existing.setFaPoid(request.getFaPoid() != null ? request.getFaPoid() : null);
+        existing.setFaPoid(request.getFaPoid());
         existing.setLastModifiedBy(getCurrentUser());
         existing.setLastModifiedDate(LocalDateTime.now());
 
@@ -460,7 +463,10 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
     private void buildAndSetChildDetails(InsuranceMasterRequestDto request, InsuranceMaster savedParent) {
         if (request.getEmployeeDetails() != null && !request.getEmployeeDetails().isEmpty()) {
             List<InsuranceEmployeeDetail> newDetails = buildEmployeeDetails(request.getEmployeeDetails(), savedParent);
-            newDetails.forEach(d -> d.setInsuranceMaster(savedParent));
+            newDetails.forEach(d -> {
+                d.setTransactionPoid(savedParent.getTransactionPoid());
+                d.setInsuranceMaster(savedParent);
+            });
             if (savedParent.getEmployeeDetails() == null) {
                 savedParent.setEmployeeDetails(new ArrayList<>());
             }
@@ -468,7 +474,10 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         }
         if (request.getPropertyDetails() != null && !request.getPropertyDetails().isEmpty()) {
             List<InsurancePropertyDetail> newDetails = buildPropertyDetails(request.getPropertyDetails(), savedParent);
-            newDetails.forEach(d -> d.setInsuranceMaster(savedParent));
+            newDetails.forEach(d -> {
+                d.setTransactionPoid(savedParent.getTransactionPoid());
+                d.setInsuranceMaster(savedParent);
+            });
             if (savedParent.getPropertyDetails() == null) {
                 savedParent.setPropertyDetails(new ArrayList<>());
             }
@@ -476,7 +485,10 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         }
         if (request.getPicDetails() != null && !request.getPicDetails().isEmpty()) {
             List<InsurancePicDetail> newDetails = buildPicDetails(request.getPicDetails(), savedParent);
-            newDetails.forEach(d -> d.setInsuranceMaster(savedParent));
+            newDetails.forEach(d -> {
+                d.setTransactionPoid(savedParent.getTransactionPoid());
+                d.setInsuranceMaster(savedParent);
+            });
             if (savedParent.getPicDetails() == null) {
                 savedParent.setPicDetails(new ArrayList<>());
             }
@@ -524,7 +536,6 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
             }
             
             result.add(InsuranceEmployeeDetail.builder()
-                    .transactionPoid(parent.getTransactionPoid())
                     .detRowId(detRowId)
                     .employeePoid(dto.getEmployeePoid())
                     .amount(dto.getAmount())
@@ -576,7 +587,6 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
             }
             
             result.add(InsurancePropertyDetail.builder()
-                    .transactionPoid(parent.getTransactionPoid())
                     .detRowId(detRowId)
                     .propertyPoid(dto.getPropertyPoid())
                     .amount(dto.getAmount())
@@ -628,7 +638,6 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
             }
             
             result.add(InsurancePicDetail.builder()
-                    .transactionPoid(parent.getTransactionPoid())
                     .detRowId(detRowId)
                     .rolePoid(dto.getRolePoid())
                     .contactType(dto.getContactType())

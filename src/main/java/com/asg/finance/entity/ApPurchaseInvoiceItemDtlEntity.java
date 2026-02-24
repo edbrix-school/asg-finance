@@ -11,6 +11,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -44,13 +45,13 @@ public class ApPurchaseInvoiceItemDtlEntity {
     private Long qtyReceived;
 
     @Column(name = "PRICE")
-    private Long price;
+    private BigDecimal price;
 
     @Column(name = "DISCOUNT")
     private Long discount;
 
     @Column(name = "TOTAL")
-    private Long total;
+    private BigDecimal total;
 
     @Column(name = "REMARKS")
     private String remarks;
@@ -93,11 +94,11 @@ public class ApPurchaseInvoiceItemDtlEntity {
     private Long taxPercentage;
 
     @Column(name = "TAX_AMOUNT")
-    private Long taxAmount;
+    private BigDecimal taxAmount;
 
     @Column(name = "AMOUNT")
-    private Long amount;
+    private BigDecimal amount;
 
     @Column(name = "BASE_AMOUNT")
-    private Long baseAmount;
+    private BigDecimal baseAmount;
 }

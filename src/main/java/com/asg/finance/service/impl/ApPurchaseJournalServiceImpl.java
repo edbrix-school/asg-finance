@@ -1968,21 +1968,21 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
             return;
         }
 
-        long totalDr = 0L;
-        long totalCr = 0L;
+        BigDecimal totalDr = BigDecimal.ZERO;
+        BigDecimal totalCr = BigDecimal.ZERO;
 
         for (ApPurchaseInvoiceGlDtlDto gl : dto.getGlDtls()) {
 
             if (gl.getDrAmount() != null) {
-                totalDr += gl.getDrAmount();
+                totalDr = totalDr.add(gl.getDrAmount());
             }
 
             if (gl.getCrAmount() != null) {
-                totalCr += gl.getCrAmount();
+                totalCr = totalCr.add(gl.getCrAmount());
             }
         }
 
-        if (totalDr != totalCr) {
+        if (totalDr.compareTo(totalCr) != 0) {
             throw new ValidationException(
                     "Debit and Credit are not balanced. TotalDr="
                             + totalDr + ", TotalCr=" + totalCr

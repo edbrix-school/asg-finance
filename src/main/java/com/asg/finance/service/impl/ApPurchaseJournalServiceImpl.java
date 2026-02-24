@@ -2150,11 +2150,11 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                 return dto.getFdaRef();
 
             case "MTA PO":
-            case "GENERAL PO":
-                return dto.getPoRef();
+                return dto.getMtaRef();
 
             case "GENERAL":
             case "CUSTOM":
+            case "GENERAL PO":
                 return null;
 
             default:
@@ -2172,8 +2172,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
         return type.equals("FF JOBS")
                 || type.equals("FDA JOBS")
-                || type.equals("MTA PO")
-                || type.equals("GENERAL PO");
+                || type.equals("MTA PO");
     }
 
 }

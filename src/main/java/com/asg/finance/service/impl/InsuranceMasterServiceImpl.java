@@ -163,14 +163,6 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                     if (pic.getFromDate() != null && pic.getToDate() != null && pic.getFromDate().isAfter(pic.getToDate())) {
                         throw new ValidationException("PIC From Date cannot be greater than PIC To Date");
                     }
-
-                    // Validate PIC within insurance period
-                    if (pic.getFromDate() != null && pic.getFromDate().isBefore(request.getFromDate())) {
-                        throw new ValidationException("PIC From Date must be within the insurance policy period");
-                    }
-                    if (pic.getToDate() != null && pic.getToDate().isAfter(request.getExpiryDate())) {
-                        throw new ValidationException("PIC To Date must be within the insurance policy period");
-                    }
                 }
             }
 
@@ -318,14 +310,6 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                 // Validate PIC from ≤ to (only if toDate is provided)
                 if (pic.getFromDate() != null && pic.getToDate() != null && pic.getFromDate().isAfter(pic.getToDate())) {
                     throw new ValidationException("PIC From Date cannot be greater than PIC To Date");
-                }
-
-                // Validate PIC within insurance period
-                if (pic.getFromDate() != null && pic.getFromDate().isBefore(request.getFromDate())) {
-                    throw new ValidationException("PIC From Date must be within the insurance policy period");
-                }
-                if (pic.getToDate() != null && pic.getToDate().isAfter(request.getExpiryDate())) {
-                    throw new ValidationException("PIC To Date must be within the insurance policy period");
                 }
             }
         }

@@ -1,6 +1,7 @@
 package com.asg.finance.entity;
 
 import com.asg.common.lib.annotation.AuditIgnore;
+import com.asg.common.lib.annotation.CurrencyFormat;
 import com.asg.common.lib.entity.Company;
 import com.asg.common.lib.entity.CurrencyEntity;
 import com.asg.common.lib.entity.GroupEntity;
@@ -61,6 +62,7 @@ public class PurchaseOrder {
     private CurrencyEntity currency;
 
     @Column(name = "CURRENCY_RATE")
+    @CurrencyFormat
     private Double currencyRate;
 
     @Column(name = "EXPECTED_DATE")
@@ -101,17 +103,21 @@ public class PurchaseOrder {
 
     @Column(name = "SUB_TOTAL")
     @AuditIgnore
+    @CurrencyFormat
     private Double subTotal;
 
     @Column(name = "DISCOUNT")
     @AuditIgnore
+    @CurrencyFormat
     private Double discount;
 
     @Column(name = "EXPENSE_BY_SUPPLIER")
     @AuditIgnore
+    @CurrencyFormat
     private Double expenseBySupplier;
 
     @Column(name = "GRAND_TOTAL")
+    @CurrencyFormat
     private Double grandTotal;
 
     @Column(name = "REMARKS", length = 500)
@@ -145,10 +151,12 @@ public class PurchaseOrder {
 
     @Column(name = "ITEM_TOTAL")
     @AuditIgnore
+    @CurrencyFormat
     private Double itemTotal;
 
     @Column(name = "CHARGE_TOTAL")
     @AuditIgnore
+    @CurrencyFormat
     private Double chargeTotal;
 
     @Column(name = "TYPE", length = 20)
@@ -227,6 +235,7 @@ public class PurchaseOrder {
 
     @Column(name = "ITEM_DISCOUNT_TOTAL")
     @AuditIgnore
+    @CurrencyFormat
     private Double itemDiscountTotal;
 
     @Column(name = "ITEM_DISCOUNT_TOTAL_PERCENTAGE")

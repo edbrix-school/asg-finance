@@ -1,6 +1,7 @@
 package com.asg.finance.entity;
 
 import com.asg.common.lib.annotation.AuditIgnore;
+import com.asg.common.lib.annotation.CurrencyFormat;
 import com.asg.finance.entity.master.UnitMaster;
 import jakarta.persistence.*;
 import lombok.*;
@@ -66,15 +67,19 @@ public class PurchaseOrderItem {
     private Long stockUnitPoid;
 
     @Column(name = "QTY")
+    @CurrencyFormat
     private Double qty;
 
     @Column(name = "PRICE")
+    @CurrencyFormat
     private Double price;
 
     @Column(name = "DISCOUNT")
+    @CurrencyFormat
     private Double discount;
 
     @Column(name = "TOTAL")
+    @CurrencyFormat
     private Double total;
 
     @Column(name = "REMARKS", length = 500)
@@ -116,9 +121,11 @@ public class PurchaseOrderItem {
     private Long taxPoid;
 
     @Column(name = "TAX_PERCENTAGE")
+    @CurrencyFormat
     private Double taxPercentage;
 
     @Column(name = "TAX_AMOUNT")
+    @CurrencyFormat
     private Double taxAmount;
 
     @Column(name = "ITEM_DTL_READ_ONLY", length = 1)
@@ -134,6 +141,7 @@ public class PurchaseOrderItem {
     private Long pjPoid;
 
     @Column(name = "BASE_AMOUNT")
+    @CurrencyFormat
     private Double baseAmount;
 
     @Column(name = "PO_IMP_DET_ROW_ID")
@@ -141,6 +149,7 @@ public class PurchaseOrderItem {
     private Long poImpDetRowId;
 
     @Column(name = "DISCOUNT_PERCENTAGE")
+    @CurrencyFormat
     private Double discountPercentage;
 
     @Column(name = "LAST_PUR_PRICE")

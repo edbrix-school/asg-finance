@@ -385,7 +385,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     dto.setRemarks(rs.getString("REMARKS"));
                     dto.setIssueInvoice("N");
 
-                    dto.setChargeDet(lovService.getDetailsByPoidAndLovNameFast(dto.getChargePoid(), "CHARGE_MASTER_IN_CN_FOR_FF"));
+                    dto.setChargeDet(lovService.getDetailsByPoidAndLovNameFast(dto.getChargePoid(), "CHARGE_MASTER"));
                     dto.setTaxDet(taxMasterRepository.findByTaxPoid(dto.getTaxPoid())
                             .map(tm -> new LovGetListDto(tm.getTaxPoid(), tm.getTaxCode(), tm.getTaxName(), tm.getTaxPoid(), tm.getTaxName(), tm.getSeqNo(), null))
                             .orElse(null));

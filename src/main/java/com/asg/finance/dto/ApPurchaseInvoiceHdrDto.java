@@ -30,7 +30,7 @@ public class ApPurchaseInvoiceHdrDto {
     private Long subTotal;
     private Long discount;
     private Long expenseBySupplier;
-    private Long grandTotal;
+    private BigDecimal grandTotal;
     @NotBlank(message = "Remarks cannot be blank")
     private String remarks;
     private String createdBy;

@@ -1876,8 +1876,10 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
         String refPoid = getRefPoid(dto);
 
-        if (refPoid == null || refPoid.trim().isEmpty()) {
-            throw new ValidationException("Reference POID is missing for " + dto.getRefType());
+        if (requiresRefPoid(dto.getRefType())) {
+            if (refPoid == null || refPoid.trim().isEmpty()) {
+                throw new ValidationException("Reference POID is missing for " + dto.getRefType());
+            }
         }
 
         validateVoucher(documentId, dto.getRefType(), refPoid);
@@ -1966,21 +1968,21 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
             return;
         }
 
-        long totalDr = 0L;
-        long totalCr = 0L;
+        BigDecimal totalDr = BigDecimal.ZERO;
+        BigDecimal totalCr = BigDecimal.ZERO;
 
         for (ApPurchaseInvoiceGlDtlDto gl : dto.getGlDtls()) {
 
             if (gl.getDrAmount() != null) {
-                totalDr += gl.getDrAmount();
+                totalDr = totalDr.add(gl.getDrAmount());
             }
 
             if (gl.getCrAmount() != null) {
-                totalCr += gl.getCrAmount();
+                totalCr = totalCr.add(gl.getCrAmount());
             }
         }
 
-        if (totalDr != totalCr) {
+        if (totalDr.compareTo(totalCr) != 0) {
             throw new ValidationException(
                     "Debit and Credit are not balanced. TotalDr="
                             + totalDr + ", TotalCr=" + totalCr
@@ -2148,20 +2150,29 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                 return dto.getFdaRef();
 
             case "MTA PO":
-            case "GENERAL PO":
-                return dto.getPoRef();
+                return dto.getMtaRef();
 
             case "GENERAL":
             case "CUSTOM":
-                return dto.getTransactionPoid() != null
-                        ? String.valueOf(dto.getTransactionPoid())
-                        : null;
+            case "GENERAL PO":
+                return null;
 
             default:
                 return dto.getTransactionPoid() != null
                         ? String.valueOf(dto.getTransactionPoid())
                         : null;
         }
+    }
+
+    private boolean requiresRefPoid(String refType) {
+
+        if (refType == null) return false;
+
+        String type = refType.trim().toUpperCase();
+
+        return type.equals("FF JOBS")
+                || type.equals("FDA JOBS")
+                || type.equals("MTA PO");
     }
 
 }

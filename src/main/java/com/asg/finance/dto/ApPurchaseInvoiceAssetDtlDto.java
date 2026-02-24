@@ -2,6 +2,7 @@ package com.asg.finance.dto;
 
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -14,7 +15,7 @@ public class ApPurchaseInvoiceAssetDtlDto {
     private String faDescription;
     private String faCategory;
     private String assetType;
-    private Long value;
+    private BigDecimal value;
     private String remarks;
     private String createdBy;
     private LocalDateTime createdDate;

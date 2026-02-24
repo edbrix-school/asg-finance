@@ -266,6 +266,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         if (debitNoteDto.getChargeDetails() != null && !debitNoteDto.getChargeDetails().isEmpty()) {
             saveChargeDetails(debitNoteDto.getChargeDetails(), transactionPoid);
         }
+
     }
 
     private void updateGlDetailsWithLogging(List<DebitNoteGlDetailDto> glDetails, Long transactionPoid, List<GlobalLogSummary> summaryLogs) {
@@ -536,11 +537,11 @@ public class DebitNoteServiceImpl implements DebitNoteService {
     private void loadDetails(DebitNoteHeaderDto dto, Long transactionPoid, String refType) {
         // always read GL details (if any)
         List<ArDebitNoteDtl> glDetails = debitNoteDtlRepository.findByTransactionPoid(transactionPoid);
-        dto.setGlDetails(glDetails.stream().map(this::mapGlDetailToDto).collect(Collectors.toList()));
+        dto.setGlDetails(glDetails.stream().map(entity -> mapGlDetailToDto(entity, refType)).collect(Collectors.toList()));
 
         // read charge details as well
         List<ArDebitNoteChargeDtl> chargeDetails = debitNoteChargeDtlRepository.findByTransactionPoid(transactionPoid);
-        dto.setChargeDetails(chargeDetails.stream().map(this::mapChargeDetailToDto).collect(Collectors.toList()));
+        dto.setChargeDetails(chargeDetails.stream().map(entity -> mapChargeDetailToDto(entity, refType)).collect(Collectors.toList()));
     }
 
     private void saveGlDetails(List<DebitNoteGlDetailDto> glDetails, Long transactionPoid) {
@@ -725,6 +726,21 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         dto.setDeleted(entity.getDeleted());
         dto.setDocRef(entity.getDocRef());
         dto.setVoyageRef(entity.getVoyageRef());
+        
+        // Populate header LOV details
+        if (dto.getFdaRefPoid() != null) {
+            dto.setFdaRefDetails(lovService.getDetailsByPoidAndLovName(dto.getFdaRefPoid(), "PROCESS_FDA_IN_PI"));
+        }
+        if (dto.getFdaDirectRefPoid() != null) {
+            dto.setFdaDirectRefDetails(lovService.getDetailsByPoidAndLovName(dto.getFdaDirectRefPoid(), "PROCESS_FDA_DIRECT_IN_DN"));
+        }
+        if (dto.getCostGroupPoid() != null) {
+            dto.setCostGroupDetails(lovService.getDetailsByPoidAndLovName(dto.getCostGroupPoid(), "DN_GL_COST_GROUPS"));
+        }
+        if (dto.getDisposalJvRefPoid() != null) {
+            dto.setDisposalJvRefDetails(lovService.getDetailsByPoidAndLovName(dto.getDisposalJvRefPoid(), "DISPOSAL_JV_REF_FOR_DN"));
+        }
+        
         return dto;
     }
 
@@ -738,7 +754,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         }
     }
 
-    private DebitNoteGlDetailDto mapGlDetailToDto(ArDebitNoteDtl entity) {
+    private DebitNoteGlDetailDto mapGlDetailToDto(ArDebitNoteDtl entity, String refType) {
         DebitNoteGlDetailDto dto = new DebitNoteGlDetailDto();
 
         dto.setTransactionPoid(entity.getTransactionPoid());
@@ -754,10 +770,24 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         dto.setTaxAmount(entity.getTaxAmount());
         dto.setTotalAmount(entity.getTotalAmount());
 
+        // Populate LOV details based on refType
+        if (entity.getType() != null) {
+            dto.setTypeDetails(lovService.getDetailsByCodeAndLovName(entity.getType(), "ACC_TYPE_SHORT"));
+        }
+        if (entity.getGlPoid() != null) {
+            dto.setGlDetails(lovService.getDetailsByPoidAndLovName(entity.getGlPoid(), "GL_MASTER_LEDGERS_A_L"));
+        }
+        if (entity.getTaxPoid() != null) {
+            dto.setTaxDetails(lovService.getDetailsByPoidAndLovName(entity.getTaxPoid(), "DR_TAX_MASTER"));
+        }
+        if (entity.getCompanyPoid() != null) {
+            dto.setCompanyDetails(lovService.getDetailsByPoidAndLovName(entity.getCompanyPoid(), "COMPANY"));
+        }
+
         return dto;
     }
 
-    private DebitNoteChargeDetailDto mapChargeDetailToDto(ArDebitNoteChargeDtl entity) {
+    private DebitNoteChargeDetailDto mapChargeDetailToDto(ArDebitNoteChargeDtl entity, String refType) {
         DebitNoteChargeDetailDto dto = new DebitNoteChargeDetailDto();
 
         dto.setTransactionPoid(entity.getTransactionPoid());
@@ -774,6 +804,22 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         dto.setCostGroup(entity.getCostGroup());
         dto.setCheckAll(entity.getCheckAll());
         dto.setCostAmount(entity.getPdaAmount());
+        
+        // Populate LOV details based on refType
+        if (entity.getChargePoid() != null) {
+            String chargeLov = "OTHER_CHARGES".equalsIgnoreCase(refType) 
+                ? "DEBIT_NOTE_OTHER_CHARGES" 
+                : "CHARGE_MASTER_IN_DN_FOR_SH";
+            dto.setChargeDetails(lovService.getDetailsByPoidAndLovName(entity.getChargePoid(), chargeLov));
+        }
+        if (entity.getTaxPoid() != null) {
+            dto.setTaxDetails(lovService.getDetailsByPoidAndLovName(entity.getTaxPoid(), "DR_TAX_MASTER"));
+        }
+
+        if (entity.getCostPoid() != null && (refType.equalsIgnoreCase("FDA") || refType.equalsIgnoreCase("FDA_DIRECT") ) ) {
+            dto.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(Long.valueOf(entity.getCostPoid()), "DN_GL_COST_CENTRE"));
+        }
+        
         return dto;
     }
 

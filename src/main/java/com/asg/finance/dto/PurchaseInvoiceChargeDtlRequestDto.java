@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -17,7 +18,7 @@ public class PurchaseInvoiceChargeDtlRequestDto {
     private Long detRowId;
 
     private Long chargePoid;
-    private Double chargeAmount;
+    private BigDecimal chargeAmount;
     private String description;
     private String remarks;
     private String refDocId;
@@ -26,16 +27,16 @@ public class PurchaseInvoiceChargeDtlRequestDto {
     private Long fdaDetRowId;
     private String checkAll;
 
-    private Double pdaAmount;
-    private Double ffAmount;
+    private BigDecimal pdaAmount;
+    private BigDecimal ffAmount;
 
     private String chargeFrom;
 
     private Long taxPoid;
     private Double taxPercentage;
-    private Double taxAmount;
+    private BigDecimal taxAmount;
 
-    private Double chargeBaseAmount;
+    private BigDecimal chargeBaseAmount;
 
     private Long supplierPoidFf;
 

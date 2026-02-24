@@ -71,7 +71,6 @@ public class ChequeReturn {
     private Date lastModifiedDate;
 
     @Column(name = "CLOSE_DETAIL")
-    @AuditIgnore
     private String closeDetail;
 
     @OneToMany(mappedBy = "chequeReturn", cascade = CascadeType.ALL, fetch = FetchType.EAGER)

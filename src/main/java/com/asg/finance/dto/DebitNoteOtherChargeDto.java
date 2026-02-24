@@ -1,5 +1,6 @@
 package com.asg.finance.dto;
 
+import com.asg.common.lib.dto.LovGetListDto;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -30,4 +31,9 @@ public class DebitNoteOtherChargeDto {
     private Integer seqNo;
     
     private Boolean selected = false;
+    
+    // LOV Details
+    private LovGetListDto chargeDetails;
+    private LovGetListDto taxDetails;
+    private LovGetListDto costCenterDetails;
 }

@@ -74,7 +74,7 @@ public class ApPurchaseInvoiceHdrEntity {
     private Long expenseBySupplier;
 
     @Column(name = "GRAND_TOTAL")
-    private Long grandTotal;
+    private BigDecimal grandTotal;
 
     @Column(name = "REMARKS")
     private String remarks;

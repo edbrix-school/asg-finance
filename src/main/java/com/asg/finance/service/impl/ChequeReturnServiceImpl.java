@@ -567,6 +567,7 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
         List<ChequeReturnGlDetail> toSave = new ArrayList<>();
         List<ChequeReturnGlDetail> toUpdate = new ArrayList<>();
         List<Long> toDelete = new ArrayList<>();
+        List<ChequeReturnGlDetail> noChangeRecords = new ArrayList<>();
         List<LogRequestDto<ChequeReturnGlDetail>> logRequests = new ArrayList<>();
         
         Long maxDetRowId = glDetailRepo.countById_TransactionPoid(trnPoid);
@@ -597,6 +598,10 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
                     break;
                 case "NOCHANGE":
                 default:
+                    if (g.getDetRowId() != null) {
+                        glDetailRepo.findById(new ChequeReturnGlDetailId(trnPoid, g.getDetRowId()))
+                                .ifPresent(noChangeRecords::add);
+                    }
                     break;
             }
         }
@@ -617,6 +622,7 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
                 loggingService.createLogBatch(logRequests);
             }
         }
+        allGlDetails.addAll(noChangeRecords);
         if (!toDelete.isEmpty()) {
             toDelete.forEach(id -> glDetailRepo.deleteById(new ChequeReturnGlDetailId(trnPoid, id)));
         }

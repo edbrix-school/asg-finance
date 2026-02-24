@@ -8,6 +8,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -32,7 +33,7 @@ public class PurchaseInvoiceChargeDtl {
     private ShipChargeEntity shipChargeMaster;
 
     @Column(name = "CHARGE_AMOUNT")
-    private Double chargeAmount;
+    private BigDecimal chargeAmount;
 
     @Column(name = "DESCRIPTION")
     private String description;
@@ -70,10 +71,10 @@ public class PurchaseInvoiceChargeDtl {
     private String checkAll;
 
     @Column(name = "PDA_AMOUNT")
-    private Double pdaAmount;
+    private BigDecimal pdaAmount;
 
     @Column(name = "FF_AMOUNT")
-    private Double ffAmount;
+    private BigDecimal ffAmount;
 
     @AuditIgnore
     @Column(name = "CHARGE_FROM")
@@ -87,10 +88,10 @@ public class PurchaseInvoiceChargeDtl {
     private Double taxPercentage;
 
     @Column(name = "TAX_AMOUNT")
-    private Double taxAmount;
+    private BigDecimal taxAmount;
 
     @Column(name = "CHARGE_BASE_AMOUNT")
-    private Double chargeBaseAmount;
+    private BigDecimal chargeBaseAmount;
 
     @AuditIgnore
     @Column(name = "SUPPLIER_POID_FF")

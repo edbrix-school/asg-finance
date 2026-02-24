@@ -9,6 +9,7 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -44,7 +45,7 @@ public class ApPurchaseInvRjvDetailsEntity {
     private String rjvRefType;
 
     @Column(name = "RJV_AMOUNT")
-    private Long rjvAmount;
+    private BigDecimal rjvAmount;
 
     @Column(name = "RJV_REMARKS")
     private String rjvRemarks;

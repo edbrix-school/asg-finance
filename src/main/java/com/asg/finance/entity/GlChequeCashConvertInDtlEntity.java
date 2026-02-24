@@ -5,6 +5,7 @@ import com.asg.finance.entity.key.GlChequeCashConvertInDtlKey;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -33,7 +34,7 @@ public class GlChequeCashConvertInDtlEntity {
     private LocalDate chqDate;
 
     @Column(name = "AMOUNT")
-    private Long amount;
+    private BigDecimal amount;
 
     @Column(name = "REMARKS")
     private String remarks;

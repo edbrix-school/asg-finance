@@ -4,6 +4,7 @@ import com.asg.common.lib.annotation.AuditIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -46,7 +47,7 @@ public class GlChequeCashConvertHdrEntity {
     private String postingNarration;
 
     @Column(name = "CASH", precision = 19, scale = 2)
-    private Long cash;
+    private BigDecimal cash;
 
     @Column(name = "REMARKS")
     private String remarks;
@@ -78,5 +79,5 @@ public class GlChequeCashConvertHdrEntity {
 
     @Column(name = "ROUNDING_AMT")
     @AuditIgnore
-    private Long roundingAmt;
+    private BigDecimal roundingAmt;
 }

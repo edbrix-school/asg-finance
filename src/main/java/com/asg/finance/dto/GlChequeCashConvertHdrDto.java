@@ -3,6 +3,8 @@ package com.asg.finance.dto;
 import com.asg.common.lib.dto.LovGetListDto;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
+
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -19,7 +21,7 @@ public class GlChequeCashConvertHdrDto {
     private String type;
     @NotBlank(message = "Cheque Conversion Type is required")
     private String postingNarration;
-    private Long cash;
+    private BigDecimal cash;
     private String remarks;
     private String createdBy;
     private LocalDateTime createdDate;
@@ -30,7 +32,7 @@ public class GlChequeCashConvertHdrDto {
     private String chqAcNo;
     @NotBlank(message = "Cheque Card No is required")
     private String chqCardNo;
-    private Long roundingAmt;
+    private BigDecimal roundingAmt;
 
     private LovGetListDto groupDet;
     private LovGetListDto companyDet;

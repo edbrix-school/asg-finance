@@ -518,8 +518,6 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
 
                     String inLogDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", docKeyPoid, oldIn.getId().getDetRowId());
                     logRequests.add(new LogRequestDto<>(oldIn, existingIn, GlChequeCashConvertInDtlEntity.class, docId, docKeyPoid, inLogDetail));
-                    summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.MODIFIED, docId, docKeyPoid,
-                            String.format("Modified - - DOC:%s KEY:%s", docId, docKeyPoid)));
                     break;
 
                 case "ISDELETED":
@@ -606,8 +604,6 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
 
                     String outLogDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", docKeyPoid, oldOut.getId().getDetRowId());
                     logRequests.add(new LogRequestDto<>(oldOut, existingOut, GlChequeCashConvertOutDtlEntity.class, docId, docKeyPoid, outLogDetail));
-                    summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.MODIFIED, docId, docKeyPoid,
-                            String.format("Modified - - DOC:%s KEY:%s", docId, docKeyPoid)));
                     break;
 
                 case "ISDELETED":

@@ -13,7 +13,6 @@ import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
-import com.asg.finance.entity.GlobalLogSummary;
 import com.asg.finance.dto.GlChequeCashConvertHdrDto;
 import com.asg.finance.dto.GlChequeCashConvertInDtlDto;
 import com.asg.finance.dto.GlChequeCashConvertOutDtlDto;
@@ -23,7 +22,6 @@ import com.asg.finance.entity.GlChequeCashConvertInDtlEntity;
 import com.asg.finance.entity.GlChequeCashConvertOutDtlEntity;
 import com.asg.finance.entity.key.GlChequeCashConvertInDtlKey;
 import com.asg.finance.entity.key.GlChequeCashConvertOutDtlKey;
-import com.asg.finance.repository.GlobalLogSummaryRepository;
 import com.asg.finance.repository.GlChequeCashConvertHdrRepository;
 import com.asg.finance.repository.GlChequeCashConvertInDtlRepository;
 import com.asg.finance.repository.GlChequeCashConvertOutDtlRepository;
@@ -45,7 +43,6 @@ import org.springframework.stereotype.Service;
 
 
 import javax.sql.DataSource;
-import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -71,7 +68,6 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
     private final DataSource dataSource;
     private final DocumentDeleteService documentDeleteService;
     private final LoggingService loggingService;
-    private final GlobalLogSummaryRepository globalLogSummaryRepository;
 
     @Override
     public GlChequeCashConvertHdrDto getGlChequeCashConvert(Long transactionPoid) {
@@ -327,9 +323,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
 
         String docId = UserContext.getDocumentId();
         String docKeyPoid = savedHdr.getTransactionPoid().toString();
-        String createdMessage = String.format("Created - - DOC:%s KEY:%s", docId, docKeyPoid);
-        GlobalLogSummary headerLog = createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, createdMessage);
-        globalLogSummaryRepository.save(headerLog);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, docKeyPoid);
 
         return getGlChequeCashConvert(savedHdr.getTransactionPoid());
         } catch (Exception ex) {
@@ -371,24 +365,19 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
 
         String docId = UserContext.getDocumentId();
         String docKeyPoid = transactionPoid.toString();
-        List<GlobalLogSummary> subTableSummaryLogs = new ArrayList<>();
         List<LogRequestDto<GlChequeCashConvertHdrEntity>> headerLogRequests = new ArrayList<>();
 
         if (dto.getInDtls() != null && !dto.getInDtls().isEmpty()) {
-            updateInDtls(dto.getInDtls(), transactionPoid, docId, docKeyPoid, subTableSummaryLogs);
+            updateInDtls(dto.getInDtls(), transactionPoid, docId, docKeyPoid);
         }
         if (dto.getOutDtls() != null && !dto.getOutDtls().isEmpty()) {
-            updateOutDtls(dto.getOutDtls(), transactionPoid, docId, docKeyPoid, subTableSummaryLogs);
+            updateOutDtls(dto.getOutDtls(), transactionPoid, docId, docKeyPoid);
         }
 
-        String modifiedMessage = String.format("Modified - - DOC:%s KEY:%s", docId, docKeyPoid);
-        subTableSummaryLogs.add(createSummaryLogEntry(LogDetailsEnum.MODIFIED, docId, docKeyPoid, modifiedMessage));
+        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, docId, docKeyPoid);
         String headerLogDetail = String.format("KeyId = TRANSACTION_POID:%s", docKeyPoid);
         headerLogRequests.add(new LogRequestDto<>(oldEntity, savedHdr, GlChequeCashConvertHdrEntity.class, docId, docKeyPoid, headerLogDetail));
 
-        if (!subTableSummaryLogs.isEmpty()) {
-            globalLogSummaryRepository.saveAll(subTableSummaryLogs);
-        }
         if (!headerLogRequests.isEmpty()) {
             loggingService.createLogBatch(headerLogRequests);
         }
@@ -471,8 +460,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         }
     }
 
-    private void updateInDtls(List<GlChequeCashConvertInDtlDto> inDtls, Long transactionPoid, String docId, String docKeyPoid,
-                            List<GlobalLogSummary> summaryLogs) {
+    private void updateInDtls(List<GlChequeCashConvertInDtlDto> inDtls, Long transactionPoid, String docId, String docKeyPoid) {
         String currentUser = getCurrentUser();
         LocalDateTime now = LocalDateTime.now();
         List<GlChequeCashConvertInDtlEntity> toSave = new ArrayList<>();
@@ -526,7 +514,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
                     if (oldInForDelete != null) {
                         String deletedRecordString = String.format("detRowId:%s, transactionPoid:%s, bankPoid:%s, amount:%s, remarks:%s",
                                 oldInForDelete.getId().getDetRowId(), transactionPoid, oldInForDelete.getBankPoid(), oldInForDelete.getAmount(), oldInForDelete.getRemarks());
-                        summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.DELETED, docId, docKeyPoid, "Row Deleted " + deletedRecordString));
+                        loggingService.createLogSummaryEntry(docId, docKeyPoid, "Row Deleted " + deletedRecordString);
                     }
                     break;
 
@@ -544,8 +532,8 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
                                 && s.getId().getDetRowId().equals(newlyCreated.getId().getDetRowId()))
                         .findFirst().orElse(null);
                 if (savedEntity != null && savedEntity.getId().getDetRowId() != null) {
-                    summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid,
-                            String.format("Row Created on Cheque Cash Convert In Detail with DetRowId: %s", savedEntity.getId().getDetRowId())));
+                    loggingService.createLogSummaryEntry(docId, docKeyPoid,
+                            String.format("Row Created on Cheque Cash Convert In Detail with DetRowId: %s", savedEntity.getId().getDetRowId()));
                 }
             }
         }
@@ -557,8 +545,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         }
     }
 
-    private void updateOutDtls(List<GlChequeCashConvertOutDtlDto> outDtls, Long transactionPoid, String docId, String docKeyPoid,
-                              List<GlobalLogSummary> summaryLogs) {
+    private void updateOutDtls(List<GlChequeCashConvertOutDtlDto> outDtls, Long transactionPoid, String docId, String docKeyPoid) {
         String currentUser = getCurrentUser();
         LocalDateTime now = LocalDateTime.now();
         List<GlChequeCashConvertOutDtlEntity> toSave = new ArrayList<>();
@@ -612,7 +599,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
                     if (oldOutForDelete != null) {
                         String deletedRecordString = String.format("detRowId:%s, transactionPoid:%s, paymentMainPoid:%s, amount:%s, remarks:%s",
                                 oldOutForDelete.getId().getDetRowId(), transactionPoid, oldOutForDelete.getPaymentMainPoid(), oldOutForDelete.getAmount(), oldOutForDelete.getRemarks());
-                        summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.DELETED, docId, docKeyPoid, "Row Deleted " + deletedRecordString));
+                        loggingService.createLogSummaryEntry(docId, docKeyPoid, "Row Deleted " + deletedRecordString);
                     }
                     break;
 
@@ -630,8 +617,8 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
                                 && s.getId().getDetRowId().equals(newlyCreated.getId().getDetRowId()))
                         .findFirst().orElse(null);
                 if (savedEntity != null && savedEntity.getId().getDetRowId() != null) {
-                    summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid,
-                            String.format("Row Created on Cheque Cash Convert Out Detail with DetRowId: %s", savedEntity.getId().getDetRowId())));
+                    loggingService.createLogSummaryEntry(docId, docKeyPoid,
+                            String.format("Row Created on Cheque Cash Convert Out Detail with DetRowId: %s", savedEntity.getId().getDetRowId()));
                 }
             }
         }
@@ -703,16 +690,6 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         entity.setCreatedDate(now);
         entity.setLastModifiedBy(currentUser);
         entity.setLastModifiedDate(now);
-    }
-
-    private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage) {
-        GlobalLogSummary summary = new GlobalLogSummary();
-        summary.setLogUserPoid(UserContext.getUserPoid());
-        summary.setLogDateTime(new Timestamp(System.currentTimeMillis()));
-        summary.setLogDocId(docId);
-        summary.setLogDocKeyPoid(docKeyPoid);
-        summary.setLogDetails(customMessage);
-        return summary;
     }
 
     @Override

@@ -136,6 +136,9 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
             // Validate Employee Details
             if (request.getEmployeeDetails() != null) {
                 for (InsuranceEmployeeDetailRequestDto emp : request.getEmployeeDetails()) {
+                    String action = normalizeAction(emp.getActionType());
+                    if ("ISDELETED".equals(action)) continue;
+                    
                     if (emp.getEmployeePoid() == null || emp.getEmployeePoid() <= 0) {
                         throw new ValidationException("Employee is mandatory in Employee Details");
                     }
@@ -145,6 +148,9 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
             // Validate Property Details
             if (request.getPropertyDetails() != null) {
                 for (InsurancePropertyDetailRequestDto prop : request.getPropertyDetails()) {
+                    String action = normalizeAction(prop.getActionType());
+                    if ("ISDELETED".equals(action)) continue;
+                    
                     if (prop.getPropertyPoid() == null || prop.getPropertyPoid() <= 0) {
                         throw new ValidationException("Property is mandatory in Property Details");
                     }
@@ -154,6 +160,9 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
             // Validate PIC dates (if present)
             if (request.getPicDetails() != null) {
                 for (InsurancePicDetailRequestDto pic : request.getPicDetails()) {
+                    String action = normalizeAction(pic.getActionType());
+                    if ("ISDELETED".equals(action)) continue;
+                    
                     // Validate Role is provided
                     if (pic.getRolePoid() == null || pic.getRolePoid() <= 0) {
                         throw new ValidationException("Role is mandatory in PIC Details");
@@ -284,6 +293,9 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         // Validate Employee Details
         if (request.getEmployeeDetails() != null) {
             for (InsuranceEmployeeDetailRequestDto emp : request.getEmployeeDetails()) {
+                String action = normalizeAction(emp.getActionType());
+                if ("ISDELETED".equals(action)) continue;
+                
                 if (emp.getEmployeePoid() == null || emp.getEmployeePoid() <= 0) {
                     throw new ValidationException("Employee is mandatory in Employee Details");
                 }
@@ -293,6 +305,9 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         // Validate Property Details
         if (request.getPropertyDetails() != null) {
             for (InsurancePropertyDetailRequestDto prop : request.getPropertyDetails()) {
+                String action = normalizeAction(prop.getActionType());
+                if ("ISDELETED".equals(action)) continue;
+                
                 if (prop.getPropertyPoid() == null || prop.getPropertyPoid() <= 0) {
                     throw new ValidationException("Property is mandatory in Property Details");
                 }
@@ -302,6 +317,9 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         // Validate PIC dates (if present)
         if (request.getPicDetails() != null) {
             for (InsurancePicDetailRequestDto pic : request.getPicDetails()) {
+                String action = normalizeAction(pic.getActionType());
+                if ("ISDELETED".equals(action)) continue;
+                
                 // Validate Role is provided
                 if (pic.getRolePoid() == null || pic.getRolePoid() <= 0) {
                     throw new ValidationException("Role is mandatory in PIC Details");

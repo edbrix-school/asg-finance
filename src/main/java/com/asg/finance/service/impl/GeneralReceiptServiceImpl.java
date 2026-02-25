@@ -907,28 +907,99 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
             }
         }
 
-        // 4. Validate cheque dates if applicable
+        // 4. Validate payment details for CHEQUE, TT, and CARD
+        validatePaymentDetails(request.getPayments());
+
+        // 5. Validate bill amount matches receipt amount
+        validateBillAmountMatchesReceiptAmount(request.getBills(), request.getExtraCharges(), header.getReceiptAmount());
+
+        // 6. Validate cheque dates if applicable
         validateChequeDates(request.getPayments());
 
-        // 5. Validate cost center for specific charge types
+        // 7. Validate cost center for specific charge types
         validateCostCenterRequirement(request.getExtraCharges());
 
-        // 6. Validate rounding limit
+        // 8. Validate rounding limit
         validateRoundingLimit(request.getExtraCharges());
 
-        // 7. Validate multi-company if applicable
+        // 9. Validate multi-company if applicable
         if ("Y".equals(header.getMulticompany())) {
             validateMultiCompany(request.getBills(), header.getCompanyPoid());
         }
 
-        // 8. Validate bill references if refType is AGAINST
+        // 10. Validate bill references if refType is AGAINST
         if ("AGAINST".equals(header.getRefType()) && (request.getBills() == null || request.getBills().isEmpty())) {
             throw new ValidationException("Bill details are required when Ref Type is AGAINST");
         }
         
-        // 9. Validate bill references using stored procedure (PROC_GEN_RECE_NEW_BILLREF_CHK)
+        // 11. Validate bill references using stored procedure (PROC_GEN_RECE_NEW_BILLREF_CHK)
         if (request.getBills() != null && !request.getBills().isEmpty()) {
             validateBillReferencesUsingProcedure(request.getBills(), creditGL.getGlPoid(), header.getCompanyPoid());
+        }
+    }
+
+    private void validateBillAmountMatchesReceiptAmount(List<GeneralReceiptBillDto> bills, 
+                                                         List<GeneralReceiptChargeDto> charges, 
+                                                         BigDecimal receiptAmount) {
+        if (bills == null || bills.isEmpty()) {
+            return;
+        }
+
+        BigDecimal billTotal = bills.stream()
+                .map(GeneralReceiptBillDto::getAmount)
+                .filter(amount -> amount != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal chargeTotal = BigDecimal.ZERO;
+        if (charges != null && !charges.isEmpty()) {
+            chargeTotal = charges.stream()
+                    .map(GeneralReceiptChargeDto::getTotalAmount)
+                    .filter(amount -> amount != null)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+        }
+
+        BigDecimal expectedTotal = billTotal.add(chargeTotal);
+
+        if (receiptAmount.compareTo(expectedTotal) != 0) {
+            throw new ValidationException(String.format(
+                    "Receipt amount (%.3f) does not match bill amount (%.3f) + charges (%.3f) = %.3f",
+                    receiptAmount, billTotal, chargeTotal, expectedTotal));
+        }
+    }
+
+    private void validatePaymentDetails(List<GeneralReceiptPaymentDto> payments) {
+        if (payments == null || payments.isEmpty()) {
+            return;
+        }
+
+        for (GeneralReceiptPaymentDto payment : payments) {
+            String type = payment.getType();
+            
+            if ("CHEQUE".equals(type)) {
+                if (payment.getChequeNo() == null || payment.getChequeNo().trim().isEmpty()) {
+                    throw new ValidationException("Cheque number is required for CHEQUE payment type");
+                }
+                if (payment.getChequeDate() == null) {
+                    throw new ValidationException("Cheque date is required for CHEQUE payment type");
+                }
+                if (payment.getBankPoid() == null) {
+                    throw new ValidationException("Bank is required for CHEQUE payment type");
+                }
+            } else if ("TT".equals(type)) {
+                if (payment.getTtRef() == null || payment.getTtRef().trim().isEmpty()) {
+                    throw new ValidationException("TT reference is required for TT payment type");
+                }
+                if (payment.getTtBankPoid() == null) {
+                    throw new ValidationException("TT Bank is required for TT payment type");
+                }
+            } else if ("CARD".equals(type)) {
+                if (payment.getChequeNo() == null || payment.getChequeNo().trim().isEmpty()) {
+                    throw new ValidationException("Card number is required for CARD payment type");
+                }
+                if (payment.getCardPoid() == null) {
+                    throw new ValidationException("Card type is required for CARD payment type");
+                }
+            }
         }
     }
 

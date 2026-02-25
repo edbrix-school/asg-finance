@@ -1709,16 +1709,24 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         }
     }
 
+
     @Override
-    public String validateVoucher(
+    public boolean validateVoucher(
             String docId,
             String refType,
             String refPoid
     ) {
 
-        log.info("Validating Voucher → DOC_ID={}, REF_TYPE={}, REF_POID={}", docId, refType, refPoid);
+        // 🔹 Only these 3 types should be validated
+        if (!"FDA JOBS".equalsIgnoreCase(refType)
+                && !"FF JOBS".equalsIgnoreCase(refType)
+                && !"GENERAL PO".equalsIgnoreCase(refType)) {
 
-        String result = apPurchaseJournalRepositoryImpl.validateVoucher(
+
+            return true;
+        }
+
+        String status = apPurchaseJournalRepositoryImpl.validateVoucher(
                 UserContext.getGroupPoid(),
                 UserContext.getUserPoid(),
                 UserContext.getCompanyPoid(),
@@ -1727,9 +1735,22 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                 refPoid
         );
 
-        log.info("Voucher Validation Result → {}", result);
+        if (status != null && status.toUpperCase().contains("CLOSED")) {
 
-        return result;
+            String message;
+
+            if ("FDA JOBS".equalsIgnoreCase(refType)) {
+                message = "Corresponding FDA is closed, cannot edit...";
+            } else if ("FF JOBS".equalsIgnoreCase(refType)) {
+                message = "Corresponding FF Job is closed, cannot edit...";
+            } else { // GENERAL PO
+                message = "Corresponding General PO Job is closed, cannot edit...";
+            }
+
+            throw new RuntimeException(message);
+        }
+
+        return true;
     }
 
     @Override
@@ -1872,7 +1893,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
         //validateMandatoryFields(dto);
 
-        validateDuplicateInvoice(dto);
+        //validateDuplicateInvoice(dto);
 
         String refPoid = getRefPoid(dto);
 
@@ -1882,7 +1903,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
             }
         }
 
-        validateVoucher(documentId, dto.getRefType(), refPoid);
+        //validateVoucher(documentId, dto.getRefType(), refPoid);
 
         validateBeforeSave(documentId, dto.getRefType(), refPoid);
 
@@ -1913,9 +1934,9 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         }
     }
 
-    private void validateDuplicateInvoice(ApPurchaseInvoiceHdrDto dto) {
+    public String validateDuplicateInvoice(ApPurchaseInvoiceHdrDto dto) {
 
-        String result = apPurchaseJournalRepositoryImpl.checkDuplicatePi(
+         return apPurchaseJournalRepositoryImpl.checkDuplicatePi(
                 UserContext.getGroupPoid(),
                 UserContext.getCompanyPoid(),
                 UserContext.getUserPoid(),
@@ -1926,9 +1947,6 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                 dto.getBillType()
         );
 
-        if (result != null && result.toUpperCase().contains("ERROR")) {
-            throw new ValidationException(result);
-        }
     }
 
     private void validateGlDetails(ApPurchaseInvoiceHdrDto dto, String documentId) {

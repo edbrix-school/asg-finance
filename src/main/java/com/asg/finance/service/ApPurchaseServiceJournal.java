@@ -29,7 +29,7 @@ public interface ApPurchaseServiceJournal {
 
     List<ApPurchaseJournalResponseDto> createFromFda(String fdaPoid, StringBuilder result);
 
-    String validateVoucher(String docId, String refType, String refPoid);
+    boolean validateVoucher(String docId, String refType, String refPoid);
 
     String validateBeforeSave(String docId, String refType, String refPoid);
 
@@ -48,5 +48,7 @@ public interface ApPurchaseServiceJournal {
     List<ApPurchaseInvRjvDefaultDto> getRjvDefaultDetails(String rjvPoid);
 
     byte[] print(Long transactionPoid) throws Exception;
+
+    String validateDuplicateInvoice(ApPurchaseInvoiceHdrDto dto);
 
 }

@@ -21,7 +21,7 @@ public class ChargeLovServiceImpl implements ChargeLovService {
 
     public LovGetListDto getChargeDet(Long chargePoid, String refType) {
         String lovName = detectLovNameForCharge(refType);
-        return lovService.getDetailsByPoidAndLovName(chargePoid, lovName);
+        return lovService.getDetailsByPoidAndLovName(chargePoid, "CHARGE_MASTER_ALL");
     }
 
     private String detectLovNameForCharge(String refType) {

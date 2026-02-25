@@ -298,6 +298,8 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         }
 
         for (DebitNoteGlDetailDto dto : glDetails) {
+            if (dto.isEmpty()) continue;
+            
             String actionType = dto.getActionType();
             if (actionType == null || actionType.trim().isEmpty()) {
                 actionType = (dto.getDetRowId() == null) ? "ISCREATED" : "ISUPDATED";
@@ -428,6 +430,8 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         }
 
         for (DebitNoteChargeDetailDto dto : chargeDetails) {
+            if (dto.isEmpty()) continue;
+            
             String actionType = dto.getActionType();
             if (actionType == null || actionType.trim().isEmpty()) {
                 actionType = (dto.getDetRowId() == null) ? "ISCREATED" : "ISUPDATED";
@@ -557,6 +561,8 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         String user = ASGHelperUtils.getCurrentUser();
 
         for (DebitNoteGlDetailDto dto : glDetails) {
+            if (dto.isEmpty()) continue;
+            
             Long incomingDetRowId = dto.getDetRowId();
             if (incomingDetRowId != null) {
                 detRowId = Math.max(detRowId, incomingDetRowId);
@@ -582,6 +588,8 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         String user = ASGHelperUtils.getCurrentUser();
 
         for (DebitNoteChargeDetailDto dto : chargeDetails) {
+            if (dto.isEmpty()) continue;
+            
             Long incomingDetRowId = dto.getDetRowId();
             if (incomingDetRowId != null) {
                 detRowId = Math.max(detRowId, incomingDetRowId);

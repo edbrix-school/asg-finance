@@ -46,4 +46,11 @@ public class DebitNoteGlDetailDto {
     private LovGetListDto glDetails;
     private LovGetListDto taxDetails;
     private LovGetListDto companyDetails;
+
+    public boolean isEmpty() {
+        return transactionPoid == null && detRowId == null && type == null && companyPoid == null &&
+               glId == null && debitAmount == null && creditAmount == null && taxId == null &&
+               taxPercentage == null && taxAmount == null && totalAmount == null && remarks == null && breakupList == null && costCenterList == null &&
+               typeDetails == null && glDetails == null && taxDetails == null && companyDetails == null;
+    }
 }

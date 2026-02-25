@@ -376,7 +376,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                                 oldEntityForDelete.getDetRowId(), transactionPoid, oldEntityForDelete.getGlPoid(),
                                 oldEntityForDelete.getDrAmt(), oldEntityForDelete.getCrAmt(), oldEntityForDelete.getRemarks());
                         String deleteSummaryMessage = String.format("Row Deleted %s", deletedRecordString);
-                        summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.DELETED, docId, docKeyPoid, deleteSummaryMessage));
+                        loggingService.createLogSummaryEntry(docId, docKeyPoid, deleteSummaryMessage);
                     }
                     break;
                 }
@@ -391,7 +391,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
             for (ArDebitNoteDtl newlyCreatedEntity : newlyCreated) {
                 if (newlyCreatedEntity.getDetRowId() != null) {
                     String summaryMessage = String.format("Row Created on Debit Note GL Detail with DetRowId: %s", newlyCreatedEntity.getDetRowId());
-                    summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, summaryMessage));
+                    loggingService.createLogSummaryEntry(docId, docKeyPoid, summaryMessage);
                 }
             }
         }
@@ -506,7 +506,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                                 oldEntityForDelete.getDetRowId(), transactionPoid, oldEntityForDelete.getChargePoid(),
                                 oldEntityForDelete.getChargeAmount(), oldEntityForDelete.getRemarks());
                         String deleteSummaryMessage = String.format("Row Deleted %s", deletedRecordString);
-                        summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.DELETED, docId, docKeyPoid, deleteSummaryMessage));
+                        loggingService.createLogSummaryEntry(docId, docKeyPoid, deleteSummaryMessage);
                     }
                     break;
                 }
@@ -521,7 +521,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
             for (ArDebitNoteChargeDtl newlyCreatedEntity : newlyCreated) {
                 if (newlyCreatedEntity.getDetRowId() != null) {
                     String summaryMessage = String.format("Row Created on Debit Note Charge Detail with DetRowId: %s", newlyCreatedEntity.getDetRowId());
-                    summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, summaryMessage));
+                    loggingService.createLogSummaryEntry(docId, docKeyPoid, summaryMessage);
                 }
             }
         }

@@ -27,6 +27,7 @@ import com.asg.finance.service.DebitNoteService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -1067,6 +1068,10 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                                             x.getAmount() != null ? BigDecimal.valueOf(x.getAmount()) : BigDecimal.ZERO
                                     );
 //                                    cb.setGlDescription(x.getDescription());  // optional: SRS uses description as GL desc
+
+                                    if (StringUtils.isNotEmpty(x.getCostPoid()) && StringUtils.isNotEmpty(x.getCostPoid())) {
+                                        cb.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(Long.valueOf(x.getCostPoid()), x.getCostPoid()));
+                                    }
 
                                     return cb;
                                 })

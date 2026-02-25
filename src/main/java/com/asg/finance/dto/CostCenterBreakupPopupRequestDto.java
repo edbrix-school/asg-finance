@@ -1,5 +1,6 @@
 package com.asg.finance.dto;
 
+import com.asg.common.lib.dto.LovGetListDto;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,6 +17,7 @@ public class CostCenterBreakupPopupRequestDto {
     private String costGroup;
     private String costPoid;
     private BigDecimal amount;
+    private LovGetListDto costCenterDetails;
     
     private String actionType;  // "isCreated", "isUpdated", "isDeleted", "noChanges"
 }

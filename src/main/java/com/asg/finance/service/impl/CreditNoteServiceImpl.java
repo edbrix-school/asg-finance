@@ -30,6 +30,7 @@ import com.asg.finance.service.CostCenterBreakupService;
 import com.asg.finance.service.CreditNoteService;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -2192,6 +2193,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                                 popupDto.setCostGroup(item.getCostGroup());
                                 popupDto.setCostPoid(item.getCostPoid());
                                 popupDto.setAmount(item.getAmount() != null ? BigDecimal.valueOf(item.getAmount()) : null);
+                                if (StringUtils.isNotEmpty(item.getCostPoid()) && StringUtils.isNotEmpty(item.getCostPoid())) {
+                                    popupDto.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(Long.valueOf(item.getCostPoid()), item.getCostPoid()));
+                                }
                                 return popupDto;
                             })
                             .collect(Collectors.toList());

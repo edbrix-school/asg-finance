@@ -246,8 +246,13 @@ public class DebitNoteServiceImpl implements DebitNoteService {
             debitNoteDto.setDueDate(LocalDate.now().plusDays(debitNoteDto.getCreditPeriod()));
         }
 
-        if (!"BHD".equals(debitNoteDto.getCurrencyCode()) && debitNoteDto.getCurrencyRate() != null && debitNoteDto.getGrandTotal() != null) {
-            debitNoteDto.setBhdAmount(debitNoteDto.getGrandTotal().multiply(debitNoteDto.getCurrencyRate()));
+        if (!"BHD".equals(debitNoteDto.getCurrencyCode())
+                && debitNoteDto.getCurrencyRate() != null
+                && debitNoteDto.getGrandTotal() != null) {
+            BigDecimal newBhd = debitNoteDto.getGrandTotal().multiply(debitNoteDto.getCurrencyRate());
+            if (debitNoteDto.getBhdAmount() == null || debitNoteDto.getBhdAmount().compareTo(newBhd) != 0) {
+                debitNoteDto.setBhdAmount(newBhd);
+            }
         }
     }
 

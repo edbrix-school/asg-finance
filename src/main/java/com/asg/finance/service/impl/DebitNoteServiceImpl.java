@@ -180,9 +180,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         // Load breakups into response
        // loadBreakups(result, transactionPoid);
 
-        // Log the update
         loggingService.logChanges(oldEntity, existingEntity, ArDebitNoteHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), transactionPoid.toString());
         if (!detailSummaryLogs.isEmpty()) {
             globalLogSummaryRepository.saveAll(detailSummaryLogs);
         }

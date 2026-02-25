@@ -1069,8 +1069,8 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                                     );
 //                                    cb.setGlDescription(x.getDescription());  // optional: SRS uses description as GL desc
 
-                                    if (StringUtils.isNotEmpty(x.getCostPoid()) && StringUtils.isNotEmpty(x.getCostPoid())) {
-                                        cb.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(Long.valueOf(x.getCostPoid()), x.getCostPoid()));
+                                    if (StringUtils.isNotEmpty(x.getCostPoid()) && StringUtils.isNotEmpty(x.getCostGroup())) {
+                                        cb.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(Long.valueOf(x.getCostPoid()), x.getCostGroup()));
                                     }
 
                                     return cb;

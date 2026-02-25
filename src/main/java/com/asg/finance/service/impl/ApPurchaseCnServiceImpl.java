@@ -945,8 +945,8 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                         popup.setCostPoid(c.getCostPoid());
                         popup.setAmount(BigDecimal.valueOf(c.getAmount()));
 
-                        if (StringUtils.isNotEmpty(c.getCostPoid()) && StringUtils.isNotEmpty(c.getCostPoid())) {
-                            popup.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(Long.valueOf(c.getCostPoid()), c.getCostPoid()));
+                        if (StringUtils.isNotEmpty(c.getCostPoid()) && StringUtils.isNotEmpty(c.getCostGroup())) {
+                            popup.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(Long.valueOf(c.getCostPoid()), c.getCostGroup()));
                         }
 
                         return popup;

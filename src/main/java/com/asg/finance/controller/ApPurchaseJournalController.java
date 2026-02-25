@@ -337,6 +337,9 @@ public class ApPurchaseJournalController {
     ) {
         StringBuilder result = new StringBuilder();
         List<ApPurchaseJournalResponseDto> response = service.createFromFf(ffPoid, result);
+        if (result.toString() != null && result.toString().toUpperCase().contains("WARNING")) {
+            return success(result.toString(), null);
+        }
         return success("FF charge details created successfully", response);
     }
 
@@ -371,6 +374,9 @@ public class ApPurchaseJournalController {
     ) {
         StringBuilder result = new StringBuilder();
         List<ApPurchaseJournalResponseDto> response = service.createFromFda(fdaPoid, result);
+        if (result.toString() != null && result.toString().toUpperCase().contains("WARNING")) {
+            return success(result.toString(), null);
+        }
         return success("FDA charges processed", response);
     }
 
@@ -533,6 +539,44 @@ public class ApPurchaseJournalController {
         } catch (Exception e) {
             log.error("Failed to generate PDF for Purchase Journal: {}", transactionPoid, e);
             return internalServerError("Failed to generate PDF: " + e.getMessage());
+        }
+    }
+
+    @AllowedAction(UserRolesRightsEnum.CREATE)
+    @PostMapping("/validate-duplicate-invoice")
+    public ResponseEntity<?> validateDuplicateInvoice(
+            @RequestBody ApPurchaseInvoiceHdrDto dto
+    ) {
+
+        String response = service.validateDuplicateInvoice(dto);
+
+        return success("Duplicate invoice validation completed", response);
+    }
+
+    @AllowedAction(UserRolesRightsEnum.CREATE)
+    @PostMapping("/validate-voucher")
+    public ResponseEntity<?> validateVoucher(
+            @RequestParam String docId,
+            @RequestParam String refType,
+            @RequestParam String refPoid
+    ) {
+
+        try {
+
+            boolean valid = service.validateVoucher(docId, refType, refPoid);
+
+            return success(
+                    "Voucher validation completed successfully",
+                    valid
+            );
+
+        } catch (RuntimeException ex) {
+
+            // 🔹 CLOSED case → return warning message
+            return success(
+                    ex.getMessage(),
+                    null
+            );
         }
     }
 }

@@ -29,6 +29,7 @@ public class InsurancePicDetailRequestDto {
     @NotNull(message = "From Date is mandatory")
     private LocalDate fromDate;
     
+    @NotNull(message = "To Date is mandatory")
     private LocalDate toDate;
     
     private String actionType;

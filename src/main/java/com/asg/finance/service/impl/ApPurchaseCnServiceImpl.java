@@ -27,6 +27,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -943,6 +944,11 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                         popup.setCostGroup(c.getCostGroup());
                         popup.setCostPoid(c.getCostPoid());
                         popup.setAmount(BigDecimal.valueOf(c.getAmount()));
+
+                        if (StringUtils.isNotEmpty(c.getCostPoid()) && StringUtils.isNotEmpty(c.getCostGroup())) {
+                            popup.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(Long.valueOf(c.getCostPoid()), c.getCostGroup()));
+                        }
+
                         return popup;
                     })
                     .collect(Collectors.toList());

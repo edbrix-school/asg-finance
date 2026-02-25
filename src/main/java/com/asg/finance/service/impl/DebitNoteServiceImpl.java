@@ -27,6 +27,7 @@ import com.asg.finance.service.DebitNoteService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -179,9 +180,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         // Load breakups into response
        // loadBreakups(result, transactionPoid);
 
-        // Log the update
         loggingService.logChanges(oldEntity, existingEntity, ArDebitNoteHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), transactionPoid.toString());
         if (!detailSummaryLogs.isEmpty()) {
             globalLogSummaryRepository.saveAll(detailSummaryLogs);
         }
@@ -246,8 +245,13 @@ public class DebitNoteServiceImpl implements DebitNoteService {
             debitNoteDto.setDueDate(LocalDate.now().plusDays(debitNoteDto.getCreditPeriod()));
         }
 
-        if (!"BHD".equals(debitNoteDto.getCurrencyCode()) && debitNoteDto.getCurrencyRate() != null && debitNoteDto.getGrandTotal() != null) {
-            debitNoteDto.setBhdAmount(debitNoteDto.getGrandTotal().multiply(debitNoteDto.getCurrencyRate()));
+        if (!"BHD".equals(debitNoteDto.getCurrencyCode())
+                && debitNoteDto.getCurrencyRate() != null
+                && debitNoteDto.getGrandTotal() != null) {
+            BigDecimal newBhd = debitNoteDto.getGrandTotal().multiply(debitNoteDto.getCurrencyRate());
+            if (debitNoteDto.getBhdAmount() == null || debitNoteDto.getBhdAmount().compareTo(newBhd) != 0) {
+                debitNoteDto.setBhdAmount(newBhd);
+            }
         }
     }
 
@@ -1062,6 +1066,10 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                                             x.getAmount() != null ? BigDecimal.valueOf(x.getAmount()) : BigDecimal.ZERO
                                     );
 //                                    cb.setGlDescription(x.getDescription());  // optional: SRS uses description as GL desc
+
+                                    if (StringUtils.isNotEmpty(x.getCostPoid()) && StringUtils.isNotEmpty(x.getCostGroup())) {
+                                        cb.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(Long.valueOf(x.getCostPoid()), x.getCostGroup()));
+                                    }
 
                                     return cb;
                                 })

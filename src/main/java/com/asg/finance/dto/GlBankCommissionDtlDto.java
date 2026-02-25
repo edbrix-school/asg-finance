@@ -5,7 +5,8 @@ import jakarta.validation.constraints.Size;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.util.Date;
+import java.time.LocalDate;
+
 
 @Getter
 @Setter
@@ -16,8 +17,8 @@ public class GlBankCommissionDtlDto {
     private Long DetRowId;
     private Long commissionGlPoid;
     private LovGetListDto commissionGlDet;
-    private Date periodFrom;
-    private Date periodTo;
+    private LocalDate periodFrom;
+    private LocalDate periodTo;
     private BigDecimal commissionPercent;
     private Long taxPoid;
     private LovGetListDto taxPoidDet;

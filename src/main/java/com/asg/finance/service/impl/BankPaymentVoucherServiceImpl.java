@@ -393,6 +393,12 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         entity.setMultiCompany(req.getMultiple());
         entity.setSecurityCheque(req.getSecurityCheque());
         entity.setCurrencyAmount(req.getCurrencyAmount());
+        entity.setAvailableBalance(req.getAvailableBalance());
+        entity.setChqPrintedUserCode(req.getChqPrintedUserCode());
+        entity.setChqPrintedDate(req.getChqPrintedDate());
+        if (req.getChqPrintedUserCode() != null || req.getChqPrintedDate() != null) {
+            entity.setChqPrinted("Y");
+        }
 
         if (Boolean.TRUE.equals(req.getReleased())) {
             entity.setReleasedToPerson(req.getReleasedToPerson());

@@ -667,9 +667,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     .map(gl -> gl.getTotalAmount() != null && gl.getType().equals("CR") ? gl.getTotalAmount() : BigDecimal.ZERO)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            if (totalDebitAmt.compareTo(totalCreditAmt) != 0) {
-                throw new ValidationException("Total Debit ("+totalDebitAmt+") Amounts and Credit ("+totalCreditAmt+") Amounts are not tallying.");
-            }
+//            if (totalDebitAmt.compareTo(totalCreditAmt) != 0) {
+//                throw new ValidationException("Total Debit ("+totalDebitAmt+") Amounts and Credit ("+totalCreditAmt+") Amounts are not tallying.");
+//            }
             if (dto.getBhdAmount().compareTo(totalDebitAmt) != 0) {
                 throw new ValidationException("Paid Amount (" + dto.getBhdAmount() + ") is not matching with total party credit amount(" + totalDebitAmt + ")");
             }

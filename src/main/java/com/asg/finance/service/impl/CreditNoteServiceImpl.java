@@ -642,33 +642,35 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
     private void validateGrandTotalWithCharges(CreditNoteHeaderDto dto) {
 
-        if (dto.getGrandTotal() == null) return;
-
-        BigDecimal totalCharges = BigDecimal.ZERO;
-        BigDecimal totalGlDetails = BigDecimal.ZERO;
-
+        if (dto.getBhdAmount() == null) return;
         if (dto.getChargeDetails() != null && !dto.getChargeDetails().isEmpty()) {
-
+            BigDecimal totalCharges = BigDecimal.ZERO;
             totalCharges = dto.getChargeDetails().stream()
                     .map(c -> c.getTotalAmount() != null ? c.getTotalAmount() : BigDecimal.ZERO)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            if (dto.getGrandTotal().compareTo(totalCharges) != 0) {
+            if (dto.getBhdAmount().compareTo(totalCharges) != 0) {
                 throw new ValidationException(
                         "Grand Total is not matching with total charge amount."
                 );
             }
 
         } else if (dto.getGlDetails() != null && !dto.getGlDetails().isEmpty()) {
-
-            totalGlDetails = dto.getGlDetails().stream()
-                    .map(gl -> gl.getDrAmt() != null ? gl.getDrAmt() : BigDecimal.ZERO)
+            BigDecimal totalDebitAmt = BigDecimal.ZERO;
+            BigDecimal totalCreditAmt = BigDecimal.ZERO;
+            totalDebitAmt = dto.getGlDetails().stream()
+                    .map(gl -> gl.getTotalAmount() != null && gl.getType().equals("DR") ? gl.getTotalAmount() : BigDecimal.ZERO)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            if (dto.getGrandTotal().compareTo(totalGlDetails) != 0) {
-                throw new ValidationException(
-                        "Grand Total is not matching with total GL amount."
-                );
+            totalCreditAmt = dto.getGlDetails().stream()
+                    .map(gl -> gl.getTotalAmount() != null && gl.getType().equals("CR") ? gl.getTotalAmount() : BigDecimal.ZERO)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            if (totalDebitAmt.compareTo(totalCreditAmt) != 0) {
+                throw new ValidationException("Total Debit ("+totalDebitAmt+") Amounts and Credit ("+totalCreditAmt+") Amounts are not tallying.");
+            }
+            if (dto.getBhdAmount().compareTo(totalDebitAmt) != 0) {
+                throw new ValidationException("Paid Amount (" + dto.getBhdAmount() + ") is not matching with total party credit amount(" + totalDebitAmt + ")");
             }
         }
     }

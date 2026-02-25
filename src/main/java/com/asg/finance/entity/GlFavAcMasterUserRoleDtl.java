@@ -8,7 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 
 /**
  * Entity class for GL_FAV_AC_MASTER_USER_ROLE_DTL table
@@ -46,7 +46,7 @@ public class GlFavAcMasterUserRoleDtl {
 
     @Column(name = "CREATED_DATE")
     @AuditIgnore
-    private Timestamp createdDate;
+    private LocalDateTime createdDate;
 
     @Column(name = "LASTMODIFIED_BY", length = 20)
     @AuditIgnore
@@ -54,7 +54,7 @@ public class GlFavAcMasterUserRoleDtl {
 
     @Column(name = "LASTMODIFIED_DATE")
     @AuditIgnore
-    private Timestamp lastModifiedDate;
+    private LocalDateTime lastModifiedDate;
     
     @Data
     @NoArgsConstructor

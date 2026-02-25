@@ -5,7 +5,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.sql.Timestamp;
 import java.util.List;
 
 /**
@@ -24,10 +23,6 @@ public class GlFavAcMasterResponse {
     private String description2;
     private String active;
     private Integer seqNo;
-    private String createdBy;
-    private Timestamp createdDate;
-    private String lastModifiedBy;
-    private Timestamp lastModifiedDate;
     private String deleted;
     private List<GlAccountDetailResponse> glAccounts;
     private List<UserRoleDetailResponse> userRoles;

@@ -6,9 +6,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.sql.Timestamp;
-import java.util.List;
-
 /**
  * Response DTO for User Role Detail
  */
@@ -22,10 +19,6 @@ public class UserRoleDetailResponse {
     private Long favAcPoid;
     private Long userRolePoid;
     private String remarks;
-    private String createdBy;
-    private Timestamp createdDate;
-    private String lastModifiedBy;
-    private Timestamp lastModifiedDate;
     private UserRoleDto userRoleDetail;
 }
 

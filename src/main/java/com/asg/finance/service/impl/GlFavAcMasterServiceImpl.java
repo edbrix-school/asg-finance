@@ -36,7 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -103,9 +103,9 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
         }
 
         String currentUser = getCurrentUser();
-        Timestamp now = new Timestamp(System.currentTimeMillis());
+        LocalDateTime now = LocalDateTime.now();
 
-        // Create master record
+        // Create master record (BaseEntity handles audit fields)
         GlFavAcMaster master = GlFavAcMaster.builder()
                 .groupPoid(UserContext.getGroupPoid())
                 .favAcCode(request.getFavAcCode())
@@ -113,10 +113,6 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                 .description2(request.getDescription2())
                 .active(request.getActive() != null ? request.getActive() : "Y")
                 .seqNo(request.getSeqNo())
-                .createdBy(currentUser)
-                .createdDate(now)
-                .lastModifiedBy(currentUser)
-                .lastModifiedDate(now)
                 .deleted("N")
                 .build();
 
@@ -171,7 +167,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                             } else {
                                 GlFavAcMasterGlAcDtl glAcDtl = GlFavAcMasterGlAcDtl.builder()
                                         .favAcPoid(savedMaster.getFavAcPoid())
-                                        .detRowId(glAccountRequest.getDetRowId()) // Frontend provides detRowId
+                                        .detRowId(glAccountRequest.getDetRowId())
                                         .glPoid(glAccountRequest.getGlAccountPoId())
                                         .company(glAccountRequest.getCompanyPoId())
                                         .viewCategory(glAccountRequest.getViewCategoryPoid())
@@ -407,20 +403,18 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
         }
 
         String currentUser = getCurrentUser();
-        Timestamp now = new Timestamp(System.currentTimeMillis());
+        LocalDateTime now = LocalDateTime.now();
 
         // Create copy of old entity for logging
         GlFavAcMaster oldEntity = new GlFavAcMaster();
         BeanUtils.copyProperties(existing, oldEntity);
 
-        // Update master record
+        // Update master record (BaseEntity handles audit fields)
         existing.setFavAcCode(request.getFavAcCode());
         existing.setDescription(request.getDescription());
         existing.setDescription2(request.getDescription2());
         existing.setActive(request.getActive());
         existing.setSeqNo(request.getSeqNo());
-        existing.setLastModifiedBy(currentUser);
-        existing.setLastModifiedDate(now);
 
         masterRepository.save(existing);
 
@@ -1029,11 +1023,11 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
     private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage) {
         return createSummaryLogEntry(logDetailsEnum, docId, docKeyPoid, customMessage, null);
     }
-    
-    private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage, Timestamp logDateTime) {
+
+    private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage, LocalDateTime logDateTime) {
         GlobalLogSummary summary = new GlobalLogSummary();
         summary.setLogUserPoid(UserContext.getUserPoid());
-        summary.setLogDateTime(new Timestamp(System.currentTimeMillis()));
+        summary.setLogDateTime(logDateTime != null ? java.sql.Timestamp.valueOf(logDateTime) : java.sql.Timestamp.valueOf(LocalDateTime.now()));
         summary.setLogDocId(docId);
         summary.setLogDocKeyPoid(docKeyPoid);
         summary.setLogDetails(customMessage);

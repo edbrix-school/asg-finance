@@ -41,4 +41,12 @@ public class DebitNoteChargeDetailDto {
     private LovGetListDto chargeDetails;
     private LovGetListDto taxDetails;
     private LovGetListDto costCenterDetails;
+
+    public boolean isEmpty() {
+        return transactionPoid == null && detRowId == null && chargeId == null && costAmount == null &&
+               chargeAmount == null && taxId == null && taxPercentage == null && taxAmount == null &&
+               remarks == null && seqNo == null && !selected && checkAll == null &&
+               costPoid == null && costGroup == null && chargeDetails == null && taxDetails == null &&
+               costCenterDetails == null;
+    }
 }

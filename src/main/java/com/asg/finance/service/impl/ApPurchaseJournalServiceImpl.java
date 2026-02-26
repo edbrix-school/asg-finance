@@ -318,7 +318,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
     public ApPurchaseInvoiceHdrDto createApPurchaseInvoice(ApPurchaseInvoiceHdrDto apPurchaseInvoiceHdrDto, String documentId) {
 
         validateBeforePersist(apPurchaseInvoiceHdrDto, documentId);
-        validateRefTypeSpecific(apPurchaseInvoiceHdrDto, documentId);
+        //validateRefTypeSpecific(apPurchaseInvoiceHdrDto, documentId);
 
         ApPurchaseInvoiceHdrEntity apPurchaseInvoiceHdrEntity = new ApPurchaseInvoiceHdrEntity();
         apPurchaseInvoiceHdrEntity.setTransactionDate(apPurchaseInvoiceHdrDto.getTransactionDate() != null ? apPurchaseInvoiceHdrDto.getTransactionDate() : LocalDate.now());
@@ -853,7 +853,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
         if (apPurchaseInvoiceHdrDto.getTransactionDate() != null)
             validateBeforePersist(apPurchaseInvoiceHdrDto, UserContext.getDocumentId());
-        validateRefTypeSpecific(apPurchaseInvoiceHdrDto, UserContext.getDocumentId());
+       // validateRefTypeSpecific(apPurchaseInvoiceHdrDto, UserContext.getDocumentId());
             apPurchaseInvoiceHdrEntity.setTransactionDate(apPurchaseInvoiceHdrDto.getTransactionDate());
         apPurchaseInvoiceHdrEntity.setGroupPoid(apPurchaseInvoiceHdrDto.getGroupPoid());
        // apPurchaseInvoiceHdrEntity.setDocRef(apPurchaseInvoiceHdrDto.getDocRef());
@@ -1717,12 +1717,23 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
             String refPoid
     ) {
 
-        // 🔹 Only these 3 types should be validated
-        if (!"FDA JOBS".equalsIgnoreCase(refType)
-                && !"FF JOBS".equalsIgnoreCase(refType)
-                && !"GENERAL PO".equalsIgnoreCase(refType)) {
+        if (refType == null) {
+            return true;
+        }
 
+        String normalizedRefType = refType.trim().toUpperCase();
 
+        // 🔹 Map frontend values → DB values
+        Map<String, String> refTypeMapping = Map.of(
+                "FDA JOBS", "FDA",
+                "FF JOBS", "FF",
+                "GENERAL PO", "PO"
+        );
+
+        String dbRefType = refTypeMapping.get(normalizedRefType);
+
+        // 🔹 Only validate these 3 types
+        if (dbRefType == null) {
             return true;
         }
 
@@ -1731,21 +1742,18 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                 UserContext.getUserPoid(),
                 UserContext.getCompanyPoid(),
                 docId,
-                refType,
+                dbRefType,
                 refPoid
         );
 
-        if (status != null && status.toUpperCase().contains("CLOSED")) {
+        if ("CLOSED".equalsIgnoreCase(status != null ? status.trim() : null)) {
 
-            String message;
-
-            if ("FDA JOBS".equalsIgnoreCase(refType)) {
-                message = "Corresponding FDA is closed, cannot edit...";
-            } else if ("FF JOBS".equalsIgnoreCase(refType)) {
-                message = "Corresponding FF Job is closed, cannot edit...";
-            } else { // GENERAL PO
-                message = "Corresponding General PO Job is closed, cannot edit...";
-            }
+            String message = switch (normalizedRefType) {
+                case "FDA JOBS" -> "Corresponding FDA is closed, cannot edit...";
+                case "FF JOBS" -> "Corresponding FF Job is closed, cannot edit...";
+                case "GENERAL PO" -> "Corresponding General PO Job is closed, cannot edit...";
+                default -> null; // will never happen because of earlier check
+            };
 
             throw new RuntimeException(message);
         }
@@ -2117,7 +2125,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
             ApPurchaseInvoiceHdrDto dto,
             String documentId) {
 
-        if (dto.getPoRef() == null || dto.getPoRef().trim().isEmpty()) {
+        if (dto.getMtaRef() == null || dto.getMtaRef().trim().isEmpty()) {
             throw new ValidationException("PO Reference is mandatory for MTA PO.");
         }
 

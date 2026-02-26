@@ -80,6 +80,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
     private final DocumentDeleteService documentDeleteService;
     private final LoggingService loggingService;
     private final GlobalLogSummaryRepository globalLogSummaryRepository;
+    private final TaxMasterRepository taxMasterRepository;
 
     @Value("${app.doc-id.debit-note:300-110}")
     private String debitNoteDocId;
@@ -296,6 +297,8 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         }
 
         for (DebitNoteGlDetailDto dto : glDetails) {
+            if (dto.isEmpty()) continue;
+            
             String actionType = dto.getActionType();
             if (actionType == null || actionType.trim().isEmpty()) {
                 actionType = (dto.getDetRowId() == null) ? "ISCREATED" : "ISUPDATED";
@@ -376,7 +379,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                                 oldEntityForDelete.getDetRowId(), transactionPoid, oldEntityForDelete.getGlPoid(),
                                 oldEntityForDelete.getDrAmt(), oldEntityForDelete.getCrAmt(), oldEntityForDelete.getRemarks());
                         String deleteSummaryMessage = String.format("Row Deleted %s", deletedRecordString);
-                        summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.DELETED, docId, docKeyPoid, deleteSummaryMessage));
+                        loggingService.createLogSummaryEntry(docId, docKeyPoid, deleteSummaryMessage);
                     }
                     break;
                 }
@@ -391,7 +394,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
             for (ArDebitNoteDtl newlyCreatedEntity : newlyCreated) {
                 if (newlyCreatedEntity.getDetRowId() != null) {
                     String summaryMessage = String.format("Row Created on Debit Note GL Detail with DetRowId: %s", newlyCreatedEntity.getDetRowId());
-                    summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, summaryMessage));
+                    loggingService.createLogSummaryEntry(docId, docKeyPoid, summaryMessage);
                 }
             }
         }
@@ -426,6 +429,8 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         }
 
         for (DebitNoteChargeDetailDto dto : chargeDetails) {
+            if (dto.isEmpty()) continue;
+            
             String actionType = dto.getActionType();
             if (actionType == null || actionType.trim().isEmpty()) {
                 actionType = (dto.getDetRowId() == null) ? "ISCREATED" : "ISUPDATED";
@@ -506,7 +511,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                                 oldEntityForDelete.getDetRowId(), transactionPoid, oldEntityForDelete.getChargePoid(),
                                 oldEntityForDelete.getChargeAmount(), oldEntityForDelete.getRemarks());
                         String deleteSummaryMessage = String.format("Row Deleted %s", deletedRecordString);
-                        summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.DELETED, docId, docKeyPoid, deleteSummaryMessage));
+                        loggingService.createLogSummaryEntry(docId, docKeyPoid, deleteSummaryMessage);
                     }
                     break;
                 }
@@ -521,7 +526,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
             for (ArDebitNoteChargeDtl newlyCreatedEntity : newlyCreated) {
                 if (newlyCreatedEntity.getDetRowId() != null) {
                     String summaryMessage = String.format("Row Created on Debit Note Charge Detail with DetRowId: %s", newlyCreatedEntity.getDetRowId());
-                    summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, summaryMessage));
+                    loggingService.createLogSummaryEntry(docId, docKeyPoid, summaryMessage);
                 }
             }
         }
@@ -555,6 +560,8 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         String user = ASGHelperUtils.getCurrentUser();
 
         for (DebitNoteGlDetailDto dto : glDetails) {
+            if (dto.isEmpty()) continue;
+            
             Long incomingDetRowId = dto.getDetRowId();
             if (incomingDetRowId != null) {
                 detRowId = Math.max(detRowId, incomingDetRowId);
@@ -580,6 +587,8 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         String user = ASGHelperUtils.getCurrentUser();
 
         for (DebitNoteChargeDetailDto dto : chargeDetails) {
+            if (dto.isEmpty()) continue;
+            
             Long incomingDetRowId = dto.getDetRowId();
             if (incomingDetRowId != null) {
                 detRowId = Math.max(detRowId, incomingDetRowId);
@@ -817,10 +826,20 @@ public class DebitNoteServiceImpl implements DebitNoteService {
             dto.setChargeDetails(lovService.getDetailsByPoidAndLovName(entity.getChargePoid(), chargeLov));
         }
         if (entity.getTaxPoid() != null) {
-            dto.setTaxDetails(lovService.getDetailsByPoidAndLovName(entity.getTaxPoid(), "DR_TAX_MASTER"));
+
+            LovGetListDto lovGetListDto = lovService.getDetailsByPoidAndLovName(entity.getTaxPoid(), "DR_TAX_MASTER");
+
+            if (lovGetListDto == null || lovGetListDto.getCode() == null) {
+
+                lovGetListDto = taxMasterRepository.findByTaxPoid(entity.getTaxPoid())
+                        .map(tm -> new LovGetListDto(tm.getTaxPoid(), tm.getTaxCode(), tm.getTaxName(), tm.getTaxPoid(), tm.getTaxName(), tm.getSeqNo(), null))
+                        .orElse(null);
+            }
+
+            dto.setTaxDetails(lovGetListDto);
         }
 
-        if (entity.getCostPoid() != null && (refType.equalsIgnoreCase("FDA") || refType.equalsIgnoreCase("FDA_DIRECT") ) ) {
+        if (entity.getCostPoid() != null) {
             dto.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(Long.valueOf(entity.getCostPoid()), "DN_GL_COST_CENTRE"));
         }
         

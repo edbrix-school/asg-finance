@@ -80,6 +80,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
     private final DocumentDeleteService documentDeleteService;
     private final LoggingService loggingService;
     private final GlobalLogSummaryRepository globalLogSummaryRepository;
+    private final TaxMasterRepository taxMasterRepository;
 
     @Value("${app.doc-id.debit-note:300-110}")
     private String debitNoteDocId;
@@ -825,7 +826,17 @@ public class DebitNoteServiceImpl implements DebitNoteService {
             dto.setChargeDetails(lovService.getDetailsByPoidAndLovName(entity.getChargePoid(), chargeLov));
         }
         if (entity.getTaxPoid() != null) {
-            dto.setTaxDetails(lovService.getDetailsByPoidAndLovName(entity.getTaxPoid(), "DR_TAX_MASTER"));
+
+            LovGetListDto lovGetListDto = lovService.getDetailsByPoidAndLovName(entity.getTaxPoid(), "DR_TAX_MASTER");
+
+            if (lovGetListDto == null || lovGetListDto.getCode() == null) {
+
+                lovGetListDto = taxMasterRepository.findByTaxPoid(entity.getTaxPoid())
+                        .map(tm -> new LovGetListDto(tm.getTaxPoid(), tm.getTaxCode(), tm.getTaxName(), tm.getTaxPoid(), tm.getTaxName(), tm.getSeqNo(), null))
+                        .orElse(null);
+            }
+
+            dto.setTaxDetails(lovGetListDto);
         }
 
         if (entity.getCostPoid() != null && (refType.equalsIgnoreCase("FDA") || refType.equalsIgnoreCase("FDA_DIRECT") ) ) {

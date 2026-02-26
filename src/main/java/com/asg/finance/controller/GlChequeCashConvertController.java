@@ -7,6 +7,7 @@ import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.GlChequeCashConvertHdrDto;
+import com.asg.finance.dto.GlChequeCashConvertValidateEditResponseDto;
 import com.asg.finance.dto.GlChequeConversionLoadResponseDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.finance.service.GlChequeCashConvertService;
@@ -27,6 +28,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import org.apache.commons.lang3.StringUtils;
+
+import java.util.List;
 import java.util.Map;
 
 import static com.asg.common.lib.dto.response.ApiResponse.error;
@@ -69,6 +73,28 @@ public class GlChequeCashConvertController {
         return success("GL Cheque Cash Convert Records fetched successfully", result);
     }
 
+    @AllowedAction(UserRolesRightsEnum.EDIT)
+    @GetMapping("/validate-edit/{transactionPoid}")
+    @Operation(
+            summary = "Validate record for edit",
+            description = "Validates whether the GL Cheque Cash Convert record is eligible for edit (same as legacy DocumentBeforeEdit). " +
+                    "Frontend should call this when the user clicks Edit: if response valid=true, allow edit mode; otherwise show the returned error message."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Validation passed, record is eligible for edit",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = GlChequeCashConvertValidateEditResponseDto.class))),
+            @ApiResponse(responseCode = "400", description = "Validation failed (e.g. not in PENDING status)",
+                    content = @Content(mediaType = "application/json")),
+            @ApiResponse(responseCode = "404", description = "Record not found for the given transactionPoid",
+                    content = @Content(mediaType = "application/json"))
+    })
+    public ResponseEntity<?> validateForEdit(
+            @Parameter(description = "Transaction POID of the record to validate for edit", required = true, example = "301")
+            @PathVariable Long transactionPoid) {
+        GlChequeCashConvertValidateEditResponseDto result = service.validateForEdit(transactionPoid);
+        return success("Record is eligible for edit", result);
+    }
 
     @Operation(
             summary = "Soft delete a GL Cheque Cash Convert record",
@@ -415,7 +441,10 @@ public class GlChequeCashConvertController {
             @RequestParam(name = "chqAcNo", required = false) @Parameter(name = "chqAcNo", example = "0100000007343") String chequeAccNumber,
             @RequestParam(required = true) @Parameter(example = "CHEQUE_TO_CHEQUE") String type
     ) {
-        java.util.List<GlChequeConversionLoadResponseDto> data = service.loadGlChequeConversion(chequeNumber, chequeAccNumber, type);
+        if (StringUtils.isBlank(type)) {
+            return error("Type is required for load", 400);
+        }
+        List<GlChequeConversionLoadResponseDto> data = service.loadGlChequeConversion(chequeNumber, chequeAccNumber, type);
         return success("GL Cheque Cash Conversion load fetched successfully", data);
     }
 

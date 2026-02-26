@@ -108,7 +108,6 @@ public class ArDebitNoteHdr {
     @Column(name = "PO_REF", length = 300)
     private String poRef;
 
-    @AuditIgnore
     @Column(name = "BANK_POID")
     private Long bankPoid;
 

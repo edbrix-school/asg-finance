@@ -44,12 +44,12 @@ public class InsuranceMasterRequestDto {
     @NotNull(message = "Rate is mandatory")
     private BigDecimal rate;
 
-    @NotNull(message = "Insurance Amount is mandatory")
+    @NotNull(message = "Insurance Amount format is not correct")
     @DecimalMin(value = "0.01", message = "Insurance Amount format is not correct")
     @Digits(integer = 15, fraction = 2, message = "Insurance Amount format is not correct")
     private BigDecimal insuranceAmount;
 
-    @NotNull(message = "Premium Amount is mandatory")
+    @NotNull(message = "Premium Amount format is not correct")
     @DecimalMin(value = "0.01", message = "Premium Amount format is not correct")
     @Digits(integer = 15, fraction = 2, message = "Premium Amount format is not correct")
     private BigDecimal premiumAmount;

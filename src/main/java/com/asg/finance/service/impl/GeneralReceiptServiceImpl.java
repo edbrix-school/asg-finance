@@ -897,18 +897,18 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                     .filter(amount -> amount != null)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            log.debug("Amount validation - Receipt amount: {}, Payment total: {}",
-                    header.getReceiptAmount(), paymentTotal);
+            BigDecimal bhdAmount = header.getBhdAmount() != null ? header.getBhdAmount() : header.getReceiptAmount().multiply(header.getRate());
 
-            if (header.getReceiptAmount().compareTo(paymentTotal) != 0) {
+            log.debug("Amount validation - BHD amount: {}, Payment total: {}",
+                    bhdAmount, paymentTotal);
+
+            if (bhdAmount.compareTo(paymentTotal) != 0) {
                 throw new ValidationException(String.format(
-                        "Total amount (%.3f) does not match sum of payment amounts (%.3f)",
-                        header.getReceiptAmount(), paymentTotal));
+                        "Total BHD amount (%.3f) does not match sum of payment amounts (%.3f)",
+                        bhdAmount, paymentTotal));
             }
         }
 
-        // 4. Validate payment details for CHEQUE, TT, and CARD
-        validatePaymentDetails(request.getPayments());
 
         // 5. Validate bill amount matches receipt amount
         validateBillAmountMatchesReceiptAmount(request.getBills(), request.getExtraCharges(), header.getReceiptAmount());
@@ -964,42 +964,6 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
             throw new ValidationException(String.format(
                     "Receipt amount (%.3f) does not match bill amount (%.3f) + charges (%.3f) = %.3f",
                     receiptAmount, billTotal, chargeTotal, expectedTotal));
-        }
-    }
-
-    private void validatePaymentDetails(List<GeneralReceiptPaymentDto> payments) {
-        if (payments == null || payments.isEmpty()) {
-            return;
-        }
-
-        for (GeneralReceiptPaymentDto payment : payments) {
-            String type = payment.getType();
-            
-            if ("CHEQUE".equals(type)) {
-                if (payment.getChequeNo() == null || payment.getChequeNo().trim().isEmpty()) {
-                    throw new ValidationException("Cheque number is required for CHEQUE payment type");
-                }
-                if (payment.getChequeDate() == null) {
-                    throw new ValidationException("Cheque date is required for CHEQUE payment type");
-                }
-                if (payment.getBankPoid() == null) {
-                    throw new ValidationException("Bank is required for CHEQUE payment type");
-                }
-            } else if ("TT".equals(type)) {
-                if (payment.getTtRef() == null || payment.getTtRef().trim().isEmpty()) {
-                    throw new ValidationException("TT reference is required for TT payment type");
-                }
-                if (payment.getTtBankPoid() == null) {
-                    throw new ValidationException("TT Bank is required for TT payment type");
-                }
-            } else if ("CARD".equals(type)) {
-                if (payment.getChequeNo() == null || payment.getChequeNo().trim().isEmpty()) {
-                    throw new ValidationException("Card number is required for CARD payment type");
-                }
-                if (payment.getCardPoid() == null) {
-                    throw new ValidationException("Card type is required for CARD payment type");
-                }
-            }
         }
     }
 

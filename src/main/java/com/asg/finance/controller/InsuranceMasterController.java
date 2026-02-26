@@ -81,6 +81,7 @@ public class InsuranceMasterController {
             @Valid @RequestBody InsuranceMasterRequestDto request
     ) {
         try {
+            validatePicDetails(request);
             InsuranceMasterResponseDto response = insuranceMasterService.createInsuranceMaster(request);
             return success("Insurance Master created successfully", response);
         } catch (Exception ex) {
@@ -190,6 +191,7 @@ public class InsuranceMasterController {
             @Valid @RequestBody InsuranceMasterRequestDto request
     ) {
         try {
+            validatePicDetails(request);
             InsuranceMasterResponseDto response = insuranceMasterService.updateInsuranceMaster(insuranceId, request);
             return success("Insurance Master updated successfully", response);
         } catch (Exception ex) {
@@ -315,10 +317,27 @@ public class InsuranceMasterController {
             @Valid @RequestBody InsuranceMasterRequestDto request
     ) {
         try {
+            validatePicDetails(request);
             InsuranceMasterResponseDto response = insuranceMasterService.renewInsurance(insuranceId, request);
             return success("Details successfully added", response);
         } catch (Exception ex) {
             return internalServerError(ex.getMessage());
         }
     }
+
+    private void validatePicDetails(InsuranceMasterRequestDto request) {
+        if (request.getPicDetails() != null) {
+            request.getPicDetails().stream()
+                    .filter(pic -> !pic.isDeleted())
+                    .forEach(pic -> {
+                        if (pic.getRolePoid() == null) throw new ValidationException("Role is mandatory");
+                        if (pic.getContactType() == null || pic.getContactType().isBlank())
+                            throw new ValidationException("Contact Type is mandatory");
+                        if (pic.getPicPersonPoid() == null) throw new ValidationException("PIC Person is mandatory");
+                        if (pic.getFromDate() == null) throw new ValidationException("From Date is mandatory");
+                        if (pic.getToDate() == null) throw new ValidationException("To Date is mandatory");
+                    });
+        }
+    }
+
 }

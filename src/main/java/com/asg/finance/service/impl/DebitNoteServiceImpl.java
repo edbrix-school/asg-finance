@@ -839,7 +839,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
             dto.setTaxDetails(lovGetListDto);
         }
 
-        if (entity.getCostPoid() != null && (refType.equalsIgnoreCase("FDA") || refType.equalsIgnoreCase("FDA_DIRECT") ) ) {
+        if (entity.getCostPoid() != null) {
             dto.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(Long.valueOf(entity.getCostPoid()), "DN_GL_COST_CENTRE"));
         }
         

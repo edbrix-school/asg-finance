@@ -318,7 +318,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
     public ApPurchaseInvoiceHdrDto createApPurchaseInvoice(ApPurchaseInvoiceHdrDto apPurchaseInvoiceHdrDto, String documentId) {
 
         validateBeforePersist(apPurchaseInvoiceHdrDto, documentId);
-        validateRefTypeSpecific(apPurchaseInvoiceHdrDto, documentId);
+        //validateRefTypeSpecific(apPurchaseInvoiceHdrDto, documentId);
 
         ApPurchaseInvoiceHdrEntity apPurchaseInvoiceHdrEntity = new ApPurchaseInvoiceHdrEntity();
         apPurchaseInvoiceHdrEntity.setTransactionDate(apPurchaseInvoiceHdrDto.getTransactionDate() != null ? apPurchaseInvoiceHdrDto.getTransactionDate() : LocalDate.now());
@@ -853,7 +853,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
         if (apPurchaseInvoiceHdrDto.getTransactionDate() != null)
             validateBeforePersist(apPurchaseInvoiceHdrDto, UserContext.getDocumentId());
-        validateRefTypeSpecific(apPurchaseInvoiceHdrDto, UserContext.getDocumentId());
+       // validateRefTypeSpecific(apPurchaseInvoiceHdrDto, UserContext.getDocumentId());
             apPurchaseInvoiceHdrEntity.setTransactionDate(apPurchaseInvoiceHdrDto.getTransactionDate());
         apPurchaseInvoiceHdrEntity.setGroupPoid(apPurchaseInvoiceHdrDto.getGroupPoid());
        // apPurchaseInvoiceHdrEntity.setDocRef(apPurchaseInvoiceHdrDto.getDocRef());
@@ -2117,7 +2117,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
             ApPurchaseInvoiceHdrDto dto,
             String documentId) {
 
-        if (dto.getPoRef() == null || dto.getPoRef().trim().isEmpty()) {
+        if (dto.getMtaRef() == null || dto.getMtaRef().trim().isEmpty()) {
             throw new ValidationException("PO Reference is mandatory for MTA PO.");
         }
 

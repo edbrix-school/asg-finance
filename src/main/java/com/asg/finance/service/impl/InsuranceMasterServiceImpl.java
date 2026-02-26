@@ -656,7 +656,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
     }
 
     private InsuranceMasterResponseDto mapToResponseDto(InsuranceMaster entity) {
-        return InsuranceMasterResponseDto.builder()
+        InsuranceMasterResponseDto dto = InsuranceMasterResponseDto.builder()
                 .insurancePoid(entity.getTransactionPoid())
                 .docRef(entity.getDocRef())
                 .groupPoid(entity.getGroupPoid())
@@ -687,6 +687,25 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                 .picDetails(mapPicDetails(entity.getPicDetails()))
                 .renewalLogs(mapRenewalLogs(entity.getRenewalLogs()))
                 .build();
+        
+        // Populate header LOV details
+        if (entity.getInsuranceType() != null) {
+            dto.setInsuranceTypeDetails(lovService.getDetailsByCodeAndLovName(entity.getInsuranceType(), "INSURANCE_TYPE"));
+        }
+        if (entity.getInsuranceCategory() != null) {
+            dto.setInsuranceCategoryDetails(lovService.getDetailsByCodeAndLovName(entity.getInsuranceCategory(), "INSURANCE_CATEGORY"));
+        }
+        if (entity.getInsuranceProvider() != null) {
+            dto.setInsuranceProviderDetails(lovService.getDetailsByCodeAndLovName(entity.getInsuranceProvider(), "INSURANCE_SUPPLIER_MASTER"));
+        }
+        if (entity.getCurrencyPoid() != null) {
+            dto.setCurrencyDetails(lovService.getDetailsByPoidAndLovName(entity.getCurrencyPoid(), "CURRENCY"));
+        }
+        if (entity.getPaymentFrequency() != null) {
+            dto.setPaymentFrequencyDetails(lovService.getDetailsByCodeAndLovName(entity.getPaymentFrequency(), "INSURANCE_PAYMENT_TYPE"));
+        }
+        
+        return dto;
     }
 
     private String calculateStatus(InsuranceMaster entity) {
@@ -767,6 +786,10 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                             // ignore
                         }
                     }
+                    LovGetListDto contactTypeLov = null;
+                    if (e.getContactType() != null) {
+                        contactTypeLov = getLovByCode(e.getContactType(), "INSURANCE_CONTACT_TYPE");
+                    }
                     LovGetListDto picPersonLov = null;
                     if (e.getPicPersonPoid() != null) {
                         picPersonLov = getLovByPoid(e.getPicPersonPoid(), "INSURANCE_PROPERTY_PIC");
@@ -775,6 +798,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                             .detRowId(e.getDetRowId())
                             .role(roleDetails)
                             .contactType(e.getContactType())
+                            .contactTypeDetails(contactTypeLov)
                             .picPerson(picPersonLov)
                             .fromDate(e.getFromDate())
                             .toDate(e.getToDate())

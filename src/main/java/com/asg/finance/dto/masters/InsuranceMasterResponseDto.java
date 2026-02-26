@@ -1,5 +1,6 @@
 package com.asg.finance.dto.masters;
 
+import com.asg.common.lib.dto.LovGetListDto;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -41,6 +42,11 @@ public class InsuranceMasterResponseDto {
     private LocalDateTime createdDate;
     private String lastModifiedBy;
     private LocalDateTime lastModifiedDate;
+    private LovGetListDto insuranceTypeDetails;
+    private LovGetListDto insuranceCategoryDetails;
+    private LovGetListDto insuranceProviderDetails;
+    private LovGetListDto currencyDetails;
+    private LovGetListDto paymentFrequencyDetails;
 
     private List<InsuranceEmployeeDetailResponseDto> employeeDetails;
     private List<InsurancePropertyDetailResponseDto> propertyDetails;

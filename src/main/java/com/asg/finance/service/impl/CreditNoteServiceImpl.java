@@ -1968,7 +1968,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         Long userPoid = UserContext.getUserPoid() != null ? UserContext.getUserPoid() : 1L;
 
         for (CreditNoteGLDetailDto glDto : glDetails) {
-            if (glDto == null || glDto.getDetRowId() == null || glDto.getActionType() == null || !glDto.getActionType().equalsIgnoreCase("isupdated")) {
+            if (glDto == null || glDto.getDetRowId() == null) {
                 continue;
             }
             if (!glMasterRepository.existsByGlPoid(glDto.getGlPoid())) {
@@ -2072,7 +2072,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         Long userPoid = UserContext.getUserPoid() != null ? UserContext.getUserPoid() : 1L;
         long inital = 1L;
         for (CreditNoteGLDetailDto glDto : glDetails) {
-            if (glDto == null || glDto.getDetRowId() == null || glDto.getActionType() == null || !glDto.getActionType().equalsIgnoreCase("isupdated")) {
+            if (glDto == null || glDto.getDetRowId() == null) {
                 continue;
             }
 

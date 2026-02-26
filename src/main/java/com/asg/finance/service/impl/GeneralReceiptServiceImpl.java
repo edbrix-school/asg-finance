@@ -993,8 +993,8 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                     throw new ValidationException("TT Bank is required for TT payment type");
                 }
             } else if ("CARD".equals(type)) {
-                if (payment.getChequeNo() == null || payment.getChequeNo().trim().isEmpty()) {
-                    throw new ValidationException("Card number is required for CARD payment type");
+                if (payment.getCreditCardRef() == null || payment.getCreditCardRef().trim().isEmpty()) {
+                    throw new ValidationException("Card reference is required for CARD payment type");
                 }
                 if (payment.getCardPoid() == null) {
                     throw new ValidationException("Card type is required for CARD payment type");

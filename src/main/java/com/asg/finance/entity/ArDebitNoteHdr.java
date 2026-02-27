@@ -121,7 +121,6 @@ public class ArDebitNoteHdr {
     @Column(name = "TIN_NUMBER", length = 100)
     private String tinNumber;
 
-    @AuditIgnore
     @Column(name = "OTHER_CURR_AMOUNT")
     private BigDecimal otherCurrAmount;
 

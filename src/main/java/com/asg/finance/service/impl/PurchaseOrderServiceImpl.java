@@ -508,7 +508,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         po.setDiscount(request.getDiscount());
         po.setExpenseBySupplier(request.getExpenseBySupplier());
         po.setGrandTotal(request.getGrandTotal());
-//        po.setRemarks(request.getRemarks());
+        po.setRemarks(request.getRemarks());
         po.setRfqPoid(request.getRfqPoid());
         po.setPoStatus(request.getPoStatus());
         po.setItemTotal(request.getItemTotal());

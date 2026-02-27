@@ -45,6 +45,9 @@ public class GeneralReceiptHeaderDto {
     @Schema(description = "Total receipt amount", example = "1000", required = true)
     private BigDecimal receiptAmount;
 
+    @Schema(description = "BHD amount (calculated as receiptAmount * rate)", example = "376")
+    private BigDecimal bhdAmount;
+
     @NotBlank(message = "Ref Type is required")
     @Pattern(regexp = "GENERAL|FDA_ADVANCE", message = "Ref Type must be GENERAL, FDA_ADVANCE")
     @Schema(description = "Reference type", example = "GENERAL", required = true, allowableValues = {"GENERAL", "FDA_ADVANCE"})

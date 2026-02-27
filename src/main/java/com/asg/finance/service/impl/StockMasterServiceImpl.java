@@ -40,7 +40,7 @@ public class StockMasterServiceImpl implements StockMasterService {
                 .stockUnitPoid(entity.getStockUnitPoid())
                 .stockCost(entity.getStockCost())
                 .currencyCode(entity.getCurrencyCode())
-                .taxPoid(entity.getTaxPoid())
+                .taxPoid(entity.getInputTaxPoid())
                 .serviceItem(entity.getServiceItem())
                 .categoryCode(entity.getCategoryCode())
                 .build();

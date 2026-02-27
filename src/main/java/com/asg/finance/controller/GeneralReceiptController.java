@@ -421,6 +421,30 @@ public class GeneralReceiptController {
     }
 
     @Operation(
+            summary = "Check if GL is Billwise Enabled",
+            description = """
+                    Calls PROC_AR_GL_BILWISE_YN to check whether a given GL account is billwise enabled.
+
+                    ### Response
+                    Returns billwise flag as:
+                    - "Y" → Billwise enabled
+                    - "N" → Not billwise enabled
+                    """
+    )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
+    @GetMapping("/gl-billwise/{glPoid}")
+    public ResponseEntity<?> getGLBillwiseFlag(
+            @Parameter(description = "GL POID", required = true, example = "5001")
+            @PathVariable Long glPoid) {
+        try {
+            String flag = generalReceiptService.getGlBillwiseYn(glPoid);
+            return success("GL billwise flag fetched successfully", flag);
+        } catch (Exception ex) {
+            return internalServerError("Failed to fetch GL billwise flag: " + ex.getMessage());
+        }
+    }
+
+    @Operation(
             summary = "Get GL Account for Charge Type",
             description = "Fetch the GL account POID configured for a specific charge type (e.g., BANK_CHARGES, ROUND_OFF, EXCHANGE_GAIN_LOSS)"
     )

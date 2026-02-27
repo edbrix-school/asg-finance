@@ -27,6 +27,7 @@ import com.asg.finance.service.DebitNoteService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -37,6 +38,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import javax.sql.DataSource;
 import java.math.BigDecimal;
+import java.sql.CallableStatement;
+import java.sql.Connection;
+import java.sql.Types;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -76,6 +80,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
     private final DocumentDeleteService documentDeleteService;
     private final LoggingService loggingService;
     private final GlobalLogSummaryRepository globalLogSummaryRepository;
+    private final TaxMasterRepository taxMasterRepository;
 
     @Value("${app.doc-id.debit-note:300-110}")
     private String debitNoteDocId;
@@ -88,6 +93,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         validateDebitNoteInput(debitNoteDto);
 
         applyBusinessLogic(debitNoteDto);
+        applyAutoBalancing(debitNoteDto);
 
         ArDebitNoteHdr entity = mapToEntity(debitNoteDto);
         ArDebitNoteHdr savedEntity = debitNoteHdrRepository.saveAndFlush(entity);
@@ -113,7 +119,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         // Log the creation
         loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), savedEntity.getTransactionPoid().toString());
 
-        return result;
+        return getDebitNote(savedEntity.getTransactionPoid());
     }
 
     @Override
@@ -142,9 +148,14 @@ public class DebitNoteServiceImpl implements DebitNoteService {
 
         BeanUtils.copyProperties(debitNoteDto, existingEntity, "transactionPoid", "createdBy", "createdDate", "groupPoid", "companyPoid", "transactionDate");
 
+        existingEntity.setMultiCompany(debitNoteDto.getMultiCompany() != null && debitNoteDto.getMultiCompany() ? "Y" : "N");
+        existingEntity.setRemarksPrintable(debitNoteDto.getRemarksPrintable() != null && debitNoteDto.getRemarksPrintable() ? "Y" : "N");
+        existingEntity.setShowBankDetailsInPrint(debitNoteDto.getShowBankDetailsInPrint() != null && debitNoteDto.getShowBankDetailsInPrint() ? "Y" : "N");
         existingEntity.setGroupPoid(UserContext.getGroupPoid());
         existingEntity.setCompanyPoid(UserContext.getCompanyPoid());
         existingEntity.setOtherCurrAmount(debitNoteDto.getOtherCurrAmount());
+        existingEntity.setFdaRef(debitNoteDto.getFdaRefPoid().toString());
+        existingEntity.setFdaDirectRef(debitNoteDto.getFdaDirectRefPoid().toString());
 
         existingEntity.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
         existingEntity.setLastModifiedDate(LocalDateTime.now());
@@ -170,14 +181,12 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         // Load breakups into response
        // loadBreakups(result, transactionPoid);
 
-        // Log the update
         loggingService.logChanges(oldEntity, existingEntity, ArDebitNoteHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), transactionPoid.toString());
         if (!detailSummaryLogs.isEmpty()) {
             globalLogSummaryRepository.saveAll(detailSummaryLogs);
         }
 
-        return result;
+        return getDebitNote(transactionPoid);
     }
 
     @Override
@@ -192,14 +201,6 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                 deleteReasonDto,
                 entity.getTransactionDate()
         );
-    }
-
-    private String getOldJobPoid(ArDebitNoteHdr entity, String refType) {
-        return switch (refType != null ? refType.toUpperCase() : "") {
-            case "FDA JOBS" -> entity.getFdaRef();
-            case "FF JOBS" -> entity.getFfRef() != null ? entity.getFfRef() : null;
-            default -> null;
-        };
     }
 
     @Override
@@ -245,8 +246,13 @@ public class DebitNoteServiceImpl implements DebitNoteService {
             debitNoteDto.setDueDate(LocalDate.now().plusDays(debitNoteDto.getCreditPeriod()));
         }
 
-        if (!"BHD".equals(debitNoteDto.getCurrencyCode()) && debitNoteDto.getCurrencyRate() != null && debitNoteDto.getGrandTotal() != null) {
-            debitNoteDto.setBhdAmount(debitNoteDto.getGrandTotal().multiply(debitNoteDto.getCurrencyRate()));
+        if (!"BHD".equals(debitNoteDto.getCurrencyCode())
+                && debitNoteDto.getCurrencyRate() != null
+                && debitNoteDto.getGrandTotal() != null) {
+            BigDecimal newBhd = debitNoteDto.getGrandTotal().multiply(debitNoteDto.getCurrencyRate());
+            if (debitNoteDto.getBhdAmount() == null || debitNoteDto.getBhdAmount().compareTo(newBhd) != 0) {
+                debitNoteDto.setBhdAmount(newBhd);
+            }
         }
     }
 
@@ -265,6 +271,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         if (debitNoteDto.getChargeDetails() != null && !debitNoteDto.getChargeDetails().isEmpty()) {
             saveChargeDetails(debitNoteDto.getChargeDetails(), transactionPoid);
         }
+
     }
 
     private void updateGlDetailsWithLogging(List<DebitNoteGlDetailDto> glDetails, Long transactionPoid, List<GlobalLogSummary> summaryLogs) {
@@ -290,6 +297,8 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         }
 
         for (DebitNoteGlDetailDto dto : glDetails) {
+            if (dto.isEmpty()) continue;
+            
             String actionType = dto.getActionType();
             if (actionType == null || actionType.trim().isEmpty()) {
                 actionType = (dto.getDetRowId() == null) ? "ISCREATED" : "ISUPDATED";
@@ -370,7 +379,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                                 oldEntityForDelete.getDetRowId(), transactionPoid, oldEntityForDelete.getGlPoid(),
                                 oldEntityForDelete.getDrAmt(), oldEntityForDelete.getCrAmt(), oldEntityForDelete.getRemarks());
                         String deleteSummaryMessage = String.format("Row Deleted %s", deletedRecordString);
-                        summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.DELETED, docId, docKeyPoid, deleteSummaryMessage));
+                        loggingService.createLogSummaryEntry(docId, docKeyPoid, deleteSummaryMessage);
                     }
                     break;
                 }
@@ -385,7 +394,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
             for (ArDebitNoteDtl newlyCreatedEntity : newlyCreated) {
                 if (newlyCreatedEntity.getDetRowId() != null) {
                     String summaryMessage = String.format("Row Created on Debit Note GL Detail with DetRowId: %s", newlyCreatedEntity.getDetRowId());
-                    summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, summaryMessage));
+                    loggingService.createLogSummaryEntry(docId, docKeyPoid, summaryMessage);
                 }
             }
         }
@@ -420,6 +429,8 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         }
 
         for (DebitNoteChargeDetailDto dto : chargeDetails) {
+            if (dto.isEmpty()) continue;
+            
             String actionType = dto.getActionType();
             if (actionType == null || actionType.trim().isEmpty()) {
                 actionType = (dto.getDetRowId() == null) ? "ISCREATED" : "ISUPDATED";
@@ -500,7 +511,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                                 oldEntityForDelete.getDetRowId(), transactionPoid, oldEntityForDelete.getChargePoid(),
                                 oldEntityForDelete.getChargeAmount(), oldEntityForDelete.getRemarks());
                         String deleteSummaryMessage = String.format("Row Deleted %s", deletedRecordString);
-                        summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.DELETED, docId, docKeyPoid, deleteSummaryMessage));
+                        loggingService.createLogSummaryEntry(docId, docKeyPoid, deleteSummaryMessage);
                     }
                     break;
                 }
@@ -515,7 +526,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
             for (ArDebitNoteChargeDtl newlyCreatedEntity : newlyCreated) {
                 if (newlyCreatedEntity.getDetRowId() != null) {
                     String summaryMessage = String.format("Row Created on Debit Note Charge Detail with DetRowId: %s", newlyCreatedEntity.getDetRowId());
-                    summaryLogs.add(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, summaryMessage));
+                    loggingService.createLogSummaryEntry(docId, docKeyPoid, summaryMessage);
                 }
             }
         }
@@ -535,11 +546,11 @@ public class DebitNoteServiceImpl implements DebitNoteService {
     private void loadDetails(DebitNoteHeaderDto dto, Long transactionPoid, String refType) {
         // always read GL details (if any)
         List<ArDebitNoteDtl> glDetails = debitNoteDtlRepository.findByTransactionPoid(transactionPoid);
-        dto.setGlDetails(glDetails.stream().map(this::mapGlDetailToDto).collect(Collectors.toList()));
+        dto.setGlDetails(glDetails.stream().map(entity -> mapGlDetailToDto(entity, refType)).collect(Collectors.toList()));
 
         // read charge details as well
         List<ArDebitNoteChargeDtl> chargeDetails = debitNoteChargeDtlRepository.findByTransactionPoid(transactionPoid);
-        dto.setChargeDetails(chargeDetails.stream().map(this::mapChargeDetailToDto).collect(Collectors.toList()));
+        dto.setChargeDetails(chargeDetails.stream().map(entity -> mapChargeDetailToDto(entity, refType)).collect(Collectors.toList()));
     }
 
     private void saveGlDetails(List<DebitNoteGlDetailDto> glDetails, Long transactionPoid) {
@@ -549,6 +560,8 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         String user = ASGHelperUtils.getCurrentUser();
 
         for (DebitNoteGlDetailDto dto : glDetails) {
+            if (dto.isEmpty()) continue;
+            
             Long incomingDetRowId = dto.getDetRowId();
             if (incomingDetRowId != null) {
                 detRowId = Math.max(detRowId, incomingDetRowId);
@@ -574,6 +587,8 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         String user = ASGHelperUtils.getCurrentUser();
 
         for (DebitNoteChargeDetailDto dto : chargeDetails) {
+            if (dto.isEmpty()) continue;
+            
             Long incomingDetRowId = dto.getDetRowId();
             if (incomingDetRowId != null) {
                 detRowId = Math.max(detRowId, incomingDetRowId);
@@ -708,17 +723,15 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         dto.setDueDate(entity.getDueDate());
         dto.setCreditPeriod(entity.getCreditPeriod());
         dto.setPoRef(entity.getPoRef());
-        dto.setFdaRefPoid(
-                entity.getFdaRef() != null ? Long.valueOf(entity.getFdaRef()) : null
-        );
-        dto.setFdaDirectRefPoid(entity.getFdaDirectRef() != null ? Long.valueOf(entity.getFdaDirectRef()) : null);
+        dto.setFdaRefPoid(parseLongSafely(entity.getFdaRef()));
+        dto.setFdaDirectRefPoid(parseLongSafely(entity.getFdaDirectRef()));
         dto.setBankPoid(entity.getBankPoid());
         dto.setTinNumber(entity.getTinNumber());
         dto.setBhdAmount(entity.getBhdAmount());
         dto.setOtherCurrAmount(entity.getOtherCurrAmount());
         dto.setVoucherType(entity.getVoucherType());
         dto.setCostRefNumber(entity.getCostRefNumber());
-        dto.setCostGroupPoid(entity.getCostGroup() != null && !entity.getCostGroup().isEmpty() ? Long.valueOf(entity.getCostGroup()) : null);
+        dto.setCostGroupPoid(parseLongSafely(entity.getCostGroup()));
         dto.setPrintDivisionPoid(entity.getPrintDivisionPoid());
         dto.setMultiCompany("Y".equals(entity.getMultiCompany()));
         dto.setRemarksPrintable("Y".equals(entity.getRemarksPrintable()));
@@ -726,10 +739,35 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         dto.setDeleted(entity.getDeleted());
         dto.setDocRef(entity.getDocRef());
         dto.setVoyageRef(entity.getVoyageRef());
+        
+        // Populate header LOV details
+        if (dto.getFdaRefPoid() != null) {
+            dto.setFdaRefDetails(lovService.getDetailsByPoidAndLovName(dto.getFdaRefPoid(), "PROCESS_FDA_IN_PI"));
+        }
+        if (dto.getFdaDirectRefPoid() != null) {
+            dto.setFdaDirectRefDetails(lovService.getDetailsByPoidAndLovName(dto.getFdaDirectRefPoid(), "PROCESS_FDA_DIRECT_IN_DN"));
+        }
+        if (dto.getCostGroupPoid() != null) {
+            dto.setCostGroupDetails(lovService.getDetailsByPoidAndLovName(dto.getCostGroupPoid(), "DN_GL_COST_GROUPS"));
+        }
+        if (dto.getDisposalJvRefPoid() != null) {
+            dto.setDisposalJvRefDetails(lovService.getDetailsByPoidAndLovName(dto.getDisposalJvRefPoid(), "DISPOSAL_JV_REF_FOR_DN"));
+        }
+        
         return dto;
     }
 
-    private DebitNoteGlDetailDto mapGlDetailToDto(ArDebitNoteDtl entity) {
+    private Long parseLongSafely(String value) {
+        if (value == null || value.trim().isEmpty()) return null;
+        try {
+            return Long.valueOf(value.trim());
+        } catch (NumberFormatException e) {
+            log.warn("Failed to parse Long from value: {}", value);
+            return null;
+        }
+    }
+
+    private DebitNoteGlDetailDto mapGlDetailToDto(ArDebitNoteDtl entity, String refType) {
         DebitNoteGlDetailDto dto = new DebitNoteGlDetailDto();
 
         dto.setTransactionPoid(entity.getTransactionPoid());
@@ -745,10 +783,24 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         dto.setTaxAmount(entity.getTaxAmount());
         dto.setTotalAmount(entity.getTotalAmount());
 
+        // Populate LOV details based on refType
+        if (entity.getType() != null) {
+            dto.setTypeDetails(lovService.getDetailsByCodeAndLovName(entity.getType(), "ACC_TYPE_SHORT"));
+        }
+        if (entity.getGlPoid() != null) {
+            dto.setGlDetails(lovService.getDetailsByPoidAndLovName(entity.getGlPoid(), "GL_MASTER_LEDGERS_A_L"));
+        }
+        if (entity.getTaxPoid() != null) {
+            dto.setTaxDetails(lovService.getDetailsByPoidAndLovName(entity.getTaxPoid(), "DR_TAX_MASTER"));
+        }
+        if (entity.getCompanyPoid() != null) {
+            dto.setCompanyDetails(lovService.getDetailsByPoidAndLovName(entity.getCompanyPoid(), "COMPANY"));
+        }
+
         return dto;
     }
 
-    private DebitNoteChargeDetailDto mapChargeDetailToDto(ArDebitNoteChargeDtl entity) {
+    private DebitNoteChargeDetailDto mapChargeDetailToDto(ArDebitNoteChargeDtl entity, String refType) {
         DebitNoteChargeDetailDto dto = new DebitNoteChargeDetailDto();
 
         dto.setTransactionPoid(entity.getTransactionPoid());
@@ -764,6 +816,33 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         dto.setCostPoid(entity.getCostPoid());
         dto.setCostGroup(entity.getCostGroup());
         dto.setCheckAll(entity.getCheckAll());
+        dto.setCostAmount(entity.getPdaAmount());
+        
+        // Populate LOV details based on refType
+        if (entity.getChargePoid() != null) {
+            String chargeLov = "OTHER_CHARGES".equalsIgnoreCase(refType) 
+                ? "DEBIT_NOTE_OTHER_CHARGES" 
+                : "CHARGE_MASTER_IN_DN_FOR_SH";
+            dto.setChargeDetails(lovService.getDetailsByPoidAndLovName(entity.getChargePoid(), chargeLov));
+        }
+        if (entity.getTaxPoid() != null) {
+
+            LovGetListDto lovGetListDto = lovService.getDetailsByPoidAndLovName(entity.getTaxPoid(), "DR_TAX_MASTER");
+
+            if (lovGetListDto == null || lovGetListDto.getCode() == null) {
+
+                lovGetListDto = taxMasterRepository.findByTaxPoid(entity.getTaxPoid())
+                        .map(tm -> new LovGetListDto(tm.getTaxPoid(), tm.getTaxCode(), tm.getTaxName(), tm.getTaxPoid(), tm.getTaxName(), tm.getSeqNo(), null))
+                        .orElse(null);
+            }
+
+            dto.setTaxDetails(lovGetListDto);
+        }
+
+        if (entity.getCostPoid() != null) {
+            dto.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(Long.valueOf(entity.getCostPoid()), "DN_GL_COST_CENTRE"));
+        }
+        
         return dto;
     }
 
@@ -972,17 +1051,16 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                         billwiseResponse.getLoadBillwiseBreakupResponseDtoList().stream()
                                 .filter(x -> Objects.equals(x.getMainDetRowId(), detRowId))
                                 .map(x -> {
-                                    BillwiseBreakupPopupRequestDto bw = new BillwiseBreakupPopupRequestDto();
-
-                                    // billwise DTO does NOT have GL-level fields
-                                    bw.setBillDetRowId(x.getBillDetRowId());
-                                    bw.setBillRefType(x.getBillRefType());
-                                    bw.setBillRef(x.getBillRef());
-                                    bw.setBillDueDate(x.getBillDueDate());
-                                    bw.setAmount(bw.getAmount());
-                                    bw.setBillRemarks(x.getBillRemarks());
-
-                                    return bw;
+                                    BillwiseBreakupPopupRequestDto popup = new BillwiseBreakupPopupRequestDto();
+                                    popup.setBillDetRowId(x.getBillDetRowId());
+                                    popup.setBillRefType(x.getBillRefType());
+                                    popup.setBillRef(x.getBillRef());
+                                    popup.setBillDueDate(x.getBillDueDate() != null ? 
+                                        x.getBillDueDate().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate() : null);
+                                    popup.setType(x.getDrAmt().compareTo(BigDecimal.ZERO) > 0 ? "DR" : "CR");
+                                    popup.setAmount(x.getDrAmt().compareTo(BigDecimal.ZERO) > 0 ? x.getDrAmt() : x.getCrAmt());
+                                    popup.setBillRemarks(x.getBillRemarks());
+                                    return popup;
                                 })
                                 .collect(Collectors.toList());
 
@@ -1008,6 +1086,10 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                                             x.getAmount() != null ? BigDecimal.valueOf(x.getAmount()) : BigDecimal.ZERO
                                     );
 //                                    cb.setGlDescription(x.getDescription());  // optional: SRS uses description as GL desc
+
+                                    if (StringUtils.isNotEmpty(x.getCostPoid()) && StringUtils.isNotEmpty(x.getCostGroup())) {
+                                        cb.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(Long.valueOf(x.getCostPoid()), x.getCostGroup()));
+                                    }
 
                                     return cb;
                                 })
@@ -1095,6 +1177,89 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         params.put("SUB_CHARGE_VAT", printService.load("Finance/AR/DebitNoteChargeSubreportVAT2019.jrxml"));
         JasperReport mainReport = printService.load("Finance/AR/DebitNote.jrxml");
         return printService.fillReportToPdf(mainReport, params, dataSource);
+    }
+
+    private Long getPartyGLPoid(Long partyPoid, String partyType) {
+
+        String sql = "BEGIN PROC_GL_GET_DR_PARTY_GLPOID(?, ?, ?, ?, ?, ?, ?); END;";
+
+        try (Connection conn = dataSource.getConnection();
+             CallableStatement cs = conn.prepareCall(sql)) {
+
+            cs.setLong(1, UserContext.getGroupPoid());
+            cs.setLong(2, UserContext.getCompanyPoid());
+            cs.setLong(3, UserContext.getUserPoid());
+            cs.setLong(4, partyPoid != null ? partyPoid : 0);
+            cs.setString(5, partyType);
+            cs.registerOutParameter(6, Types.NUMERIC);
+            cs.registerOutParameter(7, Types.VARCHAR);
+
+            cs.execute();
+
+            Long partyGl = cs.getLong(6);
+
+            if (partyGl == null || partyGl == 0) {
+                throw new RuntimeException("Party GL not found.");
+            }
+
+            return partyGl;
+
+        } catch (Exception e) {
+            throw new RuntimeException("Error fetching Party GL", e);
+        }
+    }
+
+    private void applyAutoBalancing(DebitNoteHeaderDto dto) {
+
+        if (dto.getGlDetails() == null || dto.getGlDetails().isEmpty())
+            return;
+
+        BigDecimal totalDr = BigDecimal.ZERO;
+        BigDecimal totalCr = BigDecimal.ZERO;
+
+        for (DebitNoteGlDetailDto gl : dto.getGlDetails()) {
+
+            BigDecimal dr = gl.getDebitAmount() == null ? BigDecimal.ZERO : gl.getDebitAmount();
+            BigDecimal cr = gl.getCreditAmount() == null ? BigDecimal.ZERO : gl.getCreditAmount();
+
+            totalDr = totalDr.add(dr);
+            totalCr = totalCr.add(cr);
+        }
+
+        if (totalDr.compareTo(totalCr) == 0)
+            return; // already balanced
+
+        Long partyGlPoid = getPartyGLPoid(dto.getPartyPoid(), dto.getPartyType());
+
+        // check if party GL already exists
+        boolean partyRowExists = dto.getGlDetails().stream()
+                .anyMatch(gl -> Objects.equals(gl.getGlId(), partyGlPoid));
+
+        if (partyRowExists)
+            return;
+
+        BigDecimal difference = totalDr.subtract(totalCr).abs();
+
+        DebitNoteGlDetailDto balancingRow = new DebitNoteGlDetailDto();
+        balancingRow.setGlId(partyGlPoid);
+        balancingRow.setCompanyPoid(UserContext.getCompanyPoid());
+        balancingRow.setRemarks("Auto Balance Entry");
+
+        if (totalDr.compareTo(totalCr) > 0) {
+            balancingRow.setType("CR");
+            balancingRow.setCreditAmount(difference);
+            balancingRow.setDebitAmount(BigDecimal.ZERO);
+        } else {
+            balancingRow.setType("DR");
+            balancingRow.setDebitAmount(difference);
+            balancingRow.setCreditAmount(BigDecimal.ZERO);
+        }
+
+        balancingRow.setTotalAmount(difference);
+        balancingRow.setDetRowId(null); // auto assign later
+        balancingRow.setActionType("isCreated");
+
+        dto.getGlDetails().add(balancingRow);
     }
 
 }

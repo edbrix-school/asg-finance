@@ -17,11 +17,6 @@ public class ChequeReturnDetail {
     @AuditIgnore
     private ChequeReturnDetailId id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @MapsId("transactionPoid") // 👈 This tells Hibernate to reuse the FK from the embedded ID
-    @JoinColumn(name = "TRANSACTION_POID", nullable = false)
-    @AuditIgnore
-    private ChequeReturn chequeReturn;
 
     @Column(name = "CHO_POID")
     @AuditIgnore

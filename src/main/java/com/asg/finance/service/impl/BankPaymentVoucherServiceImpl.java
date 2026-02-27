@@ -393,6 +393,12 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         entity.setMultiCompany(req.getMultiple());
         entity.setSecurityCheque(req.getSecurityCheque());
         entity.setCurrencyAmount(req.getCurrencyAmount());
+        entity.setAvailableBalance(req.getAvailableBalance());
+        entity.setChqPrintedUserCode(req.getChqPrintedUserCode());
+        entity.setChqPrintedDate(req.getChqPrintedDate());
+        if (req.getChqPrintedUserCode() != null || req.getChqPrintedDate() != null) {
+            entity.setChqPrinted("Y");
+        }
 
         if (Boolean.TRUE.equals(req.getReleased())) {
             entity.setReleasedToPerson(req.getReleasedToPerson());
@@ -1380,16 +1386,21 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         if (list == null) return Collections.emptyList();
 
-        return list.stream().map(src ->
-                BillwiseBreakupPopupRequestDto.builder()
-                        .billRefType(src.getBillRefType())
-                        .billRef(src.getBillRef())
-                        .billDueDate(src.getBillDueDate())
-                        .type(src.getDrAmt().toString())
-                        .amount(src.getCrAmt())
-                        .billRemarks(src.getBillRemarks())
-                        .build()
-        ).collect(Collectors.toList());
+        return list.stream().map(src -> {
+            boolean isDebit = src.getDrAmt() != null && src.getDrAmt().compareTo(BigDecimal.ZERO) > 0;
+            String type = isDebit ? "DR" : "CR";
+            BigDecimal amount = src.getDrAmt() != null ? src.getDrAmt() : src.getCrAmt();
+            return BillwiseBreakupPopupRequestDto.builder()
+                    .billDetRowId(src.getBillDetRowId())
+                    .billRefType(src.getBillRefType())
+                    .billRef(src.getBillRef())
+                    .billDueDate(src.getBillDueDate() != null ? 
+                        src.getBillDueDate().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate() : null)
+                    .type(type)
+                    .amount(amount)
+                    .billRemarks(src.getBillRemarks())
+                    .build();
+        }).collect(Collectors.toList());
     }
 
     private List<CostCenterBreakupPopupRequestDto> mapToCostCenterPopupDto(List<CostCenterBreakupResponseDto> list) {

@@ -16,6 +16,7 @@ import org.springframework.stereotype.Repository;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -178,7 +179,7 @@ public class BillwiseBreakupDtlRepositoryImpl implements BillwiseBreakupDtlRepos
                 query.registerStoredProcedureParameter("P_BILL_DET_ROW_ID", Long.class, ParameterMode.IN);
                 query.registerStoredProcedureParameter("P_BILL_REF_TYPE", String.class, ParameterMode.IN);
                 query.registerStoredProcedureParameter("P_BILL_REF", String.class, ParameterMode.IN);
-                query.registerStoredProcedureParameter("P_BILL_DUE_DATE", Date.class, ParameterMode.IN);
+                query.registerStoredProcedureParameter("P_BILL_DUE_DATE", Timestamp.class, ParameterMode.IN);
                 query.registerStoredProcedureParameter("P_DR_AMT", BigDecimal.class, ParameterMode.IN);
                 query.registerStoredProcedureParameter("P_CR_AMT", BigDecimal.class, ParameterMode.IN);
                 query.registerStoredProcedureParameter("P_BILL_REMARKS", String.class, ParameterMode.IN);
@@ -194,7 +195,8 @@ public class BillwiseBreakupDtlRepositoryImpl implements BillwiseBreakupDtlRepos
                 query.setParameter("P_BILL_DET_ROW_ID", breakup.getBillDetRowId());
                 query.setParameter("P_BILL_REF_TYPE", breakup.getBillRefType());
                 query.setParameter("P_BILL_REF", breakup.getBillRef());
-                query.setParameter("P_BILL_DUE_DATE", breakup.getBillDueDate());
+                query.setParameter("P_BILL_DUE_DATE", breakup.getBillDueDate() != null ? 
+                    Timestamp.valueOf(breakup.getBillDueDate().atStartOfDay()) : null);
                 query.setParameter("P_DR_AMT", breakup.getDrAmt());
                 query.setParameter("P_CR_AMT", breakup.getCrAmt());
                 query.setParameter("P_BILL_REMARKS", breakup.getBillRemarks());

@@ -30,6 +30,7 @@ import com.asg.finance.service.CostCenterBreakupService;
 import com.asg.finance.service.CreditNoteService;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -42,8 +43,8 @@ import org.springframework.transaction.annotation.Propagation;
 import javax.sql.DataSource;
 import java.math.BigDecimal;
 import java.sql.*;
-import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.function.Function;
@@ -110,12 +111,13 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     @Transactional(propagation = Propagation.REQUIRED)
     public CreditNoteHeaderDto createCreditNote(CreditNoteHeaderDto creditNoteDto) {
         try {
+            filterUnselectedCharges(creditNoteDto);
             executeBeforeSaveValidation(creditNoteDto);
             calculateDueDateFromCreditPeriod(creditNoteDto);
             // Save header and flush immediately
             ArCreditNoteHdr header = mapToEntity(creditNoteDto);
             String currentUser = ASGHelperUtils.getCurrentUser();
-            Timestamp now = Timestamp.from(Instant.now());
+            LocalDateTime now = LocalDateTime.now();
 
             header.setGroupPoid(1L);
             header.setCompanyPoid(UserContext.getCompanyPoid());
@@ -143,6 +145,13 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             if (creditNoteDto.getGlDetails() != null) {
                 log.info("Starting to save GL details for transactionPoid: {}", transactionPoid);
                 String issueType = creditNoteDto.getIssueType() != null ? creditNoteDto.getIssueType() : "Y";
+               applyAutoBalancing(
+                        transactionPoid,
+                        creditNoteDto.getGlDetails(),
+                        creditNoteDto.getPartyPoid(),
+                        creditNoteDto.getPartyType()
+                );
+
                 saveGLDetailsWithIssueType(transactionPoid, creditNoteDto.getGlDetails(), issueType);
                 log.info("GL details saved successfully for transactionPoid: {}", transactionPoid);
             }
@@ -168,8 +177,8 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             List<ArCreditNoteDtl> glDetails = creditNoteDtlRepository.findByTransactionPoidOrderByDetRowId(transactionPoid);
             List<CreditNoteGLDetailDto> glDetailDtos = glDetails.stream().map(this::mapGLToDto).collect(Collectors.toList());
 
-            saveBillwiseForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111");
-            saveCostCenterForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111");
+            saveBillwiseForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111", false);
+            saveCostCenterForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111", false);
 
             loadBillwiseAndCostCenterBreakup(glDetailDtos, transactionPoid, "300-111");
             result.setGlDetails(glDetailDtos);
@@ -242,6 +251,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                 .orElseThrow(() -> new ResourceNotFoundException("Credit Note", "transactionPoid", transactionPoid));
 
         try {
+            filterUnselectedCharges(creditNoteDto);
             executeBeforeSaveValidation(creditNoteDto);
             calculateDueDateFromCreditPeriod(creditNoteDto);
 
@@ -251,7 +261,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
             updateHeaderFromDto(existing, creditNoteDto);
             existing.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
-            existing.setLastModifiedDate(Timestamp.from(Instant.now()));
+            existing.setLastModifiedDate(LocalDateTime.now());
 
             existing = creditNoteHdrRepository.save(existing);
 
@@ -266,8 +276,8 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                 executeChargeTaxCalculation(transactionPoid, creditNoteDto.getPartyType(), creditNoteDto.getPartyPoid());
             }
 
-            saveBillwiseForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111");
-            saveCostCenterForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111");
+            saveBillwiseForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111", true);
+            saveCostCenterForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111", true);
 
             // Re-trigger manifest updates if charge amount or issue type changed
             executePostSaveUpdates(transactionPoid, creditNoteDto);
@@ -376,7 +386,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     dto.setRemarks(rs.getString("REMARKS"));
                     dto.setIssueInvoice("N");
 
-                    dto.setChargeDet(lovService.getDetailsByPoidAndLovNameFast(dto.getChargePoid(), "CHARGE_MASTER_IN_CN_FOR_FF"));
+                    dto.setChargeDet(lovService.getDetailsByPoidAndLovNameFast(dto.getChargePoid(), "CHARGE_MASTER_ALL"));
                     dto.setTaxDet(taxMasterRepository.findByTaxPoid(dto.getTaxPoid())
                             .map(tm -> new LovGetListDto(tm.getTaxPoid(), tm.getTaxCode(), tm.getTaxName(), tm.getTaxPoid(), tm.getTaxName(), tm.getSeqNo(), null))
                             .orElse(null));
@@ -425,7 +435,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     dto.setRemarks(rs.getString("REMARKS"));
                     dto.setIssueInvoice("N");
 
-                    dto.setChargeDet(lovService.getDetailsByPoidAndLovNameFast(dto.getChargePoid(), "CHARGE_MASTER_IN_CN_FOR_SH"));
+                    dto.setChargeDet(lovService.getDetailsByPoidAndLovNameFast(dto.getChargePoid(), "CHARGE_MASTER_ALL"));
                     dto.setTaxDet(taxMasterRepository.findByTaxPoid(dto.getTaxPoid())
                             .map(tm -> new LovGetListDto(tm.getTaxPoid(), tm.getTaxCode(), tm.getTaxName(), tm.getTaxPoid(), tm.getTaxName(), tm.getSeqNo(), null))
                             .orElse(null));
@@ -495,7 +505,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     dto.setTotalAmount(rs.getBigDecimal("TOTAL_AMOUNT"));
                     dto.setRemarks(rs.getString("REMARKS"));
                     dto.setIssueInvoice("N");
-                    dto.setChargeDet(lovService.getDetailsByPoidAndLovNameFast(dto.getChargePoid(), "CHARGE_MASTER_IN_CN_FOR_DN"));
+                    dto.setChargeDet(lovService.getDetailsByPoidAndLovNameFast(dto.getChargePoid(), "CHARGE_MASTER_ALL"));
                     dto.setTaxDet(taxMasterRepository.findByTaxPoid(dto.getTaxPoid())
                             .map(tm -> new LovGetListDto(tm.getTaxPoid(), tm.getTaxCode(), tm.getTaxName(), tm.getTaxPoid(), tm.getTaxName(), tm.getSeqNo(), null))
                             .orElse(null));
@@ -551,7 +561,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     private void executeBeforeSaveValidation(CreditNoteHeaderDto dto) throws SQLException {
         validateMandatoryFields(dto);
         validateMultiCompanyFields(dto);
-        validateTaxFields(dto);
+       // validateTaxFields(dto);
         validateGrandTotalWithCharges(dto);
 
         // Call GL voucher validation to check reference document status
@@ -572,7 +582,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             cs.setLong(5, dto.getTransactionPoid() != null ? dto.getTransactionPoid() : 0);
             cs.setLong(6, dto.getPartyPoid() != null ? dto.getPartyPoid() : 0);
             cs.setBigDecimal(7, dto.getGrandTotal());
-            cs.setTimestamp(8, Timestamp.from(Instant.now()));
+            cs.setTimestamp(8, Timestamp.valueOf(LocalDateTime.now()));
             cs.registerOutParameter(9, Types.VARCHAR);
             cs.execute();
 
@@ -632,32 +642,36 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     }
 
     private void validateGrandTotalWithCharges(CreditNoteHeaderDto dto) {
-        if (dto.getGrandTotal() == null) {
-            return;
-        }
 
-        BigDecimal totalCharges = BigDecimal.ZERO;
-        BigDecimal totalGlDetails = BigDecimal.ZERO;
-
+        if (dto.getBhdAmount() == null) return;
         if (dto.getChargeDetails() != null && !dto.getChargeDetails().isEmpty()) {
+            BigDecimal totalCharges = BigDecimal.ZERO;
             totalCharges = dto.getChargeDetails().stream()
-                    .map(charge -> charge.getTotalAmount() != null ? charge.getTotalAmount() : BigDecimal.ZERO)
+                    .map(c -> c.getTotalAmount() != null ? c.getTotalAmount() : BigDecimal.ZERO)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            if (dto.getGrandTotal().compareTo(totalCharges) != 0) {
+            if (dto.getBhdAmount().compareTo(totalCharges) != 0) {
                 throw new ValidationException(
-                        "Amount (" + dto.getGrandTotal() + ") is not matching with total charges (" + totalCharges + ") amount.");
+                        "Grand Total is not matching with total charge amount."
+                );
             }
-        }
 
-        if (dto.getGlDetails() != null && !dto.getGlDetails().isEmpty()) {
-            totalGlDetails = dto.getGlDetails().stream()
-                    .map(gl -> gl.getTotalAmount() != null ? gl.getTotalAmount() : BigDecimal.ZERO)
+        } else if (dto.getGlDetails() != null && !dto.getGlDetails().isEmpty()) {
+            BigDecimal totalDebitAmt = BigDecimal.ZERO;
+            BigDecimal totalCreditAmt = BigDecimal.ZERO;
+            totalDebitAmt = dto.getGlDetails().stream()
+                    .map(gl -> gl.getTotalAmount() != null && gl.getType().equals("DR") ? gl.getTotalAmount() : BigDecimal.ZERO)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            if (dto.getGrandTotal().compareTo(totalGlDetails) != 0) {
-                throw new ValidationException(
-                        "Amount (" + dto.getGrandTotal() + ") is not matching with total charges (" + totalGlDetails + ") amount.");
+            totalCreditAmt = dto.getGlDetails().stream()
+                    .map(gl -> gl.getTotalAmount() != null && gl.getType().equals("CR") ? gl.getTotalAmount() : BigDecimal.ZERO)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+//            if (totalDebitAmt.compareTo(totalCreditAmt) != 0) {
+//                throw new ValidationException("Total Debit ("+totalDebitAmt+") Amounts and Credit ("+totalCreditAmt+") Amounts are not tallying.");
+//            }
+            if (dto.getBhdAmount().compareTo(totalDebitAmt) != 0) {
+                throw new ValidationException("Paid Amount (" + dto.getBhdAmount() + ") is not matching with total party credit amount(" + totalDebitAmt + ")");
             }
         }
     }
@@ -966,7 +980,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     Long companyPoid = 3L; // Default company
 
                     cs.setLong(1, companyPoid); // P_COMPANY_POID
-                    cs.setTimestamp(2, Timestamp.from(Instant.now())); // P_TRANSACTION_DATE
+                    cs.setTimestamp(2, Timestamp.valueOf(LocalDateTime.now())); // P_TRANSACTION_DATE
                     cs.setString(3, partyType != null ? partyType : "SUPPLIER"); // P_PARTY_TYPE
                     cs.setLong(4, partyPoid != null ? partyPoid : 0); // P_PARTY_POID
                     cs.setLong(5, charge.getChargePoid()); // P_CHARGE_POID
@@ -1115,7 +1129,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
         header.setDeleted("Y");
         header.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
-        header.setLastModifiedDate(Timestamp.from(Instant.now()));
+        header.setLastModifiedDate(LocalDateTime.now());
         creditNoteHdrRepository.save(header);
     }
 
@@ -1280,11 +1294,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                 .taxPercentage(glDto.getTaxPercentage())
                 .taxAmount(glDto.getTaxAmount())
                 .totalAmount(glDto.getTotalAmount())
-                .createdBy(ASGHelperUtils.getCurrentUser())
-                .createdDate(Timestamp.from(Instant.now()))
-                .lastModifiedBy(ASGHelperUtils.getCurrentUser())
-                .lastModifiedDate(Timestamp.from(Instant.now()))
                 .build();
+        entity.setCreatedBy(ASGHelperUtils.getCurrentUser());
+        entity.setCreatedDate(LocalDateTime.now());
+        entity.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
+        entity.setLastModifiedDate(LocalDateTime.now());
         creditNoteDtlRepository.saveAndFlush(entity);
     }
 
@@ -1303,12 +1317,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                 .taxPercentage(glDto.getTaxPercentage())
                 .taxAmount(glDto.getTaxAmount())
                 .totalAmount(glDto.getTotalAmount())
-                .createdBy(ASGHelperUtils.getCurrentUser())
-                .createdDate(Timestamp.from(Instant.now()))
-                .lastModifiedBy(ASGHelperUtils.getCurrentUser())
-                .lastModifiedDate(Timestamp.from(Instant.now()))
                 .build();
-
+        entity.setCreatedBy(ASGHelperUtils.getCurrentUser());
+        entity.setCreatedDate(LocalDateTime.now());
+        entity.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
+        entity.setLastModifiedDate(LocalDateTime.now());
         creditNoteDtlRepository.saveAndFlush(entity);
     }
 
@@ -1326,12 +1339,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                 .taxPercentage(glDto.getTaxPercentage())
                 .taxAmount(glDto.getTaxAmount())
                 .totalAmount(glDto.getTotalAmount())
-                .createdBy(ASGHelperUtils.getCurrentUser())
-                .createdDate(Timestamp.from(Instant.now()))
-                .lastModifiedBy(ASGHelperUtils.getCurrentUser())
-                .lastModifiedDate(Timestamp.from(Instant.now()))
                 .build();
-
+        entity.setCreatedBy(ASGHelperUtils.getCurrentUser());
+        entity.setCreatedDate(LocalDateTime.now());
+        entity.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
+        entity.setLastModifiedDate(LocalDateTime.now());
         creditNoteDtlRepository.saveAndFlush(entity);
     }
 
@@ -1391,13 +1403,15 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             entity.setRemarks(dto.getRemarks());
             entity.setTaxAmount(dto.getTaxAmount());
             entity.setTotalAmount(dto.getTotalAmount());
-            entity.setCheckAll(dto.getSelected());
+            entity.setCheckAll(dto.getSelected() != null && !dto.getSelected().trim().isEmpty()
+                    ? dto.getSelected().trim()
+                    : "N");
             entity.setIssueInvoice(dto.getIssueInvoice());
             entity.setRefDocId("300-111");
             entity.setCreatedBy(ASGHelperUtils.getCurrentUser());
-            entity.setCreatedDate(Timestamp.from(Instant.now()));
+            entity.setCreatedDate(LocalDateTime.now());
             entity.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
-            entity.setLastModifiedDate(Timestamp.from(Instant.now()));
+            entity.setLastModifiedDate(LocalDateTime.now());
 
             creditNoteChargeDtlRepository.save(entity);
         }
@@ -1462,7 +1476,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         if (glDetails == null || glDetails.isEmpty()) return;
 
         String currentUser = ASGHelperUtils.getCurrentUser();
-        Timestamp now = Timestamp.from(Instant.now());
+        LocalDateTime now = LocalDateTime.now();
         String docId = UserContext.getDocumentId();
         String docKeyPoid = transactionPoid.toString();
 
@@ -1596,7 +1610,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         if (chargeDetails == null || chargeDetails.isEmpty()) return;
 
         String currentUser = ASGHelperUtils.getCurrentUser();
-        Timestamp now = Timestamp.from(Instant.now());
+        LocalDateTime now = LocalDateTime.now();
         String docId = UserContext.getDocumentId();
         String docKeyPoid = transactionPoid.toString();
 
@@ -1606,6 +1620,12 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         List<LogRequestDto<ArCreditNoteChargeDtl>> logRequests = new ArrayList<>();
 
         List<ArCreditNoteChargeDtl> existingDetails = creditNoteChargeDtlRepository.findByTransactionPoidOrderByDetRowId(transactionPoid);
+
+        Set<Long> incomingDetRowIds = chargeDetails.stream()
+                .map(UniversalChargeDetailDto::getDetRowId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
         Map<Long, ArCreditNoteChargeDtl> existingMap = existingDetails.stream()
                 .collect(Collectors.toMap(ArCreditNoteChargeDtl::getDetRowId, Function.identity(), (a, b) -> a));
 
@@ -1617,6 +1637,10 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
         for (UniversalChargeDetailDto dto : chargeDetails) {
             if (dto == null) continue;
+            // 🔥 Treat unselected rows as deleted (Legacy behavior)
+            if ("N".equalsIgnoreCase(dto.getSelected())) {
+                dto.setActionType("ISDELETED");
+            }
             String actionType = dto.getActionType();
             if (actionType == null || actionType.trim().isEmpty()) {
                 actionType = (dto.getDetRowId() == null) ? "ISCREATED" : "ISUPDATED";
@@ -1708,6 +1732,13 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             }
         }
 
+        // 🔥 Delete rows that exist in DB but not sent from UI
+        for (ArCreditNoteChargeDtl existing : existingDetails) {
+            if (!incomingDetRowIds.contains(existing.getDetRowId())) {
+                toDelete.add(existing.getDetRowId());
+            }
+        }
+
         if (!toSave.isEmpty()) {
             creditNoteChargeDtlRepository.saveAll(toSave);
             for (ArCreditNoteChargeDtl newlyCreatedEntity : newlyCreated) {
@@ -1745,10 +1776,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         entity.setChargeAmount(dto.getChargeAmount());
         entity.setChargeCostAmount(dto.getChargeCostAmount());
         entity.setRemarks(dto.getRemarks());
-        entity.setCheckAll( dto.getSelected() != null && !dto.getSelected().trim().isEmpty()
-                        ? dto.getSelected().trim()
-                        : "N");
-        System.out.println("DTO Selected = " + dto.getSelected());
+        entity.setCheckAll(dto.getSelected() != null && !dto.getSelected().trim().isEmpty()
+                ? dto.getSelected().trim()
+                : "N");
         entity.setTaxAmount(dto.getTaxAmount());
         entity.setTotalAmount(dto.getTotalAmount());
         entity.setIssueInvoice(dto.getIssueInvoice());
@@ -1923,7 +1953,12 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         return chargeDetails.stream().anyMatch(charge -> ("Y".equals(charge.getIssueInvoice())));
     }
 
-    public void saveBillwiseForGl(Long transactionPoid, List<CreditNoteGLDetailDto> glDetails, String docId) {
+    public void saveBillwiseForGl(
+            Long transactionPoid,
+            List<CreditNoteGLDetailDto> glDetails,
+            String docId,
+            boolean isUpdate
+    ) {
         if (glDetails == null || glDetails.isEmpty()) {
             return;
         }
@@ -1939,10 +1974,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             if (!glMasterRepository.existsByGlPoid(glDto.getGlPoid())) {
                 throw new ResourceNotFoundException("Gl Master", "glPoid", glDto.getGlPoid());
             }
-            if (!taxMasterRepository.existsByTaxPoid(glDto.getTaxPoid())) {
+          /*  if (!taxMasterRepository.existsByTaxPoid(glDto.getTaxPoid())) {
                 throw new ResourceNotFoundException("Tax", "taxPoid", glDto.getTaxPoid());
-            }
+            }*/
 
+            long inital = 1L;
             if (glDto.getBreakupList() != null && !glDto.getBreakupList().isEmpty()) {
                 for (BillwiseBreakupPopupRequestDto popup : glDto.getBreakupList()) {
                     BillwiseBreakupRequestDto req = new BillwiseBreakupRequestDto();
@@ -1963,16 +1999,23 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     }
                     req.setBillRemarks(popup.getBillRemarks());
                     req.setLoginUserPoid(userPoid);
-                    req.setMainDetRowId(glDto.getDetRowId());
+                    req.setMainDetRowId(inital);
                     req.setGlCompanyPoid(companyPoid);
                     req.setGlPoid(glDto.getGlPoid());
                     billwiseList.add(req);
+                    inital++;
                 }
             }
         }
 
         if (!billwiseList.isEmpty()) {
-            billwiseBreakupService.insertBillwiseBreakup(billwiseList);
+
+            if (isUpdate) {
+                billwiseBreakupService.updateBillwiseBreakups(billwiseList, userPoid);
+            } else {
+                billwiseBreakupService.insertBillwiseBreakup(billwiseList);
+            }
+
             log.info("Saved {} billwise breakup entries for transactionPoid: {}", billwiseList.size(), transactionPoid);
         }
     }
@@ -2014,7 +2057,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         return result;
     }
 
-    public void saveCostCenterForGl(Long transactionPoid, List<CreditNoteGLDetailDto> glDetails, String docId) {
+    public void saveCostCenterForGl(Long transactionPoid,
+                                    List<CreditNoteGLDetailDto> glDetails,
+                                    String docId,
+                                    boolean isUpdate
+    ) {
         if (glDetails == null || glDetails.isEmpty()) {
             return;
         }
@@ -2023,7 +2070,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         Long groupPoid = UserContext.getGroupPoid() != null ? UserContext.getGroupPoid() : 1L;
         Long companyPoid = UserContext.getCompanyPoid() != null ? UserContext.getCompanyPoid() : 3L;
         Long userPoid = UserContext.getUserPoid() != null ? UserContext.getUserPoid() : 1L;
-
+        long inital = 1L;
         for (CreditNoteGLDetailDto glDto : glDetails) {
             if (glDto == null || glDto.getDetRowId() == null) {
                 continue;
@@ -2038,18 +2085,24 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     dto.setTransactionPoid(transactionPoid);
                     dto.setMainDetRowId(glDto.getDetRowId());
                     dto.setGlPoid(glDto.getGlPoid());
-                    dto.setCostDetRowId(glDto.getDetRowId());
+                    dto.setCostDetRowId(inital);
                     dto.setCostGroup(popup.getCostGroup());
                     dto.setCostPoid(popup.getCostPoid());
                     dto.setAmount(popup.getAmount());
                     dto.setLoginUserPoid(userPoid);
                     costCenterList.add(dto);
+                    inital++;
                 }
             }
         }
 
         if (!costCenterList.isEmpty()) {
-            costCenterBreakupService.saveCostCenterBreakups(costCenterList);
+
+            if (isUpdate) {
+                costCenterBreakupService.updateCostCenterBreakups(costCenterList, userPoid);
+            } else {
+                costCenterBreakupService.saveCostCenterBreakups(costCenterList);
+            }
             log.info("Saved {} cost center breakup entries for transactionPoid: {}", costCenterList.size(), transactionPoid);
         }
     }
@@ -2116,7 +2169,8 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                                 popupDto.setBillDetRowId(item.getBillDetRowId());
                                 popupDto.setBillRefType(item.getBillRefType());
                                 popupDto.setBillRef(item.getBillRef());
-                                popupDto.setBillDueDate(item.getBillDueDate());
+                                popupDto.setBillDueDate(item.getBillDueDate() != null ? 
+                                    item.getBillDueDate().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate() : null);
                                 if (item.getDrAmt() != null && item.getDrAmt().compareTo(BigDecimal.ZERO) > 0) {
                                     popupDto.setType("DR");
                                     popupDto.setAmount(item.getDrAmt());
@@ -2140,6 +2194,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                                 popupDto.setCostGroup(item.getCostGroup());
                                 popupDto.setCostPoid(item.getCostPoid());
                                 popupDto.setAmount(item.getAmount() != null ? BigDecimal.valueOf(item.getAmount()) : null);
+                                if (StringUtils.isNotEmpty(item.getCostPoid()) && StringUtils.isNotEmpty(item.getCostGroup())) {
+                                    popupDto.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(Long.valueOf(item.getCostPoid()), item.getCostGroup()));
+                                }
                                 return popupDto;
                             })
                             .collect(Collectors.toList());
@@ -2203,4 +2260,66 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             return FdaRefResponseDto.builder().build();
         }
     }
+
+    private void applyAutoBalancing(Long transactionPoid,
+                                    List<CreditNoteGLDetailDto> glDetails,
+                                    Long partyPoid,
+                                    String partyType) throws SQLException {
+
+        if (glDetails == null || glDetails.isEmpty()) return;
+
+        BigDecimal totalDr = BigDecimal.ZERO;
+        BigDecimal totalCr = BigDecimal.ZERO;
+
+        for (CreditNoteGLDetailDto dto : glDetails) {
+            if (dto.getDrAmt() != null)
+                totalDr = totalDr.add(dto.getDrAmt());
+
+            if (dto.getCrAmt() != null)
+                totalCr = totalCr.add(dto.getCrAmt());
+        }
+
+        if (totalDr.compareTo(totalCr) == 0) {
+            return; // already balanced
+        }
+
+        Long partyGlPoid = getPartyGLPoid(partyPoid, partyType);
+
+        //  Tax copy source (first row)
+        CreditNoteGLDetailDto sourceRow = glDetails.get(0);
+
+        CreditNoteGLDetailDto balancingRow = new CreditNoteGLDetailDto();
+        balancingRow.setGlPoid(partyGlPoid);
+        balancingRow.setCompanyPoid(UserContext.getCompanyPoid());
+        balancingRow.setRemarks("Auto Balance Entry");
+
+        BigDecimal difference = totalDr.subtract(totalCr);
+
+        if (difference.compareTo(BigDecimal.ZERO) > 0) {
+            balancingRow.setType("CR");
+            balancingRow.setCrAmt(difference);
+            balancingRow.setDrAmt(BigDecimal.ZERO);
+        } else {
+            balancingRow.setType("DR");
+            balancingRow.setDrAmt(difference.abs());
+            balancingRow.setCrAmt(BigDecimal.ZERO);
+        }
+
+        balancingRow.setTotalAmount(difference.abs());
+
+        glDetails.add(balancingRow);
+    }
+
+    private void filterUnselectedCharges(CreditNoteHeaderDto dto) {
+        if (dto.getChargeDetails() == null) return;
+
+        List<UniversalChargeDetailDto> filtered =
+                dto.getChargeDetails()
+                        .stream()
+                        .filter(c -> "Y".equalsIgnoreCase(c.getSelected()))
+                        .collect(Collectors.toList());
+
+        dto.setChargeDetails(filtered);
+    }
+
 }

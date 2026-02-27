@@ -1,5 +1,6 @@
 package com.asg.finance.dto;
 
+import com.asg.common.lib.dto.LovGetListDto;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -84,7 +85,7 @@ public class DebitNoteHeaderDto {
     private Long fdaDirectRefPoid; // PROCESS_FDA_DIRECT_IN_DN
     
     // Other Charges specific fields
-    private Long costGroupPoid; // CREDIT_PARTY_TYPE
+    private Long costGroupPoid; // DN_GL_COST_GROUPS
     
     private Long disposalJvRefPoid; // DISPOSAL_JV_REF_FOR_DN
     
@@ -102,6 +103,12 @@ public class DebitNoteHeaderDto {
     private String lastModifiedBy;
     
     private LocalDateTime lastModifiedDate;
+    
+    // LOV Details for header
+    private LovGetListDto fdaRefDetails;
+    private LovGetListDto fdaDirectRefDetails;
+    private LovGetListDto costGroupDetails;
+    private LovGetListDto disposalJvRefDetails;
     
     // Conditional detail lists based on refType
     @Valid

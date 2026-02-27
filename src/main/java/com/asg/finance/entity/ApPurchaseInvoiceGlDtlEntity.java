@@ -10,6 +10,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -34,10 +35,10 @@ public class ApPurchaseInvoiceGlDtlEntity {
     private Long glPoid;
 
     @Column(name = "DR_AMOUNT")
-    private Long drAmount;
+    private BigDecimal drAmount;
 
     @Column(name = "CR_AMOUNT")
-    private Long crAmount;
+    private BigDecimal crAmount;
 
     @AuditIgnore
     @Column(name = "REF_DOC_ID")
@@ -85,8 +86,8 @@ public class ApPurchaseInvoiceGlDtlEntity {
     private Long taxPercentage;
 
     @Column(name = "TAX_AMOUNT")
-    private Long taxAmount;
+    private BigDecimal taxAmount;
 
     @Column(name = "TOTAL_AMOUNT")
-    private Long totalAmount;
+    private BigDecimal totalAmount;
 }

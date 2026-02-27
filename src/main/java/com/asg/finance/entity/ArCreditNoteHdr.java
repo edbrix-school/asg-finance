@@ -1,13 +1,13 @@
 package com.asg.finance.entity;
 
 import com.asg.common.lib.annotation.AuditIgnore;
+import com.asg.common.lib.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.sql.Date;
-import java.sql.Timestamp;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "AR_CREDIT_NOTE_HDR")
@@ -16,7 +16,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ArCreditNoteHdr {
+public class ArCreditNoteHdr extends BaseEntity {
 
     @Id
     @AuditIgnore
@@ -147,18 +147,6 @@ public class ArCreditNoteHdr {
 
    /* @Column(name = "ISSUE_TYPE", length = 1)
     private String issueType;*/
-
-    @Column(name = "CREATED_BY", length = 20)
-    private String createdBy;
-
-    @Column(name = "CREATED_DATE")
-    private Timestamp createdDate;
-
-    @Column(name = "LASTMODIFIED_BY", length = 20)
-    private String lastModifiedBy;
-
-    @Column(name = "LASTMODIFIED_DATE")
-    private Timestamp lastModifiedDate;
 
     @Column(name = "DELETED", length = 1)
     private String deleted = "N";

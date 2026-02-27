@@ -3,6 +3,7 @@ package com.asg.finance.dto;
 import com.asg.common.lib.dto.LovGetListDto;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -15,8 +16,8 @@ public class ApPurchaseInvoiceGlDtlDto {
     private String type;
     private Long companyPoid;
     private Long glPoid;
-    private Long drAmount;
-    private Long crAmount;
+    private BigDecimal drAmount;
+    private BigDecimal crAmount;
     private String refDocId;
     private Long refDocPoid;
     private String description;
@@ -29,8 +30,8 @@ public class ApPurchaseInvoiceGlDtlDto {
     private String modCodeOld;
     private Long taxPoid;
     private Long taxPercentage;
-    private Long taxAmount;
-    private Long totalAmount;
+    private BigDecimal taxAmount;
+    private BigDecimal totalAmount;
 
     private LovGetListDto companyDet;
     private LovGetListDto glDet;

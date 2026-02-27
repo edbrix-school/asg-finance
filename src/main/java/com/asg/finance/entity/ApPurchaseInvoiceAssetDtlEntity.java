@@ -10,6 +10,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -37,7 +38,7 @@ public class ApPurchaseInvoiceAssetDtlEntity {
     private String assetType;
 
     @Column(name = "VALUE")
-    private Long value;
+    private BigDecimal value;
 
     @Column(name = "REMARKS")
     private String remarks;

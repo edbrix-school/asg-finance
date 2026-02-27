@@ -25,7 +25,7 @@ public class CreditNoteGLDetailDto {
     /**
      * LOV - CR_TAX_MASTER
      */
-    @NotNull(message = "Tax Poid mandatory")
+
     private Long taxPoid;
     private LovGetListDto taxDet;
     private BigDecimal taxPercentage;

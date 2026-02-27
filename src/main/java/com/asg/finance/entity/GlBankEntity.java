@@ -1,12 +1,11 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
-
 import java.math.BigDecimal;
-import java.sql.Timestamp;
 import java.time.LocalDateTime;
-import java.util.Date;
+
 
 @Entity
 @Table(name = "GL_BANK_MASTER",
@@ -19,7 +18,7 @@ import java.util.Date;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class GlBankEntity {
+public class GlBankEntity extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -63,12 +62,12 @@ public class GlBankEntity {
     private BigDecimal sellingRate;
 
     @Column(name = "PERIOD_START")
-    @Temporal(TemporalType.DATE)
-    private Date periodStart;
+    //@Temporal(TemporalType.DATE)
+    private LocalDateTime periodStart;
 
     @Column(name = "PERIOD_END")
-    @Temporal(TemporalType.DATE)
-    private Date periodEnd;
+    //@Temporal(TemporalType.DATE)
+    private LocalDateTime periodEnd;
 
     @Column(name = "CARD_COMMISION", precision = 19, scale = 2)
     private BigDecimal cardCommision;
@@ -81,18 +80,6 @@ public class GlBankEntity {
 
     @Column(name = "REMARKS", length = 500)
     private String remarks;
-
-    @Column(name = "CREATED_BY", length = 20)
-    private String createdBy;
-
-    @Column(name = "CREATED_DATE")
-    private Timestamp createdDate;
-
-    @Column(name = "LASTMODIFIED_BY", length = 100)
-    private String lastModifiedBy;
-
-    @Column(name = "LASTMODIFIED_DATE", length = 100)
-    private Timestamp lastModifiedDate;
 
     @Column(name = "ACTIVE", length = 1)
     private String active;
@@ -116,8 +103,8 @@ public class GlBankEntity {
     private String onlineFileTt;
 
     @Column(name = "BANK_STATEMENT_DATE")
-    @Temporal(TemporalType.DATE)
-    private Date bankStatementDate;
+    //@Temporal(TemporalType.DATE)
+    private LocalDateTime bankStatementDate;
 
     @Column(name = "CURRENCY_RATE", precision = 19, scale = 2)
     private BigDecimal currencyRate;

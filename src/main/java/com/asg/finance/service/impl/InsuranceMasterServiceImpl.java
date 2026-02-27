@@ -66,7 +66,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
     public Map<String, Object> listInsuranceMasters(String documentId, FilterRequestDto filters, LocalDate startDate, LocalDate endDate, Pageable pageable) {
         String operator = documentService.resolveOperator(filters);
         String isDeleted = documentService.resolveIsDeleted(filters);
-        List<FilterDto> filterList = documentService.resolveDateFilters(filters,"TRANSACTION_POID",startDate, endDate);
+        List<FilterDto> filterList = documentService.resolveDateFilters(filters,"FROM_DATE",startDate, endDate);
 
         RawSearchResult raw = documentService.search(documentId, filterList, operator, pageable, isDeleted,
                 "POLICY_NO",
@@ -102,11 +102,6 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         try {
             System.out.println("Creating insurance master for policy: " + request.getPolicyNo());
 
-            // Validate policy number format
-            if (!request.getPolicyNo().matches("^POL[0-9]{8}$")) {
-                throw new ValidationException("Policy number must be in format POL12345678");
-            }
-
             // Validate insurance type against LOV
             List<String> validInsuranceTypes = Arrays.asList(
                 "VEHICLE_INSURANCE", "MEDICAL_INSURANCE", "PROPERTY_INSURANCE", 
@@ -141,6 +136,9 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
             // Validate Employee Details
             if (request.getEmployeeDetails() != null) {
                 for (InsuranceEmployeeDetailRequestDto emp : request.getEmployeeDetails()) {
+                    String action = normalizeAction(emp.getActionType());
+                    if ("ISDELETED".equals(action)) continue;
+                    
                     if (emp.getEmployeePoid() == null || emp.getEmployeePoid() <= 0) {
                         throw new ValidationException("Employee is mandatory in Employee Details");
                     }
@@ -150,6 +148,9 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
             // Validate Property Details
             if (request.getPropertyDetails() != null) {
                 for (InsurancePropertyDetailRequestDto prop : request.getPropertyDetails()) {
+                    String action = normalizeAction(prop.getActionType());
+                    if ("ISDELETED".equals(action)) continue;
+                    
                     if (prop.getPropertyPoid() == null || prop.getPropertyPoid() <= 0) {
                         throw new ValidationException("Property is mandatory in Property Details");
                     }
@@ -159,21 +160,17 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
             // Validate PIC dates (if present)
             if (request.getPicDetails() != null) {
                 for (InsurancePicDetailRequestDto pic : request.getPicDetails()) {
+                    String action = normalizeAction(pic.getActionType());
+                    if ("ISDELETED".equals(action)) continue;
+                    
                     // Validate Role is provided
                     if (pic.getRolePoid() == null || pic.getRolePoid() <= 0) {
                         throw new ValidationException("Role is mandatory in PIC Details");
                     }
 
-                    // Validate PIC from ≤ to
-                    if (pic.getFromDate().isAfter(pic.getToDate())) {
+                    // Validate PIC from ≤ to (only if toDate is provided)
+                    if (pic.getFromDate() != null && pic.getToDate() != null && pic.getFromDate().isAfter(pic.getToDate())) {
                         throw new ValidationException("PIC From Date cannot be greater than PIC To Date");
-                    }
-
-                    // Validate PIC within insurance period
-                    if (pic.getFromDate().isBefore(request.getFromDate()) ||
-                            pic.getToDate().isAfter(request.getExpiryDate())) {
-
-                        throw new ValidationException("PIC dates must be within the insurance policy period");
                     }
                 }
             }
@@ -194,6 +191,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                     .paymentFrequency(request.getPaymentFrequency())
                     .oneTime("N")
                     .description(request.getDescription())
+                    .faPoid(request.getFaPoid())
                     .deleted("N")
                     .createdBy(getCurrentUser())
                     .createdDate(LocalDateTime.now())
@@ -201,7 +199,6 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                     .lastModifiedDate(LocalDateTime.now())
                     .build();
 
-            insuranceMaster.setPjRefPoid(null);
             InsuranceMaster saved = insuranceMasterRepository.save(insuranceMaster);
             buildAndSetChildDetails(request, saved);
             InsuranceMaster finalSaved = insuranceMasterRepository.save(saved);
@@ -260,13 +257,6 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         List<InsurancePropertyDetail> oldPropertyDetails = snapshotPropertyDetails(existing.getPropertyDetails());
         List<InsurancePicDetail> oldPicDetails = snapshotPicDetails(existing.getPicDetails());
 
-        // Validate unique policy number per company (excluding current record)
-
-        // Validate policy number format
-        if (!request.getPolicyNo().matches("^POL[0-9]{8}$")) {
-            throw new ValidationException("Policy number must be in format POL12345678");
-        }
-
         // Validate insurance type against LOV
         List<String> validInsuranceTypes = Arrays.asList(
             "VEHICLE_INSURANCE", "MEDICAL_INSURANCE", "PROPERTY_INSURANCE", 
@@ -303,6 +293,9 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         // Validate Employee Details
         if (request.getEmployeeDetails() != null) {
             for (InsuranceEmployeeDetailRequestDto emp : request.getEmployeeDetails()) {
+                String action = normalizeAction(emp.getActionType());
+                if ("ISDELETED".equals(action)) continue;
+                
                 if (emp.getEmployeePoid() == null || emp.getEmployeePoid() <= 0) {
                     throw new ValidationException("Employee is mandatory in Employee Details");
                 }
@@ -312,6 +305,9 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         // Validate Property Details
         if (request.getPropertyDetails() != null) {
             for (InsurancePropertyDetailRequestDto prop : request.getPropertyDetails()) {
+                String action = normalizeAction(prop.getActionType());
+                if ("ISDELETED".equals(action)) continue;
+                
                 if (prop.getPropertyPoid() == null || prop.getPropertyPoid() <= 0) {
                     throw new ValidationException("Property is mandatory in Property Details");
                 }
@@ -321,21 +317,17 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         // Validate PIC dates (if present)
         if (request.getPicDetails() != null) {
             for (InsurancePicDetailRequestDto pic : request.getPicDetails()) {
+                String action = normalizeAction(pic.getActionType());
+                if ("ISDELETED".equals(action)) continue;
+                
                 // Validate Role is provided
                 if (pic.getRolePoid() == null || pic.getRolePoid() <= 0) {
                     throw new ValidationException("Role is mandatory in PIC Details");
                 }
 
-                // Validate PIC from ≤ to
-                if (pic.getFromDate().isAfter(pic.getToDate())) {
+                // Validate PIC from ≤ to (only if toDate is provided)
+                if (pic.getFromDate() != null && pic.getToDate() != null && pic.getFromDate().isAfter(pic.getToDate())) {
                     throw new ValidationException("PIC From Date cannot be greater than PIC To Date");
-                }
-
-                // Validate PIC within insurance period
-                if (pic.getFromDate().isBefore(request.getFromDate()) ||
-                        pic.getToDate().isAfter(request.getExpiryDate())) {
-
-                    throw new ValidationException("PIC dates must be within the insurance policy period");
                 }
             }
         }
@@ -349,10 +341,13 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         existing.setInsuranceProvider(request.getInsuranceProvider());
         existing.setFromDate(request.getFromDate());
         existing.setExpiryDate(request.getExpiryDate());
+        existing.setCurrencyPoid(request.getCurrency());
+        existing.setExchangeRate(request.getRate());
         existing.setInsuranceAmount(request.getInsuranceAmount());
         existing.setPremiumAmount(request.getPremiumAmount());
         existing.setPaymentFrequency(request.getPaymentFrequency());
         existing.setDescription(request.getDescription());
+        existing.setFaPoid(request.getFaPoid());
         existing.setLastModifiedBy(getCurrentUser());
         existing.setLastModifiedDate(LocalDateTime.now());
 
@@ -383,13 +378,17 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         
         // Process Employee Details
         if (request.getEmployeeDetails() != null) {
+            int newEmpIndex = 0;
             for (InsuranceEmployeeDetailRequestDto dto : request.getEmployeeDetails()) {
                 String action = normalizeAction(dto.getActionType());
                 if ("ISDELETED".equals(action)) {
                     loggingService.logDelete(dto, docId, docKeyPoid);
                 } else if ("ISCREATED".equals(action)) {
-                    String msg = String.format("Row Created on Insurance Employee Detail with detRowId: %s", dto.getDetRowId());
-                    loggingService.createLogSummaryEntry(docId, docKeyPoid, msg);
+                    InsuranceEmployeeDetail newE = findNewEmployeeByIndex(updated.getEmployeeDetails(), oldEmployeeDetails, newEmpIndex++);
+                    if (newE != null) {
+                        String msg = String.format("Row Created on Insurance Employee Detail with detRowId: %s", newE.getDetRowId());
+                        loggingService.createLogSummaryEntry(docId, docKeyPoid, msg);
+                    }
                 } else if ("ISUPDATED".equals(action)) {
                     InsuranceEmployeeDetail oldE = findOldEmployeeByDetRowId(oldEmployeeDetails, dto.getDetRowId());
                     InsuranceEmployeeDetail newE = findOldEmployeeByDetRowId(updated.getEmployeeDetails(), dto.getDetRowId());
@@ -403,13 +402,17 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         
         // Process Property Details
         if (request.getPropertyDetails() != null) {
+            int newPropIndex = 0;
             for (InsurancePropertyDetailRequestDto dto : request.getPropertyDetails()) {
                 String action = normalizeAction(dto.getActionType());
                 if ("ISDELETED".equals(action)) {
                     loggingService.logDelete(dto, docId, docKeyPoid);
                 } else if ("ISCREATED".equals(action)) {
-                    String msg = String.format("Row Created on Insurance Property Detail with detRowId: %s", dto.getDetRowId());
-                    loggingService.createLogSummaryEntry(docId, docKeyPoid, msg);
+                    InsurancePropertyDetail newP = findNewPropertyByIndex(updated.getPropertyDetails(), oldPropertyDetails, newPropIndex++);
+                    if (newP != null) {
+                        String msg = String.format("Row Created on Insurance Property Detail with detRowId: %s", newP.getDetRowId());
+                        loggingService.createLogSummaryEntry(docId, docKeyPoid, msg);
+                    }
                 } else if ("ISUPDATED".equals(action)) {
                     InsurancePropertyDetail oldP = findOldPropertyByDetRowId(oldPropertyDetails, dto.getDetRowId());
                     InsurancePropertyDetail newP = findOldPropertyByDetRowId(updated.getPropertyDetails(), dto.getDetRowId());
@@ -423,13 +426,17 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         
         // Process PIC Details
         if (request.getPicDetails() != null) {
+            int newPicIndex = 0;
             for (InsurancePicDetailRequestDto dto : request.getPicDetails()) {
                 String action = normalizeAction(dto.getActionType());
                 if ("ISDELETED".equals(action)) {
                     loggingService.logDelete(dto, docId, docKeyPoid);
                 } else if ("ISCREATED".equals(action)) {
-                    String msg = String.format("Row Created on Insurance PIC Detail with detRowId: %s", dto.getDetRowId());
-                    loggingService.createLogSummaryEntry(docId, docKeyPoid, msg);
+                    InsurancePicDetail newP = findNewPicByIndex(updated.getPicDetails(), oldPicDetails, newPicIndex++);
+                    if (newP != null) {
+                        String msg = String.format("Row Created on Insurance PIC Detail with detRowId: %s", newP.getDetRowId());
+                        loggingService.createLogSummaryEntry(docId, docKeyPoid, msg);
+                    }
                 } else if ("ISUPDATED".equals(action)) {
                     InsurancePicDetail oldP = findOldPicByDetRowId(oldPicDetails, dto.getDetRowId());
                     InsurancePicDetail newP = findOldPicByDetRowId(updated.getPicDetails(), dto.getDetRowId());
@@ -458,7 +465,10 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
     private void buildAndSetChildDetails(InsuranceMasterRequestDto request, InsuranceMaster savedParent) {
         if (request.getEmployeeDetails() != null && !request.getEmployeeDetails().isEmpty()) {
             List<InsuranceEmployeeDetail> newDetails = buildEmployeeDetails(request.getEmployeeDetails(), savedParent);
-            newDetails.forEach(d -> d.setInsuranceMaster(savedParent));
+            newDetails.forEach(d -> {
+                d.setTransactionPoid(savedParent.getTransactionPoid());
+                d.setInsuranceMaster(savedParent);
+            });
             if (savedParent.getEmployeeDetails() == null) {
                 savedParent.setEmployeeDetails(new ArrayList<>());
             }
@@ -466,7 +476,10 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         }
         if (request.getPropertyDetails() != null && !request.getPropertyDetails().isEmpty()) {
             List<InsurancePropertyDetail> newDetails = buildPropertyDetails(request.getPropertyDetails(), savedParent);
-            newDetails.forEach(d -> d.setInsuranceMaster(savedParent));
+            newDetails.forEach(d -> {
+                d.setTransactionPoid(savedParent.getTransactionPoid());
+                d.setInsuranceMaster(savedParent);
+            });
             if (savedParent.getPropertyDetails() == null) {
                 savedParent.setPropertyDetails(new ArrayList<>());
             }
@@ -474,7 +487,10 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         }
         if (request.getPicDetails() != null && !request.getPicDetails().isEmpty()) {
             List<InsurancePicDetail> newDetails = buildPicDetails(request.getPicDetails(), savedParent);
-            newDetails.forEach(d -> d.setInsuranceMaster(savedParent));
+            newDetails.forEach(d -> {
+                d.setTransactionPoid(savedParent.getTransactionPoid());
+                d.setInsuranceMaster(savedParent);
+            });
             if (savedParent.getPicDetails() == null) {
                 savedParent.setPicDetails(new ArrayList<>());
             }
@@ -488,12 +504,18 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         if (dtos == null) return new ArrayList<>();
         List<InsuranceEmployeeDetail> result = new ArrayList<>();
         
-        // Find max detRowId from existing records
-        long maxDetRowId = parent.getEmployeeDetails() != null ? 
+        // Find max detRowId from existing records AND incoming DTOs
+        long maxFromExisting = parent.getEmployeeDetails() != null ? 
             parent.getEmployeeDetails().stream()
                 .mapToLong(InsuranceEmployeeDetail::getDetRowId)
                 .max()
                 .orElse(0L) : 0L;
+        long maxFromDtos = dtos.stream()
+            .filter(dto -> dto.getDetRowId() != null)
+            .mapToLong(InsuranceEmployeeDetailRequestDto::getDetRowId)
+            .max()
+            .orElse(0L);
+        long maxDetRowId = Math.max(maxFromExisting, maxFromDtos);
         long nextDetRowId = maxDetRowId + 1;
         
         for (InsuranceEmployeeDetailRequestDto dto : dtos) {
@@ -501,10 +523,21 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
             
             if ("ISDELETED".equals(action)) continue;
             
-            Long detRowId = dto.getDetRowId() != null ? dto.getDetRowId() : nextDetRowId++;
+            // Skip empty rows
+            if (dto.getEmployeePoid() == null && dto.getAmount() == null) {
+                continue;
+            }
+            
+            Long detRowId;
+            if ("ISCREATED".equals(action)) {
+                detRowId = nextDetRowId++;
+            } else if ("ISUPDATED".equals(action)) {
+                detRowId = dto.getDetRowId();
+            } else {
+                detRowId = dto.getDetRowId() != null ? dto.getDetRowId() : nextDetRowId++;
+            }
             
             result.add(InsuranceEmployeeDetail.builder()
-                    .transactionPoid(parent.getTransactionPoid())
                     .detRowId(detRowId)
                     .employeePoid(dto.getEmployeePoid())
                     .amount(dto.getAmount())
@@ -522,12 +555,18 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         if (dtos == null) return new ArrayList<>();
         List<InsurancePropertyDetail> result = new ArrayList<>();
         
-        // Find max detRowId from existing records
-        long maxDetRowId = parent.getPropertyDetails() != null ? 
+        // Find max detRowId from existing records AND incoming DTOs
+        long maxFromExisting = parent.getPropertyDetails() != null ? 
             parent.getPropertyDetails().stream()
                 .mapToLong(InsurancePropertyDetail::getDetRowId)
                 .max()
                 .orElse(0L) : 0L;
+        long maxFromDtos = dtos.stream()
+            .filter(dto -> dto.getDetRowId() != null)
+            .mapToLong(InsurancePropertyDetailRequestDto::getDetRowId)
+            .max()
+            .orElse(0L);
+        long maxDetRowId = Math.max(maxFromExisting, maxFromDtos);
         long nextDetRowId = maxDetRowId + 1;
         
         for (InsurancePropertyDetailRequestDto dto : dtos) {
@@ -535,10 +574,21 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
             
             if ("ISDELETED".equals(action)) continue;
             
-            Long detRowId = dto.getDetRowId() != null ? dto.getDetRowId() : nextDetRowId++;
+            // Skip empty rows
+            if (dto.getPropertyPoid() == null && dto.getAmount() == null) {
+                continue;
+            }
+            
+            Long detRowId;
+            if ("ISCREATED".equals(action)) {
+                detRowId = nextDetRowId++;
+            } else if ("ISUPDATED".equals(action)) {
+                detRowId = dto.getDetRowId();
+            } else {
+                detRowId = dto.getDetRowId() != null ? dto.getDetRowId() : nextDetRowId++;
+            }
             
             result.add(InsurancePropertyDetail.builder()
-                    .transactionPoid(parent.getTransactionPoid())
                     .detRowId(detRowId)
                     .propertyPoid(dto.getPropertyPoid())
                     .amount(dto.getAmount())
@@ -556,22 +606,40 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         if (dtos == null) return new ArrayList<>();
         List<InsurancePicDetail> result = new ArrayList<>();
         
-        // Find max detRowId from existing records
-        long maxDetRowId = parent.getPicDetails() != null ? 
+        // Find max detRowId from existing records AND incoming DTOs
+        long maxFromExisting = parent.getPicDetails() != null ? 
             parent.getPicDetails().stream()
                 .mapToLong(InsurancePicDetail::getDetRowId)
                 .max()
                 .orElse(0L) : 0L;
+        long maxFromDtos = dtos.stream()
+            .filter(dto -> dto.getDetRowId() != null)
+            .mapToLong(InsurancePicDetailRequestDto::getDetRowId)
+            .max()
+            .orElse(0L);
+        long maxDetRowId = Math.max(maxFromExisting, maxFromDtos);
         long nextDetRowId = maxDetRowId + 1;
         
         for (InsurancePicDetailRequestDto dto : dtos) {
             String action = normalizeAction(dto.getActionType());
             if ("ISDELETED".equals(action)) continue;
             
-            Long detRowId = dto.getDetRowId() != null ? dto.getDetRowId() : nextDetRowId++;
+            // Skip empty rows
+            if (dto.getRolePoid() == null && dto.getPicPersonPoid() == null && 
+                dto.getFromDate() == null && dto.getToDate() == null) {
+                continue;
+            }
+            
+            Long detRowId;
+            if ("ISCREATED".equals(action)) {
+                detRowId = nextDetRowId++;
+            } else if ("ISUPDATED".equals(action)) {
+                detRowId = dto.getDetRowId();
+            } else {
+                detRowId = dto.getDetRowId() != null ? dto.getDetRowId() : nextDetRowId++;
+            }
             
             result.add(InsurancePicDetail.builder()
-                    .transactionPoid(parent.getTransactionPoid())
                     .detRowId(detRowId)
                     .rolePoid(dto.getRolePoid())
                     .contactType(dto.getContactType())
@@ -588,7 +656,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
     }
 
     private InsuranceMasterResponseDto mapToResponseDto(InsuranceMaster entity) {
-        return InsuranceMasterResponseDto.builder()
+        InsuranceMasterResponseDto dto = InsuranceMasterResponseDto.builder()
                 .insurancePoid(entity.getTransactionPoid())
                 .docRef(entity.getDocRef())
                 .groupPoid(entity.getGroupPoid())
@@ -607,6 +675,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                 .paymentFrequency(entity.getPaymentFrequency())
                 .oneTime(entity.getOneTime())
                 .description(entity.getDescription())
+                .faPoid(entity.getFaPoid())
                 .pjRefPoid(entity.getPjRefPoid())
                 .deleted(entity.getDeleted())
                 .createdBy(entity.getCreatedBy())
@@ -618,6 +687,25 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                 .picDetails(mapPicDetails(entity.getPicDetails()))
                 .renewalLogs(mapRenewalLogs(entity.getRenewalLogs()))
                 .build();
+        
+        // Populate header LOV details
+        if (entity.getInsuranceType() != null) {
+            dto.setInsuranceTypeDetails(lovService.getDetailsByCodeAndLovName(entity.getInsuranceType(), "INSURANCE_TYPE"));
+        }
+        if (entity.getInsuranceCategory() != null) {
+            dto.setInsuranceCategoryDetails(lovService.getDetailsByCodeAndLovName(entity.getInsuranceCategory(), "INSURANCE_CATEGORY"));
+        }
+        if (entity.getInsuranceProvider() != null) {
+            dto.setInsuranceProviderDetails(lovService.getDetailsByCodeAndLovName(entity.getInsuranceProvider(), "INSURANCE_SUPPLIER_MASTER"));
+        }
+        if (entity.getCurrencyPoid() != null) {
+            dto.setCurrencyDetails(lovService.getDetailsByPoidAndLovName(entity.getCurrencyPoid(), "CURRENCY"));
+        }
+        if (entity.getPaymentFrequency() != null) {
+            dto.setPaymentFrequencyDetails(lovService.getDetailsByCodeAndLovName(entity.getPaymentFrequency(), "INSURANCE_PAYMENT_TYPE"));
+        }
+        
+        return dto;
     }
 
     private String calculateStatus(InsuranceMaster entity) {
@@ -698,6 +786,10 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                             // ignore
                         }
                     }
+                    LovGetListDto contactTypeLov = null;
+                    if (e.getContactType() != null) {
+                        contactTypeLov = getLovByCode(e.getContactType(), "INSURANCE_CONTACT_TYPE");
+                    }
                     LovGetListDto picPersonLov = null;
                     if (e.getPicPersonPoid() != null) {
                         picPersonLov = getLovByPoid(e.getPicPersonPoid(), "INSURANCE_PROPERTY_PIC");
@@ -706,6 +798,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                             .detRowId(e.getDetRowId())
                             .role(roleDetails)
                             .contactType(e.getContactType())
+                            .contactTypeDetails(contactTypeLov)
                             .picPerson(picPersonLov)
                             .fromDate(e.getFromDate())
                             .toDate(e.getToDate())
@@ -876,6 +969,27 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         return list.stream().filter(v -> detRowId.equals(v.getDetRowId())).findFirst().orElse(null);
     }
 
+    private InsuranceEmployeeDetail findNewEmployeeByIndex(List<InsuranceEmployeeDetail> newList, List<InsuranceEmployeeDetail> oldList, int index) {
+        if (newList == null) return null;
+        Set<Long> oldDetRowIds = oldList != null ? oldList.stream().map(InsuranceEmployeeDetail::getDetRowId).collect(Collectors.toSet()) : new HashSet<>();
+        List<InsuranceEmployeeDetail> newRecords = newList.stream().filter(e -> !oldDetRowIds.contains(e.getDetRowId())).toList();
+        return index < newRecords.size() ? newRecords.get(index) : null;
+    }
+
+    private InsurancePropertyDetail findNewPropertyByIndex(List<InsurancePropertyDetail> newList, List<InsurancePropertyDetail> oldList, int index) {
+        if (newList == null) return null;
+        Set<Long> oldDetRowIds = oldList != null ? oldList.stream().map(InsurancePropertyDetail::getDetRowId).collect(Collectors.toSet()) : new HashSet<>();
+        List<InsurancePropertyDetail> newRecords = newList.stream().filter(p -> !oldDetRowIds.contains(p.getDetRowId())).toList();
+        return index < newRecords.size() ? newRecords.get(index) : null;
+    }
+
+    private InsurancePicDetail findNewPicByIndex(List<InsurancePicDetail> newList, List<InsurancePicDetail> oldList, int index) {
+        if (newList == null) return null;
+        Set<Long> oldDetRowIds = oldList != null ? oldList.stream().map(InsurancePicDetail::getDetRowId).collect(Collectors.toSet()) : new HashSet<>();
+        List<InsurancePicDetail> newRecords = newList.stream().filter(p -> !oldDetRowIds.contains(p.getDetRowId())).toList();
+        return index < newRecords.size() ? newRecords.get(index) : null;
+    }
+
     private List<InsuranceEmployeeDetail> snapshotEmployeeDetails(List<InsuranceEmployeeDetail> list) {
         if (list == null || list.isEmpty()) return new ArrayList<>();
         List<InsuranceEmployeeDetail> snapshots = new ArrayList<>();
@@ -946,18 +1060,13 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
 
     @Override
     @Transactional
-    public InsuranceMasterResponseDto renewInsurance(Long insuranceId, InsuranceMasterRequestDto request, Boolean addToHistory) {
+    public InsuranceMasterResponseDto renewInsurance(Long insuranceId, InsuranceMasterRequestDto request) {
         InsuranceMaster existing = insuranceMasterRepository.findById(insuranceId)
                 .orElseThrow(() -> new ResourceNotFoundException("Insurance Master", "ID", insuranceId));
 
         // Scenario 2: Check if already renewed
         if (existing.getRenewalLogs() != null && !existing.getRenewalLogs().isEmpty()) {
             throw new ValidationException("Details are already added to the renewal history");
-        }
-
-        // Scenario 1: If addToHistory is null or false, ask for confirmation
-        if (addToHistory == null || !addToHistory) {
-            throw new ValidationException("CONFIRMATION_REQUIRED");
         }
 
         // User confirmed - proceed with renewal

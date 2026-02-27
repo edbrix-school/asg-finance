@@ -53,8 +53,6 @@ public class InsuranceMaster {
     @Column(name = "INSURANCE_CATEGORY", length = 50)
     private String insuranceCategory;
 
-    @Pattern(regexp = "^POL[0-9]{8}$",
-            message = "Policy number must be in format POL12345678")
     @Column(name = "POLICY_NO", length = 50)
     private String policyNo;
 

@@ -1,6 +1,7 @@
 package com.asg.finance.entity;
 
 import com.asg.common.lib.annotation.AuditIgnore;
+import com.asg.common.lib.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -12,7 +13,7 @@ import java.util.List;
 @Entity
 @Table(name = "AR_DEBIT_NOTE_HDR")
 @Data
-public class ArDebitNoteHdr {
+public class ArDebitNoteHdr extends BaseEntity {
 
     @Id
     @AuditIgnore
@@ -39,7 +40,6 @@ public class ArDebitNoteHdr {
     @Column(name = "DOC_REF", length = 25, nullable = false)
     private String docRef;
 
-    @AuditIgnore
     @Column(name = "CURRENCY_CODE", length = 20)
     private String currencyCode;
 
@@ -49,7 +49,6 @@ public class ArDebitNoteHdr {
     @Column(name = "PARTY_TYPE", length = 100)
     private String partyType;
 
-    @AuditIgnore
     @Column(name = "PARTY_POID")
     private Long partyPoid;
 
@@ -107,11 +106,9 @@ public class ArDebitNoteHdr {
     @Column(name = "PRINT_COMPANY_POID")
     private Long printCompanyPoid;
 
-    @AuditIgnore
     @Column(name = "PO_REF", length = 300)
     private String poRef;
 
-    @AuditIgnore
     @Column(name = "BANK_POID")
     private Long bankPoid;
 
@@ -125,7 +122,6 @@ public class ArDebitNoteHdr {
     @Column(name = "TIN_NUMBER", length = 100)
     private String tinNumber;
 
-    @AuditIgnore
     @Column(name = "OTHER_CURR_AMOUNT")
     private BigDecimal otherCurrAmount;
 
@@ -166,19 +162,6 @@ public class ArDebitNoteHdr {
     @AuditIgnore
     @Column(name = "TEMP_MEMNO", length = 21)
     private String tempMemno;
-
-    @AuditIgnore
-    @Column(name = "CREATED_BY", length = 20)
-    private String createdBy;
-
-    @Column(name = "CREATED_DATE")
-    private LocalDateTime createdDate;
-
-    @Column(name = "LASTMODIFIED_BY", length = 20)
-    private String lastModifiedBy;
-
-    @Column(name = "LASTMODIFIED_DATE")
-    private LocalDateTime lastModifiedDate;
 
     @AuditIgnore
     @Column(name = "DELETED", length = 1)

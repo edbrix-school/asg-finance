@@ -3,6 +3,7 @@ package com.asg.finance.dto;
 import com.asg.common.lib.dto.LovGetListDto;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -17,7 +18,7 @@ public class ApPurchaseInvRjvDetailsDto {
     private String rjvDocRef;
     private Long rjvCompanyPoid;
     private String rjvRefType;
-    private Long rjvAmount;
+    private BigDecimal rjvAmount;
     private String rjvRemarks;
     private String remarks;
     private String createdBy;

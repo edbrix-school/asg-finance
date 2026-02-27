@@ -27,6 +27,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -326,9 +327,9 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                 }
             }
             saveBillwiseForGl(transactionPoid, dto.getGlDetails().stream()
-                .filter(g -> !"isdeleted".equals(normalizeActionType(g.getActionType()))).collect(Collectors.toList()), UserContext.getDocumentId());
+                .filter(g -> !"isdeleted".equals(normalizeActionType(g.getActionType()))).collect(Collectors.toList()), UserContext.getDocumentId(), true);
             saveCostCenterForGl(transactionPoid, dto.getGlDetails().stream()
-                .filter(g -> !"isdeleted".equals(normalizeActionType(g.getActionType()))).collect(Collectors.toList()), UserContext.getDocumentId());
+                .filter(g -> !"isdeleted".equals(normalizeActionType(g.getActionType()))).collect(Collectors.toList()), UserContext.getDocumentId(), true);
         }
         
         // Batch process all update logs
@@ -405,8 +406,8 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
             }
             log.info("Saved {} GL details for transactionPoid: {}", dto.getGlDetails().size(), transactionPoid);
             
-            saveBillwiseForGl(transactionPoid, dto.getGlDetails(), UserContext.getDocumentId());
-            saveCostCenterForGl(transactionPoid, dto.getGlDetails(), UserContext.getDocumentId());
+            saveBillwiseForGl(transactionPoid, dto.getGlDetails(), UserContext.getDocumentId(), false);
+            saveCostCenterForGl(transactionPoid, dto.getGlDetails(), UserContext.getDocumentId(), false);
         }
     }
     
@@ -460,7 +461,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         }
     }
 
-    public void saveBillwiseForGl(Long transactionPoid, List<ApPurchaseCnGlDtlDto> glDetails, String docId) {
+    public void saveBillwiseForGl(Long transactionPoid, List<ApPurchaseCnGlDtlDto> glDetails, String docId, boolean isUpdate) {
         if (glDetails == null || glDetails.isEmpty()) {
             return;
         }
@@ -482,7 +483,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
             if (glDto.getTaxPoid() != null && !taxMasterRepository.existsByTaxPoid(glDto.getTaxPoid())) {
                 throw new ResourceNotFoundException("Tax", "taxPoid", glDto.getTaxPoid());
             }
-
+            long inital = 1L;
             if (glDto.getBreakupList() != null && !glDto.getBreakupList().isEmpty()) {
                 for (BillwiseBreakupPopupRequestDto popup : glDto.getBreakupList()) {
                     BillwiseBreakupRequestDto req = new BillwiseBreakupRequestDto();
@@ -490,7 +491,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                     req.setCompanyPoid(companyPoid);
                     req.setDocId(docId);
                     req.setTransactionPoid(transactionPoid);
-                    req.setBillDetRowId(popup.getBillDetRowId());
+                    req.setBillDetRowId(inital);
                     req.setBillRefType(popup.getBillRefType());
                     req.setBillRef(popup.getBillRef());
                     req.setBillDueDate(popup.getBillDueDate());
@@ -507,17 +508,25 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                     req.setGlCompanyPoid(companyPoid);
                     req.setGlPoid(glDto.getGlPoid());
                     billwiseList.add(req);
+                    inital++;
                 }
             }
         }
 
         if (!billwiseList.isEmpty()) {
-            billwiseBreakupService.insertBillwiseBreakup(billwiseList);
+            if (isUpdate) {
+                billwiseBreakupService.updateBillwiseBreakups(billwiseList, userPoid);
+            } else {
+                billwiseBreakupService.insertBillwiseBreakup(billwiseList);
+            }
             log.info("Saved {} billwise breakup entries for transactionPoid: {}", billwiseList.size(), transactionPoid);
         }
     }
 
-    public void saveCostCenterForGl(Long transactionPoid, List<ApPurchaseCnGlDtlDto> glDetails, String docId) {
+    public void saveCostCenterForGl(Long transactionPoid,
+                                    List<ApPurchaseCnGlDtlDto> glDetails,
+                                    String docId,
+                                    boolean isUpdate) {
         if (glDetails == null || glDetails.isEmpty()) {
             return;
         }
@@ -527,6 +536,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         Long companyPoid = UserContext.getCompanyPoid() != null ? UserContext.getCompanyPoid() : 1L;
         Long userPoid = UserContext.getUserPoid() != null ? UserContext.getUserPoid() : 1L;
 
+        long inital = 1L;
         for (ApPurchaseCnGlDtlDto glDto : glDetails) {
             if (glDto == null || glDto.getDetRowId() == null) {
                 continue;
@@ -541,18 +551,23 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                     dto.setTransactionPoid(transactionPoid);
                     dto.setMainDetRowId(glDto.getDetRowId());
                     dto.setGlPoid(glDto.getGlPoid());
-                    dto.setCostDetRowId(glDto.getDetRowId());
+                    dto.setCostDetRowId(inital);
                     dto.setCostGroup(popup.getCostGroup());
                     dto.setCostPoid(popup.getCostPoid());
                     dto.setAmount(popup.getAmount());
                     dto.setLoginUserPoid(userPoid);
                     costCenterList.add(dto);
+                    inital++;
                 }
             }
         }
 
         if (!costCenterList.isEmpty()) {
-            costCenterBreakupService.saveCostCenterBreakups(costCenterList);
+            if (isUpdate) {
+                costCenterBreakupService.updateCostCenterBreakups(costCenterList, userPoid);
+            } else  {
+                costCenterBreakupService.saveCostCenterBreakups(costCenterList);
+            }
             log.info("Saved {} cost center breakup entries for transactionPoid: {}", costCenterList.size(), transactionPoid);
         }
     }
@@ -899,7 +914,8 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                         popup.setBillDetRowId(b.getBillDetRowId());
                         popup.setBillRefType(b.getBillRefType());
                         popup.setBillRef(b.getBillRef());
-                        popup.setBillDueDate(b.getBillDueDate());
+                        popup.setBillDueDate(b.getBillDueDate() != null ? 
+                            b.getBillDueDate().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate() : null);
                         popup.setType(b.getDrAmt().compareTo(BigDecimal.ZERO) > 0 ? "DR" : "CR");
                         popup.setAmount(b.getDrAmt().compareTo(BigDecimal.ZERO) > 0 ? b.getDrAmt() : b.getCrAmt());
                         popup.setBillRemarks(b.getBillRemarks());
@@ -929,6 +945,11 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                         popup.setCostGroup(c.getCostGroup());
                         popup.setCostPoid(c.getCostPoid());
                         popup.setAmount(BigDecimal.valueOf(c.getAmount()));
+
+                        if (StringUtils.isNotEmpty(c.getCostPoid()) && StringUtils.isNotEmpty(c.getCostGroup())) {
+                            popup.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(Long.valueOf(c.getCostPoid()), c.getCostGroup()));
+                        }
+
                         return popup;
                     })
                     .collect(Collectors.toList());
@@ -1080,7 +1101,8 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                     dto.setBillDetRowId(bw.getBillDetRowId());
                     dto.setBillRefType(bw.getBillRefType());
                     dto.setBillRef(bw.getBillRef());
-                    dto.setBillDueDate(bw.getBillDueDate());
+                    dto.setBillDueDate(bw.getBillDueDate() != null ? 
+                        bw.getBillDueDate().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate() : null);
                     dto.setAmount(bw.getDrAmt() != null ? bw.getDrAmt() : bw.getCrAmt());
                     dto.setType(bw.getDrAmt() != null && bw.getDrAmt().compareTo(BigDecimal.ZERO) > 0 ? "Dr" : "Cr");
                     dto.setBillRemarks(bw.getBillRemarks());

@@ -15,6 +15,8 @@ import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 
 @Repository
@@ -78,7 +80,7 @@ public class ImcoDepositRefundRepositoryImpl implements  ImcoDepositRefundReposi
                 dto.setDrAmt(rs.getBigDecimal("DR_AMT"));
                 dto.setCrAmt(rs.getBigDecimal("CR_AMT"));
                 dto.setPostedBy(rs.getString("POSTED_BY"));
-                dto.setPostedDate(convertToLocalDate(rs.getDate("POSTED_DATE")));
+                dto.setPostedDate(rs.getTimestamp("POSTED_DATE").toLocalDateTime());
                 entries.add(dto);
             }
         } catch (SQLException e) {

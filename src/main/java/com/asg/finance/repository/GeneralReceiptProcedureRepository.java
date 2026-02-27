@@ -308,7 +308,6 @@ public class GeneralReceiptProcedureRepository {
      */
     public String fetchChargeGLAccount(Long groupPoid, Long companyPoid, Long userPoid, String chargeType) {
         log.debug("Calling PROC_GEN_REC_FECH_LEDGER_OF_BC for charge type: {}", chargeType);
-
         StoredProcedureQuery query = entityManager
                 .createStoredProcedureQuery("PROC_GEN_REC_FECH_LEDGER_OF_BC")
                 .registerStoredProcedureParameter("P_LOGIN_GROUP_POID", Long.class, ParameterMode.IN)
@@ -323,6 +322,25 @@ public class GeneralReceiptProcedureRepository {
 
         query.execute();
         return (String) query.getOutputParameterValue("P_GL_POID");
+    }
+
+    /**
+     * Call PROC_AR_GL_BILWISE_YN to check if a GL is billwise enabled
+     *
+     * @param glPoid GL POID
+     * @return Billwise flag (Y/N)
+     */
+    public String fetchGLBillwiseFlag(Long glPoid) {
+        log.debug("Calling PROC_AR_GL_BILWISE_YN for GL: {}", glPoid);
+
+        StoredProcedureQuery query = entityManager
+                .createStoredProcedureQuery("PROC_AR_GL_BILWISE_YN")
+                .registerStoredProcedureParameter("P_GL_POID", Long.class, ParameterMode.IN)
+                .registerStoredProcedureParameter("P_RESULT", String.class, ParameterMode.OUT)
+                .setParameter("P_GL_POID", glPoid);
+
+        query.execute();
+        return (String) query.getOutputParameterValue("P_RESULT");
     }
 
     /**

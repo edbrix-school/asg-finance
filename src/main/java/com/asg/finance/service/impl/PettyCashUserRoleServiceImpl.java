@@ -70,10 +70,10 @@ public class PettyCashUserRoleServiceImpl implements PettyCashUserRoleService {
         entity.setActive(StringUtils.isBlank(dto.getActive()) ? "Y" : dto.getActive());
         entity.setDeleted("N");
         entity.setSeqNo(dto.getSeqno());
-        entity.setCreatedDate(new Timestamp(System.currentTimeMillis()));
+      /*  entity.setCreatedDate(new Timestamp(System.currentTimeMillis()));
         entity.setCreatedBy(getCurrentUser());
         entity.setLastModifiedBy(getCurrentUser());
-        entity.setLastModifiedDate(LocalDateTime.now());
+        entity.setLastModifiedDate(LocalDateTime.now());*/
         return entity;
     }
 
@@ -131,7 +131,7 @@ public class PettyCashUserRoleServiceImpl implements PettyCashUserRoleService {
         requestDto.setCreatedBy(entity.getCreatedBy());
         requestDto.setCreatedDate(entity.getCreatedDate());
         requestDto.setLastModifiedBy(entity.getLastModifiedBy());
-        requestDto.setLastModifiedDate(entity.getLastModifiedDate() != null ? java.sql.Timestamp.valueOf(entity.getLastModifiedDate()) : null);
+        requestDto.setLastModifiedDate(entity.getLastModifiedDate());
         return requestDto;
     }
 

@@ -1741,6 +1741,23 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
     }
 
     @Override
+    public String getGlBillwiseYn(Long glPoid) {
+        try {
+            log.info("Fetching billwise flag for GL: {}", glPoid);
+            String result = procedureRepository.fetchGLBillwiseFlag(glPoid);
+
+            if (result == null || result.trim().isEmpty()) {
+                return "N";
+            }
+
+            return result.trim();
+        } catch (Exception e) {
+            log.error("Error fetching billwise flag for GL {}: {}", glPoid, e.getMessage(), e);
+            throw new ValidationException("Failed to fetch billwise flag for GL: " + glPoid + ". Error: " + e.getMessage());
+        }
+    }
+
+    @Override
     public Map<String, Object> getPendingBills(Long glPoid, LocalDate asOnDate) {
         Long companyPoid = UserContext.getCompanyPoid() != null ? UserContext.getCompanyPoid() : 1L;
         Date sqlDate = asOnDate != null ? Date.valueOf(asOnDate) : Date.valueOf(LocalDate.now());

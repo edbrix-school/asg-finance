@@ -44,6 +44,7 @@ import java.math.RoundingMode;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -256,7 +257,8 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
                     dto.setBillDetRowId(bw.getBillDetRowId());
                     dto.setBillRefType(bw.getBillRefType());
                     dto.setBillRef(bw.getBillRef());
-                    dto.setBillDueDate(bw.getBillDueDate());
+                    dto.setBillDueDate(bw.getBillDueDate() != null ? 
+                        bw.getBillDueDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate() : null);
                     dto.setAmount(bw.getDrAmt() != null ? bw.getDrAmt() : bw.getCrAmt());
                     dto.setType(bw.getDrAmt() != null && bw.getDrAmt().compareTo(BigDecimal.ZERO) > 0 ? "Dr" : "Cr");
                     dto.setBillRemarks(bw.getBillRemarks());
@@ -697,7 +699,8 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
                             dto.setBillDetRowId(bw.getBillDetRowId());
                             dto.setBillRefType(bw.getBillRefType());
                             dto.setBillRef(bw.getBillRef());
-                            dto.setBillDueDate(bw.getBillDueDate());
+                            dto.setBillDueDate(bw.getBillDueDate() != null ? 
+                                bw.getBillDueDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate() : null);
                             dto.setAmount(bw.getDrAmt() != null ? bw.getDrAmt() : bw.getCrAmt());
                             dto.setType(bw.getDrAmt() != null && bw.getDrAmt().compareTo(BigDecimal.ZERO) > 0 ? "Dr" : "Cr");
                             dto.setBillRemarks(bw.getBillRemarks());

@@ -1,10 +1,11 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.entity.BaseEntity;
 import com.asg.finance.entity.key.ArCreditNoteChargeDtlKey;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "AR_CREDIT_NOTE_CHARGE_DTL")
@@ -14,7 +15,7 @@ import java.sql.Timestamp;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ArCreditNoteChargeDtl {
+public class ArCreditNoteChargeDtl extends BaseEntity {
     
     @Id
     @Column(name = "TRANSACTION_POID")
@@ -71,18 +72,6 @@ public class ArCreditNoteChargeDtl {
     
     @Column(name = "CHARGE_COST_AMOUNT", precision = 19, scale = 2)
     private BigDecimal chargeCostAmount;
-    
-    @Column(name = "CREATED_BY", length = 20)
-    private String createdBy;
-    
-    @Column(name = "CREATED_DATE")
-    private Timestamp createdDate;
-    
-    @Column(name = "LASTMODIFIED_BY", length = 20)
-    private String lastModifiedBy;
-    
-    @Column(name = "LASTMODIFIED_DATE")
-    private Timestamp lastModifiedDate;
 
  /*   @Column(name = "BASIC_AMOUNT", precision = 19, scale = 2)
     private BigDecimal basicAmount;*/

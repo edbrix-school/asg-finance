@@ -6,10 +6,13 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ChequeReturnGlDetailRepository extends JpaRepository<ChequeReturnGlDetail, ChequeReturnGlDetailId> {
-    List<ChequeReturnGlDetail> findByChequeReturn_TransactionPoid(Long transactionPoid);
-    long countById_TransactionPoid(Long transactionPoid);
-    void deleteById_TransactionPoid(Long transactionPoid);
+    List<ChequeReturnGlDetail> findByTransactionPoid(Long transactionPoid);
+    long countByTransactionPoid(Long transactionPoid);
+    void deleteByTransactionPoid(Long transactionPoid);
+    Optional<ChequeReturnGlDetail> findByTransactionPoidAndDetRowId(Long transactionPoid, Long detRowId);
+
 }

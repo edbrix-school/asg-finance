@@ -4,8 +4,6 @@ import com.asg.common.lib.annotation.AuditIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import java.util.Date;
-import java.util.List;
-
 @Getter
 @Setter
 @NoArgsConstructor
@@ -73,11 +71,4 @@ public class ChequeReturn {
     @Column(name = "CLOSE_DETAIL")
     private String closeDetail;
 
-    @OneToMany(mappedBy = "chequeReturn", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    @AuditIgnore
-    private List<ChequeReturnDetail> chequeDetails;
-
-    @OneToMany(mappedBy = "chequeReturn", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    @AuditIgnore
-    private List<ChequeReturnGlDetail> glDetails;
 }

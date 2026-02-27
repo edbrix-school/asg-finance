@@ -7,7 +7,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 
 /**
  * Entity class for GL_FAV_AC_MASTER table
@@ -50,13 +50,13 @@ public class GlFavAcMaster {
     private String createdBy;
 
     @Column(name = "CREATED_DATE")
-    private Timestamp createdDate;
+    private LocalDateTime createdDate;
 
     @Column(name = "LASTMODIFIED_BY", length = 20)
     private String lastModifiedBy;
 
     @Column(name = "LASTMODIFIED_DATE")
-    private Timestamp lastModifiedDate;
+    private LocalDateTime lastModifiedDate;
 
     @Column(name = "DELETED", length = 1, columnDefinition = "VARCHAR2(1) DEFAULT 'N'")
     private String deleted;

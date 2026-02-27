@@ -1,6 +1,7 @@
 package com.asg.finance.entity;
 
 import com.asg.common.lib.annotation.AuditIgnore;
+import com.asg.common.lib.entity.BaseEntity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
@@ -8,13 +9,12 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.*;
-import java.time.LocalDateTime;
 @Entity
 @Table(name = "GL_PAYING_TO_MASTER")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class BankPayee {
+public class BankPayee extends BaseEntity {
     private static final String YES_NO_FLAG_REGEX = "Y|N";
 
     @Id
@@ -52,22 +52,6 @@ public class BankPayee {
     @Digits(integer = 5, fraction = 0, message = "Sequence number can contain up to 5 whole digits")
     @Positive(message = "Sequence number must be greater than zero")
     private Integer seqNo;
-
-    @Column(name = "CREATED_BY")
-    @AuditIgnore
-    private String createdBy;
-
-    @Column(name = "CREATED_DATE")
-    @AuditIgnore
-    private LocalDateTime createdDate;
-
-    @Column(name = "LASTMODIFIED_BY")
-    @AuditIgnore
-    private String lastModifiedBy;
-
-    @Column(name = "LASTMODIFIED_DATE")
-    @AuditIgnore
-    private LocalDateTime lastModifiedDate;
 
     @PrePersist
     @PreUpdate

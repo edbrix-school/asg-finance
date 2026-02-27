@@ -1,13 +1,12 @@
 package com.asg.finance.entity;
 
 import com.asg.common.lib.annotation.AuditIgnore;
+import com.asg.common.lib.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "GLOBAL_TAX_MASTER")
@@ -15,7 +14,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class TaxMaster {
+public class TaxMaster extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "TAX_POID")
@@ -59,22 +58,4 @@ public class TaxMaster {
 
     @Column(name = "SEQNO")
     private Integer seqNo;
-
-    @Column(name = "CREATED_BY")
-    @AuditIgnore
-    private String createdBy;
-
-    @Column(name = "CREATED_DATE")
-    @AuditIgnore
-    private LocalDateTime createdDate;
-
-    @Column(name = "LASTMODIFIED_BY")
-    @AuditIgnore
-    private String lastModifiedBy;
-
-    @Column(name = "LASTMODIFIED_DATE")
-    @AuditIgnore
-    private LocalDateTime lastModifiedDate;
-
-
 }

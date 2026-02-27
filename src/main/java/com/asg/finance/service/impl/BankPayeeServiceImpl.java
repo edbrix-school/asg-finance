@@ -28,7 +28,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -63,8 +62,6 @@ public class BankPayeeServiceImpl implements IBankPayeeService {
         payee.setActive(request.getActive() != null ? request.getActive() : "N");
         payee.setDeleted("N");
         payee.setSeqNo(request.getSeqNo());
-        payee.setCreatedBy(ASGHelperUtils.getCurrentUser());
-        payee.setCreatedDate(LocalDateTime.now());
 
         BankPayee saved = repository.save(payee);
 
@@ -146,9 +143,6 @@ public class BankPayeeServiceImpl implements IBankPayeeService {
         }
 
         entity.setSeqNo(request.getSeqNo());
-
-        entity.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
-        entity.setLastModifiedDate(LocalDateTime.now());
 
         repository.save(entity);
 

@@ -97,6 +97,9 @@ public class DebitNoteServiceImpl implements DebitNoteService {
 
         ArDebitNoteHdr entity = mapToEntity(debitNoteDto);
         ArDebitNoteHdr savedEntity = debitNoteHdrRepository.saveAndFlush(entity);
+        
+        // Log the header creation first
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), savedEntity.getTransactionPoid().toString());
 
         // Save details (GL + Charge) — GL will be saved if provided regardless of refType
         saveDetails(debitNoteDto, savedEntity.getTransactionPoid());
@@ -115,9 +118,6 @@ public class DebitNoteServiceImpl implements DebitNoteService {
 
         // Load breakups into response
         loadBreakups(result, savedEntity.getTransactionPoid());
-
-        // Log the creation
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), savedEntity.getTransactionPoid().toString());
 
         return getDebitNote(savedEntity.getTransactionPoid());
     }
@@ -161,6 +161,9 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         existingEntity.setLastModifiedDate(LocalDateTime.now());
         existingEntity.setTransactionDate(LocalDate.now());
         debitNoteHdrRepository.save(existingEntity);
+        
+        // Log the header update first
+        loggingService.logChanges(oldEntity, existingEntity, ArDebitNoteHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
         List<GlobalLogSummary> detailSummaryLogs = new ArrayList<>();
         updateGlDetailsWithLogging(debitNoteDto.getGlDetails(), transactionPoid, detailSummaryLogs);
@@ -181,7 +184,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         // Load breakups into response
        // loadBreakups(result, transactionPoid);
 
-        loggingService.logChanges(oldEntity, existingEntity, ArDebitNoteHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+        // Log detail updates
         if (!detailSummaryLogs.isEmpty()) {
             globalLogSummaryRepository.saveAll(detailSummaryLogs);
         }

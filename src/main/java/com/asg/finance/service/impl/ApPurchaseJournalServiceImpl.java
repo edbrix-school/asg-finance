@@ -377,6 +377,10 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
         Long transactionPoid = savedApPurchaseInvoiceHdrEntity.getTransactionPoid();
 
+        // Log the creation
+        String key = transactionPoid.toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, documentId, key);
+
         String refType = apPurchaseInvoiceHdrDto.getRefType();
         if (refType != null) refType = refType.trim().toUpperCase();
 
@@ -441,10 +445,6 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         }
         saveAssetDetails(transactionPoid, apPurchaseInvoiceHdrDto);
         saveRjvDetails(transactionPoid, apPurchaseInvoiceHdrDto);
-
-        // Log the creation
-        String key = transactionPoid.toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, documentId, key);
 
         return fetchApPurchaseInvoiceHdr(transactionPoid);
     }
@@ -903,6 +903,10 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         apPurchaseInvoiceHdrEntity.setFdaCoveringRef(apPurchaseInvoiceHdrDto.getFdaCoveringRef());
 
         ApPurchaseInvoiceHdrEntity savedEntity = repository.save(apPurchaseInvoiceHdrEntity);
+
+        // Log the update
+        loggingService.logChanges(oldEntity, savedEntity, ApPurchaseInvoiceHdrEntity.class,
+                UserContext.getDocumentId(), savedEntity.getTransactionPoid().toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
         String refType = (apPurchaseInvoiceHdrDto.getRefType() == null)
                 ? ""
@@ -1415,10 +1419,6 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
             loggingService.createLogBatch(rjvLogRequests);
         }
 
-        // Log the update
-        String key = savedEntity.getTransactionPoid().toString();
-        loggingService.logChanges(oldEntity, savedEntity, ApPurchaseInvoiceHdrEntity.class,
-                UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
         return fetchApPurchaseInvoiceHdr(savedEntity.getTransactionPoid());
     }
 

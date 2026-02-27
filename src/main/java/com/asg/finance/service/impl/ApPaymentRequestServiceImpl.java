@@ -64,6 +64,11 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
 
         Long transactionPoid = hdr.getTransactionPoid();
 
+        // Log the creation
+        String key = transactionPoid.toString();
+        String docId = UserContext.getDocumentId();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, key);
+
         // Auto-generate detRowId for new records
         List<ApPaymentRequestDtl> details = new java.util.ArrayList<>();
         long detRowId = 1;
@@ -81,11 +86,6 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
             String logDetail = String.format("Row Created on AP Payment Request Detail with detRowId: %s", detail.getId().getDetRowId());
             loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString(), logDetail);
         });
-
-        // Log the creation
-        String key = transactionPoid.toString();
-        String docId = UserContext.getDocumentId();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, key);
 
         return ApPaymentRequestMapper.toResponse(hdr, details);
     }
@@ -119,13 +119,13 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
 
         ApPaymentRequestHdr savedEntity = hdrRepository.save(hdr);
 
-        // Process details based on actionType
-        processDetails(transactionPoid, requestDto.getDetails());
-
         // Log the update
         String key = savedEntity.getTransactionPoid().toString();
         loggingService.logChanges(oldEntity, savedEntity, ApPaymentRequestHdr.class,
                 UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+
+        // Process details based on actionType
+        processDetails(transactionPoid, requestDto.getDetails());
 
         List<ApPaymentRequestDtl> details = dtlRepository.findByIdTransactionPoid(transactionPoid);
         return ApPaymentRequestMapper.toResponse(hdr, details);

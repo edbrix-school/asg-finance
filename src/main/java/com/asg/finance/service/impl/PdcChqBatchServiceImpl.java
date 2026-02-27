@@ -63,12 +63,12 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
 
         Long transactionPoid = hdr.getTransactionPoid();
 
-        List<PdcChqBatchDtlResponseDto> dtlResponses =
-                saveDetailRows(dto.getChequeDetails(), transactionPoid);
-
         // Log the creation
         String key = transactionPoid.toString();
         loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, "400-113", key);
+
+        List<PdcChqBatchDtlResponseDto> dtlResponses =
+                saveDetailRows(dto.getChequeDetails(), transactionPoid);
 
         return mapHeaderEntityToResponseDto(hdr, dtlResponses);
     }
@@ -110,14 +110,14 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
         hdr.setLastModifiedDate(LocalDateTime.now());
         hdrRepo.save(hdr);
 
-        dtlRepo.deleteByTransactionPoid(transactionPoid);
-        List<PdcChqBatchDtlResponseDto> dtls =
-                saveDetailRows(dto.getChequeDetails(), transactionPoid);
-
         // Log the update
         String key = transactionPoid.toString();
         loggingService.logChanges(oldEntity, hdr, PdcChqBatchHdrEntity.class, 
                 "400-113", key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+
+        dtlRepo.deleteByTransactionPoid(transactionPoid);
+        List<PdcChqBatchDtlResponseDto> dtls =
+                saveDetailRows(dto.getChequeDetails(), transactionPoid);
 
         return mapHeaderEntityToResponseDto(hdr, dtls);
     }

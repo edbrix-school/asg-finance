@@ -63,15 +63,6 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
     public BankDepositVoucherResponseDto createBankDepositVoucher(BankDepositVoucherRequestDto request) {
         Long transactionPoid = createHeaderAndDetails(request);
         callUpdatePaymentProcedure(transactionPoid, request.getGroupPoid(), request.getCompanyPoid(), request.getType());
-        
-        // Get the saved entity for logging
-        GlBankDepositVoucherHdr savedEntity = hdrRepository.findByTransactionPoid(transactionPoid)
-                .orElseThrow(() -> new ResourceNotFoundException("Bank Deposit Voucher", "transactionPoid", transactionPoid));
-        
-        // Log the creation
-        String key = transactionPoid.toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), key);
-        
         return getBankDepositVoucherById(transactionPoid);
     }
 
@@ -98,14 +89,20 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
                 .build();
 
         GlBankDepositVoucherHdr savedHdr = hdrRepository.save(hdr);
+        hdrRepository.flush();
+        
+        Long transactionPoid = savedHdr.getTransactionPoid();
+        
+        // Log header creation first
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), transactionPoid.toString());
 
         if (request.getDetails() != null) {
             String docId = UserContext.getDocumentId();
-            String key = savedHdr.getTransactionPoid().toString();
+            String key = transactionPoid.toString();
             List<GlBankDepositVoucherDtl> details = new ArrayList<>();
             for (int i = 0; i < request.getDetails().size(); i++) {
                 BankDepositVoucherDtlDto dto = request.getDetails().get(i);
-                GlBankDepositVoucherDtl detail = convertToDetailEntity(dto, savedHdr.getTransactionPoid());
+                GlBankDepositVoucherDtl detail = convertToDetailEntity(dto, transactionPoid);
                 detail.setDetRowId((long) (i + 1));
                 details.add(detail);
             }
@@ -116,8 +113,7 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
                 loggingService.createLogSummaryEntry(docId, key, logDetail);
             });
         }
-        hdrRepository.flush();
-        return savedHdr.getTransactionPoid();
+        return transactionPoid;
     }
 
     @Transactional(Transactional.TxType.REQUIRES_NEW)
@@ -160,6 +156,10 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
         hdr.setLastModifiedDate(LocalDateTime.now());
 
         hdrRepository.save(hdr);
+        
+        // Log the update
+        loggingService.logChanges(oldEntity, hdr, GlBankDepositVoucherHdr.class, 
+                UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
 
         if (request.getDetails() != null) {
@@ -226,10 +226,6 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
         }
         callMarkPaymentsCompleted(transactionPoid, hdr.getGroupPoid(), hdr.getCompanyPoid(), request.getType());
 
-        // Log the update
-        String key = transactionPoid.toString();
-        loggingService.logChanges(oldEntity, hdr, GlBankDepositVoucherHdr.class, 
-                UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
         return getBankDepositVoucherById(transactionPoid);
     }
 

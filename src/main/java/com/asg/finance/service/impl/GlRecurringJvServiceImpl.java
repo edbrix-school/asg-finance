@@ -307,13 +307,13 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
 
         header = hdrRepository.save(header);
 
+        // Log the creation
+        String key = header.getTransactionPoid().toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, key);
 
         Long transactionPoid = header.getTransactionPoid();
         saveDetails(transactionPoid, request.getDetails(), header, docId);
 
-        // Log the creation
-        String key = transactionPoid.toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, key);
 
         return new RecurringJvCreateResponse(transactionPoid, "Recurring JV created successfully");
     }
@@ -497,13 +497,13 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
 
         hdrRepository.save(header);
 
-        dtlRepository.deleteByTransactionPoid(transactionPoid);
-        saveDetails(transactionPoid, request.getDetails(), header, docId);
-
         // Log the update
         String key = transactionPoid.toString();
         loggingService.logChanges(oldEntity, header, GlRecurringJvHdr.class,
                 docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+
+        dtlRepository.deleteByTransactionPoid(transactionPoid);
+        saveDetails(transactionPoid, request.getDetails(), header, docId);
 
         return new RecurringJvCreateResponse(transactionPoid, "Recurring JV updated successfully");
     }

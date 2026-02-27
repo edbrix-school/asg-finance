@@ -262,6 +262,11 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
 
         String docId = UserContext.getDocumentId();
         String docKeyPoid = updatedEntity.getSupplierPoid().toString();
+        
+        // Log header changes first
+        loggingService.logChanges(oldEntity, updatedEntity, SupplierMasterEntity.class,
+                docId, docKeyPoid, LogDetailsEnum.MODIFIED, "SUPPLIER_POID");
+        
         List<GlobalLogSummary> subTableSummaryLogs = new ArrayList<>();
 
         if (supplierMasterDto.getPaymentDtl() != null && !supplierMasterDto.getPaymentDtl().isEmpty()) {
@@ -289,10 +294,6 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                 UserContext.getUserPoid(),
                 "Y",
                 supplierMasterDto.getSupplierPoid());
-        
-     
-        loggingService.logChanges(oldEntity, updatedEntity, SupplierMasterEntity.class,
-                docId, docKeyPoid, LogDetailsEnum.MODIFIED, "SUPPLIER_POID");
 
         if (!Objects.equals(oldEntity.getAddressPoid(), updatedEntity.getAddressPoid())) {
             SupplierMasterEntity oldAddressOnly = new SupplierMasterEntity();

@@ -91,6 +91,11 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
                 .build();
 
         header = headerRepo.save(header);
+
+        // Log the creation
+        String key = header.getTransactionPoid().toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, DOC_ID_CHEQUE_RETURN, key);
+
         Long trnPoid = header.getTransactionPoid();
         request.getChequeHeader().setTransactionPoid(trnPoid);
         request.getChequeHeader().setDocRef(header.getDocRef());
@@ -104,10 +109,6 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
         
         // Schedule after save procedure to run after transaction commit
         scheduleAfterSave(header.getTransactionPoid(), header.getDocRef());
-        
-        // Log the creation
-        String key = header.getTransactionPoid().toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, DOC_ID_CHEQUE_RETURN, key);
         
         return toResponse(header, request, "Cheque Return created successfully.");
     }
@@ -181,6 +182,12 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
         header.setCloseDetail(request.getChequeHeader().getCloseDetail());
         header.setLastModifiedDate(dbDate);
         header.setLastModifiedBy(UserContext.getUserId());
+        headerRepo.save(header);
+        
+        // Log header update first
+        String key = transactionPoid.toString();
+        loggingService.logChanges(oldEntity, header, ChequeReturn.class,
+                DOC_ID_CHEQUE_RETURN, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
         // Delete existing child records
         detailRepo.deleteById_TransactionPoid(transactionPoid);
@@ -193,14 +200,9 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
                 buildAndSaveGlDetails(transactionPoid, header, request.getGlDetails(), dbDate, false);
 
         checkPostingValidations(glEntities, detailEntities);
-        headerRepo.save(header);
         // Schedule after save procedure to run after transaction commit
         scheduleAfterSave(header.getTransactionPoid(), header.getDocRef());
         
-        // Log the update
-        String key = transactionPoid.toString();
-        loggingService.logChanges(oldEntity, header, ChequeReturn.class, 
-                DOC_ID_CHEQUE_RETURN, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
         return toResponse(header, request, "Cheque Return updated successfully.");
     }
 

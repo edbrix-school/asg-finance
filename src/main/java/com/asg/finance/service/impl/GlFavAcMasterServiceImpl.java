@@ -122,9 +122,14 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
 
         GlFavAcMaster savedMaster = masterRepository.save(master);
         
-        List<GlobalLogSummary> detailSummaryLogs = new ArrayList<>();
         String docId = UserContext.getDocumentId();
         String docKeyPoid = savedMaster.getFavAcPoid().toString();
+        
+        String createdMessage = String.format("Created - - DOC:%s KEY:%s", docId, docKeyPoid);
+        GlobalLogSummary headerLog = createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, createdMessage, now);
+        globalLogSummaryRepository.save(headerLog);
+        
+        List<GlobalLogSummary> detailSummaryLogs = new ArrayList<>();
 
         if (request.getGlAccounts() != null && !request.getGlAccounts().isEmpty()) {
             for (GlAccountDetailRequest glAccountRequest : request.getGlAccounts()) {
@@ -241,7 +246,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                         }
                     }
                 }
-                            }
+            }
         }
 
         // Create user role detail records
@@ -352,10 +357,6 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
             globalLogSummaryRepository.saveAll(detailSummaryLogs);
         }
 
-        String createdMessage = String.format("Created - - DOC:%s KEY:%s", docId, docKeyPoid);
-        GlobalLogSummary headerLog = createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, createdMessage, now);
-        globalLogSummaryRepository.save(headerLog);
-
         return getFavoriteAccountById(savedMaster.getFavAcPoid());
     }
 
@@ -423,6 +424,20 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
         existing.setLastModifiedDate(now);
 
         masterRepository.save(existing);
+        
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = favAcPoid.toString();
+        
+        String modifiedMessage = String.format("Modified - - DOC:%s KEY:%s", docId, docKeyPoid);
+        GlobalLogSummary headerUpdateLog = createSummaryLogEntry(LogDetailsEnum.MODIFIED, docId, docKeyPoid, modifiedMessage, now);
+        globalLogSummaryRepository.save(headerUpdateLog);
+        
+        List<LogRequestDto<GlFavAcMaster>> headerLogRequests = new ArrayList<>();
+        String headerLogDetail = String.format("KeyId = FAV_AC_POID:%s", favAcPoid);
+        headerLogRequests.add(new LogRequestDto<>(oldEntity, existing, GlFavAcMaster.class, docId, docKeyPoid, headerLogDetail));
+        if (!headerLogRequests.isEmpty()) {
+            loggingService.createLogBatch(headerLogRequests);
+        }
 
         List<GlFavAcMasterGlAcDtl> oldGlAcDtls = glAcDtlRepository.findByFavAcPoidOrderByDetRowId(favAcPoid);
         Map<Long, GlFavAcMasterGlAcDtl> oldGlAcMap = oldGlAcDtls.stream()
@@ -432,8 +447,6 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
         List<GlFavAcMasterGlAcDtl> toDelete = new ArrayList<>();
         List<LogRequestDto<GlFavAcMasterGlAcDtl>> glAcLogRequests = new ArrayList<>();
         List<GlobalLogSummary> glAcSummaryLogs = new ArrayList<>();
-        String docId = UserContext.getDocumentId();
-        String docKeyPoid = favAcPoid.toString();
         
         if (request.getGlAccounts() != null && !request.getGlAccounts().isEmpty()) {
             for (GlAccountDetailRequest glAccountRequest : request.getGlAccounts()) {
@@ -709,19 +722,6 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
         if (!userRoleToDelete.isEmpty()) {
             userRoleDtlRepository.deleteAll(userRoleToDelete);
         }
-
-        
-        String modifiedMessage = String.format("Modified - - DOC:%s KEY:%s", docId, docKeyPoid);
-        GlobalLogSummary headerUpdateLog = createSummaryLogEntry(LogDetailsEnum.MODIFIED, docId, docKeyPoid, modifiedMessage, now);
-        globalLogSummaryRepository.save(headerUpdateLog);
-        
-        List<LogRequestDto<GlFavAcMaster>> headerLogRequests = new ArrayList<>();
-        String logDetail = String.format("KeyId = FAV_AC_POID:%s", favAcPoid);
-        headerLogRequests.add(new LogRequestDto<>(oldEntity, existing, GlFavAcMaster.class, docId, docKeyPoid, logDetail));
-        if (!headerLogRequests.isEmpty()) {
-            loggingService.createLogBatch(headerLogRequests);
-        }
-        
       
         if (!glAcLogRequests.isEmpty()) {
             loggingService.createLogBatch(glAcLogRequests);

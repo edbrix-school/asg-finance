@@ -91,6 +91,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 
 		final GlExpenseReallocationHdr savedHdr = hdrRepository.save(header);
 		final Long hdrPoid = savedHdr.getTransactionPoid();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), hdrPoid.toString());
 		Long maxDtlDetRowId = dtlRepository.findMaxDetRowIdByTransactionPoid(hdrPoid);
 		AtomicLong dtlDetRowIdSeq = new AtomicLong(maxDtlDetRowId != null ? maxDtlDetRowId + 1 : 1);
 		List<GlExpenseReallocationDtl> dtlEntities = request.getDetails().stream()
@@ -130,7 +131,6 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 			loggingService.createLogSummaryEntry(UserContext.getDocumentId(), hdrPoid.toString(), logDetail);
 		});
 		log.info("createExpenseReallocation completed for transactionPoid={}", savedHdr.getTransactionPoid());
-		loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), hdrPoid.toString());
 		return buildResponse(savedHdr);
 	}
 
@@ -190,6 +190,11 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 
 		GlExpenseReallocationHdr savedHeader = hdrRepository.save(header);
 
+        String key = header.getTransactionPoid().toString();
+        String docId = UserContext.getDocumentId();
+        loggingService.logChanges(existingHeader, header, GlExpenseReallocationHdr.class, docId, key,
+                LogDetailsEnum.MODIFIED, "SUPPLIER_POID");
+
 		// Process details based on actionType
 		processDetails(transactionPoid, request.getDetails(), userId);
 		
@@ -199,10 +204,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 		}
 
 		log.info("updateExpenseReallocation completed for transactionPoid={}", transactionPoid);
-		String key = header.getTransactionPoid().toString();
-		String docId = UserContext.getDocumentId();
-		loggingService.logChanges(existingHeader, header, GlExpenseReallocationHdr.class, docId, key,
-				LogDetailsEnum.MODIFIED, "SUPPLIER_POID");
+
 		return buildResponse(savedHeader);
 	}
 

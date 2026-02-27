@@ -124,6 +124,10 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         log.info("Journal Voucher header saved - TransactionPoid: {}, DocRef: {}", 
                 header.getTransactionPoid(), header.getDocRef());
 
+        // Log the creation
+        String key = header.getTransactionPoid().toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, key);
+
         if (REF_TYPE_GENERAL.equalsIgnoreCase(request.getRefType()) && request.getGlDetails() != null) {
             log.debug("Saving {} GL detail lines", request.getGlDetails().size());
             saveGlDetails(header, request.getGlDetails(), isMultiCompany,docId);
@@ -138,10 +142,6 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
 
         log.info("Journal Voucher created successfully - TransactionPoid: {}, DocRef: {}, RefType: {}", 
                 header.getTransactionPoid(), header.getDocRef(), request.getRefType());
-        
-        // Log the creation
-        String key = header.getTransactionPoid().toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, key);
         
         return JournalVoucherResponse.builder()
                 .transactionPoid(header.getTransactionPoid())
@@ -673,6 +673,11 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
 
         glJournalVoucherHdrRepository.save(existing);
 
+        // Log the update
+        String key = transactionPoid.toString();
+        loggingService.logChanges(oldEntity, existing, GlJournalVoucherHdr.class, 
+                docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+
         if (REF_TYPE_GENERAL.equalsIgnoreCase(request.getRefType())) {
             saveGlDetails(existing, request.getGlDetails(), isMultiCompany,docId);
         } else if (REF_TYPE_ASSET_DISPOSAL.equalsIgnoreCase(request.getRefType())) {
@@ -685,11 +690,6 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
             saveCapitalizationDetails(transactionPoid, request.getAssetCapitalization());
             saveGlDetails(existing, request.getGlDetails(), isMultiCompany,docId);
         }
-
-        // Log the update
-        String key = transactionPoid.toString();
-        loggingService.logChanges(oldEntity, existing, GlJournalVoucherHdr.class, 
-                docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
         return JournalVoucherResponse.builder()
                 .transactionPoid(existing.getTransactionPoid())

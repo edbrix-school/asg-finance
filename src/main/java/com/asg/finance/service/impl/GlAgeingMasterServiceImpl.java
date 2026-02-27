@@ -143,10 +143,6 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
         existingEntity.setLastModifiedDate(Timestamp.valueOf(LocalDateTime.now()));
         ageingMasterRepository.save(existingEntity);
 
-        // Update detail records (use entity relationship)
-        //updateAgeingDetails(ageingMasterDto.getAgeingDetails(), existingEntity);
-        updateAgeingMastersChildDetails(ageingMasterDto.getAgeingDetails(), ageingPoid);
-
         String docId = UserContext.getDocumentId();
         String docKeyPoid = ageingPoid.toString();
         String modifiedMessage = String.format("Modified - - DOC:%s KEY:%s", docId, docKeyPoid);
@@ -159,6 +155,10 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
         if (!headerLogRequests.isEmpty()) {
             loggingService.createLogBatch(headerLogRequests);
         }
+
+        // Update detail records (use entity relationship)
+        //updateAgeingDetails(ageingMasterDto.getAgeingDetails(), existingEntity);
+        updateAgeingMastersChildDetails(ageingMasterDto.getAgeingDetails(), ageingPoid);
 
         return fetchAgeingMaster(ageingPoid);
     }

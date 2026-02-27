@@ -82,6 +82,11 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
             ApPurchaseCnHdr savedHdr = hdrRepository.save(hdr);
             log.info("Supplier credit note header saved with transactionPoid: {}", savedHdr.getTransactionPoid());
             
+            // Log header creation first
+            String key = savedHdr.getTransactionPoid().toString();
+            String docId = UserContext.getDocumentId();
+            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, key);
+            
             saveDetails(savedHdr.getTransactionPoid(), dto);
             log.info("Supplier credit note created successfully with transactionPoid: {}", savedHdr.getTransactionPoid());
             
@@ -137,10 +142,12 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
             
             hdrRepository.save(existing);
             log.info("Supplier credit note header updated successfully");
-            
-            updateDetailsByActionType(transactionPoid, dto);
+
             log.info("Supplier credit note updated successfully with transactionPoid: {}", transactionPoid);
             loggingService.logChanges(oldEntity, existing, ApPurchaseCnHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+            
+            updateDetailsByActionType(transactionPoid, dto);
+
             return getById(transactionPoid);
 
 

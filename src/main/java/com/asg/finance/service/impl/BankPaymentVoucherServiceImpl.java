@@ -187,6 +187,10 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         /*savedHeader.setDocRef("BPV-" + savedHeader.getTransactionPoid());*/
         savedHeader = paymentVoucherRepository.save(savedHeader);
 
+        // Log the creation
+        String key = savedHeader.getTransactionPoid().toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, documentId, key);
+
         // Before save validation
         validateBeforeSaveInNewTransaction(savedHeader);
 
@@ -209,10 +213,6 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         // Flush to ensure all changes are persisted
         paymentVoucherRepository.flush();
-
-        // Log the creation
-        String key = savedHeader.getTransactionPoid().toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, documentId, key);
 
         return getVoucherById(savedHeader.getTransactionPoid(),documentId);
     }
@@ -242,6 +242,11 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         updateHeaderFromRequest(existing, req);
         GLPaymentVoucherHDREntity updatedHeader = paymentVoucherRepository.save(existing);
 
+        // Log the update
+        String key = transactionPoid.toString();
+        loggingService.logChanges(oldEntity, updatedHeader, GLPaymentVoucherHDREntity.class,
+                documentId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+
         // Update details based on Ref Type
         switch (req.getRefType().toUpperCase()) {
             case "GENERAL", "CUSTOM" -> updateGLDetails(req.getGlDetails(), transactionPoid, documentId);
@@ -252,11 +257,6 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         // Post-update job costs
         updateJobCostsInNewTransaction(updatedHeader, req.getRefType());
-
-        // Log the update
-        String key = transactionPoid.toString();
-        loggingService.logChanges(oldEntity, updatedHeader, GLPaymentVoucherHDREntity.class, 
-                documentId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
         return getVoucherById(transactionPoid, documentId);
     }

@@ -76,6 +76,10 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
         Long transactionPoid = taxPeriodHdr.getTransactionPoid();
         String key = taxPeriodHdr.getTransactionPoid().toString();
         String docId = UserContext.getDocumentId();
+        
+        // Log header creation first
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, key);
+        
         if (request.getCharges() != null && !request.getCharges().isEmpty()) {
             List<GlobalTaxPeriodChargeDtlEntity> chargeEntities = request.getCharges().stream()
                     .map(dto -> GlobalTaxPeriodChargeDtlEntity.builder()
@@ -124,8 +128,6 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
             });
         }
 
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, key);
-
 
         return convertFromTaxPeriodHdrEntityToTaxPeriodHdrDto(taxPeriodHdr);
     }
@@ -152,6 +154,13 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
             updatedEntity.setTransactionDate(existingEntity.getTransactionDate() != null ? existingEntity.getTransactionDate() : LocalDate.now());
         }
         TaxPeriodHdr savedEntity = taxPeriodHdrRepository.save(updatedEntity);
+        
+        // Log header update first
+        String key = savedEntity.getTransactionPoid().toString();
+        String docId = UserContext.getDocumentId();
+        loggingService.logChanges(oldEntity, savedEntity, TaxPeriodHdr.class, 
+                docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+        
         //Update Stocks & Charges
         if (request.getCharges() != null && !request.getCharges().isEmpty()) {
             updateTaxPeriodCharges(request.getCharges(), savedEntity.getTransactionPoid());
@@ -159,12 +168,6 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
         if (request.getStocks() != null && !request.getStocks().isEmpty()) {
             updateTaxPeriodStocks(request.getStocks(), savedEntity.getTransactionPoid());
         }
-        
-        // Log the update
-        String key = savedEntity.getTransactionPoid().toString();
-        String docId = UserContext.getDocumentId();
-        loggingService.logChanges(oldEntity, savedEntity, TaxPeriodHdr.class, 
-                docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
         
         return convertFromTaxPeriodHdrEntityToTaxPeriodHdrDto(savedEntity);
     }

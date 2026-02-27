@@ -173,6 +173,10 @@ public class GLMasterServiceImpl implements GLMasterService {
         entity = glMasterRepo.save(entity);
         glMasterRepo.flush(); // Force immediate database write
 
+        // Log the creation
+        String key = entity.getGlPoid().toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), key);
+
         // Get trigger-generated GL_CODE directly from database
         try {
             // Simple workaround: query the database directly for the generated code
@@ -200,10 +204,6 @@ public class GLMasterServiceImpl implements GLMasterService {
         // Company details handling can be added here if needed
 
         propagateToChildren(entity);
-
-        // Log the creation
-        String key = entity.getGlPoid().toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), key);
 
         return toResponseDto(entity);
     }
@@ -306,6 +306,11 @@ public class GLMasterServiceImpl implements GLMasterService {
 
         glMasterRepo.save(entity);
 
+        // Log the update
+        String key = entity.getGlPoid().toString();
+        loggingService.logChanges(oldEntity, entity, GLMasterEntity.class,
+                UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "GL_POID");
+
         if (req.getPaymentDetails() != null && !req.getPaymentDetails().isEmpty()) {
             updateGlPaymentDetails(req.getPaymentDetails(), glPoid);
         }
@@ -314,11 +319,6 @@ public class GLMasterServiceImpl implements GLMasterService {
             updateGlCompanyDetails(req.getCompanyDetails(), glPoid);
         }
         propagateToChildren(entity);
-
-        // Log the update
-        String key = entity.getGlPoid().toString();
-        loggingService.logChanges(oldEntity, entity, GLMasterEntity.class,
-                UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "GL_POID");
 
         return toResponseDto(entity);
     }

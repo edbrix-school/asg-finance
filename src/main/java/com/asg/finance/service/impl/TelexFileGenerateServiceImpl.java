@@ -79,10 +79,15 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
 
             GlBankFileHdr savedHdr = hdrRepository.saveAndFlush(hdr);
 
+            Long transactionPoid = savedHdr.getTransactionPoid();
+            String key = savedHdr.getTransactionPoid().toString();
+            String docId = UserContext.getDocumentId();
+            
+            // Log header creation first
+            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, key);
+
             if (request.getDetails() != null && !request.getDetails().isEmpty()) {
                 List<GlBankFileDtl> details = new ArrayList<>();
-                String docId = UserContext.getDocumentId();
-                String key = savedHdr.getTransactionPoid().toString();
                 
                 for (int i = 0; i < request.getDetails().size(); i++) {
                     TelexFileDtlDto dto = request.getDetails().get(i);
@@ -98,11 +103,6 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
                     loggingService.createLogSummaryEntry(docId, key, logDetail);
                 });
             }
-
-            Long transactionPoid = savedHdr.getTransactionPoid();
-            String key = savedHdr.getTransactionPoid().toString();
-            String docId = UserContext.getDocumentId();
-            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, key);
             
             return getTelexFileById(transactionPoid);
         } catch (Exception e) {
@@ -131,14 +131,16 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
 
             hdrRepository.saveAndFlush(hdr);
 
+            String key = transactionPoid.toString();
+            String docId = UserContext.getDocumentId();
+            
+            // Log header update first
+            loggingService.logChanges(oldHdr, hdr, GlBankFileHdr.class, 
+                    docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+
             if (request.getDetails() != null && !request.getDetails().isEmpty()) {
                 processDetails(transactionPoid, request.getDetails());
             }
-            
-            String key = transactionPoid.toString();
-            String docId = UserContext.getDocumentId();
-            loggingService.logChanges(oldHdr, hdr, GlBankFileHdr.class, 
-                    docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
             
             return getTelexFileById(transactionPoid);
         } catch (Exception e) {

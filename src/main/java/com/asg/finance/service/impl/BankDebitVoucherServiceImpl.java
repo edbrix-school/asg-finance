@@ -133,6 +133,10 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         GlBankDebitHdr savedHeader = headerRepository.save(header);
         entityManager.flush();
 
+        // Log the creation
+        String key = savedHeader.getTransactionPoid().toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, documentId, key);
+
         if (request.getFfRef() != null) {
             bankPaymentVoucherSpRepository.updateFfCost(
                     UserContext.getGroupPoid(),
@@ -152,10 +156,6 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
 
         persistChildCollections(request, savedHeader.getTransactionPoid(), true,documentId);
-
-        // Log the creation
-        String key = savedHeader.getTransactionPoid().toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, documentId, key);
 
         BankDebitVoucherResponse response = mapEntityToResponse(savedHeader);
         loadBreakupsIntoResponse(response, savedHeader.getTransactionPoid(), documentId, savedHeader.getGroupPoid(), savedHeader.getCompanyPoid());
@@ -248,6 +248,11 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         entityManager.flush();
         entityManager.refresh(header);
 
+        // Log the update
+        String key = header.getTransactionPoid().toString();
+        loggingService.logChanges(oldEntity, header, GlBankDebitHdr.class,
+                documentId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+
         if (request.getFfRef() != null) {
             bankPaymentVoucherSpRepository.updateFfCost(
                     UserContext.getGroupPoid(),
@@ -267,11 +272,6 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
 
         persistChildCollections(request, header.getTransactionPoid(), false,documentId);
-
-        // Log the update
-        String key = header.getTransactionPoid().toString();
-        loggingService.logChanges(oldEntity, header, GlBankDebitHdr.class,
-                documentId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
         BankDebitVoucherResponse response = mapEntityToResponse(header);
         loadBreakupsIntoResponse(response, header.getTransactionPoid(), documentId, header.getGroupPoid(), header.getCompanyPoid());

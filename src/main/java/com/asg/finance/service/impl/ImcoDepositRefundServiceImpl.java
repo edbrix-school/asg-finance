@@ -91,6 +91,13 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
             final GlImcoChequeRefundHdr savedHeader = hdrRepository.save(header);
             final Long hdrPoid = savedHeader.getTransactionPoid();
 
+            String docId = UserContext.getDocumentId();
+            String docKeyPoid = savedHeader.getTransactionPoid().toString();
+            Timestamp now = new Timestamp(System.currentTimeMillis());
+            String createdMessage = String.format("Created - - DOC:%s KEY:%s", docId, docKeyPoid);
+            GlobalLogSummary headerLog = createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, createdMessage, now);
+            globalLogSummaryRepository.save(headerLog);
+
             List<GlImcoChequeRefundDtl> refundDetails = request.getChequeRefundDetails().stream()
                     .map(dto -> GlImcoChequeRefundDtl.builder()
                             .transactionPoid(hdrPoid)
@@ -150,13 +157,6 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
             });
 
             callAfterSaveProcedure(savedHeader);
-
-            String docId = UserContext.getDocumentId();
-            String docKeyPoid = savedHeader.getTransactionPoid().toString();
-            Timestamp now = new Timestamp(System.currentTimeMillis());
-            String createdMessage = String.format("Created - - DOC:%s KEY:%s", docId, docKeyPoid);
-            GlobalLogSummary headerLog = createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, createdMessage, now);
-            globalLogSummaryRepository.save(headerLog);
 
             return buildResponse(savedHeader, refundDetails, billDetails);
         }catch (Exception ex) {

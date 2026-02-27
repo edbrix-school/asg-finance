@@ -200,15 +200,15 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                     .build();
 
             InsuranceMaster saved = insuranceMasterRepository.save(insuranceMaster);
-            buildAndSetChildDetails(request, saved);
-            InsuranceMaster finalSaved = insuranceMasterRepository.save(saved);
-            
             String docId = UserContext.getDocumentId();
-            String docKeyPoid = finalSaved.getTransactionPoid().toString();
-            Timestamp now = new Timestamp(System.currentTimeMillis());
-            
+            String docKeyPoid = saved.getTransactionPoid().toString();
+
             // Log header creation
             loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, docKeyPoid);
+            buildAndSetChildDetails(request, saved);
+            InsuranceMaster finalSaved = insuranceMasterRepository.save(saved);
+
+            Timestamp now = new Timestamp(System.currentTimeMillis());
             
             // Log grid row creations
             List<GlobalLogSummary> gridLogs = new ArrayList<>();

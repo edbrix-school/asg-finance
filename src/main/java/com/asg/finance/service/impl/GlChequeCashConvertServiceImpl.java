@@ -243,6 +243,10 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
 
         GlChequeCashConvertHdrEntity savedHdr = glChequeCashConvertHdrRepository.save(hdrEntity);
 
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = savedHdr.getTransactionPoid().toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, docKeyPoid);
+
         if (dto.getInDtls() != null && !dto.getInDtls().isEmpty()) {
             Long transactionPoid = savedHdr.getTransactionPoid();
             long detRowIdCounter = 1;
@@ -327,10 +331,6 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
             });
         }
 
-        String docId = UserContext.getDocumentId();
-        String docKeyPoid = savedHdr.getTransactionPoid().toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, docKeyPoid);
-
         return getGlChequeCashConvert(savedHdr.getTransactionPoid());
     }
 
@@ -370,6 +370,9 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
 
         String docId = UserContext.getDocumentId();
         String docKeyPoid = transactionPoid.toString();
+
+        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, docId, docKeyPoid);
+
         List<LogRequestDto<GlChequeCashConvertHdrEntity>> headerLogRequests = new ArrayList<>();
 
         if (dto.getInDtls() != null && !dto.getInDtls().isEmpty()) {
@@ -383,8 +386,6 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         headerLogRequests.add(new LogRequestDto<>(oldEntity, savedHdr, GlChequeCashConvertHdrEntity.class, docId, docKeyPoid, headerLogDetail));
 
         loggingService.createLogBatch(headerLogRequests);
-
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, docId, docKeyPoid);
 
         return getGlChequeCashConvert(savedHdr.getTransactionPoid());
     }

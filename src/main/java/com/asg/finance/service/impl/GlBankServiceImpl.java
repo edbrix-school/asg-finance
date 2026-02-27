@@ -132,12 +132,12 @@ public class GlBankServiceImpl implements GlBankService {
         updateBankFields(bankEntity, glBankDto);
         //bankEntity.setLastModifiedDate(Timestamp.valueOf(LocalDateTime.now()));
         GlBankEntity updatedGlBankEntity = bankRepository.save(bankEntity);
+        // Log the update
+        loggingService.logChanges(oldEntity, updatedGlBankEntity, GlBankEntity.class, UserContext.getDocumentId(), bankPoid.toString(), LogDetailsEnum.MODIFIED, "BANK_POID");
+
         List<GlBankChequeDtlEntity> updatedChequeDtlEntities = glBankDto.getChequeDetails() != null && !glBankDto.getChequeDetails().isEmpty() ? processChequeDetails(bankPoid, glBankDto.getChequeDetails()) : new ArrayList<>();
 
         List<GlBankCommissionDtlEntity> updatedCommissionDtlEntities = glBankDto.getCommissionDetails() != null && !glBankDto.getCommissionDetails().isEmpty() ? processCommissionDetails(bankPoid, glBankDto.getCommissionDetails()) : new ArrayList<>();
-
-        // Log the update
-        loggingService.logChanges(oldEntity, updatedGlBankEntity, GlBankEntity.class, UserContext.getDocumentId(), bankPoid.toString(), LogDetailsEnum.MODIFIED, "BANK_POID");
 
         return convertGlBankEntityToGlBankDto(updatedGlBankEntity, updatedChequeDtlEntities, updatedCommissionDtlEntities);
     }
@@ -174,9 +174,11 @@ public class GlBankServiceImpl implements GlBankService {
         //Save details
         GlBankEntity bankMasterData = saveBankDetails(bankMasterDto);
 
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), bankMasterData.getBankPoid().toString());
+
         saveBankChequeDetails(bankMasterDto, bankMasterData);
         saveBankCommisionDetails(bankMasterDto, bankMasterData);        
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), bankMasterData.getBankPoid().toString());
+
         return fetchGlBank(bankMasterData.getBankPoid());
     }
 

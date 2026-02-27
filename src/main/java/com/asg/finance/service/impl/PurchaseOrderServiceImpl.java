@@ -73,6 +73,9 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             // Validate after save to get transaction POID
             validatePurchaseOrder(request, transactionPoid, documentId);
 
+            // Logging for create operation
+            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, documentId, savedPO.getTransactionPoid().toString());
+
             List<PurchaseOrderItem> savedItems = new ArrayList<>();
 
             String refType = request.getRefType();
@@ -101,9 +104,6 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                         throw new IllegalArgumentException("Invalid RefType: " + refType);
             }
 
-            // Logging for create operation
-            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, documentId, savedPO.getTransactionPoid().toString());
-
             return mapToPurchaseOrderResponse(savedPO, savedItems);
 
         } catch (Exception ex) {
@@ -131,6 +131,9 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             // Validate after update with transaction POID
             validatePurchaseOrder(request, transactionPoid, documentId);
 
+            // Logging for update operation
+            loggingService.logChanges(oldEntity, updatedPO, PurchaseOrder.class, documentId, updatedPO.getTransactionPoid().toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+
             List<PurchaseOrderItem> updatedItems = new ArrayList<>();
 
             String refType = updatedPO.getRefType().toUpperCase();
@@ -148,9 +151,6 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
 
                 default -> throw new ValidationException("Invalid RefType for update: " + refType);
             }
-
-            // Logging for update operation
-            loggingService.logChanges(oldEntity, updatedPO, PurchaseOrder.class, documentId, updatedPO.getTransactionPoid().toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
             return mapToPurchaseOrderResponse(updatedPO, updatedItems);
 

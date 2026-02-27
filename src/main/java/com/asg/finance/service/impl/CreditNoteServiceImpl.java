@@ -140,6 +140,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             }
 
             log.info("Credit note header saved with transactionPoid: {}", transactionPoid);
+            
+            // Log the header creation first
+            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), transactionPoid.toString());
 
             // Save GL details immediately after header to avoid FK constraint issues
             if (creditNoteDto.getGlDetails() != null) {
@@ -186,8 +189,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             List<ArCreditNoteChargeDtl> chargeDetails = creditNoteChargeDtlRepository.findByTransactionPoidOrderByDetRowId(transactionPoid);
             result.setChargeDetails(chargeDetails.stream().map(charge -> mapChargeToDto(charge, result.getRefType())).collect(Collectors.toList()));
 
-            // Log the creation
-            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), transactionPoid.toString());
+            // Log detail creation
             List<GlobalLogSummary> detailCreateLogs = buildCreateDetailSummaryLogs(creditNoteDto, transactionPoid);
             if (!detailCreateLogs.isEmpty()) {
                 globalLogSummaryRepository.saveAll(detailCreateLogs);
@@ -264,6 +266,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             existing.setLastModifiedDate(Timestamp.from(Instant.now()));
 
             existing = creditNoteHdrRepository.save(existing);
+            
+            // Log the header update first
+            loggingService.logChanges(oldEntity, existing, ArCreditNoteHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
             List<GlobalLogSummary> detailSummaryLogs = new ArrayList<>();
             if (creditNoteDto.getGlDetails() != null) {
@@ -291,9 +296,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             List<ArCreditNoteChargeDtl> chargeDetails = creditNoteChargeDtlRepository.findByTransactionPoidOrderByDetRowId(transactionPoid);
             result.setChargeDetails(chargeDetails.stream().map(charge -> mapChargeToDto(charge, result.getRefType())).collect(Collectors.toList()));
 
-            // Log the update
-            loggingService.logChanges(oldEntity, existing, ArCreditNoteHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
-            loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), transactionPoid.toString());
+            // Log detail updates
             if (!detailSummaryLogs.isEmpty()) {
                 globalLogSummaryRepository.saveAll(detailSummaryLogs);
             }

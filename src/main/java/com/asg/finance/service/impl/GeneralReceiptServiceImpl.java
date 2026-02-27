@@ -114,6 +114,9 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
             
             log.info("Created receipt header with DOC_REF: {} and TRANSACTION_POID: {}", 
                     header.getDocRef(), header.getTransactionPoid());
+
+            // Log the creation
+            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), header.getTransactionPoid().toString());
             
             // Check for duplicates after creation (in case of race condition)
             if (header.getDocRef() != null) {
@@ -161,9 +164,6 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
 
         // 7. Flush all changes to commit the receipt data
         entityManager.flush();
-        
-        // Log the creation
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), header.getTransactionPoid().toString());
         
         log.info("Successfully created general receipt: {}", header.getDocRef());
         
@@ -448,6 +448,9 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         updateHeaderEntity(header, request.getHeader(), currentUser, now);
         receiptHdrRepository.save(header);
 
+        // Log the update
+        loggingService.logChanges(oldEntity, header, ArGenReceiptHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+
         // Update child records using actionType pattern
         if (request.getPayments() != null && !request.getPayments().isEmpty()) {
             updatePaymentDetails(request.getPayments(), transactionPoid);
@@ -464,9 +467,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         }
 
         entityManager.flush();
-        
-        // Log the update
-        loggingService.logChanges(oldEntity, header, ArGenReceiptHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+
     }
 
     private void updatePaymentDetails(List<GeneralReceiptPaymentDto> payments, Long transactionPoid) {

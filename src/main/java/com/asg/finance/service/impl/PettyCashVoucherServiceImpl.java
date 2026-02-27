@@ -142,6 +142,9 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             GlPettyCashPaymentHdr savedHeader = glPettyCashPaymentHdrRepository.save(header);
             Long hdrPoid = savedHeader.getTransactionPoid();
 
+            // Logging for create operation
+            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), savedHeader.getTransactionPoid().toString());
+
 
             List<GlPettyCashPaymentDtlResponseDto> paymentDtls = new ArrayList<>();
             List<GlPettyCashChargeDtlResponseDto> chargeDtls = new ArrayList<>();
@@ -325,8 +328,6 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                 }
             }
 
-            // Logging for create operation
-            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), savedHeader.getTransactionPoid().toString());
             return mapToResponseDto(savedHeader, paymentDtls, chargeDtls, itemDtls);
 
         } catch (Exception e) {
@@ -901,6 +902,9 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             updateHeaderFields(existingHdr, requestDto, userPoid);
             GlPettyCashPaymentHdr updatedHdr = glPettyCashPaymentHdrRepository.save(existingHdr);
 
+            // Logging for update operation
+            loggingService.logChanges(oldEntity, updatedHdr, GlPettyCashPaymentHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+
             //  Step 5: Merge & save child details partially
             String refType = updatedHdr.getRefType().toUpperCase();
 
@@ -1112,9 +1116,6 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             }
 
             //  Step 8: Return the final response DTO
-            
-            // Logging for update operation
-            loggingService.logChanges(oldEntity, updatedHdr, GlPettyCashPaymentHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
             
             return mapToResponseDto(updatedHdr, paymentDtls, chargeDtls, itemDtls);
 

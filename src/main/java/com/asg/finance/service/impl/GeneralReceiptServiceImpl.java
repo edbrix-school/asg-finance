@@ -897,15 +897,18 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                     .filter(amount -> amount != null)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            log.debug("Amount validation - Receipt amount: {}, Payment total: {}",
-                    header.getReceiptAmount(), paymentTotal);
+            BigDecimal bhdAmount = header.getBhdAmount() != null ? header.getBhdAmount() : header.getReceiptAmount().multiply(header.getRate());
 
-            if (header.getReceiptAmount().compareTo(paymentTotal) != 0) {
+            log.debug("Amount validation - BHD amount: {}, Payment total: {}",
+                    bhdAmount, paymentTotal);
+
+            if (bhdAmount.compareTo(paymentTotal) != 0) {
                 throw new ValidationException(String.format(
-                        "Total amount (%.3f) does not match sum of payment amounts (%.3f)",
-                        header.getReceiptAmount(), paymentTotal));
+                        "Total BHD amount (%.3f) does not match sum of payment amounts (%.3f)",
+                        bhdAmount, paymentTotal));
             }
         }
+
 
         // 5. Validate bill amount matches receipt amount
         validateBillAmountMatchesReceiptAmount(request.getBills(), request.getExtraCharges(), header.getReceiptAmount());

@@ -9,8 +9,8 @@ import jakarta.validation.Valid;
 import com.asg.finance.validation.ValidCreditNote;
 
 import java.math.BigDecimal;
-import java.sql.Timestamp;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Setter
@@ -88,9 +88,9 @@ public class CreditNoteHeaderDto {
      * Auditing Related Fields
      */
     private String createdBy;
-    private Timestamp createdDate;
+    private LocalDateTime createdDate;
     private String lastModifiedBy;
-    private Timestamp lastModifiedDate;
+    private LocalDateTime lastModifiedDate;
 
     @Valid
     private List<CreditNoteGLDetailDto> glDetails;

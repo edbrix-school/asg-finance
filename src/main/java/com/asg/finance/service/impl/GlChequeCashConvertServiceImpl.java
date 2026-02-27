@@ -733,6 +733,10 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         boolean isChequeToImcoCheque = "4".equals(type) || "CHEQUE_TO_IMCOCHEQUE".equalsIgnoreCase(type);
         boolean isChequeToBank = "5".equals(type) || "CHEQUE_TO_BANK".equalsIgnoreCase(type);
 
+        if (!isChequeToCheque && !isChequeToCash && !isCashToCheque && !isChequeToImcoCheque && !isChequeToBank) {
+            throw new ValidationException("Invalid cheque conversion type. Use 1-5 or CHEQUE_TO_CHEQUE, CHEQUE_TO_CASH, CASH_TO_CHEQUE, CHEQUE_TO_IMCOCHEQUE, CHEQUE_TO_BANK");
+        }
+
         if (isChequeToCheque) {
             if (dto.getInDtls() == null || dto.getInDtls().isEmpty()) {
                 throw new ValidationException("No Detail present in cheque conversion TO");
@@ -819,11 +823,10 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
             BigDecimal inTotal = dto.getInDtls().stream()
                     .map(i -> Optional.ofNullable(i.getAmount()).orElse(BigDecimal.ZERO))
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
-            BigDecimal cash = Optional.ofNullable(dto.getCash()).orElse(BigDecimal.ZERO);
-            BigDecimal inPlusCash = inTotal.add(cash);
-            if (outTotal.compareTo(inPlusCash) != 0) {
+            // Cash-to-cheque: out = cash (source), in = cheques (destination). Require outTotal = inTotal (with rounding tolerance).
+            if (outTotal.compareTo(inTotal) != 0) {
                 BigDecimal roundingLimit = getRoundingLimitParam();
-                BigDecimal difference = outTotal.subtract(inPlusCash).abs();
+                BigDecimal difference = outTotal.subtract(inTotal).abs();
                 if (difference.compareTo(roundingLimit) > 0) {
                     throw new ValidationException(
                             "Cash Amount (" + outTotal + ") and Cheque Amount (" + inTotal + ") are not matching...");

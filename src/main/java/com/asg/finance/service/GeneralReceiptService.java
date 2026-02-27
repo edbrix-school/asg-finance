@@ -67,6 +67,15 @@ public interface GeneralReceiptService {
     Map<String, Object> getPendingBills(Long glPoid, java.time.LocalDate asOnDate);
 
     /**
+     * Check if a GL account is billwise enabled
+     * Calls PROC_AR_GL_BILWISE_YN and returns billwise flag (Y/N)
+     *
+     * @param glPoid GL POID
+     * @return Billwise flag (Y/N)
+     */
+    String getGlBillwiseYn(Long glPoid);
+
+    /**
      * @param transactionPoid
      * @return
      * @throws Exception

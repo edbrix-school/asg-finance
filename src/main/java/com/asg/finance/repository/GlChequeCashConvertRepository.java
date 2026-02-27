@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 import oracle.jdbc.OracleTypes;
 import javax.sql.DataSource;
 import java.sql.*;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -158,5 +159,57 @@ public class GlChequeCashConvertRepository {
         }
 
         return result;
+    }
+
+    /**
+     * Validates that the transaction date falls within the current financial year (mirrors trigger
+     * FUNC_GLOB_FINANCIAL_YEAR_VALID). Returns false if the function result contains 'ERROR'.
+     */
+    public boolean isFinancialYearValid(Long companyPoid, LocalDate transactionDate) {
+        if (companyPoid == null || transactionDate == null) {
+            return true;
+        }
+        String sql = "SELECT FUNC_GLOB_FINANCIAL_YEAR_VALID(?, ?) FROM DUAL";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, companyPoid);
+            ps.setDate(2, Date.valueOf(transactionDate));
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    String result = rs.getString(1);
+                    return result == null || !result.toUpperCase().contains("ERROR");
+                }
+            }
+        } catch (SQLException e) {
+            log.warn("Financial year validation check failed (FUNC_GLOB_FINANCIAL_YEAR_VALID): {}", e.getMessage());
+            return true; // allow flow if DB function unavailable; trigger will still run
+        }
+        return true;
+    }
+
+    /**
+     * Validates that the transaction date falls within the current transaction period (mirrors trigger
+     * FUNC_GLOB_TRANSACTN_YEAR_VALID). Returns false if the function result contains 'ERROR'.
+     */
+    public boolean isTransactionYearValid(Long companyPoid, LocalDate transactionDate) {
+        if (companyPoid == null || transactionDate == null) {
+            return true;
+        }
+        String sql = "SELECT FUNC_GLOB_TRANSACTN_YEAR_VALID(?, ?) FROM DUAL";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, companyPoid);
+            ps.setDate(2, Date.valueOf(transactionDate));
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    String result = rs.getString(1);
+                    return result == null || !result.toUpperCase().contains("ERROR");
+                }
+            }
+        } catch (SQLException e) {
+            log.warn("Transaction year validation check failed (FUNC_GLOB_TRANSACTN_YEAR_VALID): {}", e.getMessage());
+            return true;
+        }
+        return true;
     }
 }

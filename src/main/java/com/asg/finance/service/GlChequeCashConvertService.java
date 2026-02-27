@@ -9,11 +9,14 @@ import java.time.LocalDate;
 import java.util.Map;
 import java.util.List;
 
+import com.asg.finance.dto.GlChequeCashConvertValidateEditResponseDto;
 import com.asg.finance.dto.GlChequeConversionLoadResponseDto;
 
 public interface GlChequeCashConvertService {
 
     GlChequeCashConvertHdrDto getGlChequeCashConvert(Long transactionPoid);
+
+    GlChequeCashConvertValidateEditResponseDto validateForEdit(Long transactionPoid);
 
     void softDeleteByTransactionPoid(Long transactionPoid, DeleteReasonDto deleteReasonDto);
 

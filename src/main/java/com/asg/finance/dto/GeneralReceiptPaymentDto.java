@@ -1,5 +1,6 @@
 package com.asg.finance.dto;
 
+import com.asg.finance.annotation.ValidPaymentDetails;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMin;
@@ -13,6 +14,7 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
+@ValidPaymentDetails
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

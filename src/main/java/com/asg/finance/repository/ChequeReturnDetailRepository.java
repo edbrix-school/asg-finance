@@ -9,7 +9,7 @@ import java.util.List;
 
 @Repository
 public interface ChequeReturnDetailRepository extends JpaRepository<ChequeReturnDetail, ChequeReturnDetailId> {
-    List<ChequeReturnDetail> findByChequeReturn_TransactionPoid(Long transactionPoid);
+    List<ChequeReturnDetail> findByIdTransactionPoid(Long transactionPoid);
     long countById_TransactionPoid(Long transactionPoid);
     void deleteById_TransactionPoid(Long transactionPoid);
 }

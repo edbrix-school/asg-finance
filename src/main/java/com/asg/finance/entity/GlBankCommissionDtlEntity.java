@@ -1,11 +1,13 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.sql.Timestamp;
-import java.util.Date;
+
+import java.time.LocalDate;
+
 
 @Entity
 @Table(name = "GL_BANK_MASTER_COMMISSION_DTL")
@@ -14,7 +16,7 @@ import java.util.Date;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class GlBankCommissionDtlEntity {
+public class GlBankCommissionDtlEntity extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "commissionDtlSeq")
@@ -26,12 +28,12 @@ public class GlBankCommissionDtlEntity {
     private Long bankPoid;
 
     @Column(name = "PERIOD_FROM")
-    @Temporal(TemporalType.DATE)
-    private Date periodFrom;
+    //@Temporal(TemporalType.DATE)
+    private LocalDate periodFrom;
 
     @Column(name = "PERIOD_TO")
-    @Temporal(TemporalType.DATE)
-    private Date periodTo;
+    //@Temporal(TemporalType.DATE)
+    private LocalDate periodTo;
 
     @Column(name = "COMMISSION_GL_POID")
     private Long commissionGlPoid;
@@ -47,18 +49,6 @@ public class GlBankCommissionDtlEntity {
 
     @Column(name = "REMARKS", length = 500)
     private String remarks;
-
-    @Column(name = "CREATED_BY", length = 200)
-    private String createdBy;
-
-    @Column(name = "CREATED_DATE")
-    private Timestamp createdDate;
-
-    @Column(name = "LASTMODIFIED_BY", length = 200)
-    private String lastModifiedBy;
-
-    @Column(name = "LASTMODIFIED_DATE")
-    private Timestamp lastModifiedDate;
 
     @Column(name = "CARD_TYPE", length = 500)
     private String cardType;

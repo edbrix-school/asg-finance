@@ -17,6 +17,7 @@ public class InsurancePicDetailResponseDto {
     private Long detRowId;
     private DetailsDto role;
     private String contactType;
+    private LovGetListDto contactTypeDetails;
     private LovGetListDto picPerson;
     private LocalDate fromDate;
     private LocalDate toDate;

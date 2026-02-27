@@ -39,7 +39,6 @@ public class ArDebitNoteHdr {
     @Column(name = "DOC_REF", length = 25, nullable = false)
     private String docRef;
 
-    @AuditIgnore
     @Column(name = "CURRENCY_CODE", length = 20)
     private String currencyCode;
 
@@ -49,7 +48,6 @@ public class ArDebitNoteHdr {
     @Column(name = "PARTY_TYPE", length = 100)
     private String partyType;
 
-    @AuditIgnore
     @Column(name = "PARTY_POID")
     private Long partyPoid;
 
@@ -107,11 +105,9 @@ public class ArDebitNoteHdr {
     @Column(name = "PRINT_COMPANY_POID")
     private Long printCompanyPoid;
 
-    @AuditIgnore
     @Column(name = "PO_REF", length = 300)
     private String poRef;
 
-    @AuditIgnore
     @Column(name = "BANK_POID")
     private Long bankPoid;
 
@@ -125,7 +121,6 @@ public class ArDebitNoteHdr {
     @Column(name = "TIN_NUMBER", length = 100)
     private String tinNumber;
 
-    @AuditIgnore
     @Column(name = "OTHER_CURR_AMOUNT")
     private BigDecimal otherCurrAmount;
 

@@ -191,7 +191,7 @@ WHERE TRANSACTION_POID=$P{DOC_KEY_POID}]]>
                     <font size="11" isBold="true" pdfFontName="Helvetica-Bold"/>
                     <paragraph leftIndent="3"/>
                 </textElement>
-                <textFieldExpression><![CDATA[$F{INVOICE_AMOUNT}]]></textFieldExpression>
+                <textFieldExpression><![CDATA[$F{RCPT_AMOUNT}]]></textFieldExpression>
                 <patternExpression><![CDATA[$F{CURRENCY_CODE}=='BHD'?"#,##0.000":"#,##0.00"]]></patternExpression>
             </textField>
             <line>

@@ -897,38 +897,73 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                     .filter(amount -> amount != null)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            log.debug("Amount validation - Receipt amount: {}, Payment total: {}",
-                    header.getReceiptAmount(), paymentTotal);
+            BigDecimal bhdAmount = header.getBhdAmount() != null ? header.getBhdAmount() : header.getReceiptAmount().multiply(header.getRate());
 
-            if (header.getReceiptAmount().compareTo(paymentTotal) != 0) {
+            log.debug("Amount validation - BHD amount: {}, Payment total: {}",
+                    bhdAmount, paymentTotal);
+
+            if (bhdAmount.compareTo(paymentTotal) != 0) {
                 throw new ValidationException(String.format(
-                        "Total amount (%.3f) does not match sum of payment amounts (%.3f)",
-                        header.getReceiptAmount(), paymentTotal));
+                        "Total BHD amount (%.3f) does not match sum of payment amounts (%.3f)",
+                        bhdAmount, paymentTotal));
             }
         }
 
-        // 4. Validate cheque dates if applicable
+
+        // 5. Validate bill amount matches receipt amount
+        validateBillAmountMatchesReceiptAmount(request.getBills(), request.getExtraCharges(), header.getReceiptAmount());
+
+        // 6. Validate cheque dates if applicable
         validateChequeDates(request.getPayments());
 
-        // 5. Validate cost center for specific charge types
+        // 7. Validate cost center for specific charge types
         validateCostCenterRequirement(request.getExtraCharges());
 
-        // 6. Validate rounding limit
+        // 8. Validate rounding limit
         validateRoundingLimit(request.getExtraCharges());
 
-        // 7. Validate multi-company if applicable
+        // 9. Validate multi-company if applicable
         if ("Y".equals(header.getMulticompany())) {
             validateMultiCompany(request.getBills(), header.getCompanyPoid());
         }
 
-        // 8. Validate bill references if refType is AGAINST
+        // 10. Validate bill references if refType is AGAINST
         if ("AGAINST".equals(header.getRefType()) && (request.getBills() == null || request.getBills().isEmpty())) {
             throw new ValidationException("Bill details are required when Ref Type is AGAINST");
         }
         
-        // 9. Validate bill references using stored procedure (PROC_GEN_RECE_NEW_BILLREF_CHK)
+        // 11. Validate bill references using stored procedure (PROC_GEN_RECE_NEW_BILLREF_CHK)
         if (request.getBills() != null && !request.getBills().isEmpty()) {
             validateBillReferencesUsingProcedure(request.getBills(), creditGL.getGlPoid(), header.getCompanyPoid());
+        }
+    }
+
+    private void validateBillAmountMatchesReceiptAmount(List<GeneralReceiptBillDto> bills, 
+                                                         List<GeneralReceiptChargeDto> charges, 
+                                                         BigDecimal receiptAmount) {
+        if (bills == null || bills.isEmpty()) {
+            return;
+        }
+
+        BigDecimal billTotal = bills.stream()
+                .map(GeneralReceiptBillDto::getAmount)
+                .filter(amount -> amount != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal chargeTotal = BigDecimal.ZERO;
+        if (charges != null && !charges.isEmpty()) {
+            chargeTotal = charges.stream()
+                    .map(GeneralReceiptChargeDto::getTotalAmount)
+                    .filter(amount -> amount != null)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+        }
+
+        BigDecimal expectedTotal = billTotal.add(chargeTotal);
+
+        if (receiptAmount.compareTo(expectedTotal) != 0) {
+            throw new ValidationException(String.format(
+                    "Receipt amount (%.3f) does not match bill amount (%.3f) + charges (%.3f) = %.3f",
+                    receiptAmount, billTotal, chargeTotal, expectedTotal));
         }
     }
 

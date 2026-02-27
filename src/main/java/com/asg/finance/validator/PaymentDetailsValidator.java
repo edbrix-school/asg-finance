@@ -62,7 +62,7 @@ public class PaymentDetailsValidator
                     addError(context, "Card is required for CARD payment type", "cardPoid");
                     return false;
                 }
-                if (payment.getCardType() == null) {
+                if (payment.getCardType() == null|| payment.getCardType().isEmpty()) {
                     addError(context, "Card type is required for CARD payment type", "cardType");
                     return false;
                 }

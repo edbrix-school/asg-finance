@@ -28,7 +28,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -58,9 +57,6 @@ public class AssetInformationServiceImpl implements AssetInformationService {
             throw new ValidationException("IA Name already exists: " + request.getIaName());
         }
 
-        String currentUser = getCurrentUser();
-        LocalDateTime now = LocalDateTime.now();
-
         // Create entity
         AssetInformationMasterEntity entity = AssetInformationMasterEntity.builder()
                 .iaCode(request.getIaCode())
@@ -85,10 +81,6 @@ public class AssetInformationServiceImpl implements AssetInformationService {
                 .seqNo(request.getSeqNo())
                 .active(request.getActive())
                 .deleted("N")
-                .createdBy(currentUser)
-                .createdDate(now)
-                .lastModifiedBy(currentUser)
-                .lastModifiedDate(now)
                 .build();
 
         try {
@@ -130,9 +122,6 @@ public class AssetInformationServiceImpl implements AssetInformationService {
             throw new ValidationException("IA Name already exists: " + request.getIaName());
         }
 
-        String currentUser = getCurrentUser();
-        LocalDateTime now = LocalDateTime.now();
-
         // Update entity
         existing.setIaCode(request.getIaCode());
         existing.setIaName(request.getIaName());
@@ -155,8 +144,6 @@ public class AssetInformationServiceImpl implements AssetInformationService {
         existing.setProcessName(request.getProcessName());
         existing.setProcessOwner(request.getProcessOwner());
         existing.setActive(request.getActive());
-        existing.setLastModifiedBy(currentUser);
-        existing.setLastModifiedDate(now);
 
         try {
             // No need to call save() as the entity is already managed by JPA
@@ -203,13 +190,6 @@ public class AssetInformationServiceImpl implements AssetInformationService {
             DatabaseErrorHandler.handleDatabaseException(ex);
             return null; // Never reached, but needed for compilation
         }
-    }
-
-    /**
-     * Get current user from security context
-     */
-    private String getCurrentUser() {
-        return UserContext.getUserId() != null ? String.valueOf(UserContext.getUserId()) : "SYSTEM";
     }
 
     /**

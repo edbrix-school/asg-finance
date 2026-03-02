@@ -94,10 +94,6 @@ public class FixedAssetServiceImpl implements FixedAssetService {
         return convertFromFixedAssetEntityToFixedAssetDto(savedEntity);
     }
 
-    private String getCurrentUser() {
-        return UserContext.getUserId() != null ? String.valueOf(UserContext.getUserId()) : "SYSTEM";
-    }
-
     private Map<String, Object> fetchFixedAssetPjDetails(Long faPoid) {
         Map<String, Object> result = new HashMap<>();
         try (Connection conn = dataSource.getConnection();
@@ -145,10 +141,6 @@ public class FixedAssetServiceImpl implements FixedAssetService {
         entity.setFaType(requestDto.getFaType());
         entity.setFaParentPoid(requestDto.getFaParentPoid());
         entity.setSeqNo(requestDto.getSeqNo());
-        entity.setCreatedDate(LocalDateTime.now());
-        entity.setCreatedBy(getCurrentUser());
-        entity.setLastModifiedBy(getCurrentUser());
-        entity.setLastModifiedDate(LocalDateTime.now());
         //GeneralInfoDto
         if(requestDto.getGeneralInfoDto()!=null) {
             entity.setFaOwner(requestDto.getGeneralInfoDto().getFaOwner());
@@ -434,8 +426,6 @@ public class FixedAssetServiceImpl implements FixedAssetService {
         FixedAsset updatedEntity = convertFromFixedAssetDtoToFixedAssetEntity(requestDto);
 
         updatedEntity.setFaPoid(existingEntity.getFaPoid());
-        updatedEntity.setLastModifiedBy(getCurrentUser());
-        updatedEntity.setLastModifiedDate(LocalDateTime.now());
         FixedAsset savedEntity = repository.save(updatedEntity);
         
         // Log the update
@@ -474,14 +464,9 @@ public class FixedAssetServiceImpl implements FixedAssetService {
 
         for (int i = 0; i < noOfCopies; i++) {
             FixedAsset copy = new FixedAsset();
-            BeanUtils.copyProperties(original, copy, "faPoid", "faCode", "createdDate", "createdBy", "batchCreationRef");
+            BeanUtils.copyProperties(original, copy, "faPoid", "faCode", "batchCreationRef");
 
             copy.setBatchCreationRef(original.getFaCode());
-
-            copy.setCreatedBy(getCurrentUser());
-            copy.setCreatedDate(LocalDateTime.now());
-            copy.setLastModifiedBy(getCurrentUser());
-            copy.setLastModifiedDate(LocalDateTime.now());
             copy.setDeleted("N");
             copy.setActive("Y");
             copies.add(copy);

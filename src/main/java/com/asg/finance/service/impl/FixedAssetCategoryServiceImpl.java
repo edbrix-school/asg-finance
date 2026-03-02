@@ -29,7 +29,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.*;
@@ -83,8 +82,6 @@ public class FixedAssetCategoryServiceImpl implements FixedAssetCategoryService 
         fixedAssetCategory.setUserRolePoid(ASGHelperUtils.convertListToString(requestDto.getUserRolePoid()));
         fixedAssetCategory.setActive(StringUtils.isBlank(requestDto.getActive()) ? "Y" : requestDto.getActive());
         fixedAssetCategory.setSeqNo(requestDto.getSeqNo());
-        fixedAssetCategory.setLastModifiedBy(getCurrentUser());
-        fixedAssetCategory.setLastModifiedDate(LocalDateTime.now());
         FixedAssetCategory updatedEntity = fixedAssetCategoryRepository.save(fixedAssetCategory);
         
         // Log the update
@@ -113,10 +110,6 @@ public class FixedAssetCategoryServiceImpl implements FixedAssetCategoryService 
         );
     }
 
-    private String getCurrentUser() {
-        return UserContext.getUserId() != null ? String.valueOf(UserContext.getUserId()) : "SYSTEM";
-    }
-
     private FixedAssetCategory convertFromFixedAssetDtoToFixedAssetEntity(FixedAssetCategoryRequestDto request) {
         FixedAssetCategory fixedAssetCategory = new FixedAssetCategory();
         fixedAssetCategory.setFaCategoryDescription(request.getFaCategoryDescription());
@@ -131,10 +124,6 @@ public class FixedAssetCategoryServiceImpl implements FixedAssetCategoryService 
         fixedAssetCategory.setDeleted("N");
         fixedAssetCategory.setGroupPoid(UserContext.getGroupPoid());
         fixedAssetCategory.setSeqNo(request.getSeqNo());
-        fixedAssetCategory.setCreatedBy(getCurrentUser());
-        fixedAssetCategory.setCreatedDate(LocalDateTime.now());
-        fixedAssetCategory.setLastModifiedBy(getCurrentUser());
-        fixedAssetCategory.setLastModifiedDate(LocalDateTime.now());
         return fixedAssetCategory;
     }
 

@@ -1428,7 +1428,7 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
     private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage, LocalDateTime logDateTime) {
         GlobalLogSummary summary = new GlobalLogSummary();
         summary.setLogUserPoid(UserContext.getUserPoid());
-        summary.setLogDateTime(logDateTime != null ? java.sql.Timestamp.valueOf(logDateTime) : java.sql.Timestamp.valueOf(LocalDateTime.now()));
+        summary.setLogDateTime(logDateTime);
         summary.setLogDocId(docId);
         summary.setLogDocKeyPoid(docKeyPoid);
         summary.setLogDetails(customMessage);

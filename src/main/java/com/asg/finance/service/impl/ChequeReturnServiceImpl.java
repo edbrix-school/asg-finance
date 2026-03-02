@@ -304,7 +304,6 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
     @Transactional
     public ChequeReturnResponse getChequeReturn(Long transactionPoid) {
         ChequeReturn header = headerRepo.findById(transactionPoid)
-                .filter(h -> h.getDeleted() == null || "N".equalsIgnoreCase(h.getDeleted()))
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Cheque Return not found or deleted: " + transactionPoid));
 

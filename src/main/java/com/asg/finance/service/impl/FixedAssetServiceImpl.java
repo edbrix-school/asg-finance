@@ -85,6 +85,7 @@ public class FixedAssetServiceImpl implements FixedAssetService {
         if (repository.existsByFaDescription(requestDto.getFaDescription())) {
             throw new IllegalArgumentException("FA Description must be unique");
         }
+
         FixedAsset entity = convertFromFixedAssetDtoToFixedAssetEntity(requestDto);
         FixedAsset savedEntity = repository.save(entity);
         
@@ -426,6 +427,8 @@ public class FixedAssetServiceImpl implements FixedAssetService {
         FixedAsset updatedEntity = convertFromFixedAssetDtoToFixedAssetEntity(requestDto);
 
         updatedEntity.setFaPoid(existingEntity.getFaPoid());
+        updatedEntity.setCreatedBy(existingEntity.getCreatedBy());
+        updatedEntity.setCreatedDate(existingEntity.getCreatedDate());
         FixedAsset savedEntity = repository.save(updatedEntity);
         
         // Log the update

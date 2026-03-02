@@ -78,7 +78,6 @@ public class ArGenReceiptBillDtl {
     private String checkall;
 
     @Column(name = "GL_COMPANY_POID")
-    @AuditIgnore
     private Long glCompanyPoid;
 
     @Column(name = "REMARKS", length = 500)

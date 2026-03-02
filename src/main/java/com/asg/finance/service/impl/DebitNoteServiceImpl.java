@@ -135,7 +135,11 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         validateDebitNoteInput(debitNoteDto);
         // Validate using stored procedure for Edit
 
-        if (debitNoteDto.getRefType().equals("FDA JOBS") || debitNoteDto.getRefType().equals("FF JOBS"))
+        if (debitNoteDto.getRefType().equals("FDA JOBS")
+                || debitNoteDto.getRefType().equals("FF JOBS")
+                || debitNoteDto.getRefType().equals("FDA")
+                || debitNoteDto.getRefType().equals("FDA_DIRECT")
+        )
             debitNoteCustomRepository.validateDebitNote(
                     debitNoteDto.getRefType(),
                     debitNoteDto.getPartyType(),
@@ -1072,8 +1076,10 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                                     popup.setBillRefType(x.getBillRefType());
                                     popup.setBillRef(x.getBillRef());
                                     popup.setBillDueDate(x.getBillDueDate());
-                                    popup.setType(x.getDrAmt().compareTo(BigDecimal.ZERO) > 0 ? "DR" : "CR");
-                                    popup.setAmount(x.getDrAmt().compareTo(BigDecimal.ZERO) > 0 ? x.getDrAmt() : x.getCrAmt());
+                                    BigDecimal drAmt = x.getDrAmt() != null ? x.getDrAmt() : BigDecimal.ZERO;
+                                    BigDecimal crAmt = x.getCrAmt() != null ? x.getCrAmt() : BigDecimal.ZERO;
+                                    popup.setType(drAmt.compareTo(BigDecimal.ZERO) > 0 ? "DR" : "CR");
+                                    popup.setAmount(drAmt.compareTo(BigDecimal.ZERO) > 0 ? drAmt : crAmt);
                                     popup.setBillRemarks(x.getBillRemarks());
                                     return popup;
                                 })

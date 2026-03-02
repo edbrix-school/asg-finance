@@ -915,8 +915,10 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                         popup.setBillRefType(b.getBillRefType());
                         popup.setBillRef(b.getBillRef());
                         popup.setBillDueDate(b.getBillDueDate());
-                        popup.setType(b.getDrAmt().compareTo(BigDecimal.ZERO) > 0 ? "DR" : "CR");
-                        popup.setAmount(b.getDrAmt().compareTo(BigDecimal.ZERO) > 0 ? b.getDrAmt() : b.getCrAmt());
+                        BigDecimal drAmt = b.getDrAmt() != null ? b.getDrAmt() : BigDecimal.ZERO;
+                        BigDecimal crAmt = b.getCrAmt() != null ? b.getCrAmt() : BigDecimal.ZERO;
+                        popup.setType(drAmt.compareTo(BigDecimal.ZERO) > 0 ? "DR" : "CR");
+                        popup.setAmount(drAmt.compareTo(BigDecimal.ZERO) > 0 ? drAmt : crAmt);
                         popup.setBillRemarks(b.getBillRemarks());
                         return popup;
                     })

@@ -31,8 +31,6 @@ import org.springframework.transaction.annotation.Transactional;
 import javax.sql.DataSource;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.sql.Date;
-import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -209,9 +207,9 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                 Long glPoid = header.getBillDetails().get(0).getGlPoid();
                 if (glPoid != null) {
                     try {
-                        Date asOnDate = header.getTransactionDate() != null 
-                                ? Date.valueOf(header.getTransactionDate()) 
-                                : Date.valueOf(LocalDate.now());
+                        LocalDate asOnDate = header.getTransactionDate() != null 
+                                ? header.getTransactionDate() 
+                                : LocalDate.now();
                         
                         List<Object[]> pendingBills = procedureRepository.fetchPendingBills(
                                 DEFAULT_GROUP_POID, header.getCompanyPoid(), glPoid, asOnDate);
@@ -384,7 +382,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         }
     }
 
-    private LocalDate getLocalDateValue(Map<String, Object> row, String columnName) {
+ /*   private LocalDate getLocalDateValue(Map<String, Object> row, String columnName) {
         Object value = row.get(columnName);
         if (value == null) return null;
         if (value instanceof LocalDate) return (LocalDate) value;
@@ -396,9 +394,9 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         } catch (Exception e) {
             return null;
         }
-    }
+    }*/
 
-    private LocalDateTime getLocalDateTimeValue(Map<String, Object> row, String columnName) {
+  /*  private LocalDateTime getLocalDateTimeValue(Map<String, Object> row, String columnName) {
         Object value = row.get(columnName);
         if (value == null) return null;
         if (value instanceof LocalDateTime) return (LocalDateTime) value;
@@ -410,7 +408,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         } catch (Exception e) {
             return null;
         }
-    }
+    }*/
 
     @Override
     public GeneralReceiptResponse updateGeneralReceipt(Long transactionPoid, GeneralReceiptRequest request) {
@@ -502,8 +500,6 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                             .creditCardRef(payment.getCreditCardRef())
                             .cardType(payment.getCardType())
                             .cardPoid(payment.getCardPoid())
-                            .createdBy(currentUser)
-                            .createdDate(now)
                             .build());
                     break;
                     
@@ -595,8 +591,6 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                             .glCompanyPoid(bill.getGlCompanyPoid() != null ? bill.getGlCompanyPoid() : header.getCompanyPoid())
                             .remarks(bill.getRemarks())
                             .checkall("N")
-                            .createdBy(currentUser)
-                            .createdDate(now)
                             .build());
                     break;
                     
@@ -695,8 +689,6 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                             .totalAmount(charge.getTotalAmount())
                             .costPoid(charge.getCostCenter())
                             .remarks(charge.getRemarks())
-                            .createdBy(currentUser)
-                            .createdDate(now)
                             .build());
                     break;
                     
@@ -781,8 +773,6 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                             .advanceRefPoid(advance.getAdvanceRefPoid())
                             .amount(advance.getAmount())
                             .remarks(advance.getRemarks())
-                            .createdBy(currentUser)
-                            .createdDate(now)
                             .build());
                     break;
                     
@@ -1114,10 +1104,6 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                 .extraCharges(dto.getExtraCharges() != null ? dto.getExtraCharges() : "N")
                 .lineType("GENERAL")  // Set line type
                 .rcvdType("GENERAL")  // Set received type
-                .createdBy(currentUser)
-                .createdDate(now)
-                .lastModifiedBy(currentUser)
-                .lastModifiedDate(now)
                 .build();
     }
 
@@ -1196,8 +1182,6 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                     .creditCardRef(payment.getCreditCardRef())
                     .cardType(payment.getCardType())
                     .cardPoid(payment.getCardPoid())
-                    .createdBy(currentUser)
-                    .createdDate(now)
                     .build();
 
             details.add(detail);
@@ -1260,8 +1244,6 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                     .glCompanyPoid(bill.getGlCompanyPoid() != null ? bill.getGlCompanyPoid() : header.getCompanyPoid())
                     .remarks(bill.getRemarks())
                     .checkall("N")
-                    .createdBy(currentUser)
-                    .createdDate(now)
                     .build();
 
             details.add(detail);
@@ -1332,8 +1314,6 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                     .totalAmount(charge.getTotalAmount())
                     .costPoid(charge.getCostCenter())
                     .remarks(charge.getRemarks())
-                    .createdBy(currentUser)
-                    .createdDate(now)
                     .build();
 
             details.add(detail);
@@ -1385,8 +1365,6 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                     .advanceRefPoid(advance.getAdvanceRefPoid())
                     .amount(advance.getAmount())
                     .remarks(advance.getRemarks())
-                    .createdBy(currentUser)
-                    .createdDate(now)
                     .build();
 
             details.add(detail);
@@ -1791,7 +1769,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
     @Override
     public Map<String, Object> getPendingBills(Long glPoid, LocalDate asOnDate) {
         Long companyPoid = UserContext.getCompanyPoid() != null ? UserContext.getCompanyPoid() : 1L;
-        Date sqlDate = asOnDate != null ? Date.valueOf(asOnDate) : Date.valueOf(LocalDate.now());
+        LocalDate sqlDate = asOnDate != null ? asOnDate : LocalDate.now();
         List<Object[]> results = procedureRepository.fetchPendingBills(DEFAULT_GROUP_POID, companyPoid, glPoid, sqlDate);
         return Map.of("pendingBills", results);
     }

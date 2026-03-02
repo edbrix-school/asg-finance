@@ -1,12 +1,12 @@
 package com.asg.finance.entity;
 
 import com.asg.common.lib.annotation.AuditIgnore;
+import com.asg.common.lib.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(
@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
         )
 )
 @Data
-public class GlChequeCashConvertHdrEntity {
+public class GlChequeCashConvertHdrEntity extends BaseEntity {
 
     @Id
     @AuditIgnore
@@ -51,22 +51,6 @@ public class GlChequeCashConvertHdrEntity {
 
     @Column(name = "REMARKS")
     private String remarks;
-
-    @Column(name = "CREATED_BY")
-    @AuditIgnore
-    private String createdBy;
-
-    @Column(name = "CREATED_DATE")
-    @AuditIgnore
-    private LocalDateTime createdDate;
-
-    @Column(name = "LASTMODIFIED_BY")
-    @AuditIgnore
-    private String lastModifiedBy;
-
-    @Column(name = "LASTMODIFIED_DATE")
-    @AuditIgnore
-    private LocalDateTime lastModifiedDate;
 
     @Column(name = "DELETED")
     private String deleted;

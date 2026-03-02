@@ -150,7 +150,7 @@ public class ApPurchaseInvoiceHdrEntity extends BaseEntity {
     private BigDecimal supplierInvAmount;
 
     @Column(name = "ROUNDING_AMOUNT")
-    private Long roundingAmount;
+    private BigDecimal roundingAmount;
 
     @Column(name = "BILL_TYPE")
     private String billType;

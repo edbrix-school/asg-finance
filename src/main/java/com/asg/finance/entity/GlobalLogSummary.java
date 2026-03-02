@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "GLOBAL_LOG_SUMMARY")
@@ -23,7 +24,7 @@ public class GlobalLogSummary {
     private Long logUserPoid;
 
     @Column(name = "LOG_DATETIME")
-    private Timestamp logDateTime;
+    private LocalDateTime logDateTime;
 
     @Column(name = "LOG_DETAILS", length = 2000)
     private String logDetails;

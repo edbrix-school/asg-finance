@@ -1,18 +1,19 @@
 package com.asg.finance.entity;
 
 import com.asg.common.lib.annotation.AuditIgnore;
+import com.asg.common.lib.entity.BaseEntity;
 import com.asg.finance.entity.key.GlChequeCashConvertInDtlKey;
 import jakarta.persistence.*;
 import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+
 
 @Entity
 @Table(name = "GL_CHEQUE_CASH_CONVERT_IN_DTL")
 @Data
-public class GlChequeCashConvertInDtlEntity {
+public class GlChequeCashConvertInDtlEntity extends BaseEntity {
 
     @EmbeddedId
     @AuditIgnore
@@ -38,21 +39,6 @@ public class GlChequeCashConvertInDtlEntity {
 
     @Column(name = "REMARKS")
     private String remarks;
-
-    @Column(name = "CREATED_BY")
-    @AuditIgnore
-    private String createdBy;
-
-    @Column(name = "CREATED_DATE")
-    private LocalDateTime createdDate;
-
-    @Column(name = "LASTMODIFIED_BY")
-    @AuditIgnore
-    private String lastModifiedBy;
-
-    @Column(name = "LASTMODIFIED_DATE")
-    @AuditIgnore
-    private LocalDateTime lastModifiedDate;
 
     @Column(name = "VOUCHER_TYPE")
     private String voucherType;

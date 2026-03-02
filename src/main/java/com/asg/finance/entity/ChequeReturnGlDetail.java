@@ -1,14 +1,13 @@
 package com.asg.finance.entity;
 import com.asg.common.lib.annotation.AuditIgnore;
+import com.asg.common.lib.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
-
-import java.util.Date;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 @Entity
 @Table(name = "GL_CHEQUE_RETURN_GL_DTL")
-public class ChequeReturnGlDetail {
+public class ChequeReturnGlDetail extends BaseEntity {
 
     @EmbeddedId
     @AuditIgnore
@@ -38,21 +37,4 @@ public class ChequeReturnGlDetail {
     @Column(name = "REMARKS", length = 100)
     private String remarks;
 
-    @Column(name = "CREATED_BY", length = 20)
-    @AuditIgnore
-    private String createdBy;
-
-    @Temporal(TemporalType.TIMESTAMP)
-    @Column(name = "CREATED_DATE")
-    @AuditIgnore
-    private Date createdDate;
-
-    @Column(name = "LASTMODIFIED_BY", length = 20)
-    @AuditIgnore
-    private String lastModifiedBy;
-
-    @Temporal(TemporalType.TIMESTAMP)
-    @Column(name = "LASTMODIFIED_DATE")
-    @AuditIgnore
-    private Date lastModifiedDate;
 }

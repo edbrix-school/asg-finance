@@ -1822,7 +1822,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                             .billDetRowId(src.getBillDetRowId())
                             .billRefType(src.getBillRefType())
                             .billRef(src.getBillRef())
-                            .billDueDate(src.getBillDueDate())
+                            .billDueDate(src.getBillDueDate() != null ? 
+                                src.getBillDueDate().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate() : null)
                             .billRemarks(src.getBillRemarks())
                             .actionType("noChanges"); // Default actionType for loaded data
 

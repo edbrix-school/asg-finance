@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Date;
 
 @Data
@@ -14,7 +15,7 @@ import java.util.Date;
 @AllArgsConstructor
 public class PendingBillwiseBreakupDto {
     private String billRef;
-    private Date billDueDate;
+    private LocalDate billDueDate;
     private String remarks;
     private BigDecimal balance;
 }

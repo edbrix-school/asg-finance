@@ -1,6 +1,7 @@
 package com.asg.finance.entity;
 
 import com.asg.common.lib.annotation.AuditIgnore;
+import com.asg.common.lib.entity.BaseEntity;
 import com.asg.common.lib.entity.Company;
 import com.asg.common.lib.entity.CurrencyEntity;
 import com.asg.common.lib.entity.GroupEntity;
@@ -8,7 +9,6 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
 @Builder
 @Entity
 @Table(name = "AP_PURCHASE_ORDER_HDR")
-public class PurchaseOrder {
+public class PurchaseOrder extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -116,22 +116,6 @@ public class PurchaseOrder {
 
     @Column(name = "REMARKS", length = 500)
     private String remarks;
-
-    @Column(name = "CREATED_BY", length = 20)
-    @AuditIgnore
-    private String createdBy;
-
-    @Column(name = "CREATED_DATE")
-    @AuditIgnore
-    private LocalDateTime createdDate;
-
-    @Column(name = "LASTMODIFIED_BY", length = 20)
-    @AuditIgnore
-    private String lastModifiedBy;
-
-    @Column(name = "LASTMODIFIED_DATE")
-    @AuditIgnore
-    private LocalDateTime lastModifiedDate;
 
     @Column(name = "DELETED", length = 1)
     private String deleted;

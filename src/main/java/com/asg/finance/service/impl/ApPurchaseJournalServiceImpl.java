@@ -1669,7 +1669,8 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                             popupDto.setBillDetRowId(item.getBillDetRowId());
                             popupDto.setBillRefType(item.getBillRefType());
                             popupDto.setBillRef(item.getBillRef());
-                            popupDto.setBillDueDate(item.getBillDueDate());
+                            popupDto.setBillDueDate(item.getBillDueDate() != null ? 
+                                new java.sql.Date(item.getBillDueDate().getTime()).toLocalDate() : null);
 
                             // Determine type and amount from drAmt/crAmt
                             if (item.getDrAmt() != null && item.getDrAmt().compareTo(BigDecimal.ZERO) > 0) {
@@ -1998,6 +1999,10 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         BigDecimal totalCr = BigDecimal.ZERO;
 
         for (ApPurchaseInvoiceGlDtlDto gl : dto.getGlDtls()) {
+
+            if ("ISDELETED".equalsIgnoreCase(gl.getActionType())) {
+                continue;
+            }
 
             if (gl.getDrAmount() != null) {
                 totalDr = totalDr.add(gl.getDrAmount());

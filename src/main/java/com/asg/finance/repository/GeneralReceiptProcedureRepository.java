@@ -10,6 +10,7 @@ import org.hibernate.Session;
 import org.springframework.stereotype.Repository;
 
 import java.sql.*;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -232,7 +233,7 @@ public class GeneralReceiptProcedureRepository {
      * @return List of pending bills (returns cursor result set)
      */
     @SuppressWarnings("unchecked")
-    public List<Object[]> fetchPendingBills(Long groupPoid, Long companyPoid, Long glPoid, Date asOnDate) {
+    public List<Object[]> fetchPendingBills(Long groupPoid, Long companyPoid, Long glPoid, LocalDate asOnDate) {
         log.debug("Calling PROC_GEN_REC_BILLWISE_PENDING for GL: {}", glPoid);
 
         StoredProcedureQuery query = entityManager

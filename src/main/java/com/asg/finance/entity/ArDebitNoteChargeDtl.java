@@ -1,6 +1,7 @@
 package com.asg.finance.entity;
 
 import com.asg.common.lib.annotation.AuditIgnore;
+import com.asg.common.lib.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -11,7 +12,7 @@ import java.time.LocalDateTime;
 @Table(name = "AR_DEBIT_NOTE_CHARGE_DTL")
 @IdClass(ArDebitNoteChargeDtlId.class)
 @Data
-public class ArDebitNoteChargeDtl {
+public class ArDebitNoteChargeDtl extends BaseEntity {
 
     @Id
     @AuditIgnore
@@ -97,20 +98,4 @@ public class ArDebitNoteChargeDtl {
 
     @Column(name = "PRINT_SEQ_NO")
     private Integer printSeqNo;
-
-    @AuditIgnore
-    @Column(name = "CREATED_BY", length = 20)
-    private String createdBy;
-
-    @AuditIgnore
-    @Column(name = "CREATED_DATE")
-    private LocalDateTime createdDate;
-
-    @AuditIgnore
-    @Column(name = "LASTMODIFIED_BY", length = 20)
-    private String lastModifiedBy;
-
-    @AuditIgnore
-    @Column(name = "LASTMODIFIED_DATE")
-    private LocalDateTime lastModifiedDate;
 }

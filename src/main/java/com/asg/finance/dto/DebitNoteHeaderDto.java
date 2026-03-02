@@ -85,7 +85,7 @@ public class DebitNoteHeaderDto {
     private Long fdaDirectRefPoid; // PROCESS_FDA_DIRECT_IN_DN
     
     // Other Charges specific fields
-    private Long costGroupPoid; // DN_GL_COST_GROUPS
+    private String costGroupPoid; // DN_GL_COST_GROUPS
     
     private Long disposalJvRefPoid; // DISPOSAL_JV_REF_FOR_DN
     

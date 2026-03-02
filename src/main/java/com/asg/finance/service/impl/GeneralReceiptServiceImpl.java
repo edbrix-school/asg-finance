@@ -891,6 +891,34 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
             throw new ValidationException("Credit GL not found: " + header.getCreditGL());
         }
         GLMasterEntity creditGL = creditGLList.get(0);
+        
+        // 3. Validate bill due date is required
+        if (request.getBills() != null && !request.getBills().isEmpty()) {
+            for (GeneralReceiptBillDto bill : request.getBills()) {
+                if (bill.getBillDueDate() == null) {
+                    throw new ValidationException("Due date is required for all bills");
+                }
+            }
+        }
+        
+        // 4. Validate FDA advance amount matches receipt amount
+        if ("FDA_ADVANCE".equals(header.getRefType())) {
+            if (request.getAdvances() == null || request.getAdvances().isEmpty()) {
+                throw new ValidationException("FDA advance details are required when Ref Type is FDA_ADVANCE");
+            }
+            
+            BigDecimal advanceTotal = request.getAdvances().stream()
+                    .map(GeneralReceiptAdvanceDto::getAmount)
+                    .filter(amount -> amount != null)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            
+            if (header.getReceiptAmount().compareTo(advanceTotal) != 0) {
+                throw new ValidationException(String.format(
+                        "FDA advance amount (%.3f) does not match receipt amount (%.3f)",
+                        advanceTotal, header.getReceiptAmount()));
+            }
+        }
+        
         if (request.getPayments() != null && !request.getPayments().isEmpty()) {
             BigDecimal paymentTotal = request.getPayments().stream()
                     .map(GeneralReceiptPaymentDto::getAmount)
@@ -910,8 +938,11 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         }
 
 
-        // 5. Validate bill amount matches receipt amount
-        validateBillAmountMatchesReceiptAmount(request.getBills(), request.getExtraCharges(), header.getReceiptAmount());
+        // 5. Validate bill amount matches BHD amount (if currency is not BHD)
+        BigDecimal amountToCompare = "BHD".equalsIgnoreCase(header.getCurrency()) 
+                ? header.getReceiptAmount() 
+                : (header.getBhdAmount() != null ? header.getBhdAmount() : header.getReceiptAmount().multiply(header.getRate()));
+        validateBillAmountMatchesReceiptAmount(request.getBills(), request.getExtraCharges(), amountToCompare);
 
         // 6. Validate cheque dates if applicable
         validateChequeDates(request.getPayments());
@@ -940,7 +971,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
 
     private void validateBillAmountMatchesReceiptAmount(List<GeneralReceiptBillDto> bills, 
                                                          List<GeneralReceiptChargeDto> charges, 
-                                                         BigDecimal receiptAmount) {
+                                                         BigDecimal amountToCompare) {
         if (bills == null || bills.isEmpty()) {
             return;
         }
@@ -960,10 +991,10 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
 
         BigDecimal expectedTotal = billTotal.add(chargeTotal);
 
-        if (receiptAmount.compareTo(expectedTotal) != 0) {
+        if (amountToCompare.compareTo(expectedTotal) != 0) {
             throw new ValidationException(String.format(
-                    "Receipt amount (%.3f) does not match bill amount (%.3f) + charges (%.3f) = %.3f",
-                    receiptAmount, billTotal, chargeTotal, expectedTotal));
+                    "Receipt amount (%.3f) does not match bill amount (%.3f) ,please check",
+                    amountToCompare, billTotal, chargeTotal, expectedTotal));
         }
     }
 
@@ -1549,10 +1580,10 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                 GLMasterEntity gl = glOptional.get();
                 String glDescription = gl.getDescription();
                 try {
-                    LovGetListDto lovDetails = lovService.getDetailsByPoidAndLovName(gl.getGlPoid(), "GEN_RECEIPT_CREDIT_GL");
-                    if (lovDetails != null && lovDetails.getDescription() != null) {
-                        glDescription = lovDetails.getDescription();
-                    }
+//                    LovGetListDto lovDetails = lovService.getDetailsByPoidAndLovName(gl.getGlPoid(), "GEN_RECEIPT_CREDIT_GL");
+//                    if (lovDetails != null && lovDetails.getDescription() != null) {
+//                        glDescription = lovDetails.getDescription();
+//                    }
                 } catch (Exception e) {
                     log.warn("Failed to fetch LOV description for GL poid {}: {}", gl.getGlPoid(), e.getMessage());
                 }

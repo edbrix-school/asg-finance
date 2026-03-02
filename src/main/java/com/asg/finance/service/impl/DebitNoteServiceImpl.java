@@ -1230,6 +1230,9 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         if (dto.getGlDetails() == null || dto.getGlDetails().isEmpty())
             return;
 
+        if (dto.getRefType().equalsIgnoreCase("CUSTOM"))
+            return;
+
         BigDecimal totalDr = BigDecimal.ZERO;
         BigDecimal totalCr = BigDecimal.ZERO;
 

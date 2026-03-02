@@ -4,20 +4,24 @@ import com.asg.common.lib.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 @Entity
+@IdClass(ChequeReturnGlDetailId.class)
 @Table(name = "GL_CHEQUE_RETURN_GL_DTL")
 public class ChequeReturnGlDetail extends BaseEntity {
 
-    @EmbeddedId
-    @AuditIgnore
-    private ChequeReturnGlDetailId id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @MapsId("transactionPoid") // 👈 same reason — reuse embedded id
-    @JoinColumn(name = "TRANSACTION_POID", nullable = false)
-    @AuditIgnore
-    private ChequeReturn chequeReturn;
+    @Id
+    @Column(name = "TRANSACTION_POID")
+    private Long transactionPoid;
+
+    @Id
+    @Column(name = "DET_ROW_ID")
+    private Long detRowId;
 
     @Column(name = "TYPE")
     private String type; // DR/CR

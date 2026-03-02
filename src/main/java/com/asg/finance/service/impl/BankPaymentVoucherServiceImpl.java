@@ -1394,8 +1394,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                     .billDetRowId(src.getBillDetRowId())
                     .billRefType(src.getBillRefType())
                     .billRef(src.getBillRef())
-                    .billDueDate(src.getBillDueDate() != null ? 
-                        src.getBillDueDate().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate() : null)
+                    .billDueDate(src.getBillDueDate())
                     .type(type)
                     .amount(amount)
                     .billRemarks(src.getBillRemarks())

@@ -731,7 +731,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         dto.setOtherCurrAmount(entity.getOtherCurrAmount());
         dto.setVoucherType(entity.getVoucherType());
         dto.setCostRefNumber(entity.getCostRefNumber());
-        dto.setCostGroupPoid(parseLongSafely(entity.getCostGroup()));
+        dto.setCostGroupPoid(entity.getCostGroup());
         dto.setPrintDivisionPoid(entity.getPrintDivisionPoid());
         dto.setMultiCompany("Y".equals(entity.getMultiCompany()));
         dto.setRemarksPrintable("Y".equals(entity.getRemarksPrintable()));
@@ -748,7 +748,15 @@ public class DebitNoteServiceImpl implements DebitNoteService {
             dto.setFdaDirectRefDetails(lovService.getDetailsByPoidAndLovName(dto.getFdaDirectRefPoid(), "PROCESS_FDA_DIRECT_IN_DN"));
         }
         if (dto.getCostGroupPoid() != null) {
-            dto.setCostGroupDetails(lovService.getDetailsByPoidAndLovName(dto.getCostGroupPoid(), "DN_GL_COST_GROUPS"));
+            try {
+                LovGetListDto details = lovService.getDetailsByPoidAndLovName(Long.valueOf(dto.getCostGroupPoid()), "DN_GL_COST_GROUPS");
+                if (details == null || details.getCode() == null) {
+                    details = lovService.getDetailsByCodeAndLovName(dto.getCostGroupPoid(), "DN_GL_COST_GROUPS");
+                }
+                dto.setCostGroupDetails(details);
+            } catch (NumberFormatException e) {
+                dto.setCostGroupDetails(lovService.getDetailsByCodeAndLovName(dto.getCostGroupPoid(), "DN_GL_COST_GROUPS"));
+            }
         }
         if (dto.getDisposalJvRefPoid() != null) {
             dto.setDisposalJvRefDetails(lovService.getDetailsByPoidAndLovName(dto.getDisposalJvRefPoid(), "DISPOSAL_JV_REF_FOR_DN"));
@@ -840,7 +848,15 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         }
 
         if (entity.getCostPoid() != null) {
-            dto.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(Long.valueOf(entity.getCostPoid()), "DN_GL_COST_CENTRE"));
+            try {
+                LovGetListDto details = lovService.getDetailsByPoidAndLovName(Long.valueOf(entity.getCostPoid()), "DN_GL_COST_CENTRE");
+                if (details == null || details.getCode() == null) {
+                    details = lovService.getDetailsByCodeAndLovName(entity.getCostPoid(), "DN_GL_COST_CENTRE");
+                }
+                dto.setCostCenterDetails(details);
+            } catch (NumberFormatException e) {
+                dto.setCostCenterDetails(lovService.getDetailsByCodeAndLovName(entity.getCostPoid(), "DN_GL_COST_CENTRE"));
+            }
         }
         
         return dto;

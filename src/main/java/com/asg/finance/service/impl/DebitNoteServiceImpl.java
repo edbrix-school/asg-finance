@@ -135,7 +135,11 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         validateDebitNoteInput(debitNoteDto);
         // Validate using stored procedure for Edit
 
-        if (debitNoteDto.getRefType().equals("FDA JOBS") || debitNoteDto.getRefType().equals("FF JOBS"))
+        if (debitNoteDto.getRefType().equals("FDA JOBS")
+                || debitNoteDto.getRefType().equals("FF JOBS")
+                || debitNoteDto.getRefType().equals("FDA")
+                || debitNoteDto.getRefType().equals("FDA_DIRECT")
+        )
             debitNoteCustomRepository.validateDebitNote(
                     debitNoteDto.getRefType(),
                     debitNoteDto.getPartyType(),

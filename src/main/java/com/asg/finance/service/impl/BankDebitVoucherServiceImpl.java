@@ -1017,8 +1017,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                                     dto.setBillDetRowId(bw.getBillDetRowId());
                                     dto.setBillRefType(bw.getBillRefType());
                                     dto.setBillRef(bw.getBillRef());
-                                    dto.setBillDueDate(bw.getBillDueDate() != null ? 
-                                        bw.getBillDueDate().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate() : null);
+                                    dto.setBillDueDate(bw.getBillDueDate());
                                     // Amount & type from DR/CR amounts - check > 0 (like CreditNote, ApPurchaseJournal)
                                     if (bw.getDrAmt() != null && bw.getDrAmt().compareTo(BigDecimal.ZERO) > 0) {
                                         dto.setType("DR");

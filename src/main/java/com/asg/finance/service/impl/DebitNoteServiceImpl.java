@@ -1072,8 +1072,10 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                                     popup.setBillRefType(x.getBillRefType());
                                     popup.setBillRef(x.getBillRef());
                                     popup.setBillDueDate(x.getBillDueDate());
-                                    popup.setType(x.getDrAmt().compareTo(BigDecimal.ZERO) > 0 ? "DR" : "CR");
-                                    popup.setAmount(x.getDrAmt().compareTo(BigDecimal.ZERO) > 0 ? x.getDrAmt() : x.getCrAmt());
+                                    BigDecimal drAmt = x.getDrAmt() != null ? x.getDrAmt() : BigDecimal.ZERO;
+                                    BigDecimal crAmt = x.getCrAmt() != null ? x.getCrAmt() : BigDecimal.ZERO;
+                                    popup.setType(drAmt.compareTo(BigDecimal.ZERO) > 0 ? "DR" : "CR");
+                                    popup.setAmount(drAmt.compareTo(BigDecimal.ZERO) > 0 ? drAmt : crAmt);
                                     popup.setBillRemarks(x.getBillRemarks());
                                     return popup;
                                 })

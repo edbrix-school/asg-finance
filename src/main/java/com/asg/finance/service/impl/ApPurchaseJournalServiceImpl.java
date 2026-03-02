@@ -1669,8 +1669,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                             popupDto.setBillDetRowId(item.getBillDetRowId());
                             popupDto.setBillRefType(item.getBillRefType());
                             popupDto.setBillRef(item.getBillRef());
-                            popupDto.setBillDueDate(item.getBillDueDate() != null ? 
-                                new java.sql.Date(item.getBillDueDate().getTime()).toLocalDate() : null);
+                            popupDto.setBillDueDate(item.getBillDueDate());
 
                             // Determine type and amount from drAmt/crAmt
                             if (item.getDrAmt() != null && item.getDrAmt().compareTo(BigDecimal.ZERO) > 0) {

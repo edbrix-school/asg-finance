@@ -544,7 +544,7 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
 
         String docId = UserContext.getDocumentId();
         String docKeyPoid = savedEntity.getSupplierPoid().toString();
-        Timestamp now = new Timestamp(System.currentTimeMillis());
+        LocalDateTime now = LocalDateTime.now();
 
         String createdMessage = String.format("Created - - DOC:%s KEY:%s", docId, docKeyPoid);
         GlobalLogSummary headerLog = createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, createdMessage, now);
@@ -1467,10 +1467,10 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
         return createSummaryLogEntry(logDetailsEnum, docId, docKeyPoid, customMessage, null);
     }
 
-    private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage, Timestamp logDateTime) {
+    private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage, LocalDateTime logDateTime) {
         GlobalLogSummary summary = new GlobalLogSummary();
         summary.setLogUserPoid(UserContext.getUserPoid());
-        summary.setLogDateTime(logDateTime != null ? logDateTime : new Timestamp(System.currentTimeMillis()));
+        summary.setLogDateTime(logDateTime != null ? logDateTime : LocalDateTime.now());
         summary.setLogDocId(docId);
         summary.setLogDocKeyPoid(docKeyPoid);
         summary.setLogDetails(customMessage);

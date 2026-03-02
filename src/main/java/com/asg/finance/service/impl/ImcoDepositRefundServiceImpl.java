@@ -39,7 +39,6 @@ import org.springframework.transaction.annotation.Transactional;
 import javax.sql.DataSource;
 import java.math.BigDecimal;
 import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -81,10 +80,6 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
                     .blNumber(request.getBlNumber())
                     .receiptNum(request.getReceiptNum())
                     .payingTo(request.getPayingTo())
-                    .createdBy(getCurrentUser())
-                    .createdDate(LocalDateTime.now())
-                    .lastModifiedBy(getCurrentUser())
-                    .lastModifiedDate(LocalDateTime.now())
                     .deleted("N")
                     .build();
 
@@ -109,10 +104,6 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
                             .amount(dto.getAmount())
                             .status(dto.getStatus())
                             .remarks(dto.getRemarks())
-                            .createdBy(getCurrentUser())
-                            .createdDate(LocalDateTime.now())
-                            .lastModifiedBy(getCurrentUser())
-                            .lastModifiedDate(LocalDateTime.now())
                             .oldRcpvno(dto.getOldRcpvno())
                             .rcpDate(dto.getRcpDate())
                             .refDocRef(dto.getRefDocRef())
@@ -135,10 +126,6 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
                             .billRef(dto.getBillRef())
                             .billAmount(dto.getBillAmount())
                             .remarks(dto.getRemarks())
-                            .createdBy(getCurrentUser())
-                            .createdDate(LocalDateTime.now())
-                            .lastModifiedBy(getCurrentUser())
-                            .lastModifiedDate(LocalDateTime.now())
                             .build())
                     .collect(Collectors.toList());
 
@@ -153,7 +140,7 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
 
             String docId = UserContext.getDocumentId();
             String docKeyPoid = savedHeader.getTransactionPoid().toString();
-            Timestamp now = new Timestamp(System.currentTimeMillis());
+            LocalDateTime now = LocalDateTime.now();
             String createdMessage = String.format("Created - - DOC:%s KEY:%s", docId, docKeyPoid);
             GlobalLogSummary headerLog = createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, createdMessage, now);
             globalLogSummaryRepository.save(headerLog);
@@ -368,10 +355,17 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
         return "Database validation failed: " + (message != null ? message : "Unknown error");
     }
 
-    private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage, Timestamp logDateTime) {
+    private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum,
+                                                   String docId,
+                                                   String docKeyPoid,
+                                                   String customMessage,
+                                                   LocalDateTime logDateTime) {
+
         GlobalLogSummary summary = new GlobalLogSummary();
         summary.setLogUserPoid(UserContext.getUserPoid());
-        summary.setLogDateTime(logDateTime != null ? logDateTime : new Timestamp(System.currentTimeMillis()));
+        summary.setLogDateTime(
+                logDateTime != null ? logDateTime : LocalDateTime.now()
+        );
         summary.setLogDocId(docId);
         summary.setLogDocKeyPoid(docKeyPoid);
         summary.setLogDetails(customMessage);

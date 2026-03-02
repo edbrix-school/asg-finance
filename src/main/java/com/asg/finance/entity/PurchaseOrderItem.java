@@ -1,12 +1,12 @@
 package com.asg.finance.entity;
 
 import com.asg.common.lib.annotation.AuditIgnore;
+import com.asg.common.lib.entity.BaseEntity;
 import com.asg.finance.entity.master.UnitMaster;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.io.Serializable;
-import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 @Entity
 @IdClass(PurchaseOrderItem.CompositeKey.class)
 @Table(name = "AP_PURCHASE_ORDER_ITEM_DTL")
-public class PurchaseOrderItem {
+public class PurchaseOrderItem extends BaseEntity {
 
     @Id
     @AuditIgnore
@@ -79,22 +79,6 @@ public class PurchaseOrderItem {
 
     @Column(name = "REMARKS", length = 500)
     private String remarks;
-
-    @Column(name = "CREATED_BY", length = 20)
-    @AuditIgnore
-    private String createdBy;
-
-    @Column(name = "CREATED_DATE")
-    @AuditIgnore
-    private LocalDateTime createdDate;
-
-    @Column(name = "LASTMODIFIED_BY", length = 20)
-    @AuditIgnore
-    private String lastModifiedBy;
-
-    @Column(name = "LASTMODIFIED_DATE")
-    @AuditIgnore
-    private LocalDateTime lastModifiedDate;
 
     @Column(name = "RFQ_DET_ROW_ID")
     @AuditIgnore

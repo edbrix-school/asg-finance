@@ -37,7 +37,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -88,10 +87,6 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
                 .chequeNumber(request.getChequeHeader().getChequeNumber())
                 .closeDetail(request.getChequeHeader().getCloseDetail())
                 .deleted("N")
-                .createdBy(UserContext.getUserId())
-                .lastModifiedBy(UserContext.getUserId())
-                .createdDate(dbDate)
-                .lastModifiedDate(dbDate)
                 .build();
 
         header = headerRepo.save(header);
@@ -134,8 +129,6 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
         header.setStatus(status);
         header.setReceiptNumber(request.getReceiptNumber());
         header.setCloseDetail(request.getCloseDetail());
-        header.setLastModifiedDate(getCurrentDbDate());
-        header.setLastModifiedBy(UserContext.getUserId());
         headerRepo.save(header);
 
         // Log the update
@@ -511,12 +504,12 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
                 .paymentMainPoid(d.getPaymentMainPoid())
                 .amount(d.getAmount())
                 .choPoid(d.getChoPoid())
-                .choDate(d.getChoDate() != null ? Date.from(d.getChoDate().atStartOfDay(ZoneId.systemDefault()).toInstant()) : null)
+                .choDate(d.getChoDate())
                 .refDocId(d.getRefDocId())
                 .refDocPoid(d.getRefDocPoid())
                 .pymtType(d.getPymtType())
                 .chqCardNo(d.getChqCardNo())
-                .chqDate(Date.from(d.getChqDate().atStartOfDay(ZoneId.systemDefault()).toInstant()))
+                .chqDate(d.getChqDate())
                 .bankPoid(d.getBankPoid())
                 .addressPoid(d.getAddressPoid())
                 .chqAcName(d.getChqAcName())
@@ -524,12 +517,8 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
                 .remarks(d.getRemarks())
                 .status("OPEN")
                 .voucherType(StringUtils.defaultIfBlank(d.getVoucherType(), "NORMAL"))
-                .rcpDate(Date.from(d.getRcpDate().atStartOfDay(ZoneId.systemDefault()).toInstant()))
+                .rcpDate(d.getRcpDate())
                 .refDocRef(d.getRefDocRef())
-                .createdDate(dbDate)
-                .lastModifiedDate(dbDate)
-                .createdBy(UserContext.getUserId())
-                .lastModifiedBy(UserContext.getUserId())
                 .build();
     }
 
@@ -537,22 +526,20 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
         entity.setPaymentMainPoid(d.getPaymentMainPoid());
         entity.setAmount(d.getAmount());
         entity.setChoPoid(d.getChoPoid());
-        entity.setChoDate(d.getChoDate() != null ? Date.from(d.getChoDate().atStartOfDay(ZoneId.systemDefault()).toInstant()) : null);
+        entity.setChoDate(d.getChoDate());
         entity.setRefDocId(d.getRefDocId());
         entity.setRefDocPoid(d.getRefDocPoid());
         entity.setPymtType(d.getPymtType());
         entity.setChqCardNo(d.getChqCardNo());
-        entity.setChqDate(Date.from(d.getChqDate().atStartOfDay(ZoneId.systemDefault()).toInstant()));
+        entity.setChqDate(d.getChqDate());
         entity.setBankPoid(d.getBankPoid());
         entity.setAddressPoid(d.getAddressPoid());
         entity.setChqAcName(d.getChqAcName());
         entity.setChqAcNo(d.getChqAcNo());
         entity.setRemarks(d.getRemarks());
         entity.setVoucherType(StringUtils.defaultIfBlank(d.getVoucherType(), "NORMAL"));
-        entity.setRcpDate(Date.from(d.getRcpDate().atStartOfDay(ZoneId.systemDefault()).toInstant()));
+        entity.setRcpDate(d.getRcpDate());
         entity.setRefDocRef(d.getRefDocRef());
-        entity.setLastModifiedDate(dbDate);
-        entity.setLastModifiedBy(UserContext.getUserId());
     }
 
     private List<ChequeReturnGlDetail> buildAndSaveGlDetails(Long trnPoid, ChequeReturn header,
@@ -713,14 +700,13 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
             if (d != null) {
                 e.setPymtType(d.getPymtType());
                 e.setChqCardNo(d.getChqCardNo());
-                e.setChqDate(Date.from(d.getChqDate().atStartOfDay(ZoneId.systemDefault()).toInstant()));
+                e.setChqDate(d.getChqDate());
                 e.setBankPoid(d.getBankPoid());
                 e.setChqAcName(d.getChqAcName());
                 e.setChqAcNo(d.getChqAcNo());
                 e.setAmount(d.getAmount());
                 e.setRemarks(d.getRemarks());
                 e.setVoucherType(StringUtils.defaultIfBlank(d.getVoucherType(), "NORMAL"));
-                e.setLastModifiedDate(dbDate);
             }
         }
         detailRepo.saveAll(existing);
@@ -792,27 +778,6 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
     // MAPPERS
     // ============================================================
     private ChequeReturnRequest.ChequeDetailDto toChequeDetailDto(ChequeReturnDetail e) {
-        LocalDate chequeLocalDate = null;
-        if (e.getChqDate() != null) {
-            chequeLocalDate = new java.sql.Timestamp(e.getChqDate().getTime())
-                    .toInstant()
-                    .atZone(ZoneId.systemDefault())
-                    .toLocalDate();
-        }
-        LocalDate receiptLocalDate = null;
-        if (e.getRcpDate() != null) {
-            receiptLocalDate = new java.sql.Timestamp(e.getRcpDate().getTime())
-                    .toInstant()
-                    .atZone(ZoneId.systemDefault())
-                    .toLocalDate();
-        }
-        LocalDate choLocalDate = null;
-        if (e.getChoDate() != null) {
-            choLocalDate = new java.sql.Timestamp(e.getChoDate().getTime())
-                    .toInstant()
-                    .atZone(ZoneId.systemDefault())
-                    .toLocalDate();
-        }
         ChequeReturnRequest.ChequeDetailDto dto =
                 ChequeReturnRequest.ChequeDetailDto.builder()
         //return ChequeReturnRequest.ChequeDetailDto.builder()
@@ -821,19 +786,19 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
                 .paymentMainPoid(e.getPaymentMainPoid())
                 .amount(e.getAmount())
                 .choPoid(e.getChoPoid())
-                .choDate(choLocalDate)
+                .choDate(e.getChoDate())
                 .refDocId(e.getRefDocId())
                 .refDocPoid(e.getRefDocPoid())
                 .pymtType(e.getPymtType())
                 .chqCardNo(e.getChqCardNo())
-                .chqDate(chequeLocalDate)
+                .chqDate(e.getChqDate())
                 .bankPoid(e.getBankPoid())
                 .addressPoid(e.getAddressPoid())
                 .chqAcName(e.getChqAcName())
                 .chqAcNo(e.getChqAcNo())
                 .remarks(e.getRemarks())
                 .voucherType(e.getVoucherType())
-                .rcpDate(receiptLocalDate)
+                .rcpDate(e.getRcpDate())
                 .refDocRef(e.getRefDocRef())
                 .build();
         dto.setBankDtl(

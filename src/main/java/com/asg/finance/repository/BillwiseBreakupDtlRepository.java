@@ -4,7 +4,7 @@ import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.GlVoucherPendingBillwiseBreakupResponseDto;
 
-import java.util.Date;
+import java.time.LocalDate;
 import java.util.List;
 
 public interface BillwiseBreakupDtlRepository {
@@ -20,13 +20,13 @@ public interface BillwiseBreakupDtlRepository {
             Long groupPoid,
             Long companyPoid,
             Long glPoid,
-            Date asOnDate);
+            LocalDate asOnDate);
 
     GlVoucherPendingBillwiseBreakupResponseDto showAllPendingBillwiseBreakup(
             Long groupPoid,
             Long companyPoid,
             Long glPoid,
-            Date asOnDate);
+            LocalDate asOnDate);
 
     void insertBillwiseBreakup(List<BillwiseBreakupRequestDto> breakupList);
 

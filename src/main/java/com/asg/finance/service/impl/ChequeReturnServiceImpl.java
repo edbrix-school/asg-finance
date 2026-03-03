@@ -187,13 +187,8 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
 
         // Log the update
         String key = transactionPoid.toString();
-        if ("CLOSED".equalsIgnoreCase(header.getStatus())) {
-            String logDetails = String.format("Cheque Return Closed - %s", header.getDocRef());
-            loggingService.createLogSummaryEntry(DOC_ID_CHEQUE_RETURN, header.getTransactionPoid().toString(), logDetails);
-        } else {
-            loggingService.logChanges(oldEntity, header, ChequeReturn.class,
+        loggingService.logChanges(oldEntity, header, ChequeReturn.class,
                     DOC_ID_CHEQUE_RETURN, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
-        }
         return toResponse(header, request, "Cheque Return updated successfully.");
 
     }

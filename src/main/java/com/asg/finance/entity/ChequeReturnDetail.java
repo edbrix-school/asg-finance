@@ -1,8 +1,11 @@
 package com.asg.finance.entity;
 import com.asg.common.lib.annotation.AuditIgnore;
+import com.asg.common.lib.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
-import java.util.Date;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -11,25 +14,20 @@ import java.util.Date;
 @Builder
 @Entity
 @Table(name = "GL_CHEQUE_RETURN_DTL")
-public class ChequeReturnDetail {
+public class ChequeReturnDetail extends BaseEntity {
 
     @EmbeddedId
     @AuditIgnore
     private ChequeReturnDetailId id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @MapsId("transactionPoid") // 👈 This tells Hibernate to reuse the FK from the embedded ID
-    @JoinColumn(name = "TRANSACTION_POID", nullable = false)
-    @AuditIgnore
-    private ChequeReturn chequeReturn;
 
     @Column(name = "CHO_POID")
     @AuditIgnore
     private Long choPoid;
 
-    @Temporal(TemporalType.DATE)
+
     @Column(name = "CHO_DATE")
-    private Date choDate;
+    private LocalDate choDate;
 
     @Column(name = "REF_DOC_ID", length = 20)
     private String refDocId;
@@ -44,9 +42,9 @@ public class ChequeReturnDetail {
     @Column(name = "CHQ_CARDNO", length = 50)
     private String chqCardNo;
 
-    @Temporal(TemporalType.DATE)
+
     @Column(name = "CHQ_DATE")
-    private Date chqDate;
+    private LocalDate chqDate;
 
     @Column(name = "BANK_POID")
     private Long bankPoid;
@@ -79,9 +77,9 @@ public class ChequeReturnDetail {
     @AuditIgnore
     private Long paymentMainPoid;
 
-    @Temporal(TemporalType.DATE)
+
     @Column(name = "RCP_DATE")
-    private Date rcpDate;
+    private LocalDate rcpDate;
 
     @Column(name = "REF_DOC_REF", length = 50)
     private String refDocRef;
@@ -90,19 +88,4 @@ public class ChequeReturnDetail {
     @AuditIgnore
     private String choDocId;
 
-    @Column(name = "CREATED_BY", length = 20)
-    @AuditIgnore
-    private String createdBy;
-
-    @Column(name = "CREATED_DATE")
-    @AuditIgnore
-    private Date createdDate;
-
-    @Column(name = "LASTMODIFIED_BY", length = 20)
-    @AuditIgnore
-    private String lastModifiedBy;
-
-    @Column(name = "LASTMODIFIED_DATE")
-    @AuditIgnore
-    private Date lastModifiedDate;
 }

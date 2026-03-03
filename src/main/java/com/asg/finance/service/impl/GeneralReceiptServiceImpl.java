@@ -31,8 +31,6 @@ import org.springframework.transaction.annotation.Transactional;
 import javax.sql.DataSource;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.sql.Date;
-import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -209,9 +207,9 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                 Long glPoid = header.getBillDetails().get(0).getGlPoid();
                 if (glPoid != null) {
                     try {
-                        Date asOnDate = header.getTransactionDate() != null 
-                                ? Date.valueOf(header.getTransactionDate()) 
-                                : Date.valueOf(LocalDate.now());
+                        LocalDate asOnDate = header.getTransactionDate() != null 
+                                ? header.getTransactionDate() 
+                                : LocalDate.now();
                         
                         List<Object[]> pendingBills = procedureRepository.fetchPendingBills(
                                 DEFAULT_GROUP_POID, header.getCompanyPoid(), glPoid, asOnDate);
@@ -384,7 +382,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         }
     }
 
-    private LocalDate getLocalDateValue(Map<String, Object> row, String columnName) {
+ /*   private LocalDate getLocalDateValue(Map<String, Object> row, String columnName) {
         Object value = row.get(columnName);
         if (value == null) return null;
         if (value instanceof LocalDate) return (LocalDate) value;
@@ -396,9 +394,9 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         } catch (Exception e) {
             return null;
         }
-    }
+    }*/
 
-    private LocalDateTime getLocalDateTimeValue(Map<String, Object> row, String columnName) {
+  /*  private LocalDateTime getLocalDateTimeValue(Map<String, Object> row, String columnName) {
         Object value = row.get(columnName);
         if (value == null) return null;
         if (value instanceof LocalDateTime) return (LocalDateTime) value;
@@ -410,7 +408,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         } catch (Exception e) {
             return null;
         }
-    }
+    }*/
 
     @Override
     public GeneralReceiptResponse updateGeneralReceipt(Long transactionPoid, GeneralReceiptRequest request) {
@@ -502,8 +500,6 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                             .creditCardRef(payment.getCreditCardRef())
                             .cardType(payment.getCardType())
                             .cardPoid(payment.getCardPoid())
-                            .createdBy(currentUser)
-                            .createdDate(now)
                             .build());
                     break;
                     
@@ -595,8 +591,6 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                             .glCompanyPoid(bill.getGlCompanyPoid() != null ? bill.getGlCompanyPoid() : header.getCompanyPoid())
                             .remarks(bill.getRemarks())
                             .checkall("N")
-                            .createdBy(currentUser)
-                            .createdDate(now)
                             .build());
                     break;
                     
@@ -695,8 +689,6 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                             .totalAmount(charge.getTotalAmount())
                             .costPoid(charge.getCostCenter())
                             .remarks(charge.getRemarks())
-                            .createdBy(currentUser)
-                            .createdDate(now)
                             .build());
                     break;
                     
@@ -781,8 +773,6 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                             .advanceRefPoid(advance.getAdvanceRefPoid())
                             .amount(advance.getAmount())
                             .remarks(advance.getRemarks())
-                            .createdBy(currentUser)
-                            .createdDate(now)
                             .build());
                     break;
                     
@@ -891,6 +881,34 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
             throw new ValidationException("Credit GL not found: " + header.getCreditGL());
         }
         GLMasterEntity creditGL = creditGLList.get(0);
+        
+        // 3. Validate bill due date is required
+        if (request.getBills() != null && !request.getBills().isEmpty()) {
+            for (GeneralReceiptBillDto bill : request.getBills()) {
+                if (bill.getBillDueDate() == null) {
+                    throw new ValidationException("Due date is required for all bills");
+                }
+            }
+        }
+        
+        // 4. Validate FDA advance amount matches receipt amount
+        if ("FDA_ADVANCE".equals(header.getRefType())) {
+            if (request.getAdvances() == null || request.getAdvances().isEmpty()) {
+                throw new ValidationException("FDA advance details are required when Ref Type is FDA_ADVANCE");
+            }
+            
+            BigDecimal advanceTotal = request.getAdvances().stream()
+                    .map(GeneralReceiptAdvanceDto::getAmount)
+                    .filter(amount -> amount != null)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            
+            if (header.getReceiptAmount().compareTo(advanceTotal) != 0) {
+                throw new ValidationException(String.format(
+                        "FDA advance amount (%.3f) does not match receipt amount (%.3f)",
+                        advanceTotal, header.getReceiptAmount()));
+            }
+        }
+        
         if (request.getPayments() != null && !request.getPayments().isEmpty()) {
             BigDecimal paymentTotal = request.getPayments().stream()
                     .map(GeneralReceiptPaymentDto::getAmount)
@@ -910,8 +928,11 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         }
 
 
-        // 5. Validate bill amount matches receipt amount
-        validateBillAmountMatchesReceiptAmount(request.getBills(), request.getExtraCharges(), header.getReceiptAmount());
+        // 5. Validate bill amount matches BHD amount (if currency is not BHD)
+        BigDecimal amountToCompare = "BHD".equalsIgnoreCase(header.getCurrency()) 
+                ? header.getReceiptAmount() 
+                : (header.getBhdAmount() != null ? header.getBhdAmount() : header.getReceiptAmount().multiply(header.getRate()));
+        validateBillAmountMatchesReceiptAmount(request.getBills(), request.getExtraCharges(), amountToCompare);
 
         // 6. Validate cheque dates if applicable
         validateChequeDates(request.getPayments());
@@ -940,7 +961,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
 
     private void validateBillAmountMatchesReceiptAmount(List<GeneralReceiptBillDto> bills, 
                                                          List<GeneralReceiptChargeDto> charges, 
-                                                         BigDecimal receiptAmount) {
+                                                         BigDecimal amountToCompare) {
         if (bills == null || bills.isEmpty()) {
             return;
         }
@@ -960,10 +981,10 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
 
         BigDecimal expectedTotal = billTotal.add(chargeTotal);
 
-        if (receiptAmount.compareTo(expectedTotal) != 0) {
+        if (amountToCompare.compareTo(expectedTotal) != 0) {
             throw new ValidationException(String.format(
-                    "Receipt amount (%.3f) does not match bill amount (%.3f) + charges (%.3f) = %.3f",
-                    receiptAmount, billTotal, chargeTotal, expectedTotal));
+                    "Receipt amount (%.3f) does not match bill amount (%.3f) ,please check",
+                    amountToCompare, billTotal, chargeTotal, expectedTotal));
         }
     }
 
@@ -1083,10 +1104,6 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                 .extraCharges(dto.getExtraCharges() != null ? dto.getExtraCharges() : "N")
                 .lineType("GENERAL")  // Set line type
                 .rcvdType("GENERAL")  // Set received type
-                .createdBy(currentUser)
-                .createdDate(now)
-                .lastModifiedBy(currentUser)
-                .lastModifiedDate(now)
                 .build();
     }
 
@@ -1165,8 +1182,6 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                     .creditCardRef(payment.getCreditCardRef())
                     .cardType(payment.getCardType())
                     .cardPoid(payment.getCardPoid())
-                    .createdBy(currentUser)
-                    .createdDate(now)
                     .build();
 
             details.add(detail);
@@ -1229,8 +1244,6 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                     .glCompanyPoid(bill.getGlCompanyPoid() != null ? bill.getGlCompanyPoid() : header.getCompanyPoid())
                     .remarks(bill.getRemarks())
                     .checkall("N")
-                    .createdBy(currentUser)
-                    .createdDate(now)
                     .build();
 
             details.add(detail);
@@ -1301,8 +1314,6 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                     .totalAmount(charge.getTotalAmount())
                     .costPoid(charge.getCostCenter())
                     .remarks(charge.getRemarks())
-                    .createdBy(currentUser)
-                    .createdDate(now)
                     .build();
 
             details.add(detail);
@@ -1354,8 +1365,6 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                     .advanceRefPoid(advance.getAdvanceRefPoid())
                     .amount(advance.getAmount())
                     .remarks(advance.getRemarks())
-                    .createdBy(currentUser)
-                    .createdDate(now)
                     .build();
 
             details.add(detail);
@@ -1549,10 +1558,10 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                 GLMasterEntity gl = glOptional.get();
                 String glDescription = gl.getDescription();
                 try {
-                    LovGetListDto lovDetails = lovService.getDetailsByPoidAndLovName(gl.getGlPoid(), "GEN_RECEIPT_CREDIT_GL");
-                    if (lovDetails != null && lovDetails.getDescription() != null) {
-                        glDescription = lovDetails.getDescription();
-                    }
+//                    LovGetListDto lovDetails = lovService.getDetailsByPoidAndLovName(gl.getGlPoid(), "GEN_RECEIPT_CREDIT_GL");
+//                    if (lovDetails != null && lovDetails.getDescription() != null) {
+//                        glDescription = lovDetails.getDescription();
+//                    }
                 } catch (Exception e) {
                     log.warn("Failed to fetch LOV description for GL poid {}: {}", gl.getGlPoid(), e.getMessage());
                 }
@@ -1741,9 +1750,26 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
     }
 
     @Override
+    public String getGlBillwiseYn(Long glPoid) {
+        try {
+            log.info("Fetching billwise flag for GL: {}", glPoid);
+            String result = procedureRepository.fetchGLBillwiseFlag(glPoid);
+
+            if (result == null || result.trim().isEmpty()) {
+                return "N";
+            }
+
+            return result.trim();
+        } catch (Exception e) {
+            log.error("Error fetching billwise flag for GL {}: {}", glPoid, e.getMessage(), e);
+            throw new ValidationException("Failed to fetch billwise flag for GL: " + glPoid + ". Error: " + e.getMessage());
+        }
+    }
+
+    @Override
     public Map<String, Object> getPendingBills(Long glPoid, LocalDate asOnDate) {
         Long companyPoid = UserContext.getCompanyPoid() != null ? UserContext.getCompanyPoid() : 1L;
-        Date sqlDate = asOnDate != null ? Date.valueOf(asOnDate) : Date.valueOf(LocalDate.now());
+        LocalDate sqlDate = asOnDate != null ? asOnDate : LocalDate.now();
         List<Object[]> results = procedureRepository.fetchPendingBills(DEFAULT_GROUP_POID, companyPoid, glPoid, sqlDate);
         return Map.of("pendingBills", results);
     }

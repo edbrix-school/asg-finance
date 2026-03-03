@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -85,11 +86,11 @@ public class CostCenterTreeResponseDto {
     private String createdBy;
 
     @Schema(description = "Created date", example = "2023-01-01T00:00:00")
-    private String createdDate;
+    private LocalDateTime createdDate;
 
     @Schema(description = "Last modified by", example = "ADMIN")
     private String lastModifiedBy;
 
     @Schema(description = "Last modified date", example = "2023-01-01T00:00:00")
-    private String lastModifiedDate;
+    private LocalDateTime lastModifiedDate;
 }

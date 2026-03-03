@@ -1,13 +1,14 @@
 package com.asg.finance.entity;
 
 import com.asg.common.lib.annotation.AuditIgnore;
+import com.asg.common.lib.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+
 
 @Entity
 @Table(name = "AR_GEN_RECEIPT_BILL_DTL")
@@ -17,7 +18,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ArGenReceiptBillDtl {
+public class ArGenReceiptBillDtl extends BaseEntity {
 
     @Id
     @AuditIgnore
@@ -52,22 +53,6 @@ public class ArGenReceiptBillDtl {
     @AuditIgnore
     private String description;
 
-    @Column(name = "CREATED_BY", length = 20)
-    @AuditIgnore
-    private String createdBy;
-
-    @Column(name = "CREATED_DATE")
-    @AuditIgnore
-    private LocalDateTime createdDate;
-
-    @Column(name = "LASTMODIFIED_BY", length = 20)
-    @AuditIgnore
-    private String lastModifiedBy;
-
-    @Column(name = "LASTMODIFIED_DATE")
-    @AuditIgnore
-    private LocalDateTime lastModifiedDate;
-
     @Column(name = "AMOUNT")
     private BigDecimal amount;
 
@@ -78,7 +63,6 @@ public class ArGenReceiptBillDtl {
     private String checkall;
 
     @Column(name = "GL_COMPANY_POID")
-    @AuditIgnore
     private Long glCompanyPoid;
 
     @Column(name = "REMARKS", length = 500)

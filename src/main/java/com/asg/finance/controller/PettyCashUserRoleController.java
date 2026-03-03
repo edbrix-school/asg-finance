@@ -33,14 +33,10 @@ import static com.asg.common.lib.dto.response.ApiResponse.success;
 
 @RestController
 @RequestMapping("/v1/petty-cash-user-role")
+@RequiredArgsConstructor
 public class PettyCashUserRoleController {
     private final PettyCashUserRoleService pettyCashUserRoleService;
     private final LoggingService loggingService;
-
-    public PettyCashUserRoleController(PettyCashUserRoleService pettyCashUserRoleService, LoggingService loggingService) {
-        this.pettyCashUserRoleService = pettyCashUserRoleService;
-        this.loggingService = loggingService;
-    }
 
     @Operation(
             summary = "Create a new Petty Cash User Role",

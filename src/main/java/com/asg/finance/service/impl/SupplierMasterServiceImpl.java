@@ -48,7 +48,6 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -90,6 +89,14 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
         }
         SupplierMasterDto supplierMasterDto = new SupplierMasterDto();
         BeanUtils.copyProperties(supplierMasterEntity, supplierMasterDto);
+        supplierMasterDto.setCreatedBy(supplierMasterEntity.getCreatedBy());
+        supplierMasterDto.setLastModifiedBy(supplierMasterEntity.getLastModifiedBy());
+        if (supplierMasterEntity.getCreatedDate() != null) {
+            supplierMasterDto.setCreatedDate(supplierMasterEntity.getCreatedDate().toLocalDate());
+        }
+        if (supplierMasterEntity.getLastModifiedDate() != null) {
+            supplierMasterDto.setLastModifiedDate(supplierMasterEntity.getLastModifiedDate().toLocalDate());
+        }
 
         if (supplierMasterEntity.getCurrencyCode() != null) {
             LovGetListDto lovGetListDto = lovDataService.getLovItemByCodeFast(supplierMasterDto.getCurrencyCode(), "CURRENCY");
@@ -153,7 +160,7 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                 "AP_SUPPLIER_MASTER",
                 "SUPPLIER_POID",
                 deleteReasonDto,
-                supplierMasterEntity.getCreatedDate()
+                null
         );
     }
 
@@ -256,8 +263,6 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
         }
 
         BeanUtils.copyProperties(supplierMasterDto, existingEntity, "supplierPoid", "supplierCode", "createdBy", "createdDate");
-        existingEntity.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
-        existingEntity.setLastModifiedDate(LocalDate.now());
         SupplierMasterEntity updatedEntity = supplierMasterRepository.save(existingEntity);
 
         String docId = UserContext.getDocumentId();
@@ -350,10 +355,7 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
         Long newGlPoid = (Long) query.getOutputParameterValue("P_NEW_GL_POID");
 
         if (status != null && status.startsWith("SUCCESS")) {
-            // Update supplier with new GL_POID and audit fields
             supplier.setGlPoid(newGlPoid);
-            supplier.setLastModifiedBy(request.getRequestedBy());
-            supplier.setLastModifiedDate(LocalDate.now());
             supplierMasterRepository.save(supplier);
             return newGlPoid;
         } else if (status != null && status.contains("GL Code Already exist")) {
@@ -544,7 +546,7 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
 
         String docId = UserContext.getDocumentId();
         String docKeyPoid = savedEntity.getSupplierPoid().toString();
-        Timestamp now = new Timestamp(System.currentTimeMillis());
+        LocalDateTime now = LocalDateTime.now();
 
         String createdMessage = String.format("Created - - DOC:%s KEY:%s", docId, docKeyPoid);
         GlobalLogSummary headerLog = createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, createdMessage, now);
@@ -945,10 +947,6 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                     SupplierMasterPaymentDtlEntity newEntity = new SupplierMasterPaymentDtlEntity();
                     BeanUtils.copyProperties(paymentDto, newEntity);
                     newEntity.setId(id);
-                    newEntity.setCreatedBy(currentUser);
-                    newEntity.setCreatedDate(now);
-                    newEntity.setLastModifiedBy(currentUser);
-                    newEntity.setLastModifiedDate(now);
                     entitiesToSave.add(newEntity);
                     if (summaryLogs != null) {
                         String msg = String.format("Row Created on Supplier Master Payment Detail with DetRowId: %s", id.getDetRowId());
@@ -963,8 +961,6 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                             BeanUtils.copyProperties(entity, oldEntity);
                             
                             BeanUtils.copyProperties(paymentDto, entity);
-                            entity.setLastModifiedBy(currentUser);
-                            entity.setLastModifiedDate(now);
                             entitiesToSave.add(entity);
                             
                             String logDetail = String.format("KeyId = SUPPLIER_POID:%s DET_ROW_ID:%s", oldEntity.getId().getSupplierPoid(), paymentDto.getDetRowId());
@@ -976,10 +972,6 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                             SupplierMasterPaymentDtlEntity newEntity = new SupplierMasterPaymentDtlEntity();
                             BeanUtils.copyProperties(paymentDto, newEntity);
                             newEntity.setId(id);
-                            newEntity.setCreatedBy(currentUser);
-                            newEntity.setCreatedDate(now);
-                            newEntity.setLastModifiedBy(currentUser);
-                            newEntity.setLastModifiedDate(now);
                             entitiesToSave.add(newEntity);
                             if (summaryLogs != null) {
                                 String msg = String.format("Row Created on Supplier Master Payment Detail with DetRowId: %s", id.getDetRowId());
@@ -1065,10 +1057,6 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                     SupplierMasterManagementDtlEntity newEntity = new SupplierMasterManagementDtlEntity();
                     BeanUtils.copyProperties(managementDto, newEntity);
                     newEntity.setId(id);
-                    newEntity.setCreatedBy(currentUser);
-                    newEntity.setCreatedDate(now);
-                    newEntity.setLastModifiedBy(currentUser);
-                    newEntity.setLastModifiedDate(now);
                     entitiesToSave.add(newEntity);
                     if (summaryLogs != null) {
                         String msg = String.format("Row Created on Supplier Master Management Detail with DetRowId: %s", id.getDetRowId());
@@ -1083,8 +1071,6 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                             BeanUtils.copyProperties(entity, oldEntity);
                             
                             BeanUtils.copyProperties(managementDto, entity);
-                            entity.setLastModifiedBy(currentUser);
-                            entity.setLastModifiedDate(now);
                             entitiesToSave.add(entity);
                             
                             String logDetail = String.format("KeyId = SUPPLIER_POID:%s DET_ROW_ID:%s", entity.getId().getSupplierPoid(), managementDto.getDetRowId());
@@ -1096,10 +1082,6 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                             SupplierMasterManagementDtlEntity newEntity = new SupplierMasterManagementDtlEntity();
                             BeanUtils.copyProperties(managementDto, newEntity);
                             newEntity.setId(id);
-                            newEntity.setCreatedBy(currentUser);
-                            newEntity.setCreatedDate(now);
-                            newEntity.setLastModifiedBy(currentUser);
-                            newEntity.setLastModifiedDate(now);
                             entitiesToSave.add(newEntity);
                             if (summaryLogs != null) {
                                 String msg = String.format("Row Created on Supplier Master Management Detail with DetRowId: %s", id.getDetRowId());
@@ -1187,10 +1169,6 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                     SupplierMasterServiceDtlEntity newEntity = new SupplierMasterServiceDtlEntity();
                     BeanUtils.copyProperties(serviceDto, newEntity);
                     newEntity.setId(id);
-                    newEntity.setCreatedBy(currentUser);
-                    newEntity.setCreatedDate(now);
-                    newEntity.setLastModifiedBy(currentUser);
-                    newEntity.setLastModifiedDate(now);
                     entitiesToSave.add(newEntity);
                     if (summaryLogs != null) {
                         String msg = String.format("Row Created on Supplier Master Service Detail with DetRowId: %s", id.getDetRowId());
@@ -1205,8 +1183,6 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                             BeanUtils.copyProperties(entity, oldEntity);
                             
                             BeanUtils.copyProperties(serviceDto, entity);
-                            entity.setLastModifiedBy(currentUser);
-                            entity.setLastModifiedDate(now);
                             entitiesToSave.add(entity);
                             
                             String logDetail = String.format("KeyId =SUPPLIER_POID:%s DET_ROW_ID:%s", oldEntity.getServicePoid(), serviceDto.getDetRowId());
@@ -1218,10 +1194,6 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                             SupplierMasterServiceDtlEntity newEntity = new SupplierMasterServiceDtlEntity();
                             BeanUtils.copyProperties(serviceDto, newEntity);
                             newEntity.setId(id);
-                            newEntity.setCreatedBy(currentUser);
-                            newEntity.setCreatedDate(now);
-                            newEntity.setLastModifiedBy(currentUser);
-                            newEntity.setLastModifiedDate(now);
                             entitiesToSave.add(newEntity);
                             if (summaryLogs != null) {
                                 String msg = String.format("Row Created on Supplier Master Service Detail with DetRowId: %s", id.getDetRowId());
@@ -1305,10 +1277,6 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                     SupplierMasterQstnDtlEntity newEntity = new SupplierMasterQstnDtlEntity();
                     BeanUtils.copyProperties(qstnDto, newEntity);
                     newEntity.setId(id);
-                    newEntity.setCreatedBy(currentUser);
-                    newEntity.setCreatedDate(now);
-                    newEntity.setLastModifiedBy(currentUser);
-                    newEntity.setLastModifiedDate(now);
                     entitiesToSave.add(newEntity);
                     if (summaryLogs != null) {
                         String msg = String.format("Row Created on Supplier Master Questionaries Detail with DetRowId: %s", id.getDetRowId());
@@ -1323,8 +1291,6 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                             BeanUtils.copyProperties(entity, oldEntity);
                             
                             BeanUtils.copyProperties(qstnDto, entity);
-                            entity.setLastModifiedBy(currentUser);
-                            entity.setLastModifiedDate(now);
                             entitiesToSave.add(entity);
                             
                             String logDetail = String.format("KeyId = SUPPLIER_POID:%s DET_ROW_ID:%s", oldEntity.getId().getSupplierPoid(), qstnDto.getDetRowId());
@@ -1336,10 +1302,6 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
                             SupplierMasterQstnDtlEntity newEntity = new SupplierMasterQstnDtlEntity();
                             BeanUtils.copyProperties(qstnDto, newEntity);
                             newEntity.setId(id);
-                            newEntity.setCreatedBy(currentUser);
-                            newEntity.setCreatedDate(now);
-                            newEntity.setLastModifiedBy(currentUser);
-                            newEntity.setLastModifiedDate(now);
                             entitiesToSave.add(newEntity);
                             if (summaryLogs != null) {
                                 String msg = String.format("Row Created on Supplier Master Questionaries Detail with DetRowId: %s", id.getDetRowId());
@@ -1408,10 +1370,6 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
         entity.setAddressPoid(dto.getAddressPoid());
         entity.setActive(StringUtils.isBlank(dto.getActive()) ? "Y" : dto.getActive());
         entity.setSeqNo(dto.getSeqNo());
-        entity.setCreatedBy(ASGHelperUtils.getCurrentUser());
-        entity.setCreatedDate(LocalDate.now());
-        entity.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
-        entity.setLastModifiedDate(LocalDate.now());
         entity.setGeneralRemarks(dto.getGeneralRemarks());
         entity.setDeleted(StringUtils.isBlank(dto.getDeleted()) ? "N" : dto.getDeleted());
         entity.setTempPaymentName(dto.getTempPaymentName());
@@ -1467,10 +1425,10 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
         return createSummaryLogEntry(logDetailsEnum, docId, docKeyPoid, customMessage, null);
     }
 
-    private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage, Timestamp logDateTime) {
+    private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage, LocalDateTime logDateTime) {
         GlobalLogSummary summary = new GlobalLogSummary();
         summary.setLogUserPoid(UserContext.getUserPoid());
-        summary.setLogDateTime(logDateTime != null ? logDateTime : new Timestamp(System.currentTimeMillis()));
+        summary.setLogDateTime(logDateTime);
         summary.setLogDocId(docId);
         summary.setLogDocKeyPoid(docKeyPoid);
         summary.setLogDetails(customMessage);

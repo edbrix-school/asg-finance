@@ -1,17 +1,19 @@
 package com.asg.finance.entity;
 
 import com.asg.common.lib.annotation.AuditIgnore;
+import com.asg.common.lib.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.math.BigDecimal;
 
 @Data
+@EqualsAndHashCode(callSuper = true)
 @Entity
 @Table(name = "AP_PURCHASE_INVOICE_HDR")
-public class ApPurchaseInvoiceHdrEntity {
+public class ApPurchaseInvoiceHdrEntity extends BaseEntity {
 
     @Id
     @AuditIgnore
@@ -78,22 +80,6 @@ public class ApPurchaseInvoiceHdrEntity {
 
     @Column(name = "REMARKS")
     private String remarks;
-
-    @AuditIgnore
-    @Column(name = "CREATED_BY")
-    private String createdBy;
-
-    @AuditIgnore
-    @Column(name = "CREATED_DATE")
-    private LocalDateTime createdDate; // TIMESTAMP
-
-    @AuditIgnore
-    @Column(name = "LASTMODIFIED_BY")
-    private String lastModifiedBy;
-
-    @AuditIgnore
-    @Column(name = "LASTMODIFIED_DATE")
-    private LocalDateTime lastModifiedDate; // TIMESTAMP
 
     @Column(name = "DELETED")
     private String deleted;
@@ -164,7 +150,7 @@ public class ApPurchaseInvoiceHdrEntity {
     private BigDecimal supplierInvAmount;
 
     @Column(name = "ROUNDING_AMOUNT")
-    private Long roundingAmount;
+    private BigDecimal roundingAmount;
 
     @Column(name = "BILL_TYPE")
     private String billType;

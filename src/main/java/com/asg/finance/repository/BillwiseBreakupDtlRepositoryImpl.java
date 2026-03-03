@@ -14,10 +14,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
+import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 @Slf4j
@@ -68,7 +69,7 @@ public class BillwiseBreakupDtlRepositoryImpl implements BillwiseBreakupDtlRepos
                 dto.setGlPoid(rs.getLong("GL_POID"));
                 dto.setBillRefType(rs.getString("BILL_REF_TYPE"));
                 dto.setBillRef(rs.getString("BILL_REF"));
-                dto.setBillDueDate(rs.getDate("BILL_DUE_DATE"));
+                dto.setBillDueDate(rs.getObject("BILL_DUE_DATE", LocalDate.class));
                 dto.setDrAmt(rs.getBigDecimal("DR_AMT"));
                 dto.setCrAmt(rs.getBigDecimal("CR_AMT"));
                 dto.setBillRemarks(rs.getString("BILL_REMARKS"));
@@ -86,7 +87,7 @@ public class BillwiseBreakupDtlRepositoryImpl implements BillwiseBreakupDtlRepos
             Long groupPoid,
             Long companyPoid,
             Long glPoid,
-            Date asOnDate) {
+            LocalDate asOnDate) {
 
         StoredProcedureQuery query = entityManager.createStoredProcedureQuery("PROC_GL_GET_BILLWISE_PENDING");
 
@@ -99,7 +100,11 @@ public class BillwiseBreakupDtlRepositoryImpl implements BillwiseBreakupDtlRepos
         query.setParameter("P_GROUP_POID", groupPoid);
         query.setParameter("P_COMPANY_POID", companyPoid);
         query.setParameter("P_GL_POID", glPoid);
-        query.setParameter("P_ASON_DATE", asOnDate);
+       // query.setParameter("P_ASON_DATE", asOnDate);
+        query.setParameter(
+                "P_ASON_DATE",
+                asOnDate != null ? java.sql.Date.valueOf(asOnDate) : null
+        );
 
         query.execute();
 
@@ -116,7 +121,7 @@ public class BillwiseBreakupDtlRepositoryImpl implements BillwiseBreakupDtlRepos
             Long groupPoid,
             Long companyPoid,
             Long glPoid,
-            Date asOnDate) {
+            LocalDate asOnDate) {
 
         StoredProcedureQuery query = entityManager.createStoredProcedureQuery("PROC_GL_GET_BILLWISE_PENDING2");
 
@@ -129,7 +134,10 @@ public class BillwiseBreakupDtlRepositoryImpl implements BillwiseBreakupDtlRepos
         query.setParameter("P_GROUP_POID", groupPoid);
         query.setParameter("P_COMPANY_POID", companyPoid);
         query.setParameter("P_GL_POID", glPoid);
-        query.setParameter("P_ASON_DATE", asOnDate);
+        query.setParameter(
+                "P_ASON_DATE",
+                asOnDate != null ? java.sql.Date.valueOf(asOnDate) : null
+        );
 
         query.execute();
 
@@ -148,7 +156,7 @@ public class BillwiseBreakupDtlRepositoryImpl implements BillwiseBreakupDtlRepos
                 ShowPendingBillwiseBreakupResponseDto dto = new ShowPendingBillwiseBreakupResponseDto();
                 dto.setGlCompanyPoid(rs.getLong("GL_COMPANY_POID"));
                 dto.setBillRef(rs.getString("BILL_REF"));
-                dto.setBillDueDate(rs.getDate("BILL_DUE_DATE"));
+                dto.setBillDueDate(rs.getObject("BILL_DUE_DATE", LocalDate.class));
                 dto.setRemarks(rs.getString("REMARKS"));
                 dto.setBalance(rs.getBigDecimal("BALANCE"));
                 list.add(dto);
@@ -194,7 +202,12 @@ public class BillwiseBreakupDtlRepositoryImpl implements BillwiseBreakupDtlRepos
                 query.setParameter("P_BILL_DET_ROW_ID", breakup.getBillDetRowId());
                 query.setParameter("P_BILL_REF_TYPE", breakup.getBillRefType());
                 query.setParameter("P_BILL_REF", breakup.getBillRef());
-                query.setParameter("P_BILL_DUE_DATE", breakup.getBillDueDate());
+                query.setParameter(
+                        "P_BILL_DUE_DATE",
+                        breakup.getBillDueDate() != null
+                                ? java.sql.Date.valueOf(breakup.getBillDueDate())
+                                : null
+                );
                 query.setParameter("P_DR_AMT", breakup.getDrAmt());
                 query.setParameter("P_CR_AMT", breakup.getCrAmt());
                 query.setParameter("P_BILL_REMARKS", breakup.getBillRemarks());

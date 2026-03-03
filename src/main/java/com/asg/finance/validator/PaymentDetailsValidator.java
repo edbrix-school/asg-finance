@@ -28,12 +28,20 @@ public class PaymentDetailsValidator
                     addError(context, "Cheque number is required for CHEQUE payment type", "chequeNo");
                     return false;
                 }
+                if (payment.getBankPoid() == null) {
+                    addError(context, "Bank is required for CHEQUE payment type", "bankPoid");
+                    return false;
+                }
                 if (payment.getChequeDate() == null) {
                     addError(context, "Cheque date is required for CHEQUE payment type", "chequeDate");
                     return false;
                 }
-                if (payment.getBankPoid() == null) {
-                    addError(context, "Bank is required for CHEQUE payment type", "bankPoid");
+                if (payment.getAccountName() == null || payment.getAccountName().isEmpty()) {
+                    addError(context, "Account name is required for CHEQUE payment type", "accountName");
+                    return false;
+                }
+                if (payment.getAccountNumber() == null || payment.getAccountNumber().isEmpty()) {
+                    addError(context, "Account number is required for CHEQUE payment type", "accountNumber");
                     return false;
                 }
                 break;
@@ -50,12 +58,16 @@ public class PaymentDetailsValidator
                 break;
 
             case "CARD":
-                if (!StringUtils.hasText(payment.getCreditCardRef())) {
-                    addError(context, "Card reference is required for CARD payment type", "creditCardRef");
+                if (payment.getCardPoid() == null) {
+                    addError(context, "Card is required for CARD payment type", "cardPoid");
                     return false;
                 }
-                if (payment.getCardPoid() == null) {
-                    addError(context, "Card POID is required for CARD payment type", "cardPoid");
+                if (payment.getCardType() == null|| payment.getCardType().isEmpty()) {
+                    addError(context, "Card type is required for CARD payment type", "cardType");
+                    return false;
+                }
+                if (!StringUtils.hasText(payment.getCreditCardRef())) {
+                    addError(context, "Card reference is required for CARD payment type", "creditCardRef");
                     return false;
                 }
                 break;

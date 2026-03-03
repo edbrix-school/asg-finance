@@ -1,6 +1,7 @@
 package com.asg.finance.entity;
 
 import com.asg.common.lib.annotation.AuditIgnore;
+import com.asg.common.lib.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -12,7 +13,7 @@ import java.util.List;
 @Entity
 @Table(name = "AR_DEBIT_NOTE_HDR")
 @Data
-public class ArDebitNoteHdr {
+public class ArDebitNoteHdr extends BaseEntity {
 
     @Id
     @AuditIgnore
@@ -137,7 +138,6 @@ public class ArDebitNoteHdr {
     @Column(name = "DISPOSAL_JV_POID")
     private Long disposalJvPoid;
 
-    @AuditIgnore
     @Column(name = "COST_GROUP", length = 300)
     private String costGroup;
 
@@ -161,19 +161,6 @@ public class ArDebitNoteHdr {
     @AuditIgnore
     @Column(name = "TEMP_MEMNO", length = 21)
     private String tempMemno;
-
-    @AuditIgnore
-    @Column(name = "CREATED_BY", length = 20)
-    private String createdBy;
-
-    @Column(name = "CREATED_DATE")
-    private LocalDateTime createdDate;
-
-    @Column(name = "LASTMODIFIED_BY", length = 20)
-    private String lastModifiedBy;
-
-    @Column(name = "LASTMODIFIED_DATE")
-    private LocalDateTime lastModifiedDate;
 
     @AuditIgnore
     @Column(name = "DELETED", length = 1)

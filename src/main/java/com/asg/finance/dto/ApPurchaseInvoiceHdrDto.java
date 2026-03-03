@@ -59,7 +59,7 @@ public class ApPurchaseInvoiceHdrDto {
     private String multiCompany;
     private BigDecimal bhdAmount;
     private BigDecimal supplierInvAmount;
-    private Long roundingAmount;
+    private BigDecimal roundingAmount;
     private String billType;
     private String provisionalInvoice;
     @NotBlank(message = "Party Type cannot be blank")

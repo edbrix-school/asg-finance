@@ -895,8 +895,6 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                 .companyPoid(getCompanyId())
                 .active(FLAG_YES)
                 .deleted(FLAG_NO)
-                .createdBy(getCurrentUser())
-                .createdDate(LocalDateTime.now())
                 .build();
 
         fixedAsset = fixedAssetRepository.save(fixedAsset);

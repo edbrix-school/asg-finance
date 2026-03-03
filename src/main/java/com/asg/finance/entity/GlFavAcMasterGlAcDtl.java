@@ -1,6 +1,7 @@
 package com.asg.finance.entity;
 
 import com.asg.common.lib.annotation.AuditIgnore;
+import com.asg.common.lib.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -8,7 +9,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
-import java.sql.Timestamp;
 
 /**
  * Entity class for GL_FAV_AC_MASTER_GL_AC_DTL table
@@ -22,7 +22,7 @@ import java.sql.Timestamp;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class GlFavAcMasterGlAcDtl {
+public class GlFavAcMasterGlAcDtl extends BaseEntity {
 
     @Id
     @Column(name = "DET_ROW_ID", nullable = false)
@@ -39,22 +39,6 @@ public class GlFavAcMasterGlAcDtl {
 
     @Column(name = "REMARKS", length = 100)
     private String remarks;
-
-    @Column(name = "CREATED_BY", length = 20)
-    @AuditIgnore
-    private String createdBy;
-
-    @Column(name = "CREATED_DATE")
-    @AuditIgnore
-    private Timestamp createdDate;
-
-    @Column(name = "LASTMODIFIED_BY", length = 20)
-    @AuditIgnore
-    private String lastModifiedBy;
-
-    @Column(name = "LASTMODIFIED_DATE")
-    @AuditIgnore
-    private Timestamp lastModifiedDate;
 
     @Column(name = "SEQNO")
     private Long seqNo;

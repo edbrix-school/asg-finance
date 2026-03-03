@@ -139,8 +139,6 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
 
         // Update master record
         updateAgeingMasterFields(existingEntity, ageingMasterDto);
-        existingEntity.setLastModifiedBy(getCurrentUser());
-        existingEntity.setLastModifiedDate(Timestamp.valueOf(LocalDateTime.now()));
         ageingMasterRepository.save(existingEntity);
 
         // Update detail records (use entity relationship)
@@ -172,10 +170,6 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
                 .seqno(dto.getSeqno())
                 .active(dto.getActive() ? "Y" : "N")
                 .deleted("N")
-                .createdBy(getCurrentUser())
-                .createdDate(Timestamp.valueOf(LocalDateTime.now()))
-                .lastModifiedBy(getCurrentUser())
-                .lastModifiedDate(Timestamp.valueOf(LocalDateTime.now()))
                 .build();
 
         return ageingMasterRepository.save(entity);
@@ -198,10 +192,6 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
                     .breakupTitle(dto.getBreakupTitle())
                     .breakupFrom(dto.getBreakupFrom())
                     .breakupTo(dto.getBreakupTo())
-                    .createdBy(getCurrentUser())
-                    .createdDate(Timestamp.valueOf(LocalDateTime.now()))
-                    .lastModifiedBy(getCurrentUser())
-                    .lastModifiedDate(Timestamp.valueOf(LocalDateTime.now()))
                     .build();
 
             detailEntities.add(entity);
@@ -348,8 +338,6 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
     }
 
     public void updateAgeingMastersChildDetails(List<GlAgeingMasterDtlDto> ageingDetails, Long ageingPoid) {
-        String currentUser = getCurrentUser();
-        LocalDateTime now = LocalDateTime.now();
         String docId = UserContext.getDocumentId();
         String docKeyPoid = ageingPoid.toString();
 
@@ -376,10 +364,6 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
                             .breakupTitle(charge.getBreakupTitle())
                             .breakupFrom(charge.getBreakupFrom())
                             .breakupTo(charge.getBreakupTo())
-                            .createdBy(currentUser)
-                            .createdDate(Timestamp.valueOf(now))
-                            .lastModifiedBy(currentUser)
-                            .lastModifiedDate(Timestamp.valueOf(now))
                             .build();
                     toSave.add(newEntity);
                     newlyCreatedEntities.add(newEntity);
@@ -399,8 +383,6 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
                     existingCharge.setBreakupTitle(charge.getBreakupTitle());
                     existingCharge.setBreakupFrom(charge.getBreakupFrom());
                     existingCharge.setBreakupTo(charge.getBreakupTo());
-                    existingCharge.setLastModifiedBy(currentUser);
-                    existingCharge.setLastModifiedDate(Timestamp.valueOf(now));
                     toSave.add(existingCharge);
                     
                     String logDetail = String.format("KeyId = AGEING_POID:%s DET_ROW_ID:%s", oldCharge.getAgeingPoid(), oldCharge.getDetRowId());
@@ -466,7 +448,7 @@ public class GlAgeingMasterServiceImpl implements GlAgeingMasterService {
     private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage) {
         GlobalLogSummary summary = new GlobalLogSummary();
         summary.setLogUserPoid(UserContext.getUserPoid());
-        summary.setLogDateTime(new Timestamp(System.currentTimeMillis()));
+        summary.setLogDateTime(LocalDateTime.now());
         summary.setLogDocId(docId);
         summary.setLogDocKeyPoid(docKeyPoid);
         summary.setLogDetails(customMessage);

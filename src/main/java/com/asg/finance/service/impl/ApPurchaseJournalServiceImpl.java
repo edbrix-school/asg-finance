@@ -1999,6 +1999,10 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
         for (ApPurchaseInvoiceGlDtlDto gl : dto.getGlDtls()) {
 
+            if ("ISDELETED".equalsIgnoreCase(gl.getActionType())) {
+                continue;
+            }
+
             if (gl.getDrAmount() != null) {
                 totalDr = totalDr.add(gl.getDrAmount());
             }

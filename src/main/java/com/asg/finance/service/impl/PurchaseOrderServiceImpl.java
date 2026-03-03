@@ -290,8 +290,6 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                 .discountPercentage(request.getDiscountPercentage())
                 .itemDiscountTotal(request.getItemDiscountTotal())
                 .itemDiscountTotalPercentage(request.getItemDiscountTotalPercentage())
-                .createdBy(UserContext.getUserName())
-                .createdDate(LocalDateTime.now())
                 .build();
     }
 
@@ -336,8 +334,6 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                     .convertedQty(dto.getConvertedQty())
                     .convertedUnit(dto.getConvertedUnit())
                     .conversionValue(dto.getConversionValue())
-                    .createdBy(getCurrentUser())
-                    .createdDate(LocalDateTime.now())
                     .build();
 
             items.add(item);
@@ -591,8 +587,6 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                             .convertedQty(dto.getConvertedQty())
                             .convertedUnit(dto.getConvertedUnit())
                             .conversionValue(dto.getConversionValue())
-                            .createdBy(currentUser)
-                            .createdDate(now)
                             .build());
                     break;
                     

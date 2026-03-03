@@ -1,5 +1,6 @@
 package com.asg.finance.dto;
 
+import com.asg.common.lib.dto.LovGetListDto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
@@ -52,6 +53,9 @@ public class GeneralReceiptChargeDto {
 
     @Schema(description = "Cost center code", example = "FIN-001")
     private String costCenter;
+
+    @Schema(description = "Cost center details (code, description, poid)")
+    private LovGetListDto costCenterDetails;
 
     @Schema(description = "Remarks", example = "Bank processing charges")
     private String remarks;

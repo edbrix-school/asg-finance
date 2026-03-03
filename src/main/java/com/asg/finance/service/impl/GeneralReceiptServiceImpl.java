@@ -911,7 +911,8 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                 }
             }
         }
-
+        
+        // 4. Validate FDA advance amount matches BHD amount
         if ("FDA_ADVANCE".equals(header.getRefType())) {
             if (request.getAdvances() == null || request.getAdvances().isEmpty()) {
                 throw new ValidationException("FDA advance details are required when Ref Type is FDA_ADVANCE");
@@ -921,11 +922,11 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                     .map(GeneralReceiptAdvanceDto::getAmount)
                     .filter(amount -> amount != null)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-            if (header.getReceiptAmount().compareTo(advanceTotal) != 0) {
-                throw new ValidationException(String.format(
-                        "FDA advance amount (%.3f) does not match receipt amount (%.3f)",
-                        advanceTotal, header.getReceiptAmount()));
+            
+            BigDecimal bhdAmount = header.getBhdAmount() != null ? header.getBhdAmount() : header.getReceiptAmount().multiply(header.getRate());
+            
+            if (bhdAmount.compareTo(advanceTotal) != 0) {
+                throw new ValidationException("BHD amount doesn't match with FDA Amount");
             }
         }
 
@@ -1709,7 +1710,19 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                     dto.setTaxPercent(detail.getTaxPercentage());
                     dto.setTaxAmount(detail.getTaxAmount());
                     dto.setTotalAmount(detail.getTotalAmount());
-                    dto.setCostCenter(detail.getCostPoid());
+                    // Get cost center details from cost POID using LOV service
+                    if (detail.getCostPoid() != null && !detail.getCostPoid().isBlank()) {
+                        try {
+                            Long costPoid = Long.parseLong(detail.getCostPoid());
+                            LovGetListDto costCenterLov = lovService.getDetailsByPoidAndLovName(costPoid, "AR_GEN_REC_COST_CENTER");
+                            if (costCenterLov != null) {
+                                dto.setCostCenter(costCenterLov.getCode());
+                                dto.setCostCenterDetails(costCenterLov);
+                            }
+                        } catch (Exception e) {
+                            log.warn("Failed to fetch cost center for costPoid {}: {}", detail.getCostPoid(), e.getMessage());
+                        }
+                    }
                     dto.setRemarks(detail.getRemarks());
                     return dto;
                 })

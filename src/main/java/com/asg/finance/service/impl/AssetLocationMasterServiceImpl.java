@@ -1,4 +1,5 @@
 package com.asg.finance.service.impl;
+
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
@@ -15,38 +16,25 @@ import com.asg.finance.repository.AssetLocationMasterRepository;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.AssetLocationMasterService;
-import jakarta.persistence.EntityManager;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import org.springframework.data.domain.Pageable;
-
-
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
 @Service
+@RequiredArgsConstructor
 public class AssetLocationMasterServiceImpl implements AssetLocationMasterService {
 
-    @Autowired
-    private AssetLocationMasterRepository repository;
-
-    @Autowired
-    private EntityManager entityManager;
-
-    @Autowired
-    private DocumentSearchService documentService;
-
-    @Autowired
-    private LoggingService loggingService;
-
-    @Autowired
-    private DocumentDeleteService documentDeleteService;
+    private final AssetLocationMasterRepository repository;
+    private final DocumentSearchService documentService;
+    private final LoggingService loggingService;
+    private final DocumentDeleteService documentDeleteService;
 
 
     @Transactional
@@ -59,8 +47,6 @@ public class AssetLocationMasterServiceImpl implements AssetLocationMasterServic
             throw new IllegalArgumentException("Description already exists");
         }
 
-        String currentUser = getCurrentUser();
-
         AssetLocation entity = new AssetLocation();
         entity.setLocationCode(dto.getLocationCode());
         entity.setDescription(dto.getDescription());
@@ -68,10 +54,6 @@ public class AssetLocationMasterServiceImpl implements AssetLocationMasterServic
         entity.setGroupPoid(UserContext.getGroupPoid());
         entity.setDeleted("N");
         entity.setActive(String.valueOf(dto.getActive()));
-        entity.setCreatedBy(currentUser);
-        entity.setCreatedDate(LocalDateTime.now());
-        entity.setLastModifiedBy(currentUser);
-        entity.setLastModifiedDate(LocalDateTime.now());
 
         entity = repository.save(entity);
         
@@ -113,8 +95,6 @@ public class AssetLocationMasterServiceImpl implements AssetLocationMasterServic
         entity.setSeqNo(dto.getSeqNo());
         entity.setDeleted("N");
         entity.setActive(String.valueOf(dto.getActive()));
-        entity.setLastModifiedBy(getCurrentUser());
-        entity.setLastModifiedDate(LocalDateTime.now());
 
         AssetLocation savedEntity = repository.save(entity);
         
@@ -148,11 +128,6 @@ public class AssetLocationMasterServiceImpl implements AssetLocationMasterServic
                 .orElseThrow(() -> new IllegalArgumentException("Asset Location not found for POID: " + locationPoid));
         return convertEntityToResponseDto(assetLocation);
     }
-
-    private String getCurrentUser() {
-        return UserContext.getUserId() != null ? String.valueOf(UserContext.getUserId()) : "SYSTEM";
-    }
-
 
     @Override
     public Map<String, Object> listAssetLocations(String documentId, FilterRequestDto request, Pageable pageable) {

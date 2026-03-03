@@ -873,16 +873,37 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
     private void validateGeneralReceiptRequest(GeneralReceiptRequest request) {
         GeneralReceiptHeaderDto header = request.getHeader();
 
-        // 1. Validate mandatory fields (already done by @Valid annotations)
-        
-        // 2. Validate credit GL exists
-        List<GLMasterEntity> creditGLList = glMastersRepository.findAllByGlCodeAndDeletedFlag(header.getCreditGL(), "N");
-        if (creditGLList.isEmpty()) {
+
+        Long creditGlPoid;
+        try {
+            creditGlPoid = Long.parseLong(header.getCreditGL());
+        } catch (NumberFormatException ex) {
             throw new ValidationException("Credit GL not found: " + header.getCreditGL());
         }
-        GLMasterEntity creditGL = creditGLList.get(0);
-        
-        // 3. Validate bill due date is required
+
+        GLMasterEntity creditGL = glMastersRepository.findById(creditGlPoid)
+                .orElseThrow(() -> new ValidationException("Credit GL not found: " + header.getCreditGL()));
+        if ("Y".equalsIgnoreCase(creditGL.getDeletedFlag())) {
+            throw new ValidationException("Credit GL not found: " + header.getCreditGL());
+        }
+
+        String billwiseFlag = getGlBillwiseYn(creditGL.getGlPoid());
+        boolean isBillwiseEnabled = "Y".equalsIgnoreCase(billwiseFlag);
+
+        if (isBillwiseEnabled) {
+            BigDecimal billTotal = BigDecimal.ZERO;
+            if (request.getBills() != null && !request.getBills().isEmpty()) {
+                billTotal = request.getBills().stream()
+                        .map(GeneralReceiptBillDto::getAmount)
+                        .filter(amount -> amount != null)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+            }
+
+            if (billTotal.compareTo(BigDecimal.ZERO) == 0) {
+                throw new ValidationException("Zero values found in Billwise total Amount... , please check");
+            }
+        }
+
         if (request.getBills() != null && !request.getBills().isEmpty()) {
             for (GeneralReceiptBillDto bill : request.getBills()) {
                 if (bill.getBillDueDate() == null) {
@@ -896,7 +917,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
             if (request.getAdvances() == null || request.getAdvances().isEmpty()) {
                 throw new ValidationException("FDA advance details are required when Ref Type is FDA_ADVANCE");
             }
-            
+
             BigDecimal advanceTotal = request.getAdvances().stream()
                     .map(GeneralReceiptAdvanceDto::getAmount)
                     .filter(amount -> amount != null)
@@ -908,7 +929,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                 throw new ValidationException("BHD amount doesn't match with FDA Amount");
             }
         }
-        
+
         if (request.getPayments() != null && !request.getPayments().isEmpty()) {
             BigDecimal paymentTotal = request.getPayments().stream()
                     .map(GeneralReceiptPaymentDto::getAmount)
@@ -927,33 +948,31 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
             }
         }
 
-
-        // 5. Validate bill amount matches BHD amount (if currency is not BHD)
-        BigDecimal amountToCompare = "BHD".equalsIgnoreCase(header.getCurrency()) 
-                ? header.getReceiptAmount() 
+        BigDecimal amountToCompare = "BHD".equalsIgnoreCase(header.getCurrency())
+                ? header.getReceiptAmount()
                 : (header.getBhdAmount() != null ? header.getBhdAmount() : header.getReceiptAmount().multiply(header.getRate()));
         validateBillAmountMatchesReceiptAmount(request.getBills(), request.getExtraCharges(), amountToCompare);
 
-        // 6. Validate cheque dates if applicable
+        // 8. Validate cheque dates if applicable
         validateChequeDates(request.getPayments());
 
-        // 7. Validate cost center for specific charge types
+        // 9. Validate cost center for specific charge types
         validateCostCenterRequirement(request.getExtraCharges());
 
-        // 8. Validate rounding limit
+        // 10. Validate rounding limit
         validateRoundingLimit(request.getExtraCharges());
 
-        // 9. Validate multi-company if applicable
+        // 11. Validate multi-company if applicable
         if ("Y".equals(header.getMulticompany())) {
             validateMultiCompany(request.getBills(), header.getCompanyPoid());
         }
 
-        // 10. Validate bill references if refType is AGAINST
+        // 12. Validate bill references if refType is AGAINST
         if ("AGAINST".equals(header.getRefType()) && (request.getBills() == null || request.getBills().isEmpty())) {
             throw new ValidationException("Bill details are required when Ref Type is AGAINST");
         }
-        
-        // 11. Validate bill references using stored procedure (PROC_GEN_RECE_NEW_BILLREF_CHK)
+
+        // 13. Validate bill references using stored procedure (PROC_GEN_RECE_NEW_BILLREF_CHK)
         if (request.getBills() != null && !request.getBills().isEmpty()) {
             validateBillReferencesUsingProcedure(request.getBills(), creditGL.getGlPoid(), header.getCompanyPoid());
         }
@@ -996,20 +1015,22 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
 
         int postDateDays = Integer.parseInt(postDateDaysParam);
         int backDateDays = Integer.parseInt(backDateDaysParam);
+        int postLimit = Math.abs(postDateDays);
+        int backLimit = Math.abs(backDateDays);
 
         for (GeneralReceiptPaymentDto payment : payments) {
             if ("CHEQUE".equals(payment.getType()) && payment.getChequeDate() != null) {
                 LocalDate today = LocalDate.now();
                 long daysDiff = ChronoUnit.DAYS.between(today, payment.getChequeDate());
 
-                if (daysDiff > postDateDays) {
+                if (daysDiff > postLimit) {
                     throw new ValidationException(String.format(
-                            "Cheque date cannot be more than %d days in the future", postDateDays));
+                            "Cheque date cannot be more than %d days in the future", postLimit));
                 }
 
-                if (daysDiff < backDateDays) {
+                if (daysDiff < -backLimit) {
                     throw new ValidationException(String.format(
-                            "Cheque date cannot be more than %d days in the past", backDateDays));
+                            "Cheque date cannot be more than %d days in the past", backLimit));
                 }
             }
         }
@@ -1076,12 +1097,12 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
     }
 
     private ArGenReceiptHdr buildHeaderEntity(GeneralReceiptHeaderDto dto, String currentUser, LocalDateTime now) {
-        // Get credit GL POID
-        List<GLMasterEntity> creditGLList = glMastersRepository.findAllByGlCodeAndDeletedFlag(dto.getCreditGL(), "N");
-        if (creditGLList.isEmpty()) {
+        Long creditGlPoid;
+        try {
+            creditGlPoid = Long.parseLong(dto.getCreditGL());
+        } catch (NumberFormatException ex) {
             throw new ValidationException("Credit GL not found: " + dto.getCreditGL());
         }
-        Long creditGlPoid = creditGLList.get(0).getGlPoid();
 
         return ArGenReceiptHdr.builder()
                 .transactionDate(dto.getTransactionDate() != null ? dto.getTransactionDate() : LocalDate.now())
@@ -1108,12 +1129,12 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
     }
 
     private void updateHeaderEntity(ArGenReceiptHdr header, GeneralReceiptHeaderDto dto, String currentUser, LocalDateTime now) {
-        // Get credit GL POID
-        List<GLMasterEntity> creditGLList = glMastersRepository.findAllByGlCodeAndDeletedFlag(dto.getCreditGL(), "N");
-        if (creditGLList.isEmpty()) {
+        Long creditGlPoid;
+        try {
+            creditGlPoid = Long.parseLong(dto.getCreditGL());
+        } catch (NumberFormatException ex) {
             throw new ValidationException("Credit GL not found: " + dto.getCreditGL());
         }
-        Long creditGlPoid = creditGLList.get(0).getGlPoid();
 
         header.setRcvdOthPoid(creditGlPoid);
         header.setRcptAmount(dto.getReceiptAmount());

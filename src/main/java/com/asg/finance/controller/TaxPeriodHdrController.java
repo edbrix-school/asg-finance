@@ -24,6 +24,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -34,14 +35,10 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 
 @RestController
 @RequestMapping("/v1/tax-period")
+@RequiredArgsConstructor
 public class TaxPeriodHdrController {
     private final TaxPeriodHdrService taxPeriodHdrService;
     private final LoggingService loggingService;
-
-    public TaxPeriodHdrController(TaxPeriodHdrService taxPeriodHdrService, LoggingService loggingService) {
-        this.taxPeriodHdrService = taxPeriodHdrService;
-        this.loggingService = loggingService;
-    }
 
     @Operation(
             summary = "Create a new Tax Period",

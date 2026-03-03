@@ -26,11 +26,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
-
-import static com.asg.common.lib.utility.ASGHelperUtils.getCurrentUser;
 
 @Service
 @Slf4j
@@ -91,10 +88,6 @@ public class PropertyCostCenterServiceImpl implements PropertyCostCenterService 
         costCenter.setSeqNo(request.getSeqNo());
         costCenter.setActive(request.getActive());
         costCenter.setDeleted("N");
-        costCenter.setCreatedBy(getCurrentUser());
-        costCenter.setCreatedDate(LocalDateTime.now());
-        costCenter.setLastModifiedBy(getCurrentUser());
-        costCenter.setLastModifiedDate(LocalDateTime.now());
 
         PropertyCostCenter saved = repository.save(costCenter);
         
@@ -141,13 +134,9 @@ public class PropertyCostCenterServiceImpl implements PropertyCostCenterService 
         response.setSeqNo(saved.getSeqNo());
 
         response.setCreatedBy(saved.getCreatedBy());
+        response.setCreatedDate(saved.getCreatedDate());
         response.setLastModifiedBy(saved.getLastModifiedBy());
-        if (saved.getCreatedDate() != null) {
-            response.setCreatedDate(saved.getCreatedDate().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
-        }
-        if (saved.getLastModifiedDate() != null) {
-            response.setLastModifiedDate(saved.getLastModifiedDate().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
-        }
+        response.setLastModifiedDate(saved.getLastModifiedDate());
         return response;
     }
 
@@ -187,8 +176,6 @@ public class PropertyCostCenterServiceImpl implements PropertyCostCenterService 
         entity.setSeqNo(request.getSeqNo());
         entity.setRemarks(request.getRemarks());
         entity.setActive(request.getActive());
-        entity.setLastModifiedBy(getCurrentUser());
-        entity.setLastModifiedDate(LocalDateTime.now());
         entity = repository.save(entity);
 
         // Logging for update operation
@@ -212,7 +199,7 @@ public class PropertyCostCenterServiceImpl implements PropertyCostCenterService 
                 "PROPERTY_COST_CENTER_MASTER",
                 "PROPERTY_COST_CENTER_POID",
                 deleteReasonDto,
-                entity.getCreatedDate().toLocalDate()
+                entity.getCreatedDate() != null ? entity.getCreatedDate().toLocalDate() : null
         );
     }
 
@@ -456,9 +443,9 @@ public class PropertyCostCenterServiceImpl implements PropertyCostCenterService 
             dto.setDeleted(entity.getDeleted());
             dto.setSeqNo(entity.getSeqNo());
             dto.setCreatedBy(entity.getCreatedBy());
-            dto.setCreatedDate(entity.getCreatedDate() != null ? entity.getCreatedDate().toString() : null);
+            dto.setCreatedDate(entity.getCreatedDate());
             dto.setLastModifiedBy(entity.getLastModifiedBy());
-            dto.setLastModifiedDate(entity.getLastModifiedDate() != null ? entity.getLastModifiedDate().toString() : null);
+            dto.setLastModifiedDate(entity.getLastModifiedDate());
 
             return dto;
 

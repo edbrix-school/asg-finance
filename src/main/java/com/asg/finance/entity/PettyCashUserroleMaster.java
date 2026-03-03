@@ -53,8 +53,4 @@ public class PettyCashUserroleMaster extends BaseEntity {
     @Column(name = "SEQNO", precision = 5)
     private Integer seqNo;
 
-    @Column(name = "CREATED_BY", length = 20)
-    @AuditIgnore
-    private String createdBy;
-
 }

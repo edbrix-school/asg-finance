@@ -23,9 +23,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springdoc.core.annotations.ParameterObject;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -39,12 +39,11 @@ import static com.asg.common.lib.dto.response.ApiResponse.success;
 @RestController
 @RequestMapping("/v1/asset-information")
 @Slf4j
+@RequiredArgsConstructor
 public class AssetInformationController {
 
-    @Autowired
-    private AssetInformationService assetInformationService;
-    @Autowired
-    private LoggingService loggingService;
+    private final AssetInformationService assetInformationService;
+    private final LoggingService loggingService;
 
     @Operation(
             summary = "List Asset Information with Search and Sort",

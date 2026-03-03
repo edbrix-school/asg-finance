@@ -73,8 +73,6 @@ public class GlBankServiceImpl implements GlBankService {
         GlBankDto bankDto = new GlBankDto();
         BeanUtils.copyProperties(bankEntity, bankDto);
         bankDto.setCompanyPoid(Long.valueOf(bankEntity.getCompanyPoid()));
-        bankDto.setCreatedBy(bankEntity.getCreatedBy());
-        bankDto.setCreatedDate(bankEntity.getCreatedDate());
         if (StringUtils.isNotBlank(bankEntity.getCompanyPoid())) {
             bankDto.setCompanyDet(lovService.getDetailsByPoidAndLovName(Long.valueOf(bankEntity.getCompanyPoid()), "COMPANY"));
         }
@@ -201,8 +199,6 @@ public class GlBankServiceImpl implements GlBankService {
         BeanUtils.copyProperties(bankMasterDto, bankMaster);
         bankMaster.setGroupPoid(UserContext.getGroupPoid());
         bankMaster.setCompanyPoid(String.valueOf(UserContext.getCompanyPoid()));
-        bankMaster.setCreatedBy(getCurrentUser());
-        //bankMaster.setCreatedDate(Timestamp.valueOf(LocalDateTime.now()));
         return bankRepository.save(bankMaster);
     }
 
@@ -317,12 +313,7 @@ public class GlBankServiceImpl implements GlBankService {
         newEntity.setDefaultPrinterTray(dto.getDefaultPrinterTray());
         newEntity.setStockFinishedYn(dto.getStockFinishedYn());
         newEntity.setRemarks(dto.getRemarks());
-        newEntity.setCreatedBy(getCurrentUser());
-       // newEntity.setCreatedDate(Timestamp.valueOf(LocalDateTime.now()));
-        newEntity.setLastModifiedBy(getCurrentUser());
-        //newEntity.setLastModifiedDate(Timestamp.valueOf(LocalDateTime.now()));
         newEntity.setLastChqNo(dto.getLastChqNo());
-        //newEntity.setLastModifiedDate(Timestamp.valueOf(LocalDateTime.now()));
         entitiesToSave.add(newEntity);
         
         String logDetail = String.format("Row Created on Bank Cheque Detail with detRowId: %s", dto.getDetRowId());
@@ -341,8 +332,6 @@ public class GlBankServiceImpl implements GlBankService {
         entity.setStockFinishedYn(dto.getStockFinishedYn());
         entity.setRemarks(dto.getRemarks());
         entity.setLastChqNo(dto.getLastChqNo());
-        entity.setLastModifiedBy(getCurrentUser());
-        //entity.setLastModifiedDate(Timestamp.valueOf(LocalDateTime.now()));
         entities.add(entity);
     }
 
@@ -433,10 +422,6 @@ public class GlBankServiceImpl implements GlBankService {
         newEntity.setTaxPoid(dto.getTaxPoid());
         newEntity.setTaxPercentage(dto.getTaxPercentage());
         newEntity.setRemarks(dto.getRemarks());
-        newEntity.setCreatedBy(getCurrentUser());
-        //newEntity.setCreatedDate(Timestamp.valueOf(LocalDateTime.now()));
-        newEntity.setLastModifiedBy(getCurrentUser());
-        //newEntity.setLastModifiedDate(Timestamp.valueOf(LocalDateTime.now()));
         newEntity.setCardType(dto.getCardType());
         entitiesToSave.add(newEntity);
         
@@ -464,8 +449,6 @@ public class GlBankServiceImpl implements GlBankService {
         entity.setTaxPoid(dto.getTaxPoid());
         entity.setTaxPercentage(dto.getTaxPercentage());
         entity.setRemarks(dto.getRemarks());
-        entity.setLastModifiedBy(getCurrentUser());
-        //entity.setLastModifiedDate(Timestamp.valueOf(LocalDateTime.now()));
         entity.setCardType(dto.getCardType());
         entities.add(entity);
     }

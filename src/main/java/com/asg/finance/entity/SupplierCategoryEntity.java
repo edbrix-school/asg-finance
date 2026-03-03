@@ -1,19 +1,17 @@
 package com.asg.finance.entity;
 
 import com.asg.common.lib.annotation.AuditIgnore;
+import com.asg.common.lib.entity.BaseEntity;
 import jakarta.persistence.*;
-import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
-
-import java.time.LocalDateTime;
 
 
 @Entity
 @Table(name = "AP_SUPPLIER_CATEGORY_MASTER")
 @Getter
 @Setter
-public class SupplierCategoryEntity {
+public class SupplierCategoryEntity extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "SUPPLIER_CATEGORY_POID")
@@ -38,22 +36,6 @@ public class SupplierCategoryEntity {
 
     @Column(name = "SEQNO")
     private Integer sequenceNumber;
-
-    @Column(name = "CREATED_BY", length = 50, updatable = false)
-    @AuditIgnore
-    private String createdBy;
-
-    @Column(name = "CREATED_DATE", updatable = false)
-    @AuditIgnore
-    private LocalDateTime createdDate;
-
-    @Column(name = "LASTMODIFIED_BY", length = 50)
-    @AuditIgnore
-    private String lastModifiedBy;
-
-    @Column(name = "LASTMODIFIED_DATE")
-    @AuditIgnore
-    private LocalDateTime lastModifiedDate;
 
     @Column(name = "GENERAL_REMARKS", length = 500)
     @AuditIgnore

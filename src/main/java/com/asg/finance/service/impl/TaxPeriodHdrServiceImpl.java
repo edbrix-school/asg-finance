@@ -69,10 +69,7 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
         validatePeriodDates(request.getPeriodFrom(), request.getPeriodTo());
         validatePeriodOverlap(request.getPeriodFrom(), request.getPeriodTo());
         TaxPeriodHdr entity = convertFromTaxPeriodHdrDtoToTaxPeriodHdrEntity(request);
-        entity.setCreatedBy(getCurrentUser());
-        entity.setCreatedDate(LocalDateTime.now());
         TaxPeriodHdr taxPeriodHdr = taxPeriodHdrRepository.save(entity);
-        String currentUser = getCurrentUser();
         Long transactionPoid = taxPeriodHdr.getTransactionPoid();
         String key = taxPeriodHdr.getTransactionPoid().toString();
         String docId = UserContext.getDocumentId();
@@ -86,10 +83,6 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
                             .inputTaxPoid(dto.getInputTaxPoid())
                             .detRowId(dto.getDetRowId())
                             .remarks(dto.getRemarks())
-                            .createdBy(currentUser)
-                            .createdDate(LocalDateTime.now())
-                            .lastModifiedBy(currentUser)
-                            .lastModifiedDate(LocalDateTime.now())
                             .build())
                     .collect(Collectors.toList());
 
@@ -111,10 +104,6 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
                            .inputTaxPoid(dto.getInputTaxPoid())
                            .detRowId(dto.getDetRowId())
                            .remarks(dto.getRemarks())
-                           .createdBy(currentUser)
-                           .createdDate(LocalDateTime.now())
-                           .lastModifiedBy(currentUser)
-                           .lastModifiedDate(LocalDateTime.now())
                            .build())
                    .collect(Collectors.toList());
            globalTaxPeriodStockDtlRepository.saveAll(stockDtlEntities);
@@ -180,8 +169,6 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
         TaxPeriodHdr savedEntity = taxPeriodHdrRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Tax Period not found with ID: ", "transactionPoid", transactionPoid));
         savedEntity.setDeleted("Y");
-        savedEntity.setLastModifiedDate(LocalDateTime.now());
-        savedEntity.setLastModifiedBy(getCurrentUser());
         taxPeriodHdrRepository.save(savedEntity);
 
         documentDeleteService.deleteDocument(
@@ -202,8 +189,6 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
         taxPeriodHdr.setDescription(request.getDescription());
         taxPeriodHdr.setPeriodFrom(request.getPeriodFrom());
         taxPeriodHdr.setPeriodTo(request.getPeriodTo());
-        taxPeriodHdr.setLastModifiedBy(getCurrentUser());
-        taxPeriodHdr.setLastModifiedDate(LocalDateTime.now());
         taxPeriodHdr.setDeleted("N");
         return taxPeriodHdr;
     }
@@ -226,10 +211,6 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
         return responseDto;
     }
 
-
-    private String getCurrentUser() {
-        return UserContext.getUserId() != null ? String.valueOf(UserContext.getUserId()) : "SYSTEM";
-    }
 
     @Override
     public Page<TaxPeriodChargeDtlResponseDto> getTaxPeriodCharges(Long transactionPoid, Pageable pageable) {
@@ -478,8 +459,6 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
     }
 
     public void updateTaxPeriodCharges(List<TaxPeriodChargeDtlRequestDto> charges, Long transactionPoid) {
-        String currentUser = getCurrentUser();
-        LocalDateTime now = LocalDateTime.now();
         String docId = UserContext.getDocumentId();
         String docKeyPoid = transactionPoid.toString();
         
@@ -500,10 +479,6 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
                             .inputTaxPoid(charge.getInputTaxPoid())
                             .detRowId(charge.getDetRowId())
                             .remarks(charge.getRemarks())
-                            .createdBy(currentUser)
-                            .createdDate(now)
-                            .lastModifiedBy(currentUser)
-                            .lastModifiedDate(now)
                             .build());
                     break;
                     
@@ -520,8 +495,6 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
                     existingCharge.setOutputTaxPoid(charge.getOutputTaxPoid());
                     existingCharge.setInputTaxPoid(charge.getInputTaxPoid());
                     existingCharge.setRemarks(charge.getRemarks());
-                    existingCharge.setLastModifiedBy(currentUser);
-                    existingCharge.setLastModifiedDate(now);
                     toUpdate.add(existingCharge);
                     
                     String logDetailForUpdate = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", oldCharge.getTransactionPoid() ,charge.getDetRowId());
@@ -558,8 +531,6 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
     }
 
     private void updateTaxPeriodStocks(List<TaxPeriodStockDtlRequestDto> stocks, Long transactionPoid) {
-        String currentUser = getCurrentUser();
-        LocalDateTime now = LocalDateTime.now();
         String docId = UserContext.getDocumentId();
         String docKeyPoid = transactionPoid.toString();
         
@@ -580,10 +551,6 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
                             .inputTaxPoid(stock.getInputTaxPoid())
                             .detRowId(stock.getDetRowId())
                             .remarks(stock.getRemarks())
-                            .createdBy(currentUser)
-                            .createdDate(now)
-                            .lastModifiedBy(currentUser)
-                            .lastModifiedDate(now)
                             .build());
                     break;
 
@@ -600,8 +567,6 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
                     existingStock.setTaxPoid(stock.getOutputTaxPoid());
                     existingStock.setInputTaxPoid(stock.getInputTaxPoid());
                     existingStock.setRemarks(stock.getRemarks());
-                    existingStock.setLastModifiedBy(currentUser);
-                    existingStock.setLastModifiedDate(now);
                     toUpdate.add(existingStock);
 
                     String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s",oldStock.getTransactionPoid() ,stock.getDetRowId());

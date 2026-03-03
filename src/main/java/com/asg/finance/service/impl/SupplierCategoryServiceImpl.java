@@ -28,7 +28,6 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -49,7 +48,7 @@ public class SupplierCategoryServiceImpl implements SupplierCategoryService {
     @Transactional
     @Override
     public void softDeleteSupplierCategory(Long supplierCategoryPoid, DeleteReasonDto deleteReasonDto) {
-        SupplierCategoryEntity category = supplierCategoriesRepository.findById(supplierCategoryPoid)
+        supplierCategoriesRepository.findById(supplierCategoryPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Supplier Category", "supplierCategoryPoid", supplierCategoryPoid));
 
         documentDeleteService.deleteDocument(
@@ -130,9 +129,6 @@ public class SupplierCategoryServiceImpl implements SupplierCategoryService {
         entity.setActive(StringUtils.isNotBlank(supplierCategoryDto.getActive()) ? supplierCategoryDto.getActive() : "Y");
 
 
-        entity.setLastModifiedDate(LocalDateTime.now());
-        entity.setLastModifiedBy(UserContext.getUserName());
-
         SupplierCategoryEntity updatedEntity = supplierCategoriesRepository.save(entity);
         
         // Log the update
@@ -165,9 +161,6 @@ log.info("SupplierCategoryDto: {}", supplierCategoryDto);
                 ? Integer.valueOf(supplierCategoryDto.getSeqNo()) : null);
         entity.setActive(StringUtils.isNotBlank(supplierCategoryDto.getActive()) ? supplierCategoryDto.getActive() : "Y");
         entity.setDeleted("N");
-        entity.setCreatedDate(LocalDateTime.now());
-        entity.setCreatedBy(UserContext.getUserName());
-        entity.setLastModifiedDate(LocalDateTime.now());
 
         SupplierCategoryEntity savedEntity = supplierCategoriesRepository.save(entity);
 

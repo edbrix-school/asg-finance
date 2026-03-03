@@ -38,9 +38,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 @RequestMapping("/v1/bank-master")
 public class GlBankController {
 
-    @Autowired
-    GlBankService bankService;
-    
+    private final GlBankService bankService;
     private final LoggingService loggingService;
 
     @Operation(

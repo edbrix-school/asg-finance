@@ -1,6 +1,7 @@
 package com.asg.finance.entity.master;
 
 import com.asg.common.lib.annotation.AuditIgnore;
+import com.asg.common.lib.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import jakarta.validation.constraints.Pattern;
@@ -11,7 +12,7 @@ import org.hibernate.annotations.Generated;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+
 import java.util.List;
 
 @Entity
@@ -20,7 +21,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class InsuranceMaster {
+public class InsuranceMaster extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "TRANSACTION_POID")
@@ -93,22 +94,6 @@ public class InsuranceMaster {
     @Column(name = "PJ_REF_POID")
     @AuditIgnore
     private Long pjRefPoid;
-
-    @Column(name = "CREATED_BY", length = 20)
-    @AuditIgnore
-    private String createdBy;
-
-    @Column(name = "CREATED_DATE")
-    @AuditIgnore
-    private LocalDateTime createdDate;
-
-    @Column(name = "LASTMODIFIED_BY", length = 20)
-    @AuditIgnore
-    private String lastModifiedBy;
-
-    @Column(name = "LASTMODIFIED_DATE")
-    @AuditIgnore
-    private LocalDateTime lastModifiedDate;
 
     @Column(name = "DELETED", length = 1)
     private String deleted;

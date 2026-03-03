@@ -30,8 +30,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -193,10 +191,6 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                     .description(request.getDescription())
                     .faPoid(request.getFaPoid())
                     .deleted("N")
-                    .createdBy(getCurrentUser())
-                    .createdDate(LocalDateTime.now())
-                    .lastModifiedBy(getCurrentUser())
-                    .lastModifiedDate(LocalDateTime.now())
                     .build();
 
             InsuranceMaster saved = insuranceMasterRepository.save(insuranceMaster);
@@ -205,7 +199,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
             
             String docId = UserContext.getDocumentId();
             String docKeyPoid = finalSaved.getTransactionPoid().toString();
-            Timestamp now = new Timestamp(System.currentTimeMillis());
+            LocalDateTime now = LocalDateTime.now();
             
             // Log header creation
             loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, docKeyPoid);
@@ -542,10 +536,6 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                     .employeePoid(dto.getEmployeePoid())
                     .amount(dto.getAmount())
                     .remarks(dto.getRemarks())
-                    .createdBy(getCurrentUser())
-                    .createdDate(LocalDateTime.now())
-                    .lastModifiedBy(getCurrentUser())
-                    .lastModifiedDate(LocalDateTime.now())
                     .build());
         }
         return result;
@@ -593,10 +583,6 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                     .propertyPoid(dto.getPropertyPoid())
                     .amount(dto.getAmount())
                     .remarks(dto.getRemarks())
-                    .createdBy(getCurrentUser())
-                    .createdDate(LocalDateTime.now())
-                    .lastModifiedBy(getCurrentUser())
-                    .lastModifiedDate(LocalDateTime.now())
                     .build());
         }
         return result;
@@ -646,10 +632,6 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                     .picPersonPoid(dto.getPicPersonPoid())
                     .fromDate(dto.getFromDate())
                     .toDate(dto.getToDate())
-                    .createdBy(getCurrentUser())
-                    .createdDate(LocalDateTime.now())
-                    .lastModifiedBy(getCurrentUser())
-                    .lastModifiedDate(LocalDateTime.now())
                     .build());
         }
         return result;
@@ -843,10 +825,6 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                             .renewalDate(dto.getRenewalDate())
                             .fromDate(dto.getFromDate())
                             .expiryDate(dto.getExpiryDate())
-                            .createdBy(getCurrentUser())
-                            .createdDate(LocalDateTime.now())
-                            .lastModifiedBy(getCurrentUser())
-                            .lastModifiedDate(LocalDateTime.now())
                             .build();
                 })
                 .collect(Collectors.toList());
@@ -942,10 +920,10 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         }
     }
 
-    private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage, Timestamp logDateTime) {
+    private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage, LocalDateTime logDateTime) {
         GlobalLogSummary summary = new GlobalLogSummary();
         summary.setLogUserPoid(UserContext.getUserPoid());
-        summary.setLogDateTime(logDateTime != null ? logDateTime : new Timestamp(System.currentTimeMillis()));
+        summary.setLogDateTime(logDateTime != null ? logDateTime : LocalDateTime.now());
         summary.setLogDocId(docId);
         summary.setLogDocKeyPoid(docKeyPoid);
         summary.setLogDetails(customMessage);
@@ -1078,10 +1056,6 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                 .expiryDate(existing.getExpiryDate())
                 .insuranceAmount(existing.getInsuranceAmount())
                 .premiumAmount(existing.getPremiumAmount())
-                .createdBy(getCurrentUser())
-                .createdDate(LocalDateTime.now())
-                .lastModifiedBy(getCurrentUser())
-                .lastModifiedDate(LocalDateTime.now())
                 .build();
 
         if (existing.getRenewalLogs() == null) {

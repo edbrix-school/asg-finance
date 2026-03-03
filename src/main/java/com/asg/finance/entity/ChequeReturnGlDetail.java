@@ -1,5 +1,4 @@
 package com.asg.finance.entity;
-
 import com.asg.common.lib.annotation.AuditIgnore;
 import com.asg.common.lib.entity.BaseEntity;
 import jakarta.persistence.*;
@@ -25,7 +24,7 @@ public class ChequeReturnGlDetail extends BaseEntity {
     private Long detRowId;
 
     @Column(name = "TYPE")
-    private String type;
+    private String type; // DR/CR
 
     @Column(name = "COMPANY_POID")
     private Long companyPoid;
@@ -41,6 +40,5 @@ public class ChequeReturnGlDetail extends BaseEntity {
 
     @Column(name = "REMARKS", length = 100)
     private String remarks;
-
 
 }

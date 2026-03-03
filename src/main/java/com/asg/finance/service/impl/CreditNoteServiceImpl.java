@@ -43,8 +43,8 @@ import org.springframework.transaction.annotation.Propagation;
 import javax.sql.DataSource;
 import java.math.BigDecimal;
 import java.sql.*;
-import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.function.Function;
@@ -117,7 +117,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             // Save header and flush immediately
             ArCreditNoteHdr header = mapToEntity(creditNoteDto);
             String currentUser = ASGHelperUtils.getCurrentUser();
-            Timestamp now = Timestamp.from(Instant.now());
+            LocalDateTime now = LocalDateTime.now();
 
             header.setGroupPoid(1L);
             header.setCompanyPoid(UserContext.getCompanyPoid());
@@ -261,7 +261,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
             updateHeaderFromDto(existing, creditNoteDto);
             existing.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
-            existing.setLastModifiedDate(Timestamp.from(Instant.now()));
+            existing.setLastModifiedDate(LocalDateTime.now());
 
             existing = creditNoteHdrRepository.save(existing);
 
@@ -582,7 +582,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             cs.setLong(5, dto.getTransactionPoid() != null ? dto.getTransactionPoid() : 0);
             cs.setLong(6, dto.getPartyPoid() != null ? dto.getPartyPoid() : 0);
             cs.setBigDecimal(7, dto.getGrandTotal());
-            cs.setTimestamp(8, Timestamp.from(Instant.now()));
+            cs.setTimestamp(8, Timestamp.valueOf(LocalDateTime.now()));
             cs.registerOutParameter(9, Types.VARCHAR);
             cs.execute();
 
@@ -980,7 +980,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     Long companyPoid = 3L; // Default company
 
                     cs.setLong(1, companyPoid); // P_COMPANY_POID
-                    cs.setTimestamp(2, Timestamp.from(Instant.now())); // P_TRANSACTION_DATE
+                    cs.setTimestamp(2, Timestamp.valueOf(LocalDateTime.now())); // P_TRANSACTION_DATE
                     cs.setString(3, partyType != null ? partyType : "SUPPLIER"); // P_PARTY_TYPE
                     cs.setLong(4, partyPoid != null ? partyPoid : 0); // P_PARTY_POID
                     cs.setLong(5, charge.getChargePoid()); // P_CHARGE_POID
@@ -1129,7 +1129,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
         header.setDeleted("Y");
         header.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
-        header.setLastModifiedDate(Timestamp.from(Instant.now()));
+        header.setLastModifiedDate(LocalDateTime.now());
         creditNoteHdrRepository.save(header);
     }
 
@@ -1294,11 +1294,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                 .taxPercentage(glDto.getTaxPercentage())
                 .taxAmount(glDto.getTaxAmount())
                 .totalAmount(glDto.getTotalAmount())
-                .createdBy(ASGHelperUtils.getCurrentUser())
-                .createdDate(Timestamp.from(Instant.now()))
-                .lastModifiedBy(ASGHelperUtils.getCurrentUser())
-                .lastModifiedDate(Timestamp.from(Instant.now()))
                 .build();
+        entity.setCreatedBy(ASGHelperUtils.getCurrentUser());
+        entity.setCreatedDate(LocalDateTime.now());
+        entity.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
+        entity.setLastModifiedDate(LocalDateTime.now());
         creditNoteDtlRepository.saveAndFlush(entity);
     }
 
@@ -1317,12 +1317,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                 .taxPercentage(glDto.getTaxPercentage())
                 .taxAmount(glDto.getTaxAmount())
                 .totalAmount(glDto.getTotalAmount())
-                .createdBy(ASGHelperUtils.getCurrentUser())
-                .createdDate(Timestamp.from(Instant.now()))
-                .lastModifiedBy(ASGHelperUtils.getCurrentUser())
-                .lastModifiedDate(Timestamp.from(Instant.now()))
                 .build();
-
+        entity.setCreatedBy(ASGHelperUtils.getCurrentUser());
+        entity.setCreatedDate(LocalDateTime.now());
+        entity.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
+        entity.setLastModifiedDate(LocalDateTime.now());
         creditNoteDtlRepository.saveAndFlush(entity);
     }
 
@@ -1340,12 +1339,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                 .taxPercentage(glDto.getTaxPercentage())
                 .taxAmount(glDto.getTaxAmount())
                 .totalAmount(glDto.getTotalAmount())
-                .createdBy(ASGHelperUtils.getCurrentUser())
-                .createdDate(Timestamp.from(Instant.now()))
-                .lastModifiedBy(ASGHelperUtils.getCurrentUser())
-                .lastModifiedDate(Timestamp.from(Instant.now()))
                 .build();
-
+        entity.setCreatedBy(ASGHelperUtils.getCurrentUser());
+        entity.setCreatedDate(LocalDateTime.now());
+        entity.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
+        entity.setLastModifiedDate(LocalDateTime.now());
         creditNoteDtlRepository.saveAndFlush(entity);
     }
 
@@ -1411,9 +1409,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             entity.setIssueInvoice(dto.getIssueInvoice());
             entity.setRefDocId("300-111");
             entity.setCreatedBy(ASGHelperUtils.getCurrentUser());
-            entity.setCreatedDate(Timestamp.from(Instant.now()));
+            entity.setCreatedDate(LocalDateTime.now());
             entity.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
-            entity.setLastModifiedDate(Timestamp.from(Instant.now()));
+            entity.setLastModifiedDate(LocalDateTime.now());
 
             creditNoteChargeDtlRepository.save(entity);
         }
@@ -1478,7 +1476,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         if (glDetails == null || glDetails.isEmpty()) return;
 
         String currentUser = ASGHelperUtils.getCurrentUser();
-        Timestamp now = Timestamp.from(Instant.now());
+        LocalDateTime now = LocalDateTime.now();
         String docId = UserContext.getDocumentId();
         String docKeyPoid = transactionPoid.toString();
 
@@ -1612,7 +1610,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         if (chargeDetails == null || chargeDetails.isEmpty()) return;
 
         String currentUser = ASGHelperUtils.getCurrentUser();
-        Timestamp now = Timestamp.from(Instant.now());
+        LocalDateTime now = LocalDateTime.now();
         String docId = UserContext.getDocumentId();
         String docKeyPoid = transactionPoid.toString();
 
@@ -1790,7 +1788,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage) {
         GlobalLogSummary summary = new GlobalLogSummary();
         summary.setLogUserPoid(UserContext.getUserPoid());
-        summary.setLogDateTime(new Timestamp(System.currentTimeMillis()));
+        summary.setLogDateTime( LocalDateTime.now());
         summary.setLogDocId(docId);
         summary.setLogDocKeyPoid(docKeyPoid);
         summary.setLogDetails(customMessage);

@@ -1,6 +1,7 @@
 package com.asg.finance.entity;
 
 import com.asg.common.lib.annotation.AuditIgnore;
+import com.asg.common.lib.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -17,7 +18,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class GlImcoChequeRefundHdr {
+public class GlImcoChequeRefundHdr extends BaseEntity {
 
     @Id
     @AuditIgnore
@@ -58,20 +59,5 @@ public class GlImcoChequeRefundHdr {
     
     @Column(name = "DELETED", length = 1)
     private String deleted = "N";
-    
-    @Column(name = "CREATED_BY")
-    @AuditIgnore
-    private String createdBy;
-    
-    @Column(name = "CREATED_DATE")
-    @AuditIgnore
-    private LocalDateTime createdDate;
-    
-    @Column(name = "LASTMODIFIED_BY")
-    @AuditIgnore
-    private String lastModifiedBy;
-    
-    @Column(name = "LASTMODIFIED_DATE")
-    @AuditIgnore
-    private LocalDateTime lastModifiedDate;
+
 }

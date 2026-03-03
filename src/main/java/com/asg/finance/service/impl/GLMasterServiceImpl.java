@@ -324,29 +324,31 @@ public class GLMasterServiceImpl implements GLMasterService {
     }
 
     private void saveCompanyDetails(GLMasterEntity entity, List<CompanyDetailsDto> companyDetails) {
-        // For CREATE: filter out "noChanges" and "isDeleted", only process "isCreated" or null/empty
-        List<GLMasterCompanyDtlEntity> entities = companyDetails.stream()
-                .filter(cdto -> {
-                    String actionTypeStr = cdto.getActionType();
-                    if (actionTypeStr == null || actionTypeStr.trim().isEmpty()) {
-                        return true; // Default to create if actionType is null/empty
-                    }
-                    String actionType = actionTypeStr.toUpperCase();
-                    // Only process "ISCREATED", skip "NOCHANGES" and "ISDELETED" in CREATE
-                    return "ISCREATED".equals(actionType);
-                })
-                .map(cdto -> {
-                    GLMasterCompanyDtlEntity c = new GLMasterCompanyDtlEntity();
-                    c.setGlMaster(entity);
-                    c.setGlPoid(entity.getGlPoid());
-                    c.setCompanyPoid(cdto.getCompanyPoid());
-                    c.setRemarks(cdto.getRemarks());
-                    c.setCreatedBy(getCurrentUser());
-                    c.setCreatedDate(now());
-                    c.setLastModifiedBy(getCurrentUser());
-                    c.setLastModifiedDate(now());
-                    return c;
-                }).toList();
+        List<GLMasterCompanyDtlEntity> entities = new ArrayList<>();
+
+        for (CompanyDetailsDto cdto : companyDetails) {
+            String actionTypeStr = cdto.getActionType();
+            if (actionTypeStr != null && !actionTypeStr.trim().isEmpty()) {
+                String actionType = actionTypeStr.toUpperCase();
+                // Only process "ISCREATED", skip "NOCHANGES" and "ISDELETED" in CREATE
+                if (!"ISCREATED".equals(actionType)) {
+                    continue;
+                }
+            }
+
+            Long detRowId = cdto.getDetRowId();
+            GLMasterCompanyDtlEntity c = new GLMasterCompanyDtlEntity();
+            c.setId(detRowId);
+            c.setGlMaster(entity);
+            c.setGlPoid(entity.getGlPoid());
+            c.setCompanyPoid(cdto.getCompanyPoid());
+            c.setRemarks(cdto.getRemarks());
+            c.setCreatedBy(getCurrentUser());
+            c.setCreatedDate(now());
+            c.setLastModifiedBy(getCurrentUser());
+            c.setLastModifiedDate(now());
+            entities.add(c);
+        }
         if (!entities.isEmpty()) {
             companyDtlRepo.saveAll(entities);
             AtomicInteger initial = new AtomicInteger(1);
@@ -360,41 +362,44 @@ public class GLMasterServiceImpl implements GLMasterService {
 
     private void savePaymentDetails(GLMasterEntity entity, List<PaymentDetailsDto> paymentDetails) {
         // For CREATE: filter out "noChanges" and "isDeleted", only process "isCreated" or null/empty
-        List<GLPaymentDetailsEntity> entities = paymentDetails.stream()
-                .filter(pdto -> {
-                    String actionTypeStr = pdto.getActionType();
-                    if (actionTypeStr == null || actionTypeStr.trim().isEmpty()) {
-                        return true; // Default to create if actionType is null/empty
-                    }
-                    String actionType = actionTypeStr.toUpperCase();
-                    // Only process "ISCREATED", skip "NOCHANGES" and "ISDELETED" in CREATE
-                    return "ISCREATED".equals(actionType);
-                })
-                .map(pdto -> {
-                    GLPaymentDetailsEntity payEntity = new GLPaymentDetailsEntity();
-                    payEntity.setGlMaster(entity);
-                    payEntity.setGlPoid(entity.getGlPoid());  // Explicitly set composite key component
-                    payEntity.setType(pdto.getType());
-                    payEntity.setBeneficiaryName(pdto.getBeneficiaryName());
-                    payEntity.setAddress(pdto.getAddress());
-                    payEntity.setBank(pdto.getBank());
-                    payEntity.setBankAddress(pdto.getBankAddress());
-                    payEntity.setBeneficiaryCountry(pdto.getBeneficiaryCountry());
-                    payEntity.setSwiftCode(pdto.getSwiftCode());
-                    payEntity.setAccountNumber(pdto.getAccountNumber());
-                    payEntity.setIban(pdto.getIban());
-                    payEntity.setIntermediaryBank(pdto.getIntermediaryBank());
-                    payEntity.setIntermediaryAcct(pdto.getIntermediaryAcct());
-                    payEntity.setBankSwiftCode(pdto.getIntermediarySwiftCode());
-                    payEntity.setIntermediaryCountryPoid(pdto.getIntermediaryCountryPoid());
-                    payEntity.setActive(convertToActiveFlag(pdto.getActive()));
-                    payEntity.setCreatedBy(getCurrentUser());
-                    payEntity.setCreatedDate(now());
-                    payEntity.setLastModifiedBy(getCurrentUser());
-                    payEntity.setLastModifiedDate(now());
-                    payEntity.setDefaults(pdto.getIsDefault());
-                    return payEntity;
-                }).toList();
+        List<GLPaymentDetailsEntity> entities = new ArrayList<>();
+
+        for (PaymentDetailsDto pdto : paymentDetails) {
+            String actionTypeStr = pdto.getActionType();
+            if (actionTypeStr != null && !actionTypeStr.trim().isEmpty()) {
+                String actionType = actionTypeStr.toUpperCase();
+                // Only process "ISCREATED", skip "NOCHANGES" and "ISDELETED" in CREATE
+                if (!"ISCREATED".equals(actionType)) {
+                    continue;
+                }
+            }
+
+            Long detRowId = pdto.getDetRowId();
+            GLPaymentDetailsEntity payEntity = new GLPaymentDetailsEntity();
+            payEntity.setId(detRowId);
+            payEntity.setGlMaster(entity);
+            payEntity.setGlPoid(entity.getGlPoid());  // Explicitly set composite key component
+            payEntity.setType(pdto.getType());
+            payEntity.setBeneficiaryName(pdto.getBeneficiaryName());
+            payEntity.setAddress(pdto.getAddress());
+            payEntity.setBank(pdto.getBank());
+            payEntity.setBankAddress(pdto.getBankAddress());
+            payEntity.setBeneficiaryCountry(pdto.getBeneficiaryCountry());
+            payEntity.setSwiftCode(pdto.getSwiftCode());
+            payEntity.setAccountNumber(pdto.getAccountNumber());
+            payEntity.setIban(pdto.getIban());
+            payEntity.setIntermediaryBank(pdto.getIntermediaryBank());
+            payEntity.setIntermediaryAcct(pdto.getIntermediaryAcct());
+            payEntity.setBankSwiftCode(pdto.getIntermediarySwiftCode());
+            payEntity.setIntermediaryCountryPoid(pdto.getIntermediaryCountryPoid());
+            payEntity.setActive(convertToActiveFlag(pdto.getActive()));
+            payEntity.setCreatedBy(getCurrentUser());
+            payEntity.setCreatedDate(now());
+            payEntity.setLastModifiedBy(getCurrentUser());
+            payEntity.setLastModifiedDate(now());
+            payEntity.setDefaults(pdto.getIsDefault());
+            entities.add(payEntity);
+        }
         if (!entities.isEmpty()) {
             payDtlRepo.saveAll(entities);
             AtomicInteger initial = new AtomicInteger(1);

@@ -341,7 +341,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         
         if (request.getTransactionDate() != null) {
             existing.setTransactionDate(request.getTransactionDate());
-        } else if (existing.getTransactionDate() == null) {
+        } else {
             existing.setTransactionDate(LocalDate.now());
         }
         existing.setCurrencyPoid(request.getCurrency());

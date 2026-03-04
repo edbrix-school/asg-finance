@@ -1153,7 +1153,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         
         if (dto.getTransactionDate() != null) {
             header.setTransactionDate(dto.getTransactionDate());
-        } else if (header.getTransactionDate() == null) {
+        } else {
             header.setTransactionDate(LocalDate.now());
         }
 

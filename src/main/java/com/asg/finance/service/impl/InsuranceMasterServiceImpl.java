@@ -173,9 +173,12 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                 }
             }
 
+            LocalDate txDate = request.getTransactionDate() != null ? request.getTransactionDate() : request.getFromDate();
+
             InsuranceMaster insuranceMaster = InsuranceMaster.builder()
-                    .groupPoid(1L)
-                    .companyPoid(1L)
+                    .groupPoid(UserContext.getGroupPoid())
+                    .companyPoid(UserContext.getCompanyPoid())
+                    .transactionDate(txDate)
                     .insuranceType(request.getInsuranceType())
                     .insuranceCategory(request.getCategory())
                     .policyNo(request.getPolicyNo())
@@ -335,6 +338,9 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         existing.setInsuranceProvider(request.getInsuranceProvider());
         existing.setFromDate(request.getFromDate());
         existing.setExpiryDate(request.getExpiryDate());
+        if (request.getTransactionDate() != null) {
+            existing.setTransactionDate(request.getTransactionDate());
+        }
         existing.setCurrencyPoid(request.getCurrency());
         existing.setExchangeRate(request.getRate());
         existing.setInsuranceAmount(request.getInsuranceAmount());

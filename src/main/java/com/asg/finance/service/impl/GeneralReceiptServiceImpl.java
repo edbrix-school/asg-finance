@@ -1136,6 +1136,11 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
             throw new ValidationException("Credit GL not found: " + dto.getCreditGL());
         }
 
+        
+        if (dto.getTransactionDate() != null) {
+            header.setTransactionDate(dto.getTransactionDate());
+        }
+
         header.setRcvdOthPoid(creditGlPoid);
         header.setRcptAmount(dto.getReceiptAmount());
         header.setRemarks(dto.getNarration());

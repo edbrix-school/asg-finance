@@ -4,7 +4,7 @@ package com.asg.finance.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.sql.Date;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -35,7 +35,7 @@ public class PdcChqBatchHdrEntity {
 
 
     @Column(name = "TRANSACTION_DATE")
-    private Date transactionDate;
+    private LocalDate transactionDate;
 
     @Column(name = "GROUP_POID")
     private Long groupPoid;
@@ -66,7 +66,7 @@ public class PdcChqBatchHdrEntity {
 
 
     @Column(name = "CHQ_START_DATE")
-    private Date chqStartDate;
+    private LocalDate chqStartDate;
 
     @Column(name = "CHQ_AMOUNT")
     private Double chqAmount;

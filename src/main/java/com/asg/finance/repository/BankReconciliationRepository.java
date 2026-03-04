@@ -1,6 +1,6 @@
 package com.asg.finance.repository;
 
-import java.util.Date;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -14,8 +14,8 @@ import com.asg.finance.entity.BankReconciliation;
 
 public interface BankReconciliationRepository {
 
-	List<BankReconciliationResponse> callReconcileView(Long groupPoid, Long companyPoid, Long bankPoid, Date dateFrom,
-			Date dateTill, String chequeNo, String reconcileCheque, String brType);
+	List<BankReconciliationResponse> callReconcileView(Long groupPoid, Long companyPoid, Long bankPoid, LocalDate dateFrom,
+			LocalDate dateTill, String chequeNo, String reconcileCheque, String brType);
 
 	BankRenconciliationBankInfoDTO getBankPoid(Long glPoid);
 
@@ -25,7 +25,7 @@ public interface BankReconciliationRepository {
 
 	String unholdCheque(List<BankReconcHoldAndUholdRequest> req);
 
-	String updateStatementDate(Long companyPoid, Long postedBy, Long bankPoid, Date statementDate);
+	String updateStatementDate(Long companyPoid, Long postedBy, Long bankPoid, LocalDate statementDate);
 
 	String pollAutoRefresh(String userId, Long companyPoid, String loginUrl);
 

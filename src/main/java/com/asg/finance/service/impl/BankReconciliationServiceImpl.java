@@ -1,8 +1,8 @@
 package com.asg.finance.service.impl;
 
 import java.math.BigDecimal;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
@@ -40,7 +40,7 @@ public class BankReconciliationServiceImpl implements BankReconciliationService 
 
 	@Override
 	public List<BankReconciliationResponse> getReconciliationView(Long groupPoid, Long companyPoid, Long bankPoid,
-			Date dateFrom, Date dateTill, String chequeNo, String reconcileCheque, String brType) {
+			LocalDate dateFrom, LocalDate dateTill, String chequeNo, String reconcileCheque, String brType) {
 		return repository.callReconcileView(groupPoid, companyPoid, bankPoid, dateFrom, dateTill, chequeNo,
 				reconcileCheque, brType);
 	}
@@ -80,7 +80,7 @@ public class BankReconciliationServiceImpl implements BankReconciliationService 
     public String updateStatementDate(Long companyPoid,
                                       Long postedBy,
                                       Long bankPoid,
-                                      Date statementDate) {
+                                      LocalDate statementDate) {
 
         return repository.updateStatementDate(
                 companyPoid,
@@ -110,12 +110,12 @@ public class BankReconciliationServiceImpl implements BankReconciliationService 
 	}
 
     @Override
-    public byte[] print(Long transactionPoid, Long bankPoid, Date dateFrom, Date dateTill, String balanceAsPerBank) throws Exception {
+    public byte[] print(Long transactionPoid, Long bankPoid, LocalDate dateFrom, LocalDate dateTill, String balanceAsPerBank) throws Exception {
         Map<String, Object> params = printService.buildBaseParams(transactionPoid, "400-150");
-        SimpleDateFormat format1 = new SimpleDateFormat("dd-MMM-yyyy");
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MMM-yyyy");
         params.put("BANK_POID", bankPoid);
-        params.put("DOC_FROM_DATE", format1.format(dateFrom));
-        params.put("DOC_TO_DATE", format1.format(dateTill));
+        params.put("DOC_FROM_DATE", dateFrom.format(formatter));
+        params.put("DOC_TO_DATE", dateTill.format(formatter));
         params.put("BALANCE_BANK", balanceAsPerBank);
         params.put("SUBREPORT1", printService.load("Finance/GL/BankReconciliationSubreport1.jrxml"));
         params.put("SUBREPORT2", printService.load("Finance/GL/BankReconciliationSubreport2.jrxml"));

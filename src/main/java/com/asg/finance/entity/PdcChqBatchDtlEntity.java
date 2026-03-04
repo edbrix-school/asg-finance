@@ -3,7 +3,7 @@ package com.asg.finance.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.sql.Date;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -23,9 +23,8 @@ public class PdcChqBatchDtlEntity {
     @Column(name = "DET_ROW_ID", nullable = false)
     private Long detRowId;
 
-    @Temporal(TemporalType.DATE)
     @Column(name = "PDC_CHQ_DATE")
-    private Date pdcChqDate;
+    private LocalDate pdcChqDate;
 
     @Column(name = "CHQ_NUMBER", length = 20)
     private String chqNumber;
@@ -40,7 +39,6 @@ public class PdcChqBatchDtlEntity {
     private String createdBy;
 
     @Column(name = "CREATED_DATE")
-    @Temporal(TemporalType.TIMESTAMP)
     private LocalDateTime createdDate;
 
     @Column(name = "LASTMODIFIED_BY", length = 20)

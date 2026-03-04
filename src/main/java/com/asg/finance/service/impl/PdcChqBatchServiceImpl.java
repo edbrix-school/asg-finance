@@ -34,8 +34,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.sql.Date;
-import java.time.LocalDate;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -150,7 +148,7 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
                 "GL_PDC_CHQ_BATCH_HDR",
                 "TRANSACTION_POID",
                 deleteReasonDto,
-                hdr.getTransactionDate().toLocalDate()
+                hdr.getTransactionDate()
         );
     }
 

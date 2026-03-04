@@ -13,7 +13,6 @@ import static com.asg.common.lib.dto.response.ApiResponse.success;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -69,9 +68,9 @@ public class BankReconciliationController {
 
 			@Parameter(description = "Bank POID", required = true, example = "101") @RequestParam Long bankPoid,
 
-			@Parameter(description = "Start date for reconciliation", required = true, example = "2025-12-01") @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") Date dateFrom,
+			@Parameter(description = "Start date for reconciliation", required = true, example = "2025-12-01") @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate dateFrom,
 
-			@Parameter(description = "End date for reconciliation", required = true, example = "2025-12-05") @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") Date dateTill,
+			@Parameter(description = "End date for reconciliation", required = true, example = "2025-12-05") @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate dateTill,
 
 			@Parameter(description = "Cheque number (optional)", required = false, example = "CHQ12345") @RequestParam(required = false) String chequeNo,
 
@@ -143,7 +142,7 @@ public class BankReconciliationController {
 
 			@Parameter(description = "Posted by user POID", required = true, example = "1001") @RequestParam Long postedBy,
 
-			@Parameter(description = "Statement date to update", required = true, example = "2025-12-05") @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") Date statementDate) {
+			@Parameter(description = "Statement date to update", required = true, example = "2025-12-05") @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate statementDate) {
 		String response = service.updateStatementDate(companyPoid, postedBy, bankPoid, statementDate);
 		if (response.toLowerCase().startsWith("error"))
 			return error(response, 500);
@@ -217,10 +216,10 @@ public class BankReconciliationController {
             @RequestParam Long bankPoid,
             
             @Parameter(description = "Start date for reconciliation", required = true, example = "2025-12-01") 
-            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") Date dateFrom,
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate dateFrom,
             
             @Parameter(description = "End date for reconciliation", required = true, example = "2025-12-05") 
-            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") Date dateTill,
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate dateTill,
             
             @Parameter(description = "Balance as per bank", required = false, example = "1000.00") 
             @RequestParam(required = false, defaultValue = "0") String balanceAsPerBank) {

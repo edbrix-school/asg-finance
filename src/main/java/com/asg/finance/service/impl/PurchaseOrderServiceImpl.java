@@ -487,8 +487,11 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
 
     private void updatePurchaseOrderFields(PurchaseOrder po, PurchaseOrderRequest request) {
 
+       
         if (request.getTransactionDate() != null) {
             po.setTransactionDate(request.getTransactionDate());
+        } else if (po.getTransactionDate() == null) {
+            po.setTransactionDate(LocalDate.now());
         }
        // po.setDocRef(request.getDocRef());
         po.setCurrencyCode(request.getCurrencyCode());

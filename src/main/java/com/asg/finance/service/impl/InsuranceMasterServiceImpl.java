@@ -173,7 +173,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                 }
             }
 
-            LocalDate txDate = request.getTransactionDate() != null ? request.getTransactionDate() : request.getFromDate();
+            LocalDate txDate = request.getTransactionDate() != null ? request.getTransactionDate() : LocalDate.now();
 
             InsuranceMaster insuranceMaster = InsuranceMaster.builder()
                     .groupPoid(UserContext.getGroupPoid())
@@ -338,8 +338,11 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         existing.setInsuranceProvider(request.getInsuranceProvider());
         existing.setFromDate(request.getFromDate());
         existing.setExpiryDate(request.getExpiryDate());
+        
         if (request.getTransactionDate() != null) {
             existing.setTransactionDate(request.getTransactionDate());
+        } else if (existing.getTransactionDate() == null) {
+            existing.setTransactionDate(LocalDate.now());
         }
         existing.setCurrencyPoid(request.getCurrency());
         existing.setExchangeRate(request.getRate());

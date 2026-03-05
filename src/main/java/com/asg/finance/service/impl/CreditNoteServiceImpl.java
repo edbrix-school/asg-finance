@@ -2271,13 +2271,13 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         BigDecimal totalCr = BigDecimal.ZERO;
 
         for (CreditNoteGLDetailDto dto : glDetails) {
-            if (dto.getDrAmt() != null) {
+            if (dto.getType().equals("DR") && dto.getDrAmt() != null) {
                 totalDr = totalDr.add(dto.getDrAmt());
                 totalDr = totalDr.add(dto.getTaxAmount());
             }
-            if (dto.getCrAmt() != null) {
+            if (dto.getType().equals("CR") && dto.getCrAmt() != null) {
                 totalCr = totalCr.add(dto.getCrAmt());
-                totalDr = totalDr.add(dto.getTaxAmount());
+                totalCr = totalCr.add(dto.getTaxAmount());
             }
         }
 

@@ -1286,5 +1286,29 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         dto.getGlDetails().add(balancingRow);
     }
 
+    @Override
+    public Map<String, Object> validateEditRequest(Long transactionPoid) {
+        ArDebitNoteHdr entity = debitNoteHdrRepository.findById(transactionPoid)
+                .orElseThrow(() -> new ResourceNotFoundException("DebitNote", "transactionPoid", transactionPoid));
+        
+        List<String> errors = new ArrayList<>();
+        
+        if (entity.getRefType() != null && (entity.getRefType().equals("FDA JOBS") || entity.getRefType().equals("FF JOBS") 
+                || entity.getRefType().equals("FDA") || entity.getRefType().equals("FDA_DIRECT"))) {
+            try {
+                debitNoteCustomRepository.validateDebitNote(
+                    entity.getRefType(), entity.getPartyType(), entity.getPartyPoid(), 
+                    parseLongSafely(entity.getFdaRef()), entity.getPoRef()
+                );
+            } catch (Exception e) {
+                errors.add(e.getMessage());
+            }
+        }
+        
+        return errors.isEmpty() 
+            ? Map.of("valid", true) 
+            : Map.of("valid", false, "errors", errors);
+    }
+
 }
 

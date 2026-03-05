@@ -190,7 +190,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                     .insuranceAmount(request.getInsuranceAmount())
                     .premiumAmount(request.getPremiumAmount())
                     .paymentFrequency(request.getPaymentFrequency())
-                    .oneTime("N")
+                    .oneTime(request.getOneTime())
                     .description(request.getDescription())
                     .faPoid(request.getFaPoid())
                     .deleted("N")
@@ -349,6 +349,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         existing.setInsuranceAmount(request.getInsuranceAmount());
         existing.setPremiumAmount(request.getPremiumAmount());
         existing.setPaymentFrequency(request.getPaymentFrequency());
+        existing.setOneTime(request.getOneTime());
         existing.setDescription(request.getDescription());
         existing.setFaPoid(request.getFaPoid());
         existing.setLastModifiedBy(getCurrentUser());

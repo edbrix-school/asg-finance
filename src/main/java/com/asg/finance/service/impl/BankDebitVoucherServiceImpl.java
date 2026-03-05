@@ -1055,6 +1055,11 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                                                     ? BigDecimal.valueOf(cc.getAmount())
                                                     : BigDecimal.ZERO
                                     );
+                                    if (cc.getCostPoid() != null && !cc.getCostPoid().isEmpty() && 
+                                        cc.getCostGroup() != null && !cc.getCostGroup().isEmpty()) {
+                                        dto.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(
+                                                Long.valueOf(cc.getCostPoid()), cc.getCostGroup()));
+                                    }
                                     return dto;
                                 })
                                 .collect(Collectors.toList());

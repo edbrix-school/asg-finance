@@ -2321,4 +2321,46 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         dto.setChargeDetails(filtered);
     }
 
+    @Override
+    public ChargeTaxDataDto getChargeTaxData(String partyType, Long partyPoid, Long chargePoid) {
+        try {
+            return executeGetChargeTaxData(partyType, partyPoid, chargePoid);
+        } catch (SQLException e) {
+            log.error("Error fetching charge tax data for partyType: {}, partyPoid: {}, chargePoid: {}", 
+                    partyType, partyPoid, chargePoid, e);
+            throw new RuntimeException("Failed to fetch charge tax data: " + e.getMessage(), e);
+        }
+    }
+
+    private ChargeTaxDataDto executeGetChargeTaxData(String partyType, Long partyPoid, Long chargePoid) throws SQLException {
+        String sql = "BEGIN PROC_GET_CHARGE_TAX_PER_V3(?, ?, ?, ?, ?, ?); END;";
+        try (Connection conn = dataSource.getConnection();
+             CallableStatement cs = conn.prepareCall(sql)) {
+            cs.setLong(1, UserContext.getCompanyPoid());
+            cs.setTimestamp(2, Timestamp.valueOf(LocalDateTime.now()));
+            cs.setString(3, partyType);
+            cs.setLong(4, partyPoid);
+            cs.setLong(5, chargePoid);
+            cs.registerOutParameter(6, OracleTypes.CURSOR);
+            cs.execute();
+
+            try (ResultSet rs = (ResultSet) cs.getObject(6)) {
+                if (rs != null && rs.next()) {
+                    return ChargeTaxDataDto.builder()
+                            .taxPoid(rs.getLong("TAX_POID"))
+                            .taxDet(taxMasterRepository.findByTaxPoid(rs.getLong("TAX_POID"))
+                                    .map(tm -> new LovGetListDto(tm.getTaxPoid(), tm.getTaxCode(), tm.getTaxName(), tm.getTaxPoid(), tm.getTaxName(), tm.getSeqNo(), null))
+                                    .orElse(null))
+                            .percentage(rs.getBigDecimal("PERCENTAGE"))
+                            .build();
+                }
+            }
+
+            return ChargeTaxDataDto.builder()
+                    .taxPoid(0L)
+                    .percentage(BigDecimal.ZERO)
+                    .build();
+        }
+    }
+
 }

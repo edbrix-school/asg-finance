@@ -350,7 +350,7 @@ public class BankDebitVoucherController {
             @Parameter(description = "Bank POID", required = true)
             @RequestParam @NotNull @Min(1) Long bankPoid,
             @Parameter(description = "Document Date", required = true)
-            @RequestParam @NotNull Date docDate) {
+            @RequestParam @NotNull LocalDate docDate) {
         Object response = bankDebitVoucherService.getBankBalance(bankPoid, UserContext.getDocumentId(), docDate);
         return success("Bank balance retrieved successfully", response);
     }

@@ -370,10 +370,6 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                 .advanceStatus(requestDto.getAdvanceStatus())
                 .advanceAmount(requestDto.getAdvanceAmount())
                 .companyDivPoid(requestDto.getCompanyDivPoid())
-                .createdBy(getCurrentUser())
-                .createdDate(new Date())
-                .lastModifiedBy(getCurrentUser())
-                .lastModifiedDate(new Date())
                 .build();
     }
 
@@ -424,10 +420,6 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                             .taxPercentage(dtl.getTaxPercentage())
                             .vatPartyName(dtl.getVatPartyName())
                             .remarks(dtl.getRemarks())
-                            .createdBy(getCurrentUser())
-                            .createdDate(LocalDateTime.now())
-                            .lastModifiedBy(getCurrentUser())
-                            .lastModifiedDate(LocalDateTime.now())
                             .build();
                 })
                 .collect(Collectors.toList());
@@ -475,11 +467,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                             .vatPartyName(dtl.getVatPartyName())
                             .partyInvNumber(dtl.getPartyInvNumber())
                             .partyInvDate(dtl.getPartyInvDate())
-                            .taxPoid(dtl.getTaxPoid())
-                            .createdBy(getCurrentUser())
-                            .createdDate(LocalDateTime.now())
-                            .lastModifiedBy(getCurrentUser())
-                            .lastModifiedDate(LocalDateTime.now());
+                            .taxPoid(dtl.getTaxPoid());
 
                     GLPettyCashItemDtl entity = builder.build();
 
@@ -538,11 +526,6 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                         .partyInvNumber(dtl.getPartyInvNumber())
                         .partyInvDate(dtl.getPartyInvDate())
                         .taxPoid(dtl.getTaxPoid())
-
-                        .createdBy(getCurrentUser())
-                        .createdDate(LocalDateTime.now())
-                        .lastModifiedBy(getCurrentUser())
-                        .lastModifiedDate(LocalDateTime.now())
                         .build();
                 })
                 .collect(Collectors.toList());
@@ -1156,9 +1139,6 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
         if (dto.getAdvanceStatus() != null) header.setAdvanceStatus(dto.getAdvanceStatus());
         if (dto.getAdvanceAmount() != null) header.setAdvanceAmount(dto.getAdvanceAmount());
         if (dto.getCompanyDivPoid() != null) header.setCompanyDivPoid(dto.getCompanyDivPoid());
-
-        header.setLastModifiedBy(getCurrentUser());
-        header.setLastModifiedDate(new Date());
     }
 
     private List<GlPettyCashPaymentDtl> mergePaymentDtls(List<GlPettyCashPaymentDtl> existing,
@@ -1711,9 +1691,6 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                 "TRANSACTION_POID",
                 deleteReasonDto,
                 header.getTransactionDate()
-                        .toInstant()
-                        .atZone(ZoneId.systemDefault())
-                        .toLocalDate()
         );
     }
 

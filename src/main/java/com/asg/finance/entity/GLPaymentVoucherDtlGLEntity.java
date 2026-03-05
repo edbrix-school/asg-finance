@@ -1,5 +1,6 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -11,7 +12,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "GL_BANK_PAYMENT_DTL_GL")
 @IdClass(GLPaymentVoucherDtlGLEntity.CompositeKey.class)
-public class GLPaymentVoucherDtlGLEntity {
+public class GLPaymentVoucherDtlGLEntity extends BaseEntity {
 
     @Id
     @Column(name = "TRANSACTION_POID", nullable = false)
@@ -47,18 +48,6 @@ public class GLPaymentVoucherDtlGLEntity {
 
     @Column(name = "REMARKS", length = 500)
     private String remarks;
-
-    @Column(name = "CREATED_BY", length = 50)
-    private String createdBy;
-
-    @Column(name = "CREATED_DATE")
-    private LocalDateTime createdDate;
-
-    @Column(name = "LASTMODIFIED_BY", length = 50)
-    private String lastModifiedBy;
-
-    @Column(name = "LASTMODIFIED_DATE")
-    private LocalDateTime lastModifiedDate;
 
     @Column(name = "PDC_CHQ_TRN_POID")
     private Long pdcChqTrnPoid;

@@ -1,5 +1,6 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.entity.BaseEntity;
 import com.asg.finance.entity.key.GlBankDebitDtlGlId;
 import jakarta.persistence.*;
 import lombok.*;
@@ -20,7 +21,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class GlBankDebitDtlGl {
+public class GlBankDebitDtlGl extends BaseEntity {
 
     @EmbeddedId
     private GlBankDebitDtlGlId id;
@@ -42,18 +43,6 @@ public class GlBankDebitDtlGl {
 
     @Column(name = "REMARKS", length = 100)
     private String remarks;
-
-    @Column(name = "CREATED_BY", length = 20)
-    private String createdBy;
-
-    @Column(name = "CREATED_DATE")
-    private LocalDateTime createdDate;
-
-    @Column(name = "LASTMODIFIED_BY", length = 20)
-    private String lastModifiedBy;
-
-    @Column(name = "LASTMODIFIED_DATE")
-    private LocalDateTime lastModifiedDate;
 
     @Column(name = "TAX_POID")
     private Long taxPoid;

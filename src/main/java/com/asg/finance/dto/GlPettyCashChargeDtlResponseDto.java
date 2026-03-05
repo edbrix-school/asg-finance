@@ -7,8 +7,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Date;
 
 @Data
 @Builder
@@ -39,7 +39,7 @@ public class GlPettyCashChargeDtlResponseDto {
 
     private String vatPartyName;
     private String partyInvNumber;
-    private Date partyInvDate;
+    private LocalDate partyInvDate;
     private Long taxPoid;
     private DetailsDto taxPoidDtl;
 }

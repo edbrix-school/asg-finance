@@ -104,8 +104,6 @@ public class AdvancePettyCashHdrServiceImpl implements AdvancePettyCashHdrServic
         }
         
         try {
-            existing.setLastModifiedBy(getCurrentUser());
-            existing.setLastModifiedDate(LocalDateTime.now());
             AdvancePettyCashHdr updated = repository.save(existing);
             String key = updated.getTransactionPoid().toString();
             
@@ -186,10 +184,6 @@ public class AdvancePettyCashHdrServiceImpl implements AdvancePettyCashHdrServic
             entity.setBalanceAmount(dto.getIouAmount() != null ? dto.getIouAmount() : BigDecimal.ZERO);
         }
         entity.setDeleted("N");
-        entity.setCreatedBy(getCurrentUser());
-        entity.setCreatedDate(LocalDateTime.now());
-        entity.setLastModifiedBy(getCurrentUser());
-        entity.setLastModifiedDate(LocalDateTime.now());
         return entity;
     }
 

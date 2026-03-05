@@ -7,7 +7,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.util.Date;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -16,7 +17,7 @@ import java.util.List;
 @AllArgsConstructor
 public class PettyCashResponseDto {
     private Long transactionPoid;
-    private Date transactionDate;
+    private LocalDate transactionDate;
     private Long groupPoid;
     private Long companyPoid;
     private String docRef;
@@ -32,13 +33,13 @@ public class PettyCashResponseDto {
     private String refType;
     private String fdaRef;
     private String ffRef;
-    private Date settledDate;
+    private LocalDate settledDate;
     private String remarks;
     private BigDecimal settledTotal;
     private String createdBy;
-    private Date createdDate;
+    private LocalDateTime createdDate;
     private String lastModifiedBy;
-    private Date lastModifiedDate;
+    private LocalDateTime lastModifiedDate;
     private String deleted;
     private String status;
     private BigDecimal grandTotal;

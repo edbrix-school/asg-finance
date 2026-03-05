@@ -52,7 +52,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.sql.Date;
+
 
 @Slf4j
 @Service
@@ -406,9 +406,6 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
             entity.setReleasedByUserCode(Objects.requireNonNull(UserContext.getCurrentUser()).getUserName());
             entity.setReleasedDate(LocalDate.now());
         }
-
-        entity.setLastModifiedBy(Objects.requireNonNull(UserContext.getCurrentUser()).getUserName());
-        entity.setLastModifiedDate(LocalDateTime.now());
     }
 
     private void validateRefType(BankPaymentVoucherRequest req) {
@@ -477,8 +474,6 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         }
 
         entity.setTransactionDate(LocalDate.now());
-        entity.setCreatedDate(LocalDateTime.now());
-        entity.setCreatedBy(Objects.requireNonNull(UserContext.getCurrentUser()).getUserName());
         entity.setChqPrintedUserCode(req.getChqPrintedUserCode());
         entity.setChqPrintedDate(req.getChqPrintedDate());
         entity.setAvailableBalance(req.getAvailableBalance());
@@ -513,8 +508,6 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
             entity.setPartyInvNumber(detail.getPartyInvNumber());
             entity.setPartyInvDate(detail.getPartyInvDate());
             entity.setRemarks(detail.getRemarks());
-            entity.setCreatedBy(Objects.requireNonNull(UserContext.getCurrentUser()).getUserName());
-            entity.setCreatedDate(LocalDateTime.now());
             entities.add(entity);
         }
 
@@ -565,8 +558,6 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                     GlBankPaymentChargeDtlEntity newEntity = new GlBankPaymentChargeDtlEntity();
                     detail.setDetRowId(++maxDetRowId); // Auto-generate detRowId
                     mapChargeFields(newEntity, detail, transactionPoid);
-                    newEntity.setCreatedBy(UserContext.getCurrentUser().getUserName());
-                    newEntity.setCreatedDate(LocalDateTime.now());
                     toSave.add(newEntity);
                     break;
 
@@ -641,8 +632,6 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         entity.setFdaDetRowId(detail.getFdaDetRowId());
         entity.setPdaAmount(detail.getPdaAmount());
         entity.setFfAmount(detail.getFfAmount());
-        entity.setLastModifiedBy(Objects.requireNonNull(UserContext.getCurrentUser()).getUserName());
-        entity.setLastModifiedDate(LocalDateTime.now());
     }
 
     // ============================================================
@@ -682,8 +671,6 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                     GlBankPaymentItemDtlEntity newEntity = new GlBankPaymentItemDtlEntity();
                     detail.setDetRowId(++maxDetRowId); // Auto-generate detRowId
                     mapItemFields(newEntity, detail, transactionPoid);
-                    newEntity.setCreatedBy(UserContext.getCurrentUser().getUserName());
-                    newEntity.setCreatedDate(LocalDateTime.now());
                     toSave.add(newEntity);
                     break;
 
@@ -760,8 +747,6 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         entity.setRefDocId(detail.getRefDocId());
         entity.setRefDocPoid(detail.getRefDocPoid());
         entity.setRefDetRowId(detail.getRefDetRowId());
-        entity.setLastModifiedBy(Objects.requireNonNull(UserContext.getCurrentUser()).getUserName());
-        entity.setLastModifiedDate(LocalDateTime.now());
     }
 
     // ============================================================
@@ -769,7 +754,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     // ============================================================
 
     @Override
-    public Map<String, BigDecimal> getBankBalance(String docId, Long docKeyPoid, Date docDate, Long bankPoid) {
+    public Map<String, BigDecimal> getBankBalance(String docId, Long docKeyPoid, LocalDate docDate, Long bankPoid) {
         return spRepository.getBankBalance(docId, docKeyPoid, docDate, bankPoid);
     }
 
@@ -1143,8 +1128,6 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                     GLPaymentVoucherDtlGLEntity newEntity = new GLPaymentVoucherDtlGLEntity();
                     detail.setDetRowId(++maxDetRowId); // Auto-generate detRowId
                     mapGLFields(newEntity, detail, transactionPoid);
-                    newEntity.setCreatedBy(Objects.requireNonNull(UserContext.getCurrentUser()).getUserName());
-                    newEntity.setCreatedDate(LocalDateTime.now());
                     toSave.add(newEntity);
                     break;
 

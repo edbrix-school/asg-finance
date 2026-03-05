@@ -294,7 +294,7 @@ public class BankPaymentVoucherController {
     public ResponseEntity<?> getBankBalance(
             @PathVariable Long bankPoid,
             @RequestParam(required = false) Long docKeyPoid,
-            @RequestParam(required = false) Date docDate) {
+            @RequestParam(required = false) LocalDate docDate) {
         try {
             return success("Bank balance fetched successfully", service.getBankBalance(UserContext.getDocumentId(), docKeyPoid, docDate, bankPoid));
         } catch (Exception ex) {

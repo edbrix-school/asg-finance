@@ -1,10 +1,11 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.util.Date;
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "GL_PETTY_CASH_PAYMENT_HDR")
@@ -12,7 +13,7 @@ import java.util.Date;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class GlPettyCashPaymentHdr {
+public class GlPettyCashPaymentHdr extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -21,7 +22,7 @@ public class GlPettyCashPaymentHdr {
 
     @Column(name = "TRANSACTION_DATE", nullable = false)
     @Temporal(TemporalType.DATE)
-    private Date transactionDate;
+    private LocalDate transactionDate;
 
     @Column(name = "GROUP_POID")
     private Long groupPoid;
@@ -66,28 +67,13 @@ public class GlPettyCashPaymentHdr {
     private String ffRef;
 
     @Column(name = "SETTLED_DATE")
-    @Temporal(TemporalType.DATE)
-    private Date settledDate;
+    private LocalDate settledDate;
 
     @Column(name = "REMARKS", length = 500)
     private String remarks;
 
     @Column(name = "SETTLED_TOTAL")
     private BigDecimal settledTotal;
-
-    @Column(name = "CREATED_BY", length = 20)
-    private String createdBy;
-
-    @Column(name = "CREATED_DATE")
-    @Temporal(TemporalType.TIMESTAMP)
-    private Date createdDate;
-
-    @Column(name = "LASTMODIFIED_BY", length = 20)
-    private String lastModifiedBy;
-
-    @Column(name = "LASTMODIFIED_DATE")
-    @Temporal(TemporalType.TIMESTAMP)
-    private Date lastModifiedDate;
 
     @Column(name = "DELETED", length = 1)
     private String deleted;

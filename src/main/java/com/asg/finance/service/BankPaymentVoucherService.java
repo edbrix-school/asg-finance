@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.sql.Date;
+import java.time.LocalDate;
 import java.util.Map;
 
 public interface BankPaymentVoucherService {
@@ -20,7 +21,7 @@ public interface BankPaymentVoucherService {
 
     void softDeleteVoucher(Long transactionPoid, String documentId, DeleteReasonDto deleteReasonDto);
 
-    Map<String, BigDecimal> getBankBalance(String docId, Long docKeyPoid, Date docDate, Long bankPoid);
+    Map<String, BigDecimal> getBankBalance(String docId, Long docKeyPoid, LocalDate docDate, Long bankPoid);
 
     BankPayCreateFromFfResponse createBankPayFromFf(String ffPoid);
 

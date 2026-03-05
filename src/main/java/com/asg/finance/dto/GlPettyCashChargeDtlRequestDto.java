@@ -7,7 +7,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.util.Date;
+import java.time.LocalDate;
+
 
 @Data
 @NoArgsConstructor
@@ -34,8 +35,8 @@ public class GlPettyCashChargeDtlRequestDto {
     private String vatPartyName;
     private String partyInvNumber;
     
-    @JsonFormat(pattern = "yyyy-MM-dd")
-    private Date partyInvDate;
+
+    private LocalDate partyInvDate;
     
     private Long taxPoid;
     

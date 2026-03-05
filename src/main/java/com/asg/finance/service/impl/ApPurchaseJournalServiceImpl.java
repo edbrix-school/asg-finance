@@ -611,8 +611,26 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                     dto1.setBillRefType(popup.getBillRefType());
                     dto1.setBillRef(popup.getBillRef());
                     dto1.setBillDueDate(popup.getBillDueDate());
-                    dto1.setDrAmt(popup.getAmount());
-                    dto1.setCrAmt(popup.getAmount());
+                    BigDecimal amount =
+                            popup.getAmount() == null
+                                    ? BigDecimal.ZERO
+                                    : popup.getAmount();
+
+                    if ("DR".equalsIgnoreCase(g.getType())) {
+
+                        dto1.setDrAmt(amount);
+                        dto1.setCrAmt(BigDecimal.ZERO);
+
+                    } else if ("CR".equalsIgnoreCase(g.getType())) {
+
+                        dto1.setDrAmt(BigDecimal.ZERO);
+                        dto1.setCrAmt(amount);
+
+                    } else {
+
+                        dto1.setDrAmt(BigDecimal.ZERO);
+                        dto1.setCrAmt(amount);
+                    }
                     dto1.setBillRemarks(popup.getBillRemarks());
                     billwiseList.add(dto1);
                 }
@@ -1038,8 +1056,26 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                                 dto1.setBillRefType(popup.getBillRefType());
                                 dto1.setBillRef(popup.getBillRef());
                                 dto1.setBillDueDate(popup.getBillDueDate());
-                                dto1.setDrAmt(popup.getAmount());
-                                dto1.setCrAmt(popup.getAmount());
+                                BigDecimal amount =
+                                        popup.getAmount() == null
+                                                ? BigDecimal.ZERO
+                                                : popup.getAmount();
+
+                                if ("DR".equalsIgnoreCase(popup.getType())) {
+
+                                    dto1.setDrAmt(amount);
+                                    dto1.setCrAmt(BigDecimal.ZERO);
+
+                                } else if ("CR".equalsIgnoreCase(popup.getType())) {
+
+                                    dto1.setDrAmt(BigDecimal.ZERO);
+                                    dto1.setCrAmt(amount);
+
+                                } else {
+
+                                    dto1.setDrAmt(BigDecimal.ZERO);
+                                    dto1.setCrAmt(amount);
+                                }
                                 dto1.setBillRemarks(popup.getBillRemarks());
                                 billwiseList.add(dto1);
                             }
@@ -2332,7 +2368,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         apPurchaseInvoiceGlDtlRepository.save(entity);
 
         // 🔥 BILLWISE AUTO CREATE
-    /*    if (isBillwiseApplicable(supplierGl)) {
+       if (isBillwiseApplicable(supplierGl)) {
 
             createBillwiseForSupplier(
                     transactionPoid,
@@ -2342,7 +2378,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                     entity.getType(),
                     billAmount
             );
-        }*/
+        }
 
     /*    loggingService.createLogSummaryEntry(
                 UserContext.getDocumentId(),
@@ -2359,14 +2395,29 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
             String type,
             BigDecimal amount) {
 
-        BillwiseBreakupRequestDto billDto =
-                new BillwiseBreakupRequestDto();
+        Long groupPoid = UserContext.getGroupPoid();
+        Long companyPoid = UserContext.getCompanyPoid();
+        String docId = "200-103";
 
-        billDto.setGroupPoid(UserContext.getGroupPoid());
-        billDto.setCompanyPoid(UserContext.getCompanyPoid());
-        billDto.setDocId("200-103");
+        GlVoucherLoadBillwiseBreakupResponseDto existingBillwise = 
+                billwiseBreakupService.loadBillwiseBreakup(groupPoid, companyPoid, docId, transactionPoid);
+
+        Long nextBillDetRowId = 1L;
+        if (existingBillwise != null && existingBillwise.getLoadBillwiseBreakupResponseDtoList() != null) {
+            nextBillDetRowId = existingBillwise.getLoadBillwiseBreakupResponseDtoList().stream()
+                    .map(item -> item.getBillDetRowId())
+                    .filter(id -> id != null)
+                    .max(Long::compareTo)
+                    .orElse(0L) + 1L;
+        }
+
+        BillwiseBreakupRequestDto billDto = new BillwiseBreakupRequestDto();
+
+        billDto.setGroupPoid(groupPoid);
+        billDto.setCompanyPoid(companyPoid);
+        billDto.setDocId(docId);
         billDto.setTransactionPoid(transactionPoid);
-        billDto.setBillDetRowId(1L);
+        billDto.setBillDetRowId(nextBillDetRowId);
         billDto.setGlPoid(supplierGl);
         billDto.setMainDetRowId(mainDetRowId);
 

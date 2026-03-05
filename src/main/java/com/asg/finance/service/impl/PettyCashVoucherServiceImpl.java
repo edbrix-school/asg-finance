@@ -69,6 +69,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
     private final UnitMasterRepository unitMasterRepository;
     private final DocumentSearchService documentService;
     private final TaxMasterRepository taxMasterRepository;
+    private final com.asg.common.lib.service.LovDataService lovService;
 
 
     private final CostCenterBreakupService costCenterBreakupService;
@@ -1838,13 +1839,21 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
     private List<CostCenterBreakupPopupRequestDto> mapToCostCenterPopupDto(List<CostCenterBreakupResponseDto> list) {
         if (list == null) return Collections.emptyList();
         return list.stream()
-                .map(cc -> CostCenterBreakupPopupRequestDto.builder()
-                        .costDetRowId(cc.getCostDetRowId())
-                        .costGroup(cc.getCostGroup())
-                        .costPoid(cc.getCostPoid())
-                        .amount(BigDecimal.valueOf(cc.getAmount())) // converting Long → BigDecimal
-                        .actionType("noChanges") // Default actionType for loaded data
-                        .build())
+                .map(cc -> {
+                    CostCenterBreakupPopupRequestDto dto = CostCenterBreakupPopupRequestDto.builder()
+                            .costDetRowId(cc.getCostDetRowId())
+                            .costGroup(cc.getCostGroup())
+                            .costPoid(cc.getCostPoid())
+                            .amount(BigDecimal.valueOf(cc.getAmount()))
+                            .actionType("noChanges")
+                            .build();
+                    if (cc.getCostPoid() != null && !cc.getCostPoid().isEmpty() && 
+                        cc.getCostGroup() != null && !cc.getCostGroup().isEmpty()) {
+                        dto.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(
+                                Long.valueOf(cc.getCostPoid()), cc.getCostGroup()));
+                    }
+                    return dto;
+                })
                 .collect(Collectors.toList());
     }
 

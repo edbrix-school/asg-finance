@@ -1388,12 +1388,20 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     private List<CostCenterBreakupPopupRequestDto> mapToCostCenterPopupDto(List<CostCenterBreakupResponseDto> list) {
         if (list == null) return Collections.emptyList();
         return list.stream()
-                .map(cc -> CostCenterBreakupPopupRequestDto.builder()
-                        .costDetRowId(cc.getCostDetRowId())
-                        .costGroup(cc.getCostGroup())
-                        .costPoid(cc.getCostPoid())
-                        .amount(BigDecimal.valueOf(cc.getAmount())) // converting Long → BigDecimal
-                        .build())
+                .map(cc -> {
+                    CostCenterBreakupPopupRequestDto dto = CostCenterBreakupPopupRequestDto.builder()
+                            .costDetRowId(cc.getCostDetRowId())
+                            .costGroup(cc.getCostGroup())
+                            .costPoid(cc.getCostPoid())
+                            .amount(BigDecimal.valueOf(cc.getAmount()))
+                            .build();
+                    if (cc.getCostPoid() != null && !cc.getCostPoid().isEmpty() && 
+                        cc.getCostGroup() != null && !cc.getCostGroup().isEmpty()) {
+                        dto.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(
+                                Long.valueOf(cc.getCostPoid()), cc.getCostGroup()));
+                    }
+                    return dto;
+                })
                 .collect(Collectors.toList());
     }
 

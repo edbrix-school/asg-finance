@@ -1082,16 +1082,6 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                     if (!logRequests.isEmpty()) {
                         loggingService.createLogBatch(logRequests);
                     }
-
-                    updateBillwiseForGl(transactionPoid, apPurchaseInvoiceHdrDto.getGlDtls(), "200-103");
-                    updateCostCenterForGl(transactionPoid, apPurchaseInvoiceHdrDto.getGlDtls(), "200-103");
-                    Long supplierGl = getSupplierGlPoid(apPurchaseInvoiceHdrDto.getSupplierPoid());
-
-                    deleteOldAutoBalancingRow(transactionPoid, supplierGl);
-                    autoCreateBalancingGlRowWithBillwise(
-                            transactionPoid,
-                            apPurchaseInvoiceHdrDto
-                    );
                 }
 
                 break;
@@ -1964,8 +1954,12 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         }
     }
 
-    public String validateDuplicateInvoice(ApPurchaseInvoiceHdrDto dto) {
-
+    public String validateDuplicateInvoice(ApPurchaseInvoiceHdrDto dto,Long transactionPoid) {
+        if (transactionPoid != null) {
+            ApPurchaseInvoiceHdrEntity apPurchaseInvoiceHdrEntity = repository.findByTransactionPoid(transactionPoid);
+            if (apPurchaseInvoiceHdrEntity != null && dto.getSupplierInvNo().equalsIgnoreCase(apPurchaseInvoiceHdrEntity.getSupplierInvNo()))
+                return "SUCCESS";
+        }
          return apPurchaseJournalRepositoryImpl.checkDuplicatePi(
                 UserContext.getGroupPoid(),
                 UserContext.getCompanyPoid(),

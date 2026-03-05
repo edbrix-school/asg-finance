@@ -652,6 +652,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                 .docRef(entity.getDocRef())
                 .groupPoid(entity.getGroupPoid())
                 .companyPoid(entity.getCompanyPoid())
+                .transactionDate(entity.getTransactionDate())
                 .insuranceType(entity.getInsuranceType())
                 .insuranceCategory(entity.getInsuranceCategory())
                 .policyNo(entity.getPolicyNo())

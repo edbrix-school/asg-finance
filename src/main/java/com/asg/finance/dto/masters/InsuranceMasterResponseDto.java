@@ -20,6 +20,7 @@ public class InsuranceMasterResponseDto {
     private String docRef;
     private Long groupPoid;
     private Long companyPoid;
+    private LocalDate transactionDate;
     private String insuranceType;
     private String insuranceCategory;
     private String policyNo;

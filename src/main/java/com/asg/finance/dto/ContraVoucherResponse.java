@@ -4,8 +4,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.sql.Timestamp;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
@@ -18,6 +18,6 @@ public class ContraVoucherResponse {
     private String postingNarration;
     private String createdBy;
     private String deleted;
-    private Timestamp createdDate;
+    private LocalDateTime createdDate;
 }
 

@@ -5,7 +5,6 @@ import com.asg.finance.entity.key.ArCreditNoteDtlKey;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "AR_CREDIT_NOTE_DTL")

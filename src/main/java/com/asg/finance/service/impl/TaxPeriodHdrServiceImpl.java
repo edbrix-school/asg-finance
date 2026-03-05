@@ -208,6 +208,17 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
         responseDto.setCreatedDate(taxPeriodHdr.getCreatedDate());
         responseDto.setModifiedBy(taxPeriodHdr.getLastModifiedBy());
         responseDto.setModifiedDate(taxPeriodHdr.getLastModifiedDate());
+
+        if (taxPeriodHdr.getTransactionPoid() != null) {
+            Page<TaxPeriodChargeDtlResponseDto> chargePage =
+                    getTaxPeriodCharges(taxPeriodHdr.getTransactionPoid(), Pageable.unpaged());
+            responseDto.setCharges(chargePage.getContent());
+
+            Page<TaxPeriodStockDtlResponseDto> stockPage =
+                    getTaxPeriodStocks(taxPeriodHdr.getTransactionPoid(), Pageable.unpaged());
+            responseDto.setStocks(stockPage.getContent());
+        }
+
         return responseDto;
     }
 

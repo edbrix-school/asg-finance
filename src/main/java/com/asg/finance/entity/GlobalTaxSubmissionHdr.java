@@ -1,20 +1,20 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "GLOBAL_TAX_SUBMISSION_HDR")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class GlobalTaxSubmissionHdr {
+public class GlobalTaxSubmissionHdr extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -43,7 +43,7 @@ public class GlobalTaxSubmissionHdr {
     private String docRef;
 
     @Column(name = "TRANSACTION_DATE")
-    private Timestamp transactionDate;
+    private LocalDateTime transactionDate;
 
     @Transient
     private String approvalStatus;
@@ -53,20 +53,6 @@ public class GlobalTaxSubmissionHdr {
 
     @Column(name = "GROUP_POID", nullable = false)
     private Long groupPoid;
-
-    @Column(name = "CREATED_BY", length = 30)
-    private String createdBy;
-
-    @CreationTimestamp
-    @Column(name = "CREATED_DATE")
-    private Timestamp createdDate;
-
-    @Column(name = "LASTMODIFIED_BY", length = 30)
-    private String lastmodifiedBy;
-
-    @UpdateTimestamp
-    @Column(name = "LASTMODIFIED_DATE")
-    private Timestamp lastmodifiedDate;
 
     @Column(name = "DELETED", length = 1)
     private String deleted;

@@ -71,10 +71,6 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
             hdr.setLongNarration(request.getRemarks());
             hdr.setOnlyApproval(request.isApprovalOnly() ? "Y" : "N");
             hdr.setTtSuppressBalanceCheck(request.isSuppressBalanceCheck() ? "Y" : "N");
-            hdr.setCreatedBy(getCurrentUser());
-            hdr.setCreatedDate(LocalDateTime.now());
-            hdr.setLastModifiedBy(getCurrentUser());
-            hdr.setLastModifiedDate(LocalDateTime.now());
             hdr.setDeleted("N");
 
             GlBankFileHdr savedHdr = hdrRepository.saveAndFlush(hdr);
@@ -126,8 +122,6 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
             hdr.setLongNarration(request.getRemarks());
             hdr.setOnlyApproval(request.isApprovalOnly() ? "Y" : "N");
             hdr.setTtSuppressBalanceCheck(request.isSuppressBalanceCheck() ? "Y" : "N");
-            hdr.setLastModifiedBy(getCurrentUser());
-            hdr.setLastModifiedDate(LocalDateTime.now());
 
             hdrRepository.saveAndFlush(hdr);
 
@@ -173,8 +167,6 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
             );
 
             hdr.setDeleted("Y");
-            hdr.setLastModifiedBy(getCurrentUser());
-            hdr.setLastModifiedDate(LocalDateTime.now());
             hdrRepository.saveAndFlush(hdr);
         } catch (Exception e) {
             String errorMessage = extractTriggerErrorMessage(e);
@@ -237,10 +229,6 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
                 .selected(dto.getSelected() != null ? dto.getSelected() : "N")
                 .drilldownLinkInfo(dto.getDrilldownLinkInfo())
                 .debitTtChargeType(dto.getDebitTtChargeType())
-                .createdBy(getCurrentUser())
-                .createdDate(LocalDateTime.now())
-                .lastModifiedBy(getCurrentUser())
-                .lastModifiedDate(LocalDateTime.now())
                 .build();
     }
 
@@ -338,8 +326,6 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
                     existing.setDebitAmount(dto.getDebitAmount());
                     existing.setSelected(dto.getSelected());
                     existing.setDebitTtChargeType(dto.getDebitTtChargeType());
-                    existing.setLastModifiedBy(getCurrentUser());
-                    existing.setLastModifiedDate(LocalDateTime.now());
                     toUpdate.add(existing);
                     
                     String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", transactionPoid, dto.getDetRowId());

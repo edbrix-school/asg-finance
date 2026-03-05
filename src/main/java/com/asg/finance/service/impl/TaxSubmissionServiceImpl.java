@@ -3,6 +3,7 @@ package com.asg.finance.service.impl;
 import com.asg.common.lib.dto.*;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentDeleteService;
+import com.asg.common.lib.utility.DateUtil;
 import com.asg.finance.client.CompanyServiceClient;
 import com.asg.common.lib.entity.DocumentEntity;
 import com.asg.common.lib.repository.DocumentCommonRepository;
@@ -117,9 +118,8 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         header.setPeriodTo(normalizedPeriodTo);
         header.setRemarks(request.getRemarks());
         header.setDocRef(request.getDocRef()); // Auto-generate if null
-        header.setTransactionDate(new Timestamp(System.currentTimeMillis()));
+        header.setTransactionDate(DateUtil.getCurrentDateTimeInUserTimeZone());
         header.setGroupPoid(groupPoid);
-        header.setCreatedBy(userId);
         header.setStatus("DRAFT");
         header.setApprovalStatus("PENDING");
         header.setDeleted("N");
@@ -226,7 +226,6 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         header.setPeriodFrom(normalizedPeriodFrom);
         header.setPeriodTo(normalizedPeriodTo);
         header.setRemarks(request.getRemarks());
-        header.setLastmodifiedBy(userId);
 
         GlobalTaxSubmissionHdr savedHeader = hdrRepository.save(header);
 
@@ -266,7 +265,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
                 "GLOBAL_TAX_SUBMISSION_HDR",
                 "TRANSACTION_POID",
                 deleteReasonDto,
-                header.getTransactionDate().toLocalDateTime().toLocalDate()
+                header.getTransactionDate().toLocalDate()
         );
         
         // Log the deletion
@@ -374,7 +373,6 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
             detail.setTotalAmount(detailMap.get("TOTAL_AMOUNT") != null ? 
                     (BigDecimal) detailMap.get("TOTAL_AMOUNT") : null);
             detail.setRemarks((String) detailMap.get("REMARKS"));
-            detail.setCreatedBy(userId);
             detailEntities.add(detail);
         }
 

@@ -90,10 +90,6 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
                 .refType(request.getType())
                 .bankFilter(request.getBankFilter())
                 .groupPosting(request.getGroupPosting() != null && request.getGroupPosting() ? "Y" : "N")
-                .createdBy(getCurrentUser())
-                .createdDate(LocalDateTime.now())
-                .lastModifiedBy(getCurrentUser())
-                .lastModifiedDate(LocalDateTime.now())
                 .deleted("N")
                 .build();
 
@@ -156,8 +152,6 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
         hdr.setRefType(request.getType());
         hdr.setBankFilter(request.getBankFilter());
         hdr.setGroupPosting(request.getGroupPosting() != null && request.getGroupPosting() ? "Y" : "N");
-        hdr.setLastModifiedBy(getCurrentUser());
-        hdr.setLastModifiedDate(LocalDateTime.now());
 
         hdrRepository.save(hdr);
 

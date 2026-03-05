@@ -2163,7 +2163,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
                 if (billwiseResponse != null && billwiseResponse.getLoadBillwiseBreakupResponseDtoList() != null) {
                     List<BillwiseBreakupPopupRequestDto> billwiseList = billwiseResponse.getLoadBillwiseBreakupResponseDtoList().stream()
-                            .filter(item -> item.getMainDetRowId() != null && item.getMainDetRowId().equals(glDto.getDetRowId()))
+                            .filter(item -> item.getMainDetRowId() != null && glDto.getType().equalsIgnoreCase("DR")?(item.getDrAmt() != null && item.getDrAmt().compareTo(BigDecimal.ZERO) > 0):(item.getCrAmt() != null && item.getCrAmt().compareTo(BigDecimal.ZERO) > 0))
                             .map(item -> {
                                 BillwiseBreakupPopupRequestDto popupDto = new BillwiseBreakupPopupRequestDto();
                                 popupDto.setBillDetRowId(item.getBillDetRowId());

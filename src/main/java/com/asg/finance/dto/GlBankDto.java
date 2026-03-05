@@ -6,6 +6,7 @@ import jakarta.validation.constraints.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -40,8 +41,8 @@ public class GlBankDto {
     private String currencyCode;
     private BigDecimal buyingRate;
     private BigDecimal sellingRate;
-    private LocalDateTime periodStart;
-    private LocalDateTime periodEnd;
+    private LocalDate periodStart;
+    private LocalDate periodEnd;
     private BigDecimal cardCommision;
     @Size(max = 1, message = "Cheque printing yn must be at most 1 character")
     private String chequePrintingYn;
@@ -63,7 +64,7 @@ public class GlBankDto {
     private String bankPrefix;
     @Size(max = 1, message = "Online file tt must be at most 1 character")
     private String onlineFileTt;
-    private LocalDateTime bankStatementDate;
+    private LocalDate bankStatementDate;
     private BigDecimal currencyRate;
     @Size(max = 300, message = "Vat tin number must be at most 300 characters")
     private String vatTinNumber;

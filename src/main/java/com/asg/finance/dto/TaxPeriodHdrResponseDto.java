@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -26,4 +27,6 @@ public class TaxPeriodHdrResponseDto {
     private LocalDateTime createdDate;
     private String modifiedBy;
     private LocalDateTime modifiedDate;
+    private List<TaxPeriodChargeDtlResponseDto> charges;
+    private List<TaxPeriodStockDtlResponseDto> stocks;
 }

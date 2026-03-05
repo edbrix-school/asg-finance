@@ -43,8 +43,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.sql.Timestamp;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -302,8 +300,6 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
                 .remarks(request.getRemarks())
                 .docRef(request.getDocRef())
                 .deleted(FLAG_NO)
-                .createdBy(getCurrentUser())
-                .createdDate(LocalDateTime.now())
                 .build();
 
         header = hdrRepository.save(header);
@@ -396,8 +392,6 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
                     dtl.setDrAmt(detail.getDrAmt());
                     dtl.setCrAmt(detail.getCrAmt());
                     dtl.setRemarks(detail.getRemarks());
-                    dtl.setCreatedBy(currentUser);
-                    dtl.setCreatedDate(LocalDateTime.now());
                     dtlRepository.save(dtl);
 
                     // Log child record creation
@@ -430,8 +424,6 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
                     dtl.setDrAmt(detail.getDrAmt());
                     dtl.setCrAmt(detail.getCrAmt());
                     dtl.setRemarks(detail.getRemarks());
-                    dtl.setLastModifiedBy(currentUser);
-                    dtl.setLastModifiedDate(LocalDateTime.now());
                     dtlRepository.save(dtl);
 
                     // Collect log request for batch processing
@@ -493,8 +485,6 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
         header.setPolicyNumber(request.getPolicyNumber());
         header.setRemarks(request.getRemarks());
         header.setDocRef(request.getDocRef());
-        header.setLastModifiedBy(getCurrentUser());
-        header.setLastModifiedDate(LocalDateTime.now());
 
         hdrRepository.save(header);
 

@@ -4,6 +4,8 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 
+import com.asg.common.lib.entity.BaseEntity;
+import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -12,19 +14,16 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.IdClass;
 import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "GL_EXPENSE_REALLOCATION_DTL")
 @IdClass(GlExpenseReallocationDtl.CompositeKey.class)
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class GlExpenseReallocationDtl {
+public class GlExpenseReallocationDtl extends BaseEntity {
 
 	@Id
 	@Column(name = "TRANSACTION_POID")
@@ -69,20 +68,6 @@ public class GlExpenseReallocationDtl {
 
 	@Column(name = "REMARKS", length = 100)
 	private String remarks;
-
-	@Column(name = "CREATED_BY", length = 20, updatable = false)
-	private String createdBy;
-
-	@CreationTimestamp
-	@Column(name = "CREATED_DATE", updatable = false)
-	private Timestamp createdDate;
-
-	@Column(name = "LASTMODIFIED_BY", length = 20)
-	private String lastmodifiedBy;
-
-	@UpdateTimestamp
-	@Column(name = "LASTMODIFIED_DATE")
-	private Timestamp lastmodifiedDate;
 
 	@Data
 	@NoArgsConstructor

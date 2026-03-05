@@ -6,6 +6,8 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.sql.Timestamp;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -14,7 +16,7 @@ import java.util.List;
 public class ExpenseReallocationResponse {
 
     private Long transactionPoid;
-    private Timestamp transactionDate;
+    private LocalDate transactionDate;
     private Long groupPoid;
     private Long companyPoid;
     private String companyName;
@@ -27,15 +29,15 @@ public class ExpenseReallocationResponse {
     private Long jvPoid;
     private String jvRef;
     private String remarks;
-    private Timestamp fromDate;
-    private Timestamp toDate;
+    private LocalDate fromDate;
+    private LocalDate toDate;
     private String costPoid;
     private String reportGeneration;
     private String allocationType;
     private String createdBy;
-    private Timestamp createdDate;
+    private LocalDateTime createdDate;
     private String lastmodifiedBy;
-    private Timestamp lastmodifiedDate;
+    private LocalDateTime lastmodifiedDate;
     private String deleted;
 
     // Computed fields for UI

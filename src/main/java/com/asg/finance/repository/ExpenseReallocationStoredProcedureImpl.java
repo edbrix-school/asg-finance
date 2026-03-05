@@ -3,6 +3,7 @@ package com.asg.finance.repository;
 import java.sql.CallableStatement;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.time.LocalDate;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -27,7 +28,7 @@ public class ExpenseReallocationStoredProcedureImpl implements ExpenseReallocati
 
 	@Override
 	public Map<String, String> createJv(Long groupPoid, Long userPoid, Long companyPoid, Long transactionPoid,
-			Long expenseGroupGL, Date toDate, String costPoid) {
+                                        Long expenseGroupGL, LocalDate toDate, String costPoid) {
 
 		return em.unwrap(Session.class).doReturningWork(connection -> {
 
@@ -70,7 +71,7 @@ public class ExpenseReallocationStoredProcedureImpl implements ExpenseReallocati
 
 	@Override
 	@Transactional(propagation = Propagation.REQUIRES_NEW)
-	public void generateReport(Long companyPoid, Date toDate, Long expenseGroupGL, Long transactionPoid,
+	public void generateReport(Long companyPoid, LocalDate toDate, Long expenseGroupGL, Long transactionPoid,
 			String costPoid) {
 
 		log.info(
@@ -114,9 +115,9 @@ public class ExpenseReallocationStoredProcedureImpl implements ExpenseReallocati
 		}
 	}
 
-	private void setDateOrNull(CallableStatement cs, int index, Date value) throws SQLException {
+	private void setDateOrNull(CallableStatement cs, int index, LocalDate value) throws SQLException {
 		if (value != null) {
-			cs.setDate(index, new java.sql.Date(value.getTime()));
+			cs.setDate(index, java.sql.Date.valueOf(value));
 		} else {
 			cs.setNull(index, Types.DATE);
 		}

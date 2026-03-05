@@ -1,6 +1,7 @@
 package com.asg.finance.dto;
 
 import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.util.List;
 
 import jakarta.validation.Valid;
@@ -16,7 +17,7 @@ import lombok.NoArgsConstructor;
 public class UpdateExpenseReallocationRequest {
 
 	@NotNull(message = "Transaction Date is required")
-	private Timestamp transactionDate;
+	private LocalDate transactionDate;
 
 	@NotNull(message = "Company POID is required")
 	private Long companyPoid;

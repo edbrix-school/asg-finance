@@ -1,6 +1,7 @@
 package com.asg.finance.entity;
 
 
+import com.asg.common.lib.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
@@ -17,7 +18,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ApPaymentRequestDtl {
+public class ApPaymentRequestDtl extends BaseEntity {
 
     @EmbeddedId
     private ApPaymentRequestDtlId id;
@@ -40,15 +41,4 @@ public class ApPaymentRequestDtl {
     @Column(name = "REMARKS", length = 100)
     private String remarks;
 
-    @Column(name = "CREATED_BY", length = 20)
-    private String createdBy;
-
-    @Column(name = "CREATED_DATE")
-    private LocalDateTime createdDate;
-
-    @Column(name = "LASTMODIFIED_BY", length = 20)
-    private String lastModifiedBy;
-
-    @Column(name = "LASTMODIFIED_DATE")
-    private LocalDateTime lastModifiedDate;
 }

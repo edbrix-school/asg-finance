@@ -45,6 +45,7 @@ import org.springframework.data.domain.Pageable;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.common.lib.security.util.UserContext;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 
 @Service
 @Slf4j
@@ -1702,6 +1703,9 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                             popupDto.setCostGroup(item.getCostGroup());
                             popupDto.setCostPoid(item.getCostPoid());
                             popupDto.setAmount(BigDecimal.valueOf(item.getAmount()));
+                            if (StringUtils.isNotEmpty(item.getCostPoid()) && StringUtils.isNotEmpty(item.getCostGroup())) {
+                                popupDto.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(Long.valueOf(item.getCostPoid()), item.getCostGroup()));
+                            }
                             return popupDto;
                         })
                         .collect(Collectors.toList());
@@ -2328,7 +2332,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         apPurchaseInvoiceGlDtlRepository.save(entity);
 
         // 🔥 BILLWISE AUTO CREATE
-        if (isBillwiseApplicable(supplierGl)) {
+    /*    if (isBillwiseApplicable(supplierGl)) {
 
             createBillwiseForSupplier(
                     transactionPoid,
@@ -2338,7 +2342,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                     entity.getType(),
                     billAmount
             );
-        }
+        }*/
 
     /*    loggingService.createLogSummaryEntry(
                 UserContext.getDocumentId(),

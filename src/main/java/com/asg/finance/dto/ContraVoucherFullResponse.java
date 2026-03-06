@@ -5,8 +5,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.sql.Timestamp;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -30,7 +30,7 @@ public class ContraVoucherFullResponse {
     private BigDecimal crTotal;
     private String approvalStatus;
     private String createdBy;
-    private Timestamp createdDate;
+    private LocalDateTime createdDate;
     private Long creditGl;
     private PoidDetailsDto creditGlDetails; // POID, CODE, DESCRIPTION from GL_MASTER
     private Long debitGl;

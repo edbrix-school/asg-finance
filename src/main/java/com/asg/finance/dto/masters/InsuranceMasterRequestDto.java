@@ -20,6 +20,9 @@ import java.util.List;
 @Builder
 public class InsuranceMasterRequestDto {
 
+   
+    private LocalDate transactionDate;
+
     @NotBlank(message = "Insurance Type is mandatory")
     private String insuranceType;
 

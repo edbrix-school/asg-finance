@@ -9,6 +9,7 @@ import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.CreditNoteHeaderDto;
 import com.asg.finance.dto.DefaultCreditValuesDto;
 import com.asg.finance.dto.FdaRefResponseDto;
+import com.asg.finance.dto.ChargeTaxDataDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.finance.service.CreditNoteService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -655,6 +656,49 @@ public class CreditNoteController {
         } catch (Exception e) {
             log.error("Failed to generate PDF for Credit note: {}", transactionPoid, e);
             return error("Failed to generate PDF: " + e.getMessage(), 500);
+        }
+    }
+
+    @Operation(
+            summary = "Get Charge Tax Data",
+            description = """
+                Fetches tax-related data for a specific charge based on party type, party POID, and charge POID.
+                Uses stored procedure: PROC_GET_CHARGE_TAX_PER_V3
+                
+                ### Input:
+                - Party Type (CUSTOMER, SUPPLIER, PRINCIPAL)
+                - Party POID
+                - Charge POID
+                
+                ### Output:
+                - Tax POID
+                - Tax Code
+                - Tax Percentage
+                
+                ### Business Logic:
+                - Checks VAT applicability
+                - Determines tax slab (TAXED, ZERO_RATED, EXEMPTED, OUT_OF_SCOPE)
+                - Returns appropriate tax details based on transaction date and charge
+                """,
+            tags = {"Credit Note Management"}
+    )
+
+    @AllowedAction(UserRolesRightsEnum.VIEW)
+    @GetMapping("/charge-tax")
+    public ResponseEntity<?> getChargeTaxData(
+            @Parameter(description = "Party Type", example = "CUSTOMER", required = true)
+            @RequestParam String partyType,
+            @Parameter(description = "Party POID", example = "12345", required = true)
+            @RequestParam Long partyPoid,
+            @Parameter(description = "Charge POID", example = "101", required = true)
+            @RequestParam Long chargePoid) {
+        try {
+            ChargeTaxDataDto result = creditNoteService.getChargeTaxData(partyType, partyPoid, chargePoid);
+            return success("Charge tax data fetched successfully", result);
+        } catch (Exception e) {
+            log.error("Error fetching charge tax data for partyType: {}, partyPoid: {}, chargePoid: {}", 
+                    partyType, partyPoid, chargePoid, e);
+            return internalServerError("Failed to fetch charge tax data: " + e.getMessage());
         }
     }
 

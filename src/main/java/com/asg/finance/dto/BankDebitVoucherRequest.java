@@ -7,8 +7,8 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Date;
 import java.util.List;
 
 import jakarta.validation.constraints.*;
@@ -89,7 +89,7 @@ public class BankDebitVoucherRequest {
     @Size(max = 25, message = "Paying To By must not exceed 25 characters")
     private String payingTo;
 
-    private Date documentDate;
+    private LocalDate documentDate;
 
     private String ttChargeType;
 

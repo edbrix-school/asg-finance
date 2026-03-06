@@ -4,7 +4,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
-import java.util.Date;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
@@ -33,9 +33,9 @@ public class GlAgeingMasterDto {
 
     private String deleted;
     private String createdBy;
-    private Date createdDate;
+    private LocalDateTime createdDate;
     private String lastModifiedBy;
-    private Date lastModifiedDate;
+    private LocalDateTime lastModifiedDate;
     @Valid
     @NotEmpty(message = "Ageing Details cannot be empty")
     private List<GlAgeingMasterDtlDto> ageingDetails;

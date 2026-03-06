@@ -6,8 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.sql.Timestamp;
-import java.util.List;
+import java.time.LocalDateTime;
 
 /**
  * Response DTO for User Role Detail
@@ -23,9 +22,9 @@ public class UserRoleDetailResponse {
     private Long userRolePoid;
     private String remarks;
     private String createdBy;
-    private Timestamp createdDate;
+    private LocalDateTime createdDate;
     private String lastModifiedBy;
-    private Timestamp lastModifiedDate;
+    private LocalDateTime lastModifiedDate;
     private UserRoleDto userRoleDetail;
 }
 

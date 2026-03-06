@@ -7,7 +7,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 
 
 /**
@@ -25,9 +25,9 @@ public class GlAccountDetailResponse {
     private GlMasterDto glDetails;
     private String remarks;
     private String createdBy;
-    private Timestamp createdDate;
+    private LocalDateTime createdDate;
     private String lastModifiedBy;
-    private Timestamp lastModifiedDate;
+    private LocalDateTime lastModifiedDate;
     private Long seqNo;
     private Long company;
     private Company companyDetails;

@@ -25,8 +25,6 @@ public class GLPaymentDetailsEntity {
     private Long glPoid;
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "pymtDtlSeq")
-    @SequenceGenerator(name = "pymtDtlSeq", sequenceName = "SEQ_GL_MASTER_PYMT_DTL", allocationSize = 1)
     @Column(name = "DET_ROW_ID", nullable = false)
     @AuditIgnore
     private Long id;

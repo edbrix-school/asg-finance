@@ -173,9 +173,12 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                 }
             }
 
+            LocalDate txDate = request.getTransactionDate() != null ? request.getTransactionDate() : LocalDate.now();
+
             InsuranceMaster insuranceMaster = InsuranceMaster.builder()
-                    .groupPoid(1L)
-                    .companyPoid(1L)
+                    .groupPoid(UserContext.getGroupPoid())
+                    .companyPoid(UserContext.getCompanyPoid())
+                    .transactionDate(txDate)
                     .insuranceType(request.getInsuranceType())
                     .insuranceCategory(request.getCategory())
                     .policyNo(request.getPolicyNo())
@@ -187,7 +190,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                     .insuranceAmount(request.getInsuranceAmount())
                     .premiumAmount(request.getPremiumAmount())
                     .paymentFrequency(request.getPaymentFrequency())
-                    .oneTime("N")
+                    .oneTime(request.getOneTime())
                     .description(request.getDescription())
                     .faPoid(request.getFaPoid())
                     .deleted("N")
@@ -335,11 +338,18 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         existing.setInsuranceProvider(request.getInsuranceProvider());
         existing.setFromDate(request.getFromDate());
         existing.setExpiryDate(request.getExpiryDate());
+        
+        if (request.getTransactionDate() != null) {
+            existing.setTransactionDate(request.getTransactionDate());
+        } else {
+            existing.setTransactionDate(LocalDate.now());
+        }
         existing.setCurrencyPoid(request.getCurrency());
         existing.setExchangeRate(request.getRate());
         existing.setInsuranceAmount(request.getInsuranceAmount());
         existing.setPremiumAmount(request.getPremiumAmount());
         existing.setPaymentFrequency(request.getPaymentFrequency());
+        existing.setOneTime(request.getOneTime());
         existing.setDescription(request.getDescription());
         existing.setFaPoid(request.getFaPoid());
         existing.setLastModifiedBy(getCurrentUser());
@@ -643,6 +653,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                 .docRef(entity.getDocRef())
                 .groupPoid(entity.getGroupPoid())
                 .companyPoid(entity.getCompanyPoid())
+                .transactionDate(entity.getTransactionDate())
                 .insuranceType(entity.getInsuranceType())
                 .insuranceCategory(entity.getInsuranceCategory())
                 .policyNo(entity.getPolicyNo())

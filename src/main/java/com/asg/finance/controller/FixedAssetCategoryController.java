@@ -22,10 +22,9 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.data.domain.Pageable;
 
 import java.util.Map;
 
@@ -36,12 +35,8 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 @RequiredArgsConstructor
 public class FixedAssetCategoryController {
 
-
-    @Autowired
-    private FixedAssetCategoryService fixedAssetCategoryService;
-    
-    @Autowired
-    private LoggingService loggingService;
+    private final FixedAssetCategoryService fixedAssetCategoryService;
+    private final LoggingService loggingService;
 
     @Operation(
             summary = "Create a new Fixed Asset Category",

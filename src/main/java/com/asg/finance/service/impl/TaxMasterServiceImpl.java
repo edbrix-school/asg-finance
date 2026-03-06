@@ -47,7 +47,6 @@ public class TaxMasterServiceImpl implements TaxMasterService {
         }
 
         validateRequest(request);
-        String currentUser = getCurrentUser();
         TaxMaster entity = TaxMaster.builder()
                 .taxCode(request.getTaxCode())
                 .taxName(request.getTaxName())
@@ -59,11 +58,7 @@ public class TaxMasterServiceImpl implements TaxMasterService {
                 .taxCategory(request.getTaxCategory())
                 .active(request.getActive())
                 .seqNo(request.getSeqNo())
-                .createdBy(currentUser)
-                .createdDate(LocalDateTime.now())
-                .lastModifiedBy(currentUser)
                 .deleted("N")
-                .lastModifiedDate(LocalDateTime.now())
                 .groupPoid(request.getGroupPoid() != null ? request.getGroupPoid() : 1L)
                 .build();
 
@@ -90,7 +85,6 @@ public class TaxMasterServiceImpl implements TaxMasterService {
         }
 
         validateRequest(request);
-        String currentUser = getCurrentUser();
         existing.setTaxCode(request.getTaxCode());
         existing.setTaxName(request.getTaxName());
         existing.setTaxName2(request.getTaxName2());
@@ -101,8 +95,6 @@ public class TaxMasterServiceImpl implements TaxMasterService {
         existing.setTaxCategory(request.getTaxCategory());
         existing.setActive(request.getActive());
         existing.setSeqNo(request.getSeqNo());
-        existing.setLastModifiedDate(LocalDateTime.now());
-        existing.setLastModifiedBy(currentUser);
 
         TaxMaster updated = repository.save(existing);
         
@@ -122,10 +114,6 @@ public class TaxMasterServiceImpl implements TaxMasterService {
         if (!request.getGlType().matches("DR|CR")) {
             throw new ValidationException("Invalid GL Type. Allowed: DR, CR");
         }
-    }
-
-    private String getCurrentUser() {
-        return UserContext.getUserId() != null ? String.valueOf(UserContext.getUserId()) : "SYSTEM";
     }
 
     private TaxMasterResponseDTO getTaxMasterResponseDTO(TaxMaster taxMaster) {

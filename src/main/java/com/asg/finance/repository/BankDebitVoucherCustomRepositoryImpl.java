@@ -16,6 +16,7 @@ import org.springframework.jdbc.core.CallableStatementCreator;
 import org.springframework.jdbc.core.CallableStatementCallback;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -195,7 +196,7 @@ public class BankDebitVoucherCustomRepositoryImpl implements BankDebitVoucherCus
     }
 
     @Override
-    public BigDecimal procGetBankBalance(Long groupPoid, Long userPoid, Long companyPoid,String documentId, Date docDate, Long bankPoid) {
+    public BigDecimal procGetBankBalance(Long groupPoid, Long userPoid, Long companyPoid, String documentId, LocalDate docDate, Long bankPoid) {
         return jdbcTemplate.execute((CallableStatementCreator) con -> {
 
             CallableStatement cs =
@@ -207,7 +208,7 @@ public class BankDebitVoucherCustomRepositoryImpl implements BankDebitVoucherCus
             cs.setLong(3, userPoid);              // P_LOGIN_USER_POID
             cs.setString(4, documentId);              // P_DOC_ID
             cs.setNull(5, Types.NUMERIC);              // P_DOC_KEY_POID
-            cs.setDate(6, docDate);                 // P_DOC_DATE
+            cs.setDate(6, Date.valueOf(docDate));                 // P_DOC_DATE
             cs.setObject(7, bankPoid);                 // P_BANK_POID
 
             // OUT params

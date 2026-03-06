@@ -36,7 +36,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Function;
@@ -104,9 +103,9 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
         }
 
         String currentUser = getCurrentUser();
-        Timestamp now = new Timestamp(System.currentTimeMillis());
+        LocalDateTime now = LocalDateTime.now();
 
-        // Create master record
+        // Create master record (BaseEntity will handle audit fields)
         GlFavAcMaster master = GlFavAcMaster.builder()
                 .groupPoid(UserContext.getGroupPoid())
                 .favAcCode(request.getFavAcCode())
@@ -114,10 +113,6 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                 .description2(request.getDescription2())
                 .active(request.getActive() != null ? request.getActive() : "Y")
                 .seqNo(request.getSeqNo())
-                .createdBy(currentUser)
-                .createdDate(now)
-                .lastModifiedBy(currentUser)
-                .lastModifiedDate(now)
                 .deleted("N")
                 .build();
 
@@ -160,8 +155,6 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                                 existingEntity.setViewCategory(glAccountRequest.getViewCategoryPoid());
                                 existingEntity.setRemarks(glAccountRequest.getRemarks());
                                 existingEntity.setSeqNo(glAccountRequest.getSeqNo());
-                                existingEntity.setLastModifiedBy(currentUser);
-                                existingEntity.setLastModifiedDate(now);
                                 glAcDtlRepository.save(existingEntity);
 
                                 String createSummaryMessage = String.format(
@@ -178,10 +171,6 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                                         .viewCategory(glAccountRequest.getViewCategoryPoid())
                                         .remarks(glAccountRequest.getRemarks())
                                         .seqNo(glAccountRequest.getSeqNo())
-                                        .createdBy(currentUser)
-                                        .createdDate(now)
-                                        .lastModifiedBy(currentUser)
-                                        .lastModifiedDate(now)
                                         .build();
                                 glAcDtlRepository.save(glAcDtl);
 
@@ -209,8 +198,6 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                             existingGlAcDtl.setViewCategory(glAccountRequest.getViewCategoryPoid());
                             existingGlAcDtl.setRemarks(glAccountRequest.getRemarks());
                             existingGlAcDtl.setSeqNo(glAccountRequest.getSeqNo());
-                            existingGlAcDtl.setLastModifiedBy(currentUser);
-                            existingGlAcDtl.setLastModifiedDate(now);
                             glAcDtlRepository.save(existingGlAcDtl);
 
                             String createSummaryMessage = String.format(
@@ -227,10 +214,6 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                                     .viewCategory(glAccountRequest.getViewCategoryPoid())
                                     .remarks(glAccountRequest.getRemarks())
                                     .seqNo(glAccountRequest.getSeqNo())
-                                    .createdBy(currentUser)
-                                    .createdDate(now)
-                                    .lastModifiedBy(currentUser)
-                                    .lastModifiedDate(now)
                                     .build();
                             glAcDtlRepository.save(glAcDtl);
 
@@ -275,8 +258,6 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                             if (existingEntityOpt.isPresent()) {
                                 GlFavAcMasterUserRoleDtl existingEntity = existingEntityOpt.get();
                                 existingEntity.setUserRolePoid(userRoleRequest.getUserRolePoid());
-                                existingEntity.setLastModifiedBy(currentUser);
-                                existingEntity.setLastModifiedDate(now);
                                 userRoleDtlRepository.save(existingEntity);
 
                                 String createSummaryMessage = String.format(
@@ -289,10 +270,6 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                                         .favAcPoid(savedMaster.getFavAcPoid())
                                         .detRowId(userRoleRequest.getDetRowId()) // Frontend provides detRowId
                                         .userRolePoid(userRoleRequest.getUserRolePoid())
-                                        .createdBy(currentUser)
-                                        .createdDate(now)
-                                        .lastModifiedBy(currentUser)
-                                        .lastModifiedDate(now)
                                         .build();
                                 userRoleDtlRepository.save(userRoleDtl);
 
@@ -316,8 +293,6 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                         
                         if (existingUserRoleDtl != null) {
                             existingUserRoleDtl.setUserRolePoid(userRoleRequest.getUserRolePoid());
-                            existingUserRoleDtl.setLastModifiedBy(currentUser);
-                            existingUserRoleDtl.setLastModifiedDate(now);
                             userRoleDtlRepository.save(existingUserRoleDtl);
 
                             String createSummaryMessage = String.format(
@@ -330,10 +305,6 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                                     .favAcPoid(savedMaster.getFavAcPoid())
                                     .detRowId(userRoleRequest.getDetRowId())
                                     .userRolePoid(userRoleRequest.getUserRolePoid())
-                                    .createdBy(currentUser)
-                                    .createdDate(now)
-                                    .lastModifiedBy(currentUser)
-                                    .lastModifiedDate(now)
                                     .build();
                             userRoleDtlRepository.save(userRoleDtl);
 
@@ -408,7 +379,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
         }
 
         String currentUser = getCurrentUser();
-        Timestamp now = new Timestamp(System.currentTimeMillis());
+        LocalDateTime now = LocalDateTime.now();
 
         // Create copy of old entity for logging
         GlFavAcMaster oldEntity = new GlFavAcMaster();
@@ -420,8 +391,6 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
         existing.setDescription2(request.getDescription2());
         existing.setActive(request.getActive());
         existing.setSeqNo(request.getSeqNo());
-        existing.setLastModifiedBy(currentUser);
-        existing.setLastModifiedDate(now);
 
         masterRepository.save(existing);
 
@@ -458,10 +427,6 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                                 .viewCategory(glAccountRequest.getViewCategoryPoid())
                                 .remarks(glAccountRequest.getRemarks())
                                 .seqNo(glAccountRequest.getSeqNo())
-                                .createdBy(currentUser)
-                                .createdDate(now)
-                                .lastModifiedBy(currentUser)
-                                .lastModifiedDate(now)
                                 .build();
                         toSave.add(newGlAcDtl);
                         
@@ -487,10 +452,6 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                                     .viewCategory(glAccountRequest.getViewCategoryPoid())
                                     .remarks(glAccountRequest.getRemarks())
                                     .seqNo(glAccountRequest.getSeqNo())
-                                    .createdBy(currentUser)
-                                    .createdDate(now)
-                                    .lastModifiedBy(currentUser)
-                                    .lastModifiedDate(now)
                                     .build();
                             toSave.add(newGlAcDtlFromUpdate);
                             
@@ -510,8 +471,6 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                         existingGlAcDtl.setViewCategory(glAccountRequest.getViewCategoryPoid());
                         existingGlAcDtl.setRemarks(glAccountRequest.getRemarks());
                         existingGlAcDtl.setSeqNo(glAccountRequest.getSeqNo());
-                        existingGlAcDtl.setLastModifiedBy(currentUser);
-                        existingGlAcDtl.setLastModifiedDate(now);
                         toSave.add(existingGlAcDtl);
                         
                         String logDetail = String.format("KeyId = FAV_AC_POID:%s DET_ROW_ID:%s", 
@@ -595,10 +554,6 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                                 .favAcPoid(favAcPoid)
                                 .detRowId(userRoleRequest.getDetRowId()) // Frontend provides detRowId
                                 .userRolePoid(userRoleRequest.getUserRolePoid())
-                                .createdBy(currentUser)
-                                .createdDate(now)
-                                .lastModifiedBy(currentUser)
-                                .lastModifiedDate(now)
                                 .build();
                         userRoleToSave.add(newUserRoleDtl);
                         
@@ -620,10 +575,6 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                                     .favAcPoid(favAcPoid)
                                     .detRowId(userRoleRequest.getDetRowId())
                                     .userRolePoid(userRoleRequest.getUserRolePoid())
-                                    .createdBy(currentUser)
-                                    .createdDate(now)
-                                    .lastModifiedBy(currentUser)
-                                    .lastModifiedDate(now)
                                     .build();
                             userRoleToSave.add(newUserRoleDtlFromUpdate);
                             
@@ -639,8 +590,6 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                         oldUserRoleDtl.setFavAcPoid(existingUserRoleDtl.getFavAcPoid());
                         
                         existingUserRoleDtl.setUserRolePoid(userRoleRequest.getUserRolePoid());
-                        existingUserRoleDtl.setLastModifiedBy(currentUser);
-                        existingUserRoleDtl.setLastModifiedDate(now);
                         userRoleToSave.add(existingUserRoleDtl);
                         
                         String logDetail = String.format("KeyId = FAV_AC_POID:%s DET_ROW_ID:%s", 
@@ -1030,11 +979,11 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
     private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage) {
         return createSummaryLogEntry(logDetailsEnum, docId, docKeyPoid, customMessage, null);
     }
-    
-    private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage, Timestamp logDateTime) {
+
+    private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage, LocalDateTime logDateTime) {
         GlobalLogSummary summary = new GlobalLogSummary();
         summary.setLogUserPoid(UserContext.getUserPoid());
-        summary.setLogDateTime(LocalDateTime.now());
+        summary.setLogDateTime(logDateTime);
         summary.setLogDocId(docId);
         summary.setLogDocKeyPoid(docKeyPoid);
         summary.setLogDetails(customMessage);

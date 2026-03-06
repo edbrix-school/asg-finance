@@ -1,11 +1,11 @@
 package com.asg.finance.entity;
 
 import com.asg.common.lib.annotation.AuditIgnore;
+import com.asg.common.lib.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.io.Serializable;
-import java.sql.Timestamp;
 
 @Entity
 @Table(name = "GL_AGEING_MASTER_DTL")
@@ -15,7 +15,7 @@ import java.sql.Timestamp;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class GlAgeingMasterDtlEntity {
+public class GlAgeingMasterDtlEntity extends BaseEntity {
 
     @Id
     @Column(name = "DET_ROW_ID", nullable = false)
@@ -39,22 +39,6 @@ public class GlAgeingMasterDtlEntity {
 
     @Column(name = "BREAKUP_TO", nullable = false)
     private Integer breakupTo;
-
-    @Column(name = "CREATED_BY", length = 20)
-    @AuditIgnore
-    private String createdBy;
-
-    @Column(name = "CREATED_DATE")
-    @AuditIgnore
-    private Timestamp createdDate;
-
-    @Column(name = "LASTMODIFIED_BY", length = 20)
-    @AuditIgnore
-    private String lastModifiedBy;
-
-    @Column(name = "LASTMODIFIED_DATE")
-    @AuditIgnore
-    private Timestamp lastModifiedDate;
 
     @Data
     @NoArgsConstructor

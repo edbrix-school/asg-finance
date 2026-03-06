@@ -21,13 +21,11 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.ValidationException;
+import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import org.springframework.data.domain.Pageable;
-
 
 import java.util.*;
 
@@ -37,16 +35,11 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 @RestController
 @RequestMapping("/v1/asset-location")
 @Tag(name = "Asset Location Master", description = "APIs for managing and retrieving Asset Location Master records")
+@RequiredArgsConstructor
 public class AssetLocationMasterController {
 
-    @Autowired
-    private AssetLocationMasterService service;
-
-    @Autowired
-    AssetLocationMasterService assetLocationService;
-
-    @Autowired
-    private LoggingService loggingService;
+    private final AssetLocationMasterService service;
+    private final LoggingService loggingService;
 
     @Operation(
             summary = "Create a new AssetLocation Master",
@@ -314,7 +307,7 @@ public class AssetLocationMasterController {
                                                @RequestBody(required = false) FilterRequestDto filters) {
         try {
 
-            Map<String, Object> data = assetLocationService.listAssetLocations(UserContext.getDocumentId(), filters, pageable);
+            Map<String, Object> data = service.listAssetLocations(UserContext.getDocumentId(), filters, pageable);
 
             return success("Asset Location Master fetched successfully", data);
         } catch (Exception ex) {

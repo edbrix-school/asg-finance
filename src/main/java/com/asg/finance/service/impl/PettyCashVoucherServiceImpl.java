@@ -69,6 +69,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
     private final UnitMasterRepository unitMasterRepository;
     private final DocumentSearchService documentService;
     private final TaxMasterRepository taxMasterRepository;
+    private final com.asg.common.lib.service.LovDataService lovService;
 
 
     private final CostCenterBreakupService costCenterBreakupService;
@@ -370,10 +371,6 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                 .advanceStatus(requestDto.getAdvanceStatus())
                 .advanceAmount(requestDto.getAdvanceAmount())
                 .companyDivPoid(requestDto.getCompanyDivPoid())
-                .createdBy(getCurrentUser())
-                .createdDate(new Date())
-                .lastModifiedBy(getCurrentUser())
-                .lastModifiedDate(new Date())
                 .build();
     }
 
@@ -424,10 +421,6 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                             .taxPercentage(dtl.getTaxPercentage())
                             .vatPartyName(dtl.getVatPartyName())
                             .remarks(dtl.getRemarks())
-                            .createdBy(getCurrentUser())
-                            .createdDate(LocalDateTime.now())
-                            .lastModifiedBy(getCurrentUser())
-                            .lastModifiedDate(LocalDateTime.now())
                             .build();
                 })
                 .collect(Collectors.toList());
@@ -475,11 +468,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                             .vatPartyName(dtl.getVatPartyName())
                             .partyInvNumber(dtl.getPartyInvNumber())
                             .partyInvDate(dtl.getPartyInvDate())
-                            .taxPoid(dtl.getTaxPoid())
-                            .createdBy(getCurrentUser())
-                            .createdDate(LocalDateTime.now())
-                            .lastModifiedBy(getCurrentUser())
-                            .lastModifiedDate(LocalDateTime.now());
+                            .taxPoid(dtl.getTaxPoid());
 
                     GLPettyCashItemDtl entity = builder.build();
 
@@ -538,11 +527,6 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                         .partyInvNumber(dtl.getPartyInvNumber())
                         .partyInvDate(dtl.getPartyInvDate())
                         .taxPoid(dtl.getTaxPoid())
-
-                        .createdBy(getCurrentUser())
-                        .createdDate(LocalDateTime.now())
-                        .lastModifiedBy(getCurrentUser())
-                        .lastModifiedDate(LocalDateTime.now())
                         .build();
                 })
                 .collect(Collectors.toList());
@@ -1156,9 +1140,6 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
         if (dto.getAdvanceStatus() != null) header.setAdvanceStatus(dto.getAdvanceStatus());
         if (dto.getAdvanceAmount() != null) header.setAdvanceAmount(dto.getAdvanceAmount());
         if (dto.getCompanyDivPoid() != null) header.setCompanyDivPoid(dto.getCompanyDivPoid());
-
-        header.setLastModifiedBy(getCurrentUser());
-        header.setLastModifiedDate(new Date());
     }
 
     private List<GlPettyCashPaymentDtl> mergePaymentDtls(List<GlPettyCashPaymentDtl> existing,
@@ -1711,9 +1692,6 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                 "TRANSACTION_POID",
                 deleteReasonDto,
                 header.getTransactionDate()
-                        .toInstant()
-                        .atZone(ZoneId.systemDefault())
-                        .toLocalDate()
         );
     }
 
@@ -1861,13 +1839,21 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
     private List<CostCenterBreakupPopupRequestDto> mapToCostCenterPopupDto(List<CostCenterBreakupResponseDto> list) {
         if (list == null) return Collections.emptyList();
         return list.stream()
-                .map(cc -> CostCenterBreakupPopupRequestDto.builder()
-                        .costDetRowId(cc.getCostDetRowId())
-                        .costGroup(cc.getCostGroup())
-                        .costPoid(cc.getCostPoid())
-                        .amount(BigDecimal.valueOf(cc.getAmount())) // converting Long → BigDecimal
-                        .actionType("noChanges") // Default actionType for loaded data
-                        .build())
+                .map(cc -> {
+                    CostCenterBreakupPopupRequestDto dto = CostCenterBreakupPopupRequestDto.builder()
+                            .costDetRowId(cc.getCostDetRowId())
+                            .costGroup(cc.getCostGroup())
+                            .costPoid(cc.getCostPoid())
+                            .amount(BigDecimal.valueOf(cc.getAmount()))
+                            .actionType("noChanges")
+                            .build();
+                    if (cc.getCostPoid() != null && !cc.getCostPoid().isEmpty() && 
+                        cc.getCostGroup() != null && !cc.getCostGroup().isEmpty()) {
+                        dto.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(
+                                Long.valueOf(cc.getCostPoid()), cc.getCostGroup()));
+                    }
+                    return dto;
+                })
                 .collect(Collectors.toList());
     }
 

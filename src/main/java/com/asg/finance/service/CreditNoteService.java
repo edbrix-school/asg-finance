@@ -1,10 +1,7 @@
 package com.asg.finance.service;
 
 import com.asg.common.lib.dto.DeleteReasonDto;
-import com.asg.finance.dto.CreditNoteHeaderDto;
-import com.asg.finance.dto.DefaultCreditValuesDto;
-import com.asg.finance.dto.FdaRefResponseDto;
-import com.asg.finance.dto.UniversalChargeDetailDto;
+import com.asg.finance.dto.*;
 import com.asg.common.lib.dto.FilterRequestDto;
 import org.springframework.data.domain.Pageable;
 
@@ -39,5 +36,7 @@ public interface CreditNoteService {
     byte[] print(Long transactionPoid) throws Exception;
 
     FdaRefResponseDto getFdaRefForCreditNote(String lovName, Long lovValue);
+
+    ChargeTaxDataDto getChargeTaxData(String partyType, Long partyPoid, Long chargePoid);
 
 }

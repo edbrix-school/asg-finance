@@ -23,7 +23,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import org.springdoc.core.annotations.ParameterObject;
-import org.springframework.beans.factory.annotation.Autowired;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -39,16 +38,11 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 
 @RestController
 @RequestMapping("/v1/bank-payees")
+@lombok.RequiredArgsConstructor
 public class BankPayeeController {
 
     private final IBankPayeeService bankPayeeService;
     private final LoggingService loggingService;
-
-    @Autowired
-    public BankPayeeController(IBankPayeeService bankPayeeService, LoggingService loggingService) {
-        this.bankPayeeService = bankPayeeService;
-        this.loggingService = loggingService;
-    }
 
     @Operation(
             summary = "Create Bank Payee",

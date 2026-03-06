@@ -242,7 +242,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
         validator.validateVoucherStatusInNewTransaction(header);
 
-        populateUpdateAudit(header);
+       // populateUpdateAudit(header);
 
         header = headerRepository.save(header);
         entityManager.flush();
@@ -400,7 +400,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                     GlBankDebitDtlGl entity = new GlBankDebitDtlGl();
                     Long detRowId = dtl.getDetRowId() != null ? dtl.getDetRowId() : getNextDetRowIdForPaymentGl(transactionPoid);
                     entity.setId(new GlBankDebitDtlGlId(transactionPoid, detRowId));
-                    populateCreateAudit(entity);
+                   // populateCreateAudit(entity);
                     mapToPaymentGlEntity(dtl, entity);
                     paymentGlRepository.save(entity);
                     
@@ -464,7 +464,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                     GlBankDebitDtlGl oldEntity = new GlBankDebitDtlGl();
                     BeanUtils.copyProperties(entity, oldEntity);
                     
-                    populateUpdateAudit(entity);
+                    //populateUpdateAudit(entity);
                     mapToPaymentGlEntity(dtl, entity);
                     paymentGlRepository.save(entity);
                     
@@ -573,7 +573,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                     GlBankDebitChargeDtl entity = new GlBankDebitChargeDtl();
                     Long detRowId = dto.getDetRowId() != null ? dto.getDetRowId() : getNextDetRowIdForCharge(transactionPoid);
                     entity.setId(new GlBankDebitChargeDtlId(transactionPoid, detRowId));
-                    populateCreateAudit(entity);
+                    //populateCreateAudit(entity);
                     mapToChargeEntity(dto, entity);
                     chargeDetailRepository.save(entity);
                     
@@ -594,7 +594,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                     GlBankDebitChargeDtl oldEntity = new GlBankDebitChargeDtl();
                     BeanUtils.copyProperties(entity, oldEntity);
                     
-                    populateUpdateAudit(entity);
+                   // populateUpdateAudit(entity);
                     mapToChargeEntity(dto, entity);
                     chargeDetailRepository.save(entity);
                     
@@ -634,53 +634,45 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
     }
 
     private void populateCreateAudit(GlBankDebitHdr entity) {
-        entity.setCreatedBy(getCurrentUser());
-        entity.setCreatedDate(LocalDateTime.now());
-        entity.setLastModifiedBy(getCurrentUser());
-        entity.setLastModifiedDate(LocalDateTime.now());
         entity.setDeleted("N");
     }
 
-    private void populateUpdateAudit(GlBankDebitHdr entity) {
+   /* private void populateUpdateAudit(GlBankDebitHdr entity) {
         entity.setLastModifiedBy(getCurrentUser());
         entity.setLastModifiedDate(LocalDateTime.now());
-    }
+    }*/
 
     private void populateCreateAudit(GlBankDebitDtlGl entity) {
+    }
+
+  /*  private void populateUpdateAudit(GlBankDebitDtlGl entity) {
+        entity.setLastModifiedBy(getCurrentUser());
+        entity.setLastModifiedDate(LocalDateTime.now());
+    }*/
+
+  /*  private void populateCreateAudit(GlBankDebitChargeDtl entity) {
         entity.setCreatedBy(getCurrentUser());
         entity.setCreatedDate(LocalDateTime.now());
         entity.setLastModifiedBy(getCurrentUser());
         entity.setLastModifiedDate(LocalDateTime.now());
-    }
+    }*/
 
-    private void populateUpdateAudit(GlBankDebitDtlGl entity) {
+  /*  private void populateUpdateAudit(GlBankDebitChargeDtl entity) {
         entity.setLastModifiedBy(getCurrentUser());
         entity.setLastModifiedDate(LocalDateTime.now());
-    }
+    }*/
 
-    private void populateCreateAudit(GlBankDebitChargeDtl entity) {
+  /*  private void populateCreateAudit(GlBankDebitItemDtl entity) {
         entity.setCreatedBy(getCurrentUser());
         entity.setCreatedDate(LocalDateTime.now());
         entity.setLastModifiedBy(getCurrentUser());
         entity.setLastModifiedDate(LocalDateTime.now());
-    }
+    }*/
 
-    private void populateUpdateAudit(GlBankDebitChargeDtl entity) {
+  /*  private void populateUpdateAudit(GlBankDebitItemDtl entity) {
         entity.setLastModifiedBy(getCurrentUser());
         entity.setLastModifiedDate(LocalDateTime.now());
-    }
-
-    private void populateCreateAudit(GlBankDebitItemDtl entity) {
-        entity.setCreatedBy(getCurrentUser());
-        entity.setCreatedDate(LocalDateTime.now());
-        entity.setLastModifiedBy(getCurrentUser());
-        entity.setLastModifiedDate(LocalDateTime.now());
-    }
-
-    private void populateUpdateAudit(GlBankDebitItemDtl entity) {
-        entity.setLastModifiedBy(getCurrentUser());
-        entity.setLastModifiedDate(LocalDateTime.now());
-    }
+    }*/
 
     private void mapRequestToEntity(BankDebitVoucherRequest request, GlBankDebitHdr entity) {
         entity.setGroupPoid(UserContext.getGroupPoid());
@@ -1055,6 +1047,11 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                                                     ? BigDecimal.valueOf(cc.getAmount())
                                                     : BigDecimal.ZERO
                                     );
+                                    if (cc.getCostPoid() != null && !cc.getCostPoid().isEmpty() && 
+                                        cc.getCostGroup() != null && !cc.getCostGroup().isEmpty()) {
+                                        dto.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(
+                                                Long.valueOf(cc.getCostPoid()), cc.getCostGroup()));
+                                    }
                                     return dto;
                                 })
                                 .collect(Collectors.toList());
@@ -1102,7 +1099,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
     // ---------- utilities ----------
     @Override
-    public BigDecimal getBankBalance(Long bankPoid,String documentId, Date docDate) {
+    public BigDecimal getBankBalance(Long bankPoid,String documentId, LocalDate docDate) {
         return bankDebitVoucherCustomRepository.procGetBankBalance(UserContext.getGroupPoid(), UserContext.getUserPoid(),  UserContext.getCompanyPoid(), documentId,docDate, bankPoid);
     }
 

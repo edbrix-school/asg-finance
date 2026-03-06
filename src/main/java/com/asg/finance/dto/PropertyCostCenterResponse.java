@@ -5,6 +5,8 @@ import com.asg.common.lib.dto.LovGetListDto;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
 @Data
 public class PropertyCostCenterResponse {
 
@@ -23,9 +25,9 @@ public class PropertyCostCenterResponse {
     private String deleted;
     private String active;
     private String createdBy;
-    private String createdDate;
+    private LocalDateTime createdDate;
     private String lastModifiedBy;
-    private String lastModifiedDate;
+    private LocalDateTime lastModifiedDate;
     
     // Additional fields for tree view support
     private Long parentPropertyPoid;

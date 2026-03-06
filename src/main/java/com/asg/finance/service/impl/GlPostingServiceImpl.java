@@ -5,7 +5,10 @@ import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.service.GlPostingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.sql.DataSource;
 import java.sql.CallableStatement;
@@ -21,6 +24,7 @@ public class GlPostingServiceImpl implements GlPostingService {
     private final DataSource dataSource;
 
     @Override
+    @Transactional(propagation = Propagation.MANDATORY)
     public String performGlPosting(String docId, Long transactionPoid, String docRef) {
         Long groupPoid = UserContext.getGroupPoid();
         Long companyPoid = UserContext.getCompanyPoid();
@@ -32,8 +36,8 @@ public class GlPostingServiceImpl implements GlPostingService {
 
         log.info("Performing GL posting for docId: {}, transactionPoid: {}, docRef: {}", docId, transactionPoid, docRef);
 
-        try (Connection connection = dataSource.getConnection();
-             CallableStatement cs = connection.prepareCall("{call PROC_GL_LEDGER_POSTING_MAIN(?, ?, ?, ?, ?, ?, ?)}")) {
+        Connection connection = DataSourceUtils.getConnection(dataSource);
+        try (CallableStatement cs = connection.prepareCall("{call PROC_GL_LEDGER_POSTING_MAIN(?, ?, ?, ?, ?, ?, ?)}")) {
 
             cs.setLong(1, groupPoid);
             cs.setLong(2, companyPoid);

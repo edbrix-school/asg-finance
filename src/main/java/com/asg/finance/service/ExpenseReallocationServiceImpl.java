@@ -161,8 +161,8 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         header.setNarration(request.getNarration());
         header.setExpenseGroupGl(request.getExpenseGroupGlId());
         header.setFromCompany(request.getFromCompanyId());
-        header.setFromDate(convertDate(request.getFromDate().toLocalDateTime()));
-        header.setToDate(convertDate(request.getToDate().toLocalDateTime()));
+        header.setFromDate(convertDate(request.getFromDate().atStartOfDay()));
+        header.setToDate(convertDate(request.getToDate().atStartOfDay()));
         header.setAllocationType(request.getAllocationType());
         header.setCostPoid(request.getCostPoid());
         header.setRemarks(request.getRemarks());

@@ -298,6 +298,14 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
         List<ChequeReturnDetail> details = detailRepo.findByIdTransactionPoid(transactionPoid);
         List<ChequeReturnGlDetail> gls = glDetailRepo.findByTransactionPoid(transactionPoid);
 
+        if (StringUtils.isBlank(header.getReceiptNumber()) && !details.isEmpty()) {
+            Long refDocPoid = details.getFirst().getRefDocPoid();
+            if (refDocPoid != null) {
+                header.setReceiptNumber(refDocPoid.toString());
+                headerRepo.save(header);
+            }
+        }
+
         ChequeReturnRequest req = new ChequeReturnRequest(
                 ChequeReturnRequest.ChequeHeaderDto.builder()
                         .transactionPoid(header.getTransactionPoid())

@@ -869,10 +869,26 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
     }
 
     // ===== PRIVATE HELPER METHODS =====
-
+    
     private void validateGeneralReceiptRequest(GeneralReceiptRequest request) {
         GeneralReceiptHeaderDto header = request.getHeader();
 
+        
+        List<GeneralReceiptBillDto> activeBills = new ArrayList<>();
+        if (request.getBills() != null) {
+            activeBills = request.getBills().stream()
+                    .filter(bill -> bill.getActionType() == null ||
+                            !"ISDELETED".equalsIgnoreCase(bill.getActionType()))
+                    .collect(Collectors.toList());
+        }
+
+        List<GeneralReceiptChargeDto> activeCharges = new ArrayList<>();
+        if (request.getExtraCharges() != null) {
+            activeCharges = request.getExtraCharges().stream()
+                    .filter(charge -> charge.getActionType() == null ||
+                            !"ISDELETED".equalsIgnoreCase(charge.getActionType()))
+                    .collect(Collectors.toList());
+        }
 
         Long creditGlPoid;
         try {
@@ -892,20 +908,18 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
 
         if (isBillwiseEnabled) {
             BigDecimal billTotal = BigDecimal.ZERO;
-            if (request.getBills() != null && !request.getBills().isEmpty()) {
-                billTotal = request.getBills().stream()
-                        .map(GeneralReceiptBillDto::getAmount)
-                        .filter(amount -> amount != null)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add);
-            }
+            billTotal = activeBills.stream()
+                    .map(GeneralReceiptBillDto::getAmount)
+                    .filter(amount -> amount != null)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
 
             if (billTotal.compareTo(BigDecimal.ZERO) == 0) {
                 throw new ValidationException("Zero values found in Billwise total Amount... , please check");
             }
         }
 
-        if (request.getBills() != null && !request.getBills().isEmpty()) {
-            for (GeneralReceiptBillDto bill : request.getBills()) {
+        if (!activeBills.isEmpty()) {
+            for (GeneralReceiptBillDto bill : activeBills) {
                 if (bill.getBillDueDate() == null) {
                     throw new ValidationException("Due date is required for all bills");
                 }
@@ -951,30 +965,30 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         BigDecimal amountToCompare = "BHD".equalsIgnoreCase(header.getCurrency())
                 ? header.getReceiptAmount()
                 : (header.getBhdAmount() != null ? header.getBhdAmount() : header.getReceiptAmount().multiply(header.getRate()));
-        validateBillAmountMatchesReceiptAmount(request.getBills(), request.getExtraCharges(), amountToCompare);
+        validateBillAmountMatchesReceiptAmount(activeBills, activeCharges, amountToCompare);
 
         // 8. Validate cheque dates if applicable
         validateChequeDates(request.getPayments());
 
         // 9. Validate cost center for specific charge types
-        validateCostCenterRequirement(request.getExtraCharges());
-
+        validateCostCenterRequirement(activeCharges);
+        
         // 10. Validate rounding limit
-        validateRoundingLimit(request.getExtraCharges());
+        validateRoundingLimit(activeCharges);
 
         // 11. Validate multi-company if applicable
         if ("Y".equals(header.getMulticompany())) {
-            validateMultiCompany(request.getBills(), header.getCompanyPoid());
+            validateMultiCompany(activeBills, header.getCompanyPoid());
         }
-
+        
         // 12. Validate bill references if refType is AGAINST
-        if ("AGAINST".equals(header.getRefType()) && (request.getBills() == null || request.getBills().isEmpty())) {
+        if ("AGAINST".equals(header.getRefType()) && activeBills.isEmpty()) {
             throw new ValidationException("Bill details are required when Ref Type is AGAINST");
         }
 
         // 13. Validate bill references using stored procedure (PROC_GEN_RECE_NEW_BILLREF_CHK)
-        if (request.getBills() != null && !request.getBills().isEmpty()) {
-            validateBillReferencesUsingProcedure(request.getBills(), creditGL.getGlPoid(), header.getCompanyPoid());
+        if (!activeBills.isEmpty()) {
+            validateBillReferencesUsingProcedure(activeBills, creditGL.getGlPoid(), header.getCompanyPoid());
         }
     }
 
@@ -1134,6 +1148,13 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
             creditGlPoid = Long.parseLong(dto.getCreditGL());
         } catch (NumberFormatException ex) {
             throw new ValidationException("Credit GL not found: " + dto.getCreditGL());
+        }
+
+        
+        if (dto.getTransactionDate() != null) {
+            header.setTransactionDate(dto.getTransactionDate());
+        } else {
+            header.setTransactionDate(LocalDate.now());
         }
 
         header.setRcvdOthPoid(creditGlPoid);

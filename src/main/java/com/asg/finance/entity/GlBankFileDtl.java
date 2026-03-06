@@ -1,5 +1,6 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.entity.BaseEntity;
 import com.asg.finance.entity.key.GlBankFileDtlKey;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -17,7 +18,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class GlBankFileDtl {
+public class GlBankFileDtl extends BaseEntity {
     @Id
     @Column(name = "TRANSACTION_POID")
     private Long transactionPoid;
@@ -70,18 +71,6 @@ public class GlBankFileDtl {
 
     @Column(name = "DEBIT_TT_CHARGE_TYPE", length = 50)
     private String debitTtChargeType;
-
-    @Column(name = "CREATED_BY", length = 50)
-    private String createdBy;
-
-    @Column(name = "CREATED_DATE")
-    private java.time.LocalDateTime createdDate;
-
-    @Column(name = "LASTMODIFIED_BY", length = 50)
-    private String lastModifiedBy;
-
-    @Column(name = "LASTMODIFIED_DATE")
-    private java.time.LocalDateTime lastModifiedDate;
 
     @Column(name = "SELECTED", length = 1)
     private String selected;

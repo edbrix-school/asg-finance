@@ -7,7 +7,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.sql.Date;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -29,7 +28,7 @@ public interface BankDebitVoucherService {
     List<ChargeFDADto> loadFDACharges(Long fdaRefPoid);
 
     // Utilities
-    BigDecimal getBankBalance(Long bankPoid,String documentId, Date docDate);
+    BigDecimal getBankBalance(Long bankPoid,String documentId, LocalDate docDate);
 
     String getBeneficiaryName(Long beneficiaryId,String documentId);
 

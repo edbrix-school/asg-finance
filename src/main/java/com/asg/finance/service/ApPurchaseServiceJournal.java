@@ -49,6 +49,6 @@ public interface ApPurchaseServiceJournal {
 
     byte[] print(Long transactionPoid) throws Exception;
 
-    String validateDuplicateInvoice(ApPurchaseInvoiceHdrDto dto);
+    String validateDuplicateInvoice(ApPurchaseInvoiceHdrDto dto, Long transactionPoid);
 
 }

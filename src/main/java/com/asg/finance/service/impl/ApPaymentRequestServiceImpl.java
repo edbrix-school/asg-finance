@@ -17,7 +17,6 @@ import com.asg.finance.dto.ApPaymentRequestHdrResponseDto;
 import com.asg.finance.dto.ApPaymentRequestMapper;
 import com.asg.finance.entity.ApPaymentRequestDtl;
 import com.asg.finance.entity.ApPaymentRequestHdr;
-import com.asg.finance.entity.ApPurchaseInvoiceHdrEntity;
 import com.asg.finance.repository.ApPaymentRequestCustomRepository;
 import com.asg.finance.repository.ApPaymentRequestDtlRepository;
 import com.asg.finance.repository.ApPaymentRequestHdrRepository;
@@ -25,7 +24,6 @@ import com.asg.finance.service.ApPaymentRequestService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -35,7 +33,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import static com.asg.common.lib.utility.ASGHelperUtils.getCurrentUser;
 
@@ -113,8 +110,6 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
         hdr.setRequestedBy(requestDto.getRequestedBy());
         hdr.setRemarks(requestDto.getRemarks());
         hdr.setTotalAmount(requestDto.getTotalAmount());
-        hdr.setLastModifiedBy(getCurrentUser());
-        hdr.setLastModifiedDate(LocalDateTime.now());
 
 
         ApPaymentRequestHdr savedEntity = hdrRepository.save(hdr);
@@ -266,8 +261,6 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
                     existing.setVatAmount(detail.getVatAmount());
                     existing.setTotalAmount(detail.getTotalAmount());
                     existing.setRemarks(detail.getRemarks());
-                    existing.setLastModifiedBy(getCurrentUser());
-                    existing.setLastModifiedDate(LocalDateTime.now());
                     dtlRepository.save(existing);
                     
                     String logDetailForUpdate = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", transactionPoid, detail.getDetRowId());

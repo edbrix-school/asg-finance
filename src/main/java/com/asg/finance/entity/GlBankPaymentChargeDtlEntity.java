@@ -1,5 +1,6 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.entity.BaseEntity;
 import com.asg.finance.entity.key.GlBankPaymentChargeDtlId;
 import jakarta.persistence.*;
 import lombok.Data;
@@ -11,7 +12,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "GL_BANK_PAYMENT_CHARGE_DTL")
 @IdClass(GlBankPaymentChargeDtlId.class)
-public class GlBankPaymentChargeDtlEntity implements Serializable {
+public class GlBankPaymentChargeDtlEntity extends BaseEntity implements Serializable {
 
     @Id
     @Column(name = "TRANSACTION_POID", nullable = false)
@@ -32,18 +33,6 @@ public class GlBankPaymentChargeDtlEntity implements Serializable {
 
     @Column(name = "REMARKS", length = 1000)
     private String remarks;
-
-    @Column(name = "CREATED_BY", length = 20)
-    private String createdBy;
-
-    @Column(name = "CREATED_DATE")
-    private LocalDateTime createdDate;
-
-    @Column(name = "LASTMODIFIED_BY", length = 20)
-    private String lastModifiedBy;
-
-    @Column(name = "LASTMODIFIED_DATE")
-    private LocalDateTime lastModifiedDate;
 
     @Column(name = "REF_DOC_ID", length = 100)
     private String refDocId;

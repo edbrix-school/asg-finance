@@ -11,6 +11,7 @@ import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.common.lib.utility.ASGHelperUtils;
+import com.asg.finance.client.GlPostingServiceClient;
 import com.asg.finance.dto.*;
 import com.asg.finance.entity.ArDebitNoteChargeDtl;
 import com.asg.finance.entity.ArDebitNoteDtl;
@@ -24,6 +25,7 @@ import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.BillwiseBreakupService;
 import com.asg.finance.service.CostCenterBreakupService;
 import com.asg.finance.service.DebitNoteService;
+import com.asg.finance.service.GlPostingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;
@@ -81,6 +83,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
     private final LoggingService loggingService;
     private final GlobalLogSummaryRepository globalLogSummaryRepository;
     private final TaxMasterRepository taxMasterRepository;
+    private final GlPostingService glPostingService;
 
     @Value("${app.doc-id.debit-note:300-110}")
     private String debitNoteDocId;
@@ -115,6 +118,12 @@ public class DebitNoteServiceImpl implements DebitNoteService {
 
         // Load breakups into response
         loadBreakups(result, savedEntity.getTransactionPoid());
+
+        debitNoteHdrRepository.flush();
+        ArDebitNoteHdr refreshedEntity = debitNoteHdrRepository.findById(savedEntity.getTransactionPoid())
+                .orElseThrow(() -> new ResourceNotFoundException("DebitNote", "transactionPoid", savedEntity.getTransactionPoid()));
+
+        glPostingService.performGlPosting(UserContext.getDocumentId(), refreshedEntity.getTransactionPoid(), refreshedEntity.getDocRef());
 
         // Log the creation
         loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), savedEntity.getTransactionPoid().toString());
@@ -189,6 +198,8 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         if (!detailSummaryLogs.isEmpty()) {
             globalLogSummaryRepository.saveAll(detailSummaryLogs);
         }
+
+        glPostingService.performGlPosting(UserContext.getDocumentId(), transactionPoid, existingEntity.getDocRef());
 
         return getDebitNote(transactionPoid);
     }

@@ -131,7 +131,7 @@ public class DebitNoteController {
             @Valid @RequestBody DebitNoteHeaderDto dto
     ) {
         DebitNoteHeaderDto response = debitNoteService.createDebitNote(dto);
-        glPostingService.performGlPosting(UserContext.getDocumentId(), response.getTransactionPoid(), response.getDocRef());
+//        glPostingService.performGlPosting(UserContext.getDocumentId(), response.getTransactionPoid(), response.getDocRef());
         return success("Debit Note created successfully", response);
     }
 

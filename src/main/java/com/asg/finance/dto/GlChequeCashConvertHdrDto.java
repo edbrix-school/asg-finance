@@ -28,9 +28,9 @@ public class GlChequeCashConvertHdrDto {
     private String lastModifiedBy;
     private LocalDateTime lastModifiedDate;
     private String deleted;
-    @NotBlank(message = "Cheque Account No is required")
+
     private String chqAcNo;
-    @NotBlank(message = "Cheque Card No is required")
+
     private String chqCardNo;
     private BigDecimal roundingAmt;
 

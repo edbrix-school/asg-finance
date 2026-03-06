@@ -122,9 +122,6 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         debitNoteHdrRepository.flush();
         ArDebitNoteHdr refreshedEntity = debitNoteHdrRepository.findById(savedEntity.getTransactionPoid())
                 .orElseThrow(() -> new ResourceNotFoundException("DebitNote", "transactionPoid", savedEntity.getTransactionPoid()));
-
-        glPostingService.performGlPosting(UserContext.getDocumentId(), refreshedEntity.getTransactionPoid(), refreshedEntity.getDocRef());
-
         // Log the creation
         loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), savedEntity.getTransactionPoid().toString());
 

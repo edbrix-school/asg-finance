@@ -649,6 +649,10 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         entity.setCostGroup(dto.getCostGroup() != null ? dto.getCostGroup().toString() : null);
         entity.setCheckAll(dto.getCheckAll());
         entity.setPrintSeqNo(dto.getSeqNo());
+        
+        if (dto.getTotalAmount() != null) {
+            entity.setTotalAmount(dto.getTotalAmount());
+        }
     }
 
     private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage) {
@@ -823,6 +827,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         dto.setTaxId(entity.getTaxPoid());
         dto.setTaxPercentage(entity.getTaxPercentage());
         dto.setTaxAmount(entity.getTaxAmount());
+        dto.setTotalAmount(entity.getTotalAmount());
         dto.setCostAmount(entity.getCostAmount());
         dto.setSeqNo(entity.getPrintSeqNo());
         dto.setCostPoid(entity.getCostPoid());

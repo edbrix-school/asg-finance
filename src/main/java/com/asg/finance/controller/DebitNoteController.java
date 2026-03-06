@@ -9,7 +9,6 @@ import com.asg.common.lib.service.LoggingService;
 import com.asg.finance.dto.DebitNoteHeaderDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.finance.service.DebitNoteService;
-import com.asg.finance.service.GlPostingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -44,8 +43,6 @@ public class DebitNoteController {
 
     private final DebitNoteService debitNoteService;
     private final LoggingService loggingService;
-    private final GlPostingService glPostingService;
-
     // -------------------------------------------------------
     // CREATE
     // -------------------------------------------------------

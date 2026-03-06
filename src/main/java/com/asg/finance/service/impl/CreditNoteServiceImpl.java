@@ -377,7 +377,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                 while (rs != null && rs.next()) {
                     UniversalChargeDetailDto dto = new UniversalChargeDetailDto();
                     dto.setChargePoid(rs.getLong("CHARGE_POID"));
-                    dto.setChargeAmount(rs.getBigDecimal("TOTAL_AMOUNT"));
+                    dto.setChargeAmount(rs.getBigDecimal("INV_AMOUNT"));
                     dto.setChargeCostAmount(rs.getBigDecimal("CHARGE_COST_AMOUNT"));
                     dto.setTaxPoid(rs.getLong("TAX_POID"));
                     dto.setTaxPercentage(rs.getBigDecimal("TAX_PERCENTAGE"));
@@ -426,7 +426,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                      */
                     UniversalChargeDetailDto dto = new UniversalChargeDetailDto();
                     dto.setChargePoid(rs.getLong("CHARGE_POID"));
-                    dto.setChargeAmount(rs.getBigDecimal("TOTAL_AMOUNT"));
+                    dto.setChargeAmount(rs.getBigDecimal("INV_AMOUNT"));
                     dto.setChargeCostAmount(rs.getBigDecimal("CHARGE_COST_AMOUNT"));
                     dto.setTaxPoid(rs.getLong("TAX_POID"));
                     dto.setTaxPercentage(rs.getBigDecimal("TAX_PERCENTAGE"));
@@ -2271,11 +2271,14 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         BigDecimal totalCr = BigDecimal.ZERO;
 
         for (CreditNoteGLDetailDto dto : glDetails) {
-            if (dto.getDrAmt() != null)
+            if (dto.getType().equals("DR") && dto.getDrAmt() != null) {
                 totalDr = totalDr.add(dto.getDrAmt());
-
-            if (dto.getCrAmt() != null)
+                totalDr = totalDr.add(dto.getTaxAmount());
+            }
+            if (dto.getType().equals("CR") && dto.getCrAmt() != null) {
                 totalCr = totalCr.add(dto.getCrAmt());
+                totalCr = totalCr.add(dto.getTaxAmount());
+            }
         }
 
         if (totalDr.compareTo(totalCr) == 0) {

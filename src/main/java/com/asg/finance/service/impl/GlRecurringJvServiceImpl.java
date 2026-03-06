@@ -128,9 +128,9 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
         RecurringJvResponse response = new RecurringJvResponse();
         response.setTransactionPoid(header.getTransactionPoid());
         response.setDocRef(header.getDocRef());
-        response.setTransactionDate(header.getTransactionDate() != null ? Timestamp.valueOf(header.getTransactionDate().atStartOfDay()) : null);
+        response.setTransactionDate(header.getTransactionDate() != null ? header.getTransactionDate() : null);
         response.setNarration(header.getNarration());
-        response.setStartDate(header.getStartDate() != null ? Timestamp.valueOf(header.getStartDate().atStartOfDay()) : null);
+        response.setStartDate(header.getStartDate() != null ? header.getStartDate() : null);
         response.setTotalAmount(header.getTotalAmount());
         response.setNoOfMonths(header.getNoOfMonths());
         response.setMonthWiseAmt(header.getMonthWiseAmt());

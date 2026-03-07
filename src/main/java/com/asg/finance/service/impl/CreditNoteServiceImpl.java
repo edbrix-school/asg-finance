@@ -1862,15 +1862,15 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         dto.setCurrencyCode(entity.getCurrencyCode());
         dto.setCurrencyRate(entity.getCurrencyRate());
         dto.setPartyType(entity.getPartyType());
-//       if (entity.getPartyType() != null) {
-//           LovGetListDto party = lovService.getDetailsByCodeAndLovName(entity.getPartyType(), "CREDIT_PARTY_TYPE");
-//            dto.setPartyTypeDet(party);
-//       }
+       if (entity.getPartyType() != null) {
+           LovGetListDto party = lovService.getDetailsByCodeAndLovName(entity.getPartyType(), "CREDIT_PARTY_TYPE");
+            dto.setPartyTypeDet(party);
+       }
         dto.setPartyPoid(entity.getPartyPoid());
-//        if (entity.getPartyPoid() != null) {
-//            LovGetListDto party = lovService.getDetailsByPoidAndLovName(entity.getPartyPoid(), getLovNameForPartyType(entity.getPartyType()));
-//            dto.setPartyDet(party);
-//        }
+        if (entity.getPartyPoid() != null) {
+            LovGetListDto party = lovService.getDetailsByPoidAndLovName(entity.getPartyPoid(), getLovNameForPartyType(entity.getPartyType()));
+            dto.setPartyDet(party);
+        }
         dto.setRefType(entity.getRefType());
         dto.setPostingNarration(entity.getPostingNarration());
         dto.setRemarks(entity.getRemarks());
@@ -1879,14 +1879,14 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         dto.setDnInvoicePoid(entity.getDnInvoicePoid());
         dto.setFfInvoicePoid(entity.getFfInvoicePoid());
         dto.setFdaRefPoid(entity.getFdaRefPoid());
-//        dto.setFdaRefDet(
-//                entity.getFdaRefPoid() != null
-//                        ? lovService.getDetailsByPoidAndLovNameFast(
-//                        entity.getFdaRefPoid(),
-//                        "DN_FDA_REF_FOR_CN"
-//                )
-//                        : null
-//        );
+        dto.setFdaRefDet(
+                entity.getFdaRefPoid() != null
+                        ? lovService.getDetailsByPoidAndLovNameFast(
+                        entity.getFdaRefPoid(),
+                        "DN_FDA_REF_FOR_CN"
+                )
+                        : null
+        );
         dto.setDueDate(entity.getDueDate() != null ? entity.getDueDate() : LocalDate.now());
         dto.setCreditPeriod(entity.getCreditPeriod());
         dto.setBillRefType(entity.getBillRefType());
@@ -1910,17 +1910,17 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         dto.setDetRowId(entity.getDetRowId());
         dto.setType(entity.getType());
         dto.setGlPoid(entity.getGlPoid());
-        //dto.setGlDet(lovService.getDetailsByPoidAndLovNameFast(entity.getGlPoid(), "GL_MASTER_LEDGERS_CN"));
+        dto.setGlDet(lovService.getDetailsByPoidAndLovNameFast(entity.getGlPoid(), "GL_MASTER_LEDGERS_CN"));
         dto.setDrAmt(entity.getDrAmt());
         dto.setCrAmt(entity.getCrAmt());
         dto.setRemarks(entity.getRemarks());
         dto.setTaxPoid(entity.getTaxPoid());
-        //dto.setTaxDet(lovService.getDetailsByPoidAndLovNameFast(entity.getTaxPoid(), "CR_TAX_MASTER"));
+        dto.setTaxDet(lovService.getDetailsByPoidAndLovNameFast(entity.getTaxPoid(), "CR_TAX_MASTER"));
         dto.setTaxPercentage(entity.getTaxPercentage());
         dto.setTaxAmount(entity.getTaxAmount());
         dto.setTotalAmount(entity.getTotalAmount());
         dto.setCompanyPoid(entity.getCompanyPoid());
-        //dto.setCompanyDet(lovService.getDetailsByPoidAndLovNameFast(entity.getCompanyPoid(), "COMPANY"));
+        dto.setCompanyDet(lovService.getDetailsByPoidAndLovNameFast(entity.getCompanyPoid(), "COMPANY"));
         return dto;
     }
 

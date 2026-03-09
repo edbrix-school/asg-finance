@@ -478,36 +478,51 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         List<Long> toDelete = new ArrayList<>();
         List<LogRequestDto<ArGenReceiptPymtDetails>> logRequests = new ArrayList<>();
         
+        // Delete first
+        for (GeneralReceiptPaymentDto payment : payments) {
+            String action = payment.getActionType() != null ? payment.getActionType().toUpperCase() : "NOCHANGE";
+            if ("ISDELETED".equals(action) && payment.getDetRowId() != null) {
+                toDelete.add(payment.getDetRowId());
+                loggingService.logDelete(payment, docId, docKeyPoid);
+            }
+        }
+        
+        if (!toDelete.isEmpty()) {
+            pymtDetailsRepository.deleteByTransactionPoidAndDetRowIdIn(transactionPoid, toDelete);
+            entityManager.flush();
+        }
+        
         Long maxDetRowId = pymtDetailsRepository.findMaxDetRowIdByTransactionPoid(transactionPoid);
+        if (maxDetRowId == null) maxDetRowId = 0L;
         
         for (GeneralReceiptPaymentDto payment : payments) {
             String action = payment.getActionType() != null ? payment.getActionType().toUpperCase() : "NOCHANGE";
-            switch (action) {
-                case "ISCREATED":
-                    toSave.add(ArGenReceiptPymtDetails.builder()
-                            .transactionPoid(transactionPoid)
-                            .detRowId(++maxDetRowId)
-                            .pymtType(payment.getType())
-                            .amount(payment.getAmount())
-                            .chqCardno(payment.getChequeNo())
-                            .chqDate(payment.getChequeDate())
-                            .bankPoid(payment.getBankPoid())
-                            .accountPoid(payment.getAccountPoid())
-                            .accountName(payment.getAccountName())
-                            .accountNo(payment.getAccountNumber())
-                            .ttBankPoid(payment.getTtBankPoid())
-                            .ttRef(payment.getTtRef())
-                            .creditCardRef(payment.getCreditCardRef())
-                            .cardType(payment.getCardType())
-                            .cardPoid(payment.getCardPoid())
-                            .build());
-                    break;
-                    
-                case "ISUPDATED":
-                    ArGenReceiptPymtDetails existingPayment = pymtDetailsRepository
-                            .findByTransactionPoidAndDetRowId(transactionPoid, payment.getDetRowId())
-                            .orElseThrow(() -> new ResourceNotFoundException("Payment not found", "detRowId", payment.getDetRowId()));
-                    
+            if ("ISDELETED".equals(action)) continue;
+            
+            if ("ISCREATED".equals(action)) {
+                toSave.add(ArGenReceiptPymtDetails.builder()
+                        .transactionPoid(transactionPoid)
+                        .detRowId(++maxDetRowId)
+                        .pymtType(payment.getType())
+                        .amount(payment.getAmount())
+                        .chqCardno(payment.getChequeNo())
+                        .chqDate(payment.getChequeDate())
+                        .bankPoid(payment.getBankPoid())
+                        .accountPoid(payment.getAccountPoid())
+                        .accountName(payment.getAccountName())
+                        .accountNo(payment.getAccountNumber())
+                        .ttBankPoid(payment.getTtBankPoid())
+                        .ttRef(payment.getTtRef())
+                        .creditCardRef(payment.getCreditCardRef())
+                        .cardType(payment.getCardType())
+                        .cardPoid(payment.getCardPoid())
+                        .build());
+            } else if ("ISUPDATED".equals(action)) {
+                Optional<ArGenReceiptPymtDetails> existingPaymentOpt = pymtDetailsRepository
+                        .findByTransactionPoidAndDetRowId(transactionPoid, payment.getDetRowId());
+                
+                if (existingPaymentOpt.isPresent()) {
+                    ArGenReceiptPymtDetails existingPayment = existingPaymentOpt.get();
                     ArGenReceiptPymtDetails oldPayment = new ArGenReceiptPymtDetails();
                     BeanUtils.copyProperties(existingPayment, oldPayment);
                     
@@ -530,12 +545,25 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                     
                     String logDetailForUpdate = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", transactionPoid, payment.getDetRowId());
                     logRequests.add(new LogRequestDto<>(oldPayment, existingPayment, ArGenReceiptPymtDetails.class, docId, docKeyPoid, logDetailForUpdate));
-                    break;
-                    
-                case "ISDELETED":
-                    toDelete.add(payment.getDetRowId());
-                    loggingService.logDelete(payment, docId, docKeyPoid);
-                    break;
+                } else {
+                    toSave.add(ArGenReceiptPymtDetails.builder()
+                            .transactionPoid(transactionPoid)
+                            .detRowId(++maxDetRowId)
+                            .pymtType(payment.getType())
+                            .amount(payment.getAmount())
+                            .chqCardno(payment.getChequeNo())
+                            .chqDate(payment.getChequeDate())
+                            .bankPoid(payment.getBankPoid())
+                            .accountPoid(payment.getAccountPoid())
+                            .accountName(payment.getAccountName())
+                            .accountNo(payment.getAccountNumber())
+                            .ttBankPoid(payment.getTtBankPoid())
+                            .ttRef(payment.getTtRef())
+                            .creditCardRef(payment.getCreditCardRef())
+                            .cardType(payment.getCardType())
+                            .cardPoid(payment.getCardPoid())
+                            .build());
+                }
             }
         }
         
@@ -552,10 +580,6 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
             if (!logRequests.isEmpty()) {
                 loggingService.createLogBatch(logRequests);
             }
-        }
-
-        if (!toDelete.isEmpty()) {
-            pymtDetailsRepository.deleteByTransactionPoidAndDetRowIdIn(transactionPoid, toDelete);
         }
     }
 
@@ -946,6 +970,10 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
 
         if (request.getPayments() != null && !request.getPayments().isEmpty()) {
             BigDecimal paymentTotal = request.getPayments().stream()
+                    .filter(payment -> {
+                        String action = payment.getActionType();
+                        return action == null || !action.toUpperCase().equals("ISDELETED");
+                    })
                     .map(GeneralReceiptPaymentDto::getAmount)
                     .filter(amount -> amount != null)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);

@@ -11,6 +11,7 @@ import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.service.*;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.service.DocumentDeleteService;
+import com.asg.common.lib.utility.DateUtil;
 import com.asg.finance.repository.GLMasterRepository;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.finance.projection.CurrencyRateProjection;
@@ -30,6 +31,7 @@ import com.asg.finance.service.CostCenterBreakupService;
 import com.asg.finance.service.JournalVoucherService;
 import lombok.RequiredArgsConstructor;
 import net.sf.jasperreports.engine.JasperReport;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.transaction.annotation.Transactional;
@@ -94,15 +96,13 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         
         try {
             validateJournalVoucher(request);
-
-        String currentUser = getCurrentUser();
-        boolean isMultiCompany = Boolean.TRUE.equals(request.getMultiCompany());
+            boolean isMultiCompany = Boolean.TRUE.equals(request.getMultiCompany());
 
         BigDecimal bhdAmount = request.getBhdAmount() != null ? request.getBhdAmount() : 
                 (request.getCurrencyRate() != null ? request.getAmount().multiply(request.getCurrencyRate()) : request.getAmount());
 
         GlJournalVoucherHdr header = GlJournalVoucherHdr.builder()
-                .transactionDate(request.getTransactionDate())
+                .transactionDate(request.getTransactionDate() != null ? request.getTransactionDate() : DateUtil.getCurrentDateInUserTimeZone())
                 .groupPoid(getGroupId())
                 .companyPoid(getCompanyId())
                 .refType(request.getRefType())
@@ -116,24 +116,32 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                 .remarks(request.getRemarks())
                 .confidentialRemarks(request.getConfidentialRemarks())
                 .deleted(FLAG_NO)
-                .createdBy(currentUser)
-                .createdDate(LocalDateTime.now())
                 .build();
 
         header = glJournalVoucherHdrRepository.save(header);
         log.info("Journal Voucher header saved - TransactionPoid: {}, DocRef: {}", 
                 header.getTransactionPoid(), header.getDocRef());
-
-        if (REF_TYPE_GENERAL.equalsIgnoreCase(request.getRefType()) && request.getGlDetails() != null) {
+        if (REF_TYPE_GENERAL.equalsIgnoreCase(request.getRefType())
+                && request.getGlDetails() != null) {
             log.debug("Saving {} GL detail lines", request.getGlDetails().size());
+            request.getGlDetails().forEach(detail -> detail.setActionType("ISCREATED"));
             saveGlDetails(header, request.getGlDetails(), isMultiCompany,docId);
-        } else if (REF_TYPE_ASSET_DISPOSAL.equalsIgnoreCase(request.getRefType()) && request.getAssetDetails() != null) {
+        } else if (REF_TYPE_ASSET_DISPOSAL.equalsIgnoreCase(request.getRefType())
+                && request.getAssetDetails() != null) {
             log.debug("Saving {} asset disposal detail lines", request.getAssetDetails().size());
+            request.getAssetDetails().forEach(detail -> detail.setActionType("ISCREATED"));
             saveAssetDetails(header.getTransactionPoid(), request.getAssetDetails());
-        } else if (REF_TYPE_ASSET_CAPITALIZATION.equalsIgnoreCase(request.getRefType()) && request.getAssetCapitalization() != null) {
+        } else if (REF_TYPE_ASSET_CAPITALIZATION.equalsIgnoreCase(request.getRefType())
+                && request.getAssetCapitalization() != null) {
             log.debug("Saving {} asset capitalization detail lines", request.getAssetCapitalization().size());
+            if (request.getGlDetails() != null) {
+                request.getGlDetails().forEach(detail -> detail.setActionType("ISCREATED"));
+            }
+            request.getAssetCapitalization().forEach(detail -> detail.setActionType("ISCREATED"));
             saveCapitalizationDetails(header.getTransactionPoid(), request.getAssetCapitalization());
-            saveGlDetails(header, request.getGlDetails(), isMultiCompany,docId);
+            if (request.getGlDetails() != null) {
+                saveGlDetails(header, request.getGlDetails(), isMultiCompany,docId);
+            }
         }
 
         log.info("Journal Voucher created successfully - TransactionPoid: {}, DocRef: {}, RefType: {}", 
@@ -160,17 +168,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
     }
 
     private void validateJournalVoucher(JournalVoucherRequest request) {
-        String refType = request.getRefType();
-        if (refType == null || refType.isBlank()) {
-            throw new IllegalArgumentException("RefType is mandatory");
-        }
-        if (!REF_TYPE_GENERAL.equalsIgnoreCase(refType) && !REF_TYPE_ASSET_DISPOSAL.equalsIgnoreCase(refType) && !REF_TYPE_ASSET_CAPITALIZATION.equalsIgnoreCase(refType)) {
-            throw new IllegalArgumentException("RefType must be GENERAL, ASSET_DISPOSAL, or ASSET_CAPITALIZATION");
-        }
-
-        if (request.getTransactionDate() == null) {
-            throw new IllegalArgumentException("Transaction date is mandatory");
-        }
+        String refType = getString(request);
         if (request.getTransactionDate().isAfter(LocalDate.now())) {
             throw new IllegalArgumentException("Transaction date cannot be in the future");
         }
@@ -224,6 +222,20 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                 validateAssetDetailsForCapitalization(request.getAssetCapitalization());
             }
         }
+    }
+
+    private  String getString(JournalVoucherRequest request) {
+        String refType = request.getRefType();
+        if (refType == null || refType.isBlank()) {
+            throw new IllegalArgumentException("RefType is mandatory");
+        }
+        if (request.getTransactionDate() == null) {
+            throw new IllegalArgumentException("Transaction date is mandatory");
+        }
+        if (!REF_TYPE_GENERAL.equalsIgnoreCase(refType) && !REF_TYPE_ASSET_DISPOSAL.equalsIgnoreCase(refType) && !REF_TYPE_ASSET_CAPITALIZATION.equalsIgnoreCase(refType)) {
+            throw new IllegalArgumentException("RefType must be GENERAL, ASSET_DISPOSAL, or ASSET_CAPITALIZATION");
+        }
+        return refType;
     }
 
     private void validateGlDetails(List<JournalVoucherGlDetailDto> glDetails, boolean multiCompany) {
@@ -311,7 +323,6 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
     private void saveGlDetails(GlJournalVoucherHdr header, List<JournalVoucherGlDetailDto> glDetails, boolean multiCompany,String docId) {
         Long transactionPoid = header.getTransactionPoid();
         Long headerCompanyPoid = header.getCompanyPoid();
-        String currentUser = getCurrentUser();
 
         List<CostCenterBreakupRequestDto> costCenterRequestDtoList = new ArrayList<>();
         List<BillwiseBreakupRequestDto> billwiseRequestDtoList = new ArrayList<>();
@@ -353,8 +364,6 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                             .drAmt(dto.getDrAmt())
                             .crAmt(dto.getCrAmt())
                             .remarks(dto.getRemarks())
-                            .createdBy(currentUser)
-                            .createdDate(LocalDateTime.now())
                             .build();
                     glJournalVoucherDtlRepository.save(detail);
                     
@@ -385,8 +394,6 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                     detail.setDrAmt(dto.getDrAmt());
                     detail.setCrAmt(dto.getCrAmt());
                     detail.setRemarks(dto.getRemarks());
-                    detail.setLastModifiedBy(currentUser);
-                    detail.setLastModifiedDate(LocalDateTime.now());
                     glJournalVoucherDtlRepository.save(detail);
                     
                     String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", transactionPoid, dto.getDetRowId());
@@ -453,11 +460,11 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                         .mainDetRowId(detRowId)
                         .glPoid(glPoid)
                         .billDetRowId(dto.getBillDetRowId())
+                        .drAmt("Dr".equalsIgnoreCase(dto.getType()) ? dto.getAmount() : BigDecimal.ZERO)
+                        .crAmt("Cr".equalsIgnoreCase(dto.getType()) ? dto.getAmount() : BigDecimal.ZERO)
                         .billRefType(dto.getBillRefType())
                         .billRef(dto.getBillRef())
                         .billDueDate(dto.getBillDueDate())
-                        .drAmt("Dr".equalsIgnoreCase(dto.getType()) ? dto.getAmount() : BigDecimal.ZERO)
-                        .crAmt("Cr".equalsIgnoreCase(dto.getType()) ? dto.getAmount() : BigDecimal.ZERO)
                         .billRemarks(dto.getBillRemarks())
                         .loginUserPoid(getUserPoid())
                         .build())
@@ -471,8 +478,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         List<Long> toDelete = new ArrayList<>();
         List<LogRequestDto<GlJournalVoucherAssetDtl>> logRequests = new ArrayList<>();
         
-        List<GlJournalVoucherAssetDtl> existingList = glJournalVoucherAssetDtlRepository.findAll((root, query, cb) -> 
-                cb.equal(root.get("transactionPoid"), transactionPoid));
+        List<GlJournalVoucherAssetDtl> existingList = glJournalVoucherAssetDtlRepository.findByTransactionPoid(transactionPoid);
         Map<Long, GlJournalVoucherAssetDtl> existingMap = existingList.stream()
                 .collect(Collectors.toMap(GlJournalVoucherAssetDtl::getDetRowId, d -> d));
         
@@ -500,8 +506,6 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                             .scrapSoldDate(dto.getScrapSoldDate())
                             .scrapSoldValue(dto.getScrapSoldValue())
                             .remarks(dto.getRemarks())
-                            .createdBy(getCurrentUser())
-                            .createdDate(LocalDateTime.now())
                             .build();
                     toSave.add(newDetail);
                     break;
@@ -523,8 +527,6 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                     existing.setScrapSoldDate(dto.getScrapSoldDate());
                     existing.setScrapSoldValue(dto.getScrapSoldValue());
                     existing.setRemarks(dto.getRemarks());
-                    existing.setLastModifiedBy(getCurrentUser());
-                    existing.setLastModifiedDate(LocalDateTime.now());
                     toUpdate.add(existing);
                     String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", transactionPoid, dto.getSn());
                     logRequests.add(new LogRequestDto<>(oldDetail, existing, GlJournalVoucherAssetDtl.class, docId, transactionPoid.toString(), logDetail));
@@ -563,8 +565,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         List<Long> toDelete = new ArrayList<>();
         List<LogRequestDto<GlJournalFaCapitalization>> logRequests = new ArrayList<>();
         
-        List<GlJournalFaCapitalization> existingList = glJournalFaCapitalizationRepository.findAll((root, query, cb) -> 
-                cb.equal(root.get("transactionPoid"), transactionPoid));
+        List<GlJournalFaCapitalization> existingList = glJournalFaCapitalizationRepository.findByTransactionPoid(transactionPoid);
         Map<Long, GlJournalFaCapitalization> existingMap = existingList.stream()
                 .collect(Collectors.toMap(GlJournalFaCapitalization::getDetRowId, d -> d));
         
@@ -587,8 +588,6 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                             .assetType(dto.getAssetType())
                             .assetValue(dto.getAssetValue())
                             .remarks(dto.getRemarks())
-                            .createdBy(getCurrentUser())
-                            .createdDate(LocalDateTime.now())
                             .build();
                     toSave.add(newDetail);
                     break;
@@ -605,8 +604,6 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                     existing.setAssetType(dto.getAssetType());
                     existing.setAssetValue(dto.getAssetValue());
                     existing.setRemarks(dto.getRemarks());
-                    existing.setLastModifiedBy(getCurrentUser());
-                    existing.setLastModifiedDate(LocalDateTime.now());
                     toUpdate.add(existing);
                     String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", transactionPoid, dto.getSn());
                     logRequests.add(new LogRequestDto<>(oldDetail, existing, GlJournalFaCapitalization.class, docId, transactionPoid.toString(), logDetail));
@@ -643,14 +640,16 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
     public JournalVoucherResponse updateJournalVoucher(Long transactionPoid, JournalVoucherRequest request,String docId) {
         GlJournalVoucherHdr existing = glJournalVoucherHdrRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Journal Voucher", "POID", transactionPoid));
+
+
+        if (!existing.getRefType().equalsIgnoreCase(request.getRefType())) {
+            throw new IllegalArgumentException("RefType cannot be changed after creation");
+        }
         
         // Create a copy of the existing entity for logging
         GlJournalVoucherHdr oldEntity = new GlJournalVoucherHdr();
         BeanUtils.copyProperties(existing, oldEntity);
 
-        if (!existing.getRefType().equalsIgnoreCase(request.getRefType())) {
-            throw new IllegalArgumentException("RefType cannot be changed after creation");
-        }
 
         validateJournalVoucher(request);
 
@@ -658,7 +657,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         BigDecimal bhdAmount = request.getBhdAmount() != null ? request.getBhdAmount() : 
                 (request.getCurrencyRate() != null ? request.getAmount().multiply(request.getCurrencyRate()) : request.getAmount());
 
-        existing.setTransactionDate(request.getTransactionDate());
+        existing.setTransactionDate(request.getTransactionDate() != null ? request.getTransactionDate() : DateUtil.getCurrentDateInUserTimeZone());
         existing.setCurrencyCode(request.getCurrencyCode());
         existing.setCurrencyRate(request.getCurrencyRate());
         existing.setAmount(request.getAmount());
@@ -668,22 +667,21 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         existing.setMultiCompany(isMultiCompany ? FLAG_YES : FLAG_NO);
         existing.setRemarks(request.getRemarks());
         existing.setConfidentialRemarks(request.getConfidentialRemarks());
-        existing.setLastModifiedBy(getCurrentUser());
-        existing.setLastModifiedDate(LocalDateTime.now());
 
         glJournalVoucherHdrRepository.save(existing);
 
-        if (REF_TYPE_GENERAL.equalsIgnoreCase(request.getRefType())) {
+        if (REF_TYPE_GENERAL.equalsIgnoreCase(request.getRefType())
+                && request.getGlDetails() != null) {
             saveGlDetails(existing, request.getGlDetails(), isMultiCompany,docId);
-        } else if (REF_TYPE_ASSET_DISPOSAL.equalsIgnoreCase(request.getRefType())) {
-            glJournalVoucherAssetDtlRepository.deleteAll(glJournalVoucherAssetDtlRepository.findAll((root, query, cb) -> 
-                    cb.equal(root.get("transactionPoid"), transactionPoid)));
-            saveAssetDetails(transactionPoid, request.getAssetDetails());
-        } else if (REF_TYPE_ASSET_CAPITALIZATION.equalsIgnoreCase(request.getRefType())) {
-            glJournalFaCapitalizationRepository.deleteAll(glJournalFaCapitalizationRepository.findAll((root, query, cb) -> 
-                    cb.equal(root.get("transactionPoid"), transactionPoid)));
-            saveCapitalizationDetails(transactionPoid, request.getAssetCapitalization());
-            saveGlDetails(existing, request.getGlDetails(), isMultiCompany,docId);
+        } else if (REF_TYPE_ASSET_DISPOSAL.equalsIgnoreCase(request.getRefType())
+                && request.getAssetDetails() != null) {
+            saveAssetDetails(existing.getTransactionPoid(), request.getAssetDetails());
+        } else if (REF_TYPE_ASSET_CAPITALIZATION.equalsIgnoreCase(request.getRefType())
+                && request.getAssetCapitalization() != null) {
+            saveCapitalizationDetails(existing.getTransactionPoid(), request.getAssetCapitalization());
+            if (request.getGlDetails() != null) {
+                saveGlDetails(existing, request.getGlDetails(), isMultiCompany,docId);
+            }
         }
 
         // Log the update
@@ -764,12 +762,24 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         return PaginationUtil.wrapPage(page, raw.displayFields());
     }
 
+
+
+
+    @Override public JournalVoucherAssetDetailDto getAssetDepreciationDetails(Long faPoid) {
+        List<JournalVoucherAssetDetailDto> results = glJournalVoucherHdrRepository.fetchAssetDepreciationDetails(faPoid);
+        
+        if (results == null || results.isEmpty()) {
+            throw new ResourceNotFoundException("Asset", "FA_POID", faPoid);
+        }
+        
+        return results.get(0);
+    }
+
     @Override
     @Transactional
     public PostJournalVoucherResponse postJournalVoucher(Long transactionPoid, PostJournalVoucherRequest request,String documentId) {
         GlJournalVoucherHdr entity = glJournalVoucherHdrRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Journal Voucher", "POID", transactionPoid));
-
 
 
         if (REF_TYPE_GENERAL.equalsIgnoreCase(entity.getRefType())) {
@@ -786,8 +796,6 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                 documentId
         );
 
-        entity.setLastModifiedBy(getCurrentUser());
-        entity.setLastModifiedDate(LocalDateTime.now());
         glJournalVoucherHdrRepository.save(entity);
 
         return PostJournalVoucherResponse.builder()
@@ -820,25 +828,12 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
     }
 
     @Override
-    public JournalVoucherAssetDetailDto getAssetDepreciationDetails(Long faPoid) {
-        List<JournalVoucherAssetDetailDto> results = glJournalVoucherHdrRepository.fetchAssetDepreciationDetails(faPoid);
-        
-        if (results == null || results.isEmpty()) {
-            throw new ResourceNotFoundException("Asset", "FA_POID", faPoid);
-        }
-        
-        return results.get(0);
-    }
-
-    @Override
     @Transactional
     public void updateAssetDetail(Long transactionPoid, Long sn, UpdateAssetDetailRequest request) {
         // Validate process type
-        if (request.getProcess() != null && 
-            !PROCESS_SCRAP.equalsIgnoreCase(request.getProcess()) &&
-            !PROCESS_SOLD.equalsIgnoreCase(request.getProcess()) &&
-            !PROCESS_OBSOLETE.equalsIgnoreCase(request.getProcess()) &&
-            !PROCESS_NOT_APPLICABLE.equalsIgnoreCase(request.getProcess())) {
+        if (request.getProcess() != null && !PROCESS_SCRAP.equalsIgnoreCase(request.getProcess())
+                && !PROCESS_SOLD.equalsIgnoreCase(request.getProcess()) && !PROCESS_OBSOLETE.equalsIgnoreCase(request.getProcess())
+                && !PROCESS_NOT_APPLICABLE.equalsIgnoreCase(request.getProcess())) {
             throw new IllegalArgumentException("Invalid process type. Must be SCRAP, SOLD, OBSOLETE, or Not Applicable");
         }
 
@@ -853,8 +848,6 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         detail.setScrapSoldValue(request.getScrapSoldValue());
         detail.setScrapSoldDate(request.getScrapSoldDate());
         detail.setRemarks(request.getRemarks());
-        detail.setLastModifiedBy(getCurrentUser());
-        detail.setLastModifiedDate(LocalDateTime.now());
         glJournalVoucherAssetDtlRepository.save(detail);
 
         glJournalVoucherHdrRepository.updateAssetDetail(

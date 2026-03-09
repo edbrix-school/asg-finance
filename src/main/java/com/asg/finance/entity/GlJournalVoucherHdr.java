@@ -1,10 +1,8 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.entity.BaseEntity;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.Generated;
 
 import java.math.BigDecimal;
@@ -13,11 +11,12 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "GL_JOURNAL_VOUCHER_HDR")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class GlJournalVoucherHdr {
+public class GlJournalVoucherHdr extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -54,18 +53,6 @@ public class GlJournalVoucherHdr {
 
     @Column(name = "REMARKS", length = 500)
     private String remarks;
-
-    @Column(name = "CREATED_BY", length = 20)
-    private String createdBy;
-
-    @Column(name = "CREATED_DATE")
-    private LocalDateTime createdDate;
-
-    @Column(name = "LASTMODIFIED_BY", length = 20)
-    private String lastModifiedBy;
-
-    @Column(name = "LASTMODIFIED_DATE")
-    private LocalDateTime lastModifiedDate;
 
     @Column(name = "DELETED", length = 1)
     private String deleted;

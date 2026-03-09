@@ -5,7 +5,7 @@ import java.sql.CallableStatement;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Types;
-import java.util.Date;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -41,15 +41,15 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
 
 	@Override
 	public List<BankReconciliationResponse> callReconcileView(Long groupPoid, Long companyPoid, Long bankPoid,
-			Date dateFrom, Date dateTill, String chequeNo, String reconcileCheque, String brType) {
+			LocalDate dateFrom, LocalDate dateTill, String chequeNo, String reconcileCheque, String brType) {
 
 		StoredProcedureQuery sp = createSP("PROC_GL_BANK_RECONCILE_VIEW");
 
 		regIn(sp, "P_GROUP_POID", Long.class);
 		regIn(sp, "P_COMPANY_POID", Long.class);
 		regIn(sp, "P_BANK_POID", Long.class);
-		regIn(sp, "P_DATE_FROM", Date.class);
-		regIn(sp, "P_DATE_TILL", Date.class);
+		regIn(sp, "P_DATE_FROM", java.sql.Date.class);
+		regIn(sp, "P_DATE_TILL", java.sql.Date.class);
 		regIn(sp, "P_CHEQUE_NO", String.class);
 		regIn(sp, "P_RECONCILE_CHEQUE", String.class);
 		regIn(sp, "P_BR_TYPE", String.class);
@@ -60,8 +60,8 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
 		set(sp, "P_GROUP_POID", groupPoid);
 		set(sp, "P_COMPANY_POID", companyPoid);
 		set(sp, "P_BANK_POID", bankPoid);
-		set(sp, "P_DATE_FROM", dateFrom);
-		set(sp, "P_DATE_TILL", dateTill);
+		set(sp, "P_DATE_FROM", dateFrom != null ? java.sql.Date.valueOf(dateFrom) : null);
+		set(sp, "P_DATE_TILL", dateTill != null ? java.sql.Date.valueOf(dateTill) : null);
 		set(sp, "P_CHEQUE_NO", chequeNo);
 		set(sp, "P_RECONCILE_CHEQUE", reconcileCheque);
 		set(sp, "P_BR_TYPE", brType);
@@ -99,7 +99,7 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
 		regIn(sp, "P_TRANSACTION_COMPANY_POID", Long.class);
 		regIn(sp, "P_DOC_ID", String.class);
 		regIn(sp, "P_TRANSACTION_POID", Long.class);
-		regIn(sp, "P_TRANSACTION_DATE", Date.class);
+		regIn(sp, "P_TRANSACTION_DATE", java.sql.Date.class);
 		regIn(sp, "P_DOC_REF", String.class);
 		regIn(sp, "P_CHEQUE_REF", String.class);
 		regIn(sp, "P_DET_ROW_ID", Long.class);
@@ -109,7 +109,7 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
 		regIn(sp, "P_DR_AMT", Double.class);
 		regIn(sp, "P_CR_AMT", Double.class);
 		regIn(sp, "P_POSTED_BY", Long.class);
-		regIn(sp, "P_CLEARANCE_DATE", Date.class);
+		regIn(sp, "P_CLEARANCE_DATE", java.sql.Date.class);
 		regOut(sp, "P_RESULT", String.class);
 		regIn(sp, "p_user_auto", String.class);
 
@@ -130,7 +130,7 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
 			set(sp, "P_TRANSACTION_COMPANY_POID", dto.getTransactionCompanyPoid());
 			set(sp, "P_DOC_ID", dto.getDocId());
 			set(sp, "P_TRANSACTION_POID", dto.getTransactionPoid());
-			set(sp, "P_TRANSACTION_DATE", dto.getTransactionDate());
+			set(sp, "P_TRANSACTION_DATE", dto.getTransactionDate() != null ? java.sql.Date.valueOf(dto.getTransactionDate()) : null);
 			set(sp, "P_DOC_REF", dto.getDocRef());
 			set(sp, "P_CHEQUE_REF", dto.getChequeRef());
 			set(sp, "P_DET_ROW_ID", dto.getDetRowId());
@@ -140,7 +140,7 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
 			set(sp, "P_DR_AMT", dto.getDrAmt());
 			set(sp, "P_CR_AMT", dto.getCrAmt());
 			set(sp, "P_POSTED_BY", dto.getPostedBy());
-			set(sp, "P_CLEARANCE_DATE", dto.getClearanceDate());
+			set(sp, "P_CLEARANCE_DATE", dto.getClearanceDate() != null ? java.sql.Date.valueOf(dto.getClearanceDate()) : null);
 			set(sp, "p_user_auto", dto.getUserAuto());
 			sp.execute();
 			String output = outStr(sp, "P_RESULT");
@@ -248,7 +248,7 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
 	}
 
 	@Override
-	public String updateStatementDate(Long companyPoid, Long postedBy, Long bankPoid, Date statementDate) {
+	public String updateStatementDate(Long companyPoid, Long postedBy, Long bankPoid, LocalDate statementDate) {
 
 		if (!validateBank(bankPoid)) {
 			throw new ResourceNotFoundException("Bank", "bank poid", bankPoid);
@@ -259,13 +259,13 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
 		regIn(sp, 1, Long.class);
 		regIn(sp, 2, Long.class);
 		regIn(sp, 3, Long.class);
-		regIn(sp, 4, Date.class);
+		regIn(sp, 4, java.sql.Date.class);
 		regOut(sp, 5, String.class);
 
 		set(sp, 1, companyPoid);
 		set(sp, 2, postedBy);
 		set(sp, 3, bankPoid);
-		set(sp, 4, statementDate);
+		set(sp, 4, statementDate != null ? java.sql.Date.valueOf(statementDate) : null);
 
 		sp.execute();
 
@@ -324,8 +324,8 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
 		regIn(sp, "P_GROUP_POID", Long.class);
 		regIn(sp, "P_COMPANY_POID", Long.class);
 		regIn(sp, "P_BANK_POID", Long.class);
-		regIn(sp, "P_DATE_FROM", Date.class);
-		regIn(sp, "P_DATE_TILL", Date.class);
+		regIn(sp, "P_DATE_FROM", java.sql.Date.class);
+		regIn(sp, "P_DATE_TILL", java.sql.Date.class);
 		regIn(sp, "P_CHEQUE_NO", String.class);
 		regIn(sp, "P_RECONCILE_CHEQUE", String.class);
 		regIn(sp, "P_BR_TYPE", String.class);
@@ -468,24 +468,24 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
 		return null;
 	}
 
-	private Date getDate(Object[] row, int index) {
+	private LocalDate getDate(Object[] row, int index) {
 		if (row.length <= index || row[index] == null) {
 			return null;
 		}
 
 		Object val = row[index];
 
-		if (val instanceof Date) {
-			return (Date) val;
+		if (val instanceof java.sql.Date) {
+			return ((java.sql.Date) val).toLocalDate();
 		}
 
-		if (val instanceof java.sql.Date) {
-			return new Date(((java.sql.Date) val).getTime());
+		if (val instanceof java.sql.Timestamp) {
+			return ((java.sql.Timestamp) val).toLocalDateTime().toLocalDate();
 		}
 
 		if (val instanceof String s) {
 			try {
-				return java.sql.Date.valueOf(s);
+				return LocalDate.parse(s);
 			} catch (Exception e) {
 				return null;
 			}

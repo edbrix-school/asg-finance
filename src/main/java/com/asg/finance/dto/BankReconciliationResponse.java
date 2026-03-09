@@ -1,7 +1,7 @@
 package com.asg.finance.dto;
 
 import java.math.BigDecimal;
-import java.util.Date;
+import java.time.LocalDate;
 
 import lombok.Data;
 
@@ -12,7 +12,7 @@ public class BankReconciliationResponse {
 	private String docId; 
 	private String docId1; 
 	private Long transactionPoid; 
-	private Date transactionDate; 
+	private LocalDate transactionDate; 
 	private String docRef; 
 	private String chequeRef;
 	private Long detRowId;

@@ -2,7 +2,7 @@ package com.asg.finance.dto;
 
 import lombok.*;
 
-import java.sql.Date;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -14,7 +14,7 @@ import java.util.List;
 public class PdcChqBatchHdrResponseDto {
 
     private Long transactionPoid;
-    private Date transactionDate;
+    private LocalDate transactionDate;
     private Long groupPoid;
     private Long companyPoid;
     private String docRef;
@@ -24,7 +24,7 @@ public class PdcChqBatchHdrResponseDto {
     private String divisionCode;
     private Long bankPoid;
     private String chqStartNo;
-    private Date chqStartDate;
+    private LocalDate chqStartDate;
     private Double chqAmount;
     private Long noOfChqs;
     private Double totalAmount;

@@ -1,23 +1,21 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.entity.BaseEntity;
 import com.asg.finance.entity.key.TransactionDetailKey;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "GL_JOURNAL_VOUCHER_DTL")
 @IdClass(TransactionDetailKey.class)
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class GlJournalVoucherDtl {
+public class GlJournalVoucherDtl extends BaseEntity {
 
     @Id
     @Column(name = "TRANSACTION_POID", nullable = false)
@@ -44,18 +42,6 @@ public class GlJournalVoucherDtl {
 
     @Column(name = "REMARKS", length = 100)
     private String remarks;
-
-    @Column(name = "CREATED_BY", length = 20)
-    private String createdBy;
-
-    @Column(name = "CREATED_DATE")
-    private LocalDateTime createdDate;
-
-    @Column(name = "LASTMODIFIED_BY", length = 20)
-    private String lastModifiedBy;
-
-    @Column(name = "LASTMODIFIED_DATE")
-    private LocalDateTime lastModifiedDate;
 
     @Column(name = "CURRENCY_CODE", length = 20)
     private String currencyCode;

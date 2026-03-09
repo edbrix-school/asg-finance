@@ -43,7 +43,6 @@ public class DebitNoteController {
 
     private final DebitNoteService debitNoteService;
     private final LoggingService loggingService;
-
     // -------------------------------------------------------
     // CREATE
     // -------------------------------------------------------
@@ -128,7 +127,8 @@ public class DebitNoteController {
             )
             @Valid @RequestBody DebitNoteHeaderDto dto
     ) {
-        return success("Debit Note created successfully", debitNoteService.createDebitNote(dto));
+        DebitNoteHeaderDto response = debitNoteService.createDebitNote(dto);
+        return success("Debit Note created successfully", response);
     }
 
     // -------------------------------------------------------

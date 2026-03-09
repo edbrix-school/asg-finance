@@ -807,30 +807,29 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         }
 
         if (isCashToCheque) {
+
             if (dto.getInDtls() == null || dto.getInDtls().isEmpty()) {
                 throw new ValidationException("No Detail present in cheque conversion TO");
             }
-            for (GlChequeCashConvertInDtlDto in : dto.getInDtls()) {
-                String inVt = in.getVoucherType() == null ? null : in.getVoucherType().trim();
-                if (StringUtils.isBlank(inVt) || StringUtils.isBlank(outVoucherType)) {
-                    throw new ValidationException("Voucher Type should be same..");
-                }
-                if (!inVt.equalsIgnoreCase(outVoucherType)) {
-                    throw new ValidationException("Voucher Type should be same..");
-                }
-            }
-            BigDecimal inTotal = dto.getInDtls().stream()
+
+            BigDecimal chequeTotal = dto.getInDtls().stream()
                     .map(i -> Optional.ofNullable(i.getAmount()).orElse(BigDecimal.ZERO))
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
-            // Cash-to-cheque: out = cash (source), in = cheques (destination). Require outTotal = inTotal (with rounding tolerance).
-            if (outTotal.compareTo(inTotal) != 0) {
-                BigDecimal roundingLimit = getRoundingLimitParam();
-                BigDecimal difference = outTotal.subtract(inTotal).abs();
-                if (difference.compareTo(roundingLimit) > 0) {
-                    throw new ValidationException(
-                            "Cash Amount (" + outTotal + ") and Cheque Amount (" + inTotal + ") are not matching...");
-                }
+
+            BigDecimal cashReceived = Optional.ofNullable(dto.getCash()).orElse(BigDecimal.ZERO);
+
+            BigDecimal calculated = chequeTotal.add(cashReceived);
+
+            BigDecimal difference = outTotal.subtract(calculated).abs();
+
+            BigDecimal roundingLimit = getRoundingLimitParam();
+
+            if (difference.compareTo(roundingLimit) > 0) {
+                throw new ValidationException(
+                        "Cash Amount (" + outTotal + ") and Cheque Amount (" + chequeTotal + ") are not matching...");
             }
+
+            dto.setRoundingAmt(difference);
         }
 
         validateChequeDatesForInDetails(dto.getInDtls());

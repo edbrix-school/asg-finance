@@ -15,6 +15,7 @@ import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.finance.service.ApPurchaseServiceJournal;
 import com.asg.finance.service.BillwiseBreakupService;
 import com.asg.finance.service.CostCenterBreakupService;
+import com.asg.finance.service.GlPostingService;
 import net.sf.jasperreports.engine.JasperReport;
 import javax.sql.DataSource;
 import com.asg.finance.dto.*;
@@ -69,6 +70,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
     private final LoggingService loggingService;
     private final SupplierMasterRepository supplierMasterRepository;
     private final GLMasterRepository glMasterRepository;
+    private final GlPostingService glPostingService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -452,6 +454,15 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         // Log the creation
         String key = transactionPoid.toString();
         loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, documentId, key);
+
+        repository.flush();
+        apPurchaseInvoiceItemDtlRepository.flush();
+        apPurchaseInvoiceGlDtlRepository.flush();
+        apPurchaseInvoiceAssetDtlRepository.flush();
+        apPurchaseInvRjvDetailsRepository.flush();
+        purchaseInvoiceChargeDtlRepository.flush();
+
+        glPostingService.performGlPosting(documentId, transactionPoid, savedApPurchaseInvoiceHdrEntity.getDocRef());
 
         return fetchApPurchaseInvoiceHdr(transactionPoid);
     }
@@ -1459,6 +1470,9 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         String key = savedEntity.getTransactionPoid().toString();
         loggingService.logChanges(oldEntity, savedEntity, ApPurchaseInvoiceHdrEntity.class,
                 UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+
+        glPostingService.performGlPosting(UserContext.getDocumentId(), savedEntity.getTransactionPoid(), savedEntity.getDocRef());
+
         return fetchApPurchaseInvoiceHdr(savedEntity.getTransactionPoid());
     }
 

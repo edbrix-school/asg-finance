@@ -10,6 +10,7 @@ import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.utility.DateUtil;
 import com.asg.finance.dto.*;
 import com.asg.finance.entity.PdcBatchExcelUploadTemp;
 import com.asg.finance.entity.PdcChqBatchDtlEntity;
@@ -84,7 +85,7 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
         PdcChqBatchHdrEntity oldEntity = new PdcChqBatchHdrEntity();
         BeanUtils.copyProperties(hdr, oldEntity);
 
-        hdr.setTransactionDate(dto.getTransactionDate());
+        hdr.setTransactionDate(dto.getTransactionDate() != null ? dto.getTransactionDate() : DateUtil.getCurrentDateInUserTimeZone());
         hdr.setGroupPoid(dto.getGroupPoid());
         hdr.setCompanyPoid(dto.getCompanyPoid());
         hdr.setPayGlPoid(dto.getPayGlPoid());
@@ -93,7 +94,7 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
         hdr.setDivisionCode(dto.getDivisionCode());
         hdr.setBankPoid(dto.getBankPoid());
         hdr.setChqStartNo(dto.getChqStartNo());
-        hdr.setChqStartDate(dto.getChqStartDate());
+        hdr.setChqStartDate(dto.getChqStartDate() != null ? dto.getChqStartDate() : DateUtil.getCurrentDateInUserTimeZone());
         hdr.setChqAmount(dto.getChqAmount());
         hdr.setNoOfChqs(dto.getNoOfChqs());
         hdr.setTotalAmount(dto.getChqAmount() * dto.getNoOfChqs());
@@ -104,8 +105,6 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
         hdr.setCostPoid(dto.getCostPoid());
         hdr.setPrePrinted(dto.getPrePrinted());
         hdr.setAccountPayee(dto.getAccountPayee());
-        hdr.setLastModifiedBy(getCurrentUser());
-        hdr.setLastModifiedDate(LocalDateTime.now());
         hdrRepo.save(hdr);
 
         dtlRepo.deleteByTransactionPoid(transactionPoid);
@@ -179,7 +178,7 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
     private PdcChqBatchHdrEntity mapHeaderDtoToEntity(PdcChqBatchHdrRequestDto dto) {
 
         return PdcChqBatchHdrEntity.builder()
-                .transactionDate(dto.getTransactionDate())
+                .transactionDate(dto.getTransactionDate() != null ? dto.getTransactionDate() : DateUtil.getCurrentDateInUserTimeZone())
                 .groupPoid(dto.getGroupPoid())
                 .companyPoid(dto.getCompanyPoid())
                 .payGlPoid(dto.getPayGlPoid())
@@ -188,7 +187,7 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
                 .divisionCode(dto.getDivisionCode())
                 .bankPoid(dto.getBankPoid())
                 .chqStartNo(dto.getChqStartNo())
-                .chqStartDate(dto.getChqStartDate())
+                .chqStartDate(dto.getChqStartDate() != null ? dto.getChqStartDate() : DateUtil.getCurrentDateInUserTimeZone())
                 .chqAmount(dto.getChqAmount())
                 .noOfChqs(dto.getNoOfChqs())
                 .totalAmount(dto.getChqAmount() * dto.getNoOfChqs())
@@ -201,8 +200,6 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
                 .confidentialRemarks(dto.getConfidentialRemarks())
                 .accountPayee(dto.getAccountPayee())
                 .deleted("N")
-                .createdBy(getCurrentUser())
-                .createdDate(LocalDateTime.now())
                 .build();
     }
 
@@ -267,7 +264,7 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
     }
 
     private void updateDetailEntity(PdcChqBatchDtlEntity entity, PdcChqBatchDtlRequestDto dto) {
-        entity.setPdcChqDate(dto.getPdcChqDate());
+        entity.setPdcChqDate(dto.getPdcChqDate() != null ? dto.getPdcChqDate() : DateUtil.getCurrentDateInUserTimeZone());
         entity.setChqNumber(dto.getChqNumber());
         entity.setChqAmount(dto.getChqAmount());
         entity.setRemarks(dto.getRemarks());
@@ -284,8 +281,6 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
         entity.setDrAmt3(dto.getDrAmt3());
         entity.setCrGlPoid(dto.getCrGlPoid());
         entity.setCrAmt(dto.getCrAmt());
-        entity.setLastModifiedBy(getCurrentUser());
-        entity.setLastModifiedDate(LocalDateTime.now());
     }
 
     private PdcChqBatchDtlEntity mapDtlDtoToEntity(
@@ -296,7 +291,7 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
         return PdcChqBatchDtlEntity.builder()
                 .transactionPoid(transactionPoid)
                 .detRowId(detRowId)
-                .pdcChqDate(dto.getPdcChqDate())
+                .pdcChqDate(dto.getPdcChqDate() != null ? dto.getPdcChqDate() : DateUtil.getCurrentDateInUserTimeZone())
                 .chqNumber(dto.getChqNumber())
                 .chqAmount(dto.getChqAmount())
                 .remarks(dto.getRemarks())
@@ -313,10 +308,6 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
                 .drAmt3(dto.getDrAmt3())
                 .crGlPoid(dto.getCrGlPoid())
                 .crAmt(dto.getCrAmt())
-                .createdBy(getCurrentUser())
-                .createdDate(LocalDateTime.now())
-                .lastModifiedBy(getCurrentUser())
-                .lastModifiedDate(LocalDateTime.now())
                 .build();
     }
 
@@ -437,10 +428,7 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
 
         return pdcBatchCreationRepository.runBatchCreationXL(request);
     }
-
-    private String getCurrentUser() {
-        return UserContext.getUserId() != null ? String.valueOf(UserContext.getUserId()) : "SYSTEM";
-    }
+    
 
     public String uploadExcel(MultipartFile file) throws Exception {
 

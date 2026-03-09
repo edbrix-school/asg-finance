@@ -1,10 +1,10 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "GL_PDC_CHQ_BATCH_DTL")
@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class PdcChqBatchDtlEntity {
+public class PdcChqBatchDtlEntity extends BaseEntity {
     @Id
     @Column(name = "TRANSACTION_POID", nullable = false)
     private Long transactionPoid;
@@ -34,18 +34,6 @@ public class PdcChqBatchDtlEntity {
 
     @Column(name = "REMARKS", length = 200)
     private String remarks;
-
-    @Column(name = "CREATED_BY", length = 20)
-    private String createdBy;
-
-    @Column(name = "CREATED_DATE")
-    private LocalDateTime createdDate;
-
-    @Column(name = "LASTMODIFIED_BY", length = 20)
-    private String lastModifiedBy;
-
-    @Column(name = "LASTMODIFIED_DATE")
-    private LocalDateTime lastModifiedDate;
 
     @Column(name = "BANK_PAYMENT_POID", length = 50)
     private String bankPaymentPoid;

@@ -156,7 +156,7 @@ public class BankDepositVoucherProcRepositoryImpl implements BankDepositVoucherP
     private void setBankDetailsForDto(BankDepositVoucherDtlDto dto) {
         if (dto.getBankPoid() != null) {
             try {
-                dto.setBankDet(lovService.getDetailsByPoidAndLovName(dto.getBankPoid(), "BANK_MASTER_FOR_BDV"));
+                dto.setBankDet(lovService.getDetailsByPoidAndLovName(dto.getBankPoid(), "CUSTOMER_BANK_MASTER"));
             } catch (Exception e) {
                 log.warn("Failed to fetch bank details for bankPoid: {}", dto.getBankPoid(), e);
             }

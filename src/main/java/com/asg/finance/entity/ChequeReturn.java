@@ -4,6 +4,8 @@ import com.asg.common.lib.annotation.AuditIgnore;
 import com.asg.common.lib.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.time.LocalDate;
 import java.util.Date;
 @Getter
 @Setter
@@ -21,9 +23,8 @@ public class ChequeReturn extends BaseEntity {
     private Long transactionPoid;
 
     @AuditIgnore
-    @Temporal(TemporalType.DATE)
     @Column(name = "TRANSACTION_DATE")
-    private Date transactionDate;
+    private LocalDate transactionDate;
 
     @Column(name = "GROUP_POID")
     @AuditIgnore

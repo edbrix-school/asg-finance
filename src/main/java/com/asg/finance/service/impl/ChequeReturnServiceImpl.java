@@ -12,6 +12,7 @@ import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.utility.DateUtil;
 import com.asg.finance.dto.ChequeReturnEditRequest;
 import com.asg.finance.dto.ChequeReturnLoadResponseDto;
 import com.asg.finance.dto.ChequeReturnRequest;
@@ -79,10 +80,9 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
                 .groupPoid(UserContext.getGroupPoid())
                 .companyPoid(UserContext.getCompanyPoid())
                 .transactionDate(
-                        request.getChequeHeader().getTransactionDate() != null
-                                ? Date.from(request.getChequeHeader().getTransactionDate().atStartOfDay(ZoneId.systemDefault()).toInstant())
-                                : dbDate
-                )
+                        (request.getChequeHeader() != null && request.getChequeHeader().getTransactionDate() != null)
+                                ? request.getChequeHeader().getTransactionDate()
+                                : DateUtil.getCurrentDateInUserTimeZone()  )
                 .docRef(request.getChequeHeader().getDocRef())
                 .chequeNumber(request.getChequeHeader().getChequeNumber())
                 .closeDetail(request.getChequeHeader().getCloseDetail())
@@ -166,10 +166,9 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
         header.setStatus(defaultStatus(request.getChequeHeader().getStatus()));
         header.setRemarks(request.getChequeHeader().getRemarks());
         header.setTransactionDate(
-                request.getChequeHeader().getTransactionDate() != null
-                        ? Date.from(request.getChequeHeader().getTransactionDate().atStartOfDay(ZoneId.systemDefault()).toInstant())
-                        : header.getTransactionDate()
-        );
+                (request.getChequeHeader() != null && request.getChequeHeader().getTransactionDate() != null)
+                        ? request.getChequeHeader().getTransactionDate()
+                        : DateUtil.getCurrentDateInUserTimeZone());
         header.setChequeNumber(request.getChequeHeader().getChequeNumber());
         header.setReceiptNumber(request.getChequeHeader().getReceiptNumber());
         header.setCloseDetail(request.getChequeHeader().getCloseDetail());
@@ -311,9 +310,7 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
                         .transactionPoid(header.getTransactionPoid())
                         .status(header.getStatus())
                         .remarks(header.getRemarks())
-                        .transactionDate(header.getTransactionDate() != null ?
-                                new java.sql.Timestamp(header.getTransactionDate().getTime())
-                                        .toInstant().atZone(ZoneId.systemDefault()).toLocalDate() : null)
+                        .transactionDate(header.getTransactionDate())
                         .docRef(header.getDocRef())
                         .chequeNumber(header.getChequeNumber())
                         .receiptNumber(header.getReceiptNumber())
@@ -342,8 +339,7 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
                 transactionPoid,
                 "GL_CHEQUE_RETURN_HDR",
                 "TRANSACTION_POID",
-                deleteReasonDto,
-                null
+                deleteReasonDto,existing.getTransactionDate()
         );
     }
 

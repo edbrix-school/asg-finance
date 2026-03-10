@@ -356,7 +356,7 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
 
     private LovGetListDto setBankDet(GlBankDepositVoucherDtl entity) {
         if (entity.getBankPoid() != null) {
-            return lovService.getDetailsByPoidAndLovName(entity.getBankPoid(),"BANK_MASTER_FOR_BDV");
+            return lovService.getDetailsByPoidAndLovName(entity.getBankPoid(),"CUSTOMER_BANK_MASTER");
         }
         return  null;
     }

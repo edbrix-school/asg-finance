@@ -578,8 +578,26 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
             e.setType(g.getType());
             e.setCompanyPoid(g.getCompanyPoid());
             e.setGlPoid(g.getGlPoid());
-            e.setDrAmount(g.getDrAmount());
-            e.setCrAmount(g.getCrAmount());
+            BigDecimal amount = BigDecimal.ZERO;
+
+            if (g.getDrAmount() != null) {
+                amount = g.getDrAmount();
+            } else if (g.getCrAmount() != null) {
+                amount = g.getCrAmount();
+            }
+
+            if ("DR".equalsIgnoreCase(g.getType())) {
+
+                e.setDrAmount(amount);
+                e.setCrAmount(BigDecimal.ZERO);
+
+            } else if ("CR".equalsIgnoreCase(g.getType())) {
+
+                e.setCrAmount(amount);
+                e.setDrAmount(BigDecimal.ZERO);
+            }
+
+            e.setTotalAmount(g.getTotalAmount());
             e.setRefDocId(g.getRefDocId());
             e.setRefDocPoid(g.getRefDocPoid());
             e.setDescription(g.getDescription());
@@ -595,7 +613,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
             e.setTaxPoid(g.getTaxPoid());
             e.setTaxPercentage(g.getTaxPercentage());
             e.setTaxAmount(g.getTaxAmount());
-            e.setTotalAmount(g.getTotalAmount());
+
 
             list.add(e);
 
@@ -623,10 +641,9 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                     dto1.setBillRefType(popup.getBillRefType());
                     dto1.setBillRef(popup.getBillRef());
                     dto1.setBillDueDate(popup.getBillDueDate());
-                    BigDecimal amount =
-                            popup.getAmount() == null
-                                    ? BigDecimal.ZERO
-                                    : popup.getAmount();
+                    amount = g.getDrAmount() != null
+                            ? g.getDrAmount()
+                            : g.getCrAmount();
 
                     if ("DR".equalsIgnoreCase(g.getType())) {
 
@@ -2325,11 +2342,19 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
         for (ApPurchaseInvoiceGlDtlEntity r : rows) {
 
-            totalDr = totalDr.add(
-                    r.getDrAmount() == null ? BigDecimal.ZERO : r.getDrAmount());
+            BigDecimal rowAmount =
+                    r.getTotalAmount() != null
+                            ? r.getTotalAmount()
+                            : BigDecimal.ZERO;
 
-            totalCr = totalCr.add(
-                    r.getCrAmount() == null ? BigDecimal.ZERO : r.getCrAmount());
+            if ("DR".equalsIgnoreCase(r.getType())) {
+
+                totalDr = totalDr.add(rowAmount);
+
+            } else if ("CR".equalsIgnoreCase(r.getType())) {
+
+                totalCr = totalCr.add(rowAmount);
+            }
         }
 
         BigDecimal diff = totalDr.subtract(totalCr);

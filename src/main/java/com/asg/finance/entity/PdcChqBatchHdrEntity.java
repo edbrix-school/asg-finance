@@ -1,12 +1,11 @@
 package com.asg.finance.entity;
 
 
+import com.asg.common.lib.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.sql.Date;
-import java.time.LocalDateTime;
-
+import java.time.LocalDate;
 @Entity
 @Table(
         name = "GL_PDC_CHQ_BATCH_HDR",
@@ -27,7 +26,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class PdcChqBatchHdrEntity {
+public class PdcChqBatchHdrEntity extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "TRANSACTION_POID", nullable = false)
@@ -35,7 +34,7 @@ public class PdcChqBatchHdrEntity {
 
 
     @Column(name = "TRANSACTION_DATE")
-    private Date transactionDate;
+    private LocalDate transactionDate;
 
     @Column(name = "GROUP_POID")
     private Long groupPoid;
@@ -66,7 +65,7 @@ public class PdcChqBatchHdrEntity {
 
 
     @Column(name = "CHQ_START_DATE")
-    private Date chqStartDate;
+    private LocalDate chqStartDate;
 
     @Column(name = "CHQ_AMOUNT")
     private Double chqAmount;
@@ -79,18 +78,6 @@ public class PdcChqBatchHdrEntity {
 
     @Column(name = "NARRATION", length = 1000)
     private String narration;
-
-    @Column(name = "CREATED_BY", length = 20)
-    private String createdBy;
-
-    @Column(name = "CREATED_DATE")
-    private LocalDateTime createdDate;
-
-    @Column(name = "LASTMODIFIED_BY", length = 20)
-    private String lastModifiedBy;
-
-    @Column(name = "LASTMODIFIED_DATE")
-    private LocalDateTime lastModifiedDate;
 
     @Column(name = "DELETED", length = 1)
     private String deleted;

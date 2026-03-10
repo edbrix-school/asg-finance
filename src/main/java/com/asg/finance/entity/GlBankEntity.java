@@ -4,6 +4,7 @@ import com.asg.common.lib.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 
@@ -62,12 +63,10 @@ public class GlBankEntity extends BaseEntity {
     private BigDecimal sellingRate;
 
     @Column(name = "PERIOD_START")
-    //@Temporal(TemporalType.DATE)
-    private LocalDateTime periodStart;
+    private LocalDate periodStart;
 
     @Column(name = "PERIOD_END")
-    //@Temporal(TemporalType.DATE)
-    private LocalDateTime periodEnd;
+    private LocalDate periodEnd;
 
     @Column(name = "CARD_COMMISION", precision = 19, scale = 2)
     private BigDecimal cardCommision;
@@ -103,8 +102,7 @@ public class GlBankEntity extends BaseEntity {
     private String onlineFileTt;
 
     @Column(name = "BANK_STATEMENT_DATE")
-    //@Temporal(TemporalType.DATE)
-    private LocalDateTime bankStatementDate;
+    private LocalDate bankStatementDate;
 
     @Column(name = "CURRENCY_RATE", precision = 19, scale = 2)
     private BigDecimal currencyRate;

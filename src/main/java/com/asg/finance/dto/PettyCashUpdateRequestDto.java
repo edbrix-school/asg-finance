@@ -9,7 +9,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.util.Date;
+import java.time.LocalDate;
 import java.util.List;
 
 @Data
@@ -18,8 +18,8 @@ import java.util.List;
 @Builder
 public class PettyCashUpdateRequestDto implements PettyCashRequestBase {
 
-    @JsonFormat
-    private Date transactionDate;
+
+    private LocalDate transactionDate;
 
     private String currencyCode;
     private BigDecimal currencyRate;
@@ -44,8 +44,8 @@ public class PettyCashUpdateRequestDto implements PettyCashRequestBase {
 
     private String ffRef;
 
-    @JsonFormat
-    private Date settledDate;
+
+    private LocalDate settledDate;
 
     private String remarks;
 

@@ -377,7 +377,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                 while (rs != null && rs.next()) {
                     UniversalChargeDetailDto dto = new UniversalChargeDetailDto();
                     dto.setChargePoid(rs.getLong("CHARGE_POID"));
-                    dto.setChargeAmount(rs.getBigDecimal("TOTAL_AMOUNT"));
+                    dto.setChargeAmount(rs.getBigDecimal("INV_AMOUNT"));
                     dto.setChargeCostAmount(rs.getBigDecimal("CHARGE_COST_AMOUNT"));
                     dto.setTaxPoid(rs.getLong("TAX_POID"));
                     dto.setTaxPercentage(rs.getBigDecimal("TAX_PERCENTAGE"));
@@ -426,7 +426,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                      */
                     UniversalChargeDetailDto dto = new UniversalChargeDetailDto();
                     dto.setChargePoid(rs.getLong("CHARGE_POID"));
-                    dto.setChargeAmount(rs.getBigDecimal("TOTAL_AMOUNT"));
+                    dto.setChargeAmount(rs.getBigDecimal("INV_AMOUNT"));
                     dto.setChargeCostAmount(rs.getBigDecimal("CHARGE_COST_AMOUNT"));
                     dto.setTaxPoid(rs.getLong("TAX_POID"));
                     dto.setTaxPercentage(rs.getBigDecimal("TAX_PERCENTAGE"));
@@ -2163,7 +2163,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
                 if (billwiseResponse != null && billwiseResponse.getLoadBillwiseBreakupResponseDtoList() != null) {
                     List<BillwiseBreakupPopupRequestDto> billwiseList = billwiseResponse.getLoadBillwiseBreakupResponseDtoList().stream()
-                            .filter(item -> item.getMainDetRowId() != null && item.getMainDetRowId().equals(glDto.getDetRowId()))
+                            .filter(item -> item.getMainDetRowId() != null && glDto.getType().equalsIgnoreCase("DR")?(item.getDrAmt() != null && item.getDrAmt().compareTo(BigDecimal.ZERO) > 0):(item.getCrAmt() != null && item.getCrAmt().compareTo(BigDecimal.ZERO) > 0))
                             .map(item -> {
                                 BillwiseBreakupPopupRequestDto popupDto = new BillwiseBreakupPopupRequestDto();
                                 popupDto.setBillDetRowId(item.getBillDetRowId());
@@ -2194,7 +2194,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                                 popupDto.setCostPoid(item.getCostPoid());
                                 popupDto.setAmount(item.getAmount() != null ? BigDecimal.valueOf(item.getAmount()) : null);
                                 if (StringUtils.isNotEmpty(item.getCostPoid()) && StringUtils.isNotEmpty(item.getCostGroup())) {
-                                    popupDto.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(Long.valueOf(item.getCostPoid()), item.getCostGroup()));
+                                    try {
+                                        popupDto.setCostCenterDetails(lovService.getDetailsByCodeAndLovName(item.getCostPoid(), item.getCostGroup()));
+                                    } catch (Exception e) {
+                                        log.warn("Failed to get cost center details for costPoid: {}, costGroup: {}", item.getCostPoid(), item.getCostGroup());
+                                    }
                                 }
                                 return popupDto;
                             })
@@ -2271,11 +2275,14 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         BigDecimal totalCr = BigDecimal.ZERO;
 
         for (CreditNoteGLDetailDto dto : glDetails) {
-            if (dto.getDrAmt() != null)
+            if (dto.getType().equals("DR") && dto.getDrAmt() != null) {
                 totalDr = totalDr.add(dto.getDrAmt());
-
-            if (dto.getCrAmt() != null)
+                totalDr = totalDr.add(dto.getTaxAmount());
+            }
+            if (dto.getType().equals("CR") && dto.getCrAmt() != null) {
                 totalCr = totalCr.add(dto.getCrAmt());
+                totalCr = totalCr.add(dto.getTaxAmount());
+            }
         }
 
         if (totalDr.compareTo(totalCr) == 0) {
@@ -2319,6 +2326,48 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                         .collect(Collectors.toList());
 
         dto.setChargeDetails(filtered);
+    }
+
+    @Override
+    public ChargeTaxDataDto getChargeTaxData(String partyType, Long partyPoid, Long chargePoid) {
+        try {
+            return executeGetChargeTaxData(partyType, partyPoid, chargePoid);
+        } catch (SQLException e) {
+            log.error("Error fetching charge tax data for partyType: {}, partyPoid: {}, chargePoid: {}", 
+                    partyType, partyPoid, chargePoid, e);
+            throw new RuntimeException("Failed to fetch charge tax data: " + e.getMessage(), e);
+        }
+    }
+
+    private ChargeTaxDataDto executeGetChargeTaxData(String partyType, Long partyPoid, Long chargePoid) throws SQLException {
+        String sql = "BEGIN PROC_GET_CHARGE_TAX_PER_V3(?, ?, ?, ?, ?, ?); END;";
+        try (Connection conn = dataSource.getConnection();
+             CallableStatement cs = conn.prepareCall(sql)) {
+            cs.setLong(1, UserContext.getCompanyPoid());
+            cs.setTimestamp(2, Timestamp.valueOf(LocalDateTime.now()));
+            cs.setString(3, partyType);
+            cs.setLong(4, partyPoid);
+            cs.setLong(5, chargePoid);
+            cs.registerOutParameter(6, OracleTypes.CURSOR);
+            cs.execute();
+
+            try (ResultSet rs = (ResultSet) cs.getObject(6)) {
+                if (rs != null && rs.next()) {
+                    return ChargeTaxDataDto.builder()
+                            .taxPoid(rs.getLong("TAX_POID"))
+                            .taxDet(taxMasterRepository.findByTaxPoid(rs.getLong("TAX_POID"))
+                                    .map(tm -> new LovGetListDto(tm.getTaxPoid(), tm.getTaxCode(), tm.getTaxName(), tm.getTaxPoid(), tm.getTaxName(), tm.getSeqNo(), null))
+                                    .orElse(null))
+                            .percentage(rs.getBigDecimal("PERCENTAGE"))
+                            .build();
+                }
+            }
+
+            return ChargeTaxDataDto.builder()
+                    .taxPoid(0L)
+                    .percentage(BigDecimal.ZERO)
+                    .build();
+        }
     }
 
 }

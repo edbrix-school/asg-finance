@@ -11,6 +11,7 @@ import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.common.lib.utility.ASGHelperUtils;
+import com.asg.finance.client.GlPostingServiceClient;
 import com.asg.finance.dto.*;
 import com.asg.finance.entity.ArDebitNoteChargeDtl;
 import com.asg.finance.entity.ArDebitNoteDtl;
@@ -24,6 +25,7 @@ import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.BillwiseBreakupService;
 import com.asg.finance.service.CostCenterBreakupService;
 import com.asg.finance.service.DebitNoteService;
+import com.asg.finance.service.GlPostingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;
@@ -81,6 +83,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
     private final LoggingService loggingService;
     private final GlobalLogSummaryRepository globalLogSummaryRepository;
     private final TaxMasterRepository taxMasterRepository;
+    private final GlPostingService glPostingService;
 
     @Value("${app.doc-id.debit-note:300-110}")
     private String debitNoteDocId;
@@ -116,8 +119,16 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         // Load breakups into response
         loadBreakups(result, savedEntity.getTransactionPoid());
 
+        debitNoteHdrRepository.flush();
+        debitNoteDtlRepository.flush();
+        debitNoteChargeDtlRepository.flush();
+        
+        ArDebitNoteHdr refreshedEntity = debitNoteHdrRepository.findById(savedEntity.getTransactionPoid())
+                .orElseThrow(() -> new ResourceNotFoundException("DebitNote", "transactionPoid", savedEntity.getTransactionPoid()));
         // Log the creation
         loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), savedEntity.getTransactionPoid().toString());
+
+//        glPostingService.performGlPosting(UserContext.getDocumentId(), savedEntity.getTransactionPoid(), refreshedEntity.getDocRef());
 
         return getDebitNote(savedEntity.getTransactionPoid());
     }
@@ -189,6 +200,8 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         if (!detailSummaryLogs.isEmpty()) {
             globalLogSummaryRepository.saveAll(detailSummaryLogs);
         }
+
+//        glPostingService.performGlPosting(UserContext.getDocumentId(), transactionPoid, existingEntity.getDocRef());
 
         return getDebitNote(transactionPoid);
     }
@@ -649,6 +662,10 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         entity.setCostGroup(dto.getCostGroup() != null ? dto.getCostGroup().toString() : null);
         entity.setCheckAll(dto.getCheckAll());
         entity.setPrintSeqNo(dto.getSeqNo());
+        
+        if (dto.getTotalAmount() != null) {
+            entity.setTotalAmount(dto.getTotalAmount());
+        }
     }
 
     private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage) {
@@ -823,6 +840,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         dto.setTaxId(entity.getTaxPoid());
         dto.setTaxPercentage(entity.getTaxPercentage());
         dto.setTaxAmount(entity.getTaxAmount());
+        dto.setTotalAmount(entity.getTotalAmount());
         dto.setCostAmount(entity.getCostAmount());
         dto.setSeqNo(entity.getPrintSeqNo());
         dto.setCostPoid(entity.getCostPoid());
@@ -1284,6 +1302,30 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         balancingRow.setActionType("isCreated");
 
         dto.getGlDetails().add(balancingRow);
+    }
+
+    @Override
+    public Map<String, Object> validateEditRequest(Long transactionPoid) {
+        ArDebitNoteHdr entity = debitNoteHdrRepository.findById(transactionPoid)
+                .orElseThrow(() -> new ResourceNotFoundException("DebitNote", "transactionPoid", transactionPoid));
+        
+        List<String> errors = new ArrayList<>();
+        
+        if (entity.getRefType() != null && (entity.getRefType().equals("FDA JOBS") || entity.getRefType().equals("FF JOBS") 
+                || entity.getRefType().equals("FDA") || entity.getRefType().equals("FDA_DIRECT"))) {
+            try {
+                debitNoteCustomRepository.validateDebitNote(
+                    entity.getRefType(), entity.getPartyType(), entity.getPartyPoid(), 
+                    parseLongSafely(entity.getFdaRef()), entity.getPoRef()
+                );
+            } catch (Exception e) {
+                errors.add(e.getMessage());
+            }
+        }
+        
+        return errors.isEmpty() 
+            ? Map.of("valid", true) 
+            : Map.of("valid", false, "errors", errors);
     }
 
 }

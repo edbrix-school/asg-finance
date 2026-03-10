@@ -6,7 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.util.List;
 
 @Data
@@ -16,7 +16,7 @@ public class RecurringJvResponse {
 
     private Long transactionPoid;
     private String narration;
-    private Timestamp startDate;
+    private LocalDate startDate;
     private BigDecimal totalAmount;
     private Integer noOfMonths;
     private BigDecimal monthWiseAmt;
@@ -30,7 +30,7 @@ public class RecurringJvResponse {
     private String policyNumber;
     private String remarks;
     private String docRef;
-    private Timestamp transactionDate;
+    private LocalDate transactionDate;
     private Long groupPoid;
     private Long companyPoid;
     private Boolean billWiseCapable;

@@ -6,12 +6,12 @@ import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.request.LogRequestDto;
-import com.asg.common.lib.entity.Company;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.utility.DateUtil;
 import com.asg.finance.entity.GLMaster;
 import com.asg.finance.repository.GLMasterRepository;
 import com.asg.common.lib.service.DocumentSearchService;
@@ -219,14 +219,13 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
         }
         
         // Set transactionDate to LocalDate.now()
-        header.setTransactionDate(LocalDate.now());
+        header.setTransactionDate(DateUtil.getCurrentDateInUserTimeZone());
         header.setDeleted(request.getDeleted() != null ? request.getDeleted() : "N");
         header.setOldJvno(request.getOldJvno());
         header.setRemarks(request.getRemarks());
         header.setCompanyPoid(request.getCompanyPoid());
         header.setDrTotal(request.getDrTotal());
         header.setCrTotal(request.getCrTotal());
-        header.setCreatedBy(request.getCreatedBy() != null ? request.getCreatedBy() : ASGHelperUtils.getCurrentUser());
 
         GlContraVoucherHdr savedHeader = hdrRepository.save(header);
 
@@ -249,7 +248,6 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
                     detail.setDrAmt(detailRequest.getDrAmt());
                     detail.setCrAmt(detailRequest.getCrAmt());
                     detail.setRemarks(detailRequest.getRemarks());
-                    detail.setCreatedBy(ASGHelperUtils.getCurrentUser());
                     dtlRepository.save(detail);
                     
                     // Log child record creation
@@ -336,7 +334,6 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
                     detail.setDrAmt(detailRequest.getDrAmt());
                     detail.setCrAmt(detailRequest.getCrAmt());
                     detail.setRemarks(detailRequest.getRemarks());
-                    detail.setCreatedBy(ASGHelperUtils.getCurrentUser());
                     dtlRepository.save(detail);
                     
                     // Log child record creation

@@ -545,10 +545,11 @@ public class ApPurchaseJournalController {
     @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping("/validate-duplicate-invoice")
     public ResponseEntity<?> validateDuplicateInvoice(
-            @RequestBody ApPurchaseInvoiceHdrDto dto
+            @RequestBody ApPurchaseInvoiceHdrDto dto,
+            @RequestParam(required = false) Long transactionPoid
     ) {
 
-        String response = service.validateDuplicateInvoice(dto);
+        String response = service.validateDuplicateInvoice(dto,transactionPoid);
 
         return success("Duplicate invoice validation completed", response);
     }

@@ -2,7 +2,7 @@ package com.asg.finance.dto;
 
 import lombok.*;
 
-import java.sql.Date;
+import java.time.LocalDate;
 
 @Getter
 @Setter
@@ -14,7 +14,7 @@ public class PdcChqBatchDtlRequestDto {
     private Long transactionPoid;   // Parent FK
     private Long detRowId;
     private String actionType;
-    private Date pdcChqDate;
+    private LocalDate pdcChqDate;
     private String chqNumber;
     private Double chqAmount;
     private String remarks;

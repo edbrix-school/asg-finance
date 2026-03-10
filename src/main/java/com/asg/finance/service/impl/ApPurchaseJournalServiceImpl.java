@@ -15,6 +15,7 @@ import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.finance.service.ApPurchaseServiceJournal;
 import com.asg.finance.service.BillwiseBreakupService;
 import com.asg.finance.service.CostCenterBreakupService;
+import com.asg.finance.service.GlPostingService;
 import net.sf.jasperreports.engine.JasperReport;
 import javax.sql.DataSource;
 import com.asg.finance.dto.*;
@@ -45,6 +46,7 @@ import org.springframework.data.domain.Pageable;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.common.lib.security.util.UserContext;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 
 @Service
 @Slf4j
@@ -68,6 +70,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
     private final LoggingService loggingService;
     private final SupplierMasterRepository supplierMasterRepository;
     private final GLMasterRepository glMasterRepository;
+    private final GlPostingService glPostingService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -130,7 +133,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         apPurchaseInvoiceHdrDto.setPartyTinNumber(apPurchaseInvoiceHdrEntity.getPartyTinNumber());
         apPurchaseInvoiceHdrDto.setPaidAgainst(apPurchaseInvoiceHdrEntity.getPaidAgainst());
         apPurchaseInvoiceHdrDto.setFdaCoveringRef(apPurchaseInvoiceHdrEntity.getFdaCoveringRef());
-        if (apPurchaseInvoiceHdrEntity.getGroupPoid() != null) {
+       /* if (apPurchaseInvoiceHdrEntity.getGroupPoid() != null) {
             apPurchaseInvoiceHdrDto.setGroupDet(lovService.getDetailsByPoidAndLovName(apPurchaseInvoiceHdrEntity.getGroupPoid(), "GROUP"));
         }
         if (apPurchaseInvoiceHdrEntity.getCompanyPoid() != null) {
@@ -147,7 +150,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         }
         if (apPurchaseInvoiceHdrEntity.getGrnSupplierPoid() != null) {
             apPurchaseInvoiceHdrDto.setGrnSupplierDet(lovService.getDetailsByPoidAndLovName(apPurchaseInvoiceHdrEntity.getGrnSupplierPoid(), "SUPPLIER"));
-        }
+        }*/
         apPurchaseInvoiceHdrDto.setItemDtls(buildItemDtls(apPurchaseInvoiceItemDtlRepository.findByIdTransactionPoid(transactionPoid)));
         List<ApPurchaseInvoiceGlDtlDto> glDetailDtos = buildGlDtls(apPurchaseInvoiceGlDtlRepository.findByIdTransactionPoid(transactionPoid));
         loadBillwiseAndCostCenterBreakup(glDetailDtos, transactionPoid, apPurchaseInvoiceHdrEntity);
@@ -431,6 +434,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                         transactionPoid,
                         apPurchaseInvoiceHdrDto
                 );
+                entityManager.flush();
                 break;
 
             case "FF JOBS":
@@ -451,6 +455,15 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         // Log the creation
         String key = transactionPoid.toString();
         loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, documentId, key);
+
+        repository.flush();
+        apPurchaseInvoiceItemDtlRepository.flush();
+        apPurchaseInvoiceGlDtlRepository.flush();
+        apPurchaseInvoiceAssetDtlRepository.flush();
+        apPurchaseInvRjvDetailsRepository.flush();
+        purchaseInvoiceChargeDtlRepository.flush();
+
+        glPostingService.performGlPosting(documentId, transactionPoid, savedApPurchaseInvoiceHdrEntity.getDocRef());
 
         return fetchApPurchaseInvoiceHdr(transactionPoid);
     }
@@ -610,8 +623,26 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                     dto1.setBillRefType(popup.getBillRefType());
                     dto1.setBillRef(popup.getBillRef());
                     dto1.setBillDueDate(popup.getBillDueDate());
-                    dto1.setDrAmt(popup.getAmount());
-                    dto1.setCrAmt(popup.getAmount());
+                    BigDecimal amount =
+                            popup.getAmount() == null
+                                    ? BigDecimal.ZERO
+                                    : popup.getAmount();
+
+                    if ("DR".equalsIgnoreCase(g.getType())) {
+
+                        dto1.setDrAmt(amount);
+                        dto1.setCrAmt(BigDecimal.ZERO);
+
+                    } else if ("CR".equalsIgnoreCase(g.getType())) {
+
+                        dto1.setDrAmt(BigDecimal.ZERO);
+                        dto1.setCrAmt(amount);
+
+                    } else {
+
+                        dto1.setDrAmt(BigDecimal.ZERO);
+                        dto1.setCrAmt(amount);
+                    }
                     dto1.setBillRemarks(popup.getBillRemarks());
                     billwiseList.add(dto1);
                 }
@@ -1037,8 +1068,26 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                                 dto1.setBillRefType(popup.getBillRefType());
                                 dto1.setBillRef(popup.getBillRef());
                                 dto1.setBillDueDate(popup.getBillDueDate());
-                                dto1.setDrAmt(popup.getAmount());
-                                dto1.setCrAmt(popup.getAmount());
+                                BigDecimal amount =
+                                        popup.getAmount() == null
+                                                ? BigDecimal.ZERO
+                                                : popup.getAmount();
+
+                                if ("DR".equalsIgnoreCase(popup.getType())) {
+
+                                    dto1.setDrAmt(amount);
+                                    dto1.setCrAmt(BigDecimal.ZERO);
+
+                                } else if ("CR".equalsIgnoreCase(popup.getType())) {
+
+                                    dto1.setDrAmt(BigDecimal.ZERO);
+                                    dto1.setCrAmt(amount);
+
+                                } else {
+
+                                    dto1.setDrAmt(BigDecimal.ZERO);
+                                    dto1.setCrAmt(amount);
+                                }
                                 dto1.setBillRemarks(popup.getBillRemarks());
                                 billwiseList.add(dto1);
                             }
@@ -1082,16 +1131,6 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                     if (!logRequests.isEmpty()) {
                         loggingService.createLogBatch(logRequests);
                     }
-
-                    updateBillwiseForGl(transactionPoid, apPurchaseInvoiceHdrDto.getGlDtls(), "200-103");
-                    updateCostCenterForGl(transactionPoid, apPurchaseInvoiceHdrDto.getGlDtls(), "200-103");
-                    Long supplierGl = getSupplierGlPoid(apPurchaseInvoiceHdrDto.getSupplierPoid());
-
-                    deleteOldAutoBalancingRow(transactionPoid, supplierGl);
-                    autoCreateBalancingGlRowWithBillwise(
-                            transactionPoid,
-                            apPurchaseInvoiceHdrDto
-                    );
                 }
 
                 break;
@@ -1432,6 +1471,9 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         String key = savedEntity.getTransactionPoid().toString();
         loggingService.logChanges(oldEntity, savedEntity, ApPurchaseInvoiceHdrEntity.class,
                 UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+
+        glPostingService.performGlPosting(UserContext.getDocumentId(), savedEntity.getTransactionPoid(), savedEntity.getDocRef());
+
         return fetchApPurchaseInvoiceHdr(savedEntity.getTransactionPoid());
     }
 
@@ -1712,6 +1754,9 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                             popupDto.setCostGroup(item.getCostGroup());
                             popupDto.setCostPoid(item.getCostPoid());
                             popupDto.setAmount(BigDecimal.valueOf(item.getAmount()));
+                            if (StringUtils.isNotEmpty(item.getCostPoid()) && StringUtils.isNotEmpty(item.getCostGroup())) {
+                                popupDto.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(Long.valueOf(item.getCostPoid()), item.getCostGroup()));
+                            }
                             return popupDto;
                         })
                         .collect(Collectors.toList());
@@ -1964,8 +2009,12 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         }
     }
 
-    public String validateDuplicateInvoice(ApPurchaseInvoiceHdrDto dto) {
-
+    public String validateDuplicateInvoice(ApPurchaseInvoiceHdrDto dto,Long transactionPoid) {
+        if (transactionPoid != null) {
+            ApPurchaseInvoiceHdrEntity apPurchaseInvoiceHdrEntity = repository.findByTransactionPoid(transactionPoid);
+            if (apPurchaseInvoiceHdrEntity != null && dto.getSupplierInvNo().equalsIgnoreCase(apPurchaseInvoiceHdrEntity.getSupplierInvNo()))
+                return "SUCCESS";
+        }
          return apPurchaseJournalRepositoryImpl.checkDuplicatePi(
                 UserContext.getGroupPoid(),
                 UserContext.getCompanyPoid(),
@@ -2263,94 +2312,83 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
             Long transactionPoid,
             ApPurchaseInvoiceHdrDto dto) {
 
-        if (dto.getGlDtls() == null || dto.getGlDtls().isEmpty()) {
+        List<ApPurchaseInvoiceGlDtlEntity> rows =
+                apPurchaseInvoiceGlDtlRepository
+                        .findByIdTransactionPoid(transactionPoid);
+
+        if (rows == null || rows.isEmpty()) {
             return;
         }
 
         BigDecimal totalDr = BigDecimal.ZERO;
         BigDecimal totalCr = BigDecimal.ZERO;
 
-        for (ApPurchaseInvoiceGlDtlDto gl : dto.getGlDtls()) {
+        for (ApPurchaseInvoiceGlDtlEntity r : rows) {
 
-            if ("ISDELETED".equalsIgnoreCase(gl.getActionType())) {
-                continue;
-            }
+            totalDr = totalDr.add(
+                    r.getDrAmount() == null ? BigDecimal.ZERO : r.getDrAmount());
 
-            if (gl.getDrAmount() != null)
-                totalDr = totalDr.add(gl.getDrAmount());
-
-            if (gl.getCrAmount() != null)
-                totalCr = totalCr.add(gl.getCrAmount());
+            totalCr = totalCr.add(
+                    r.getCrAmount() == null ? BigDecimal.ZERO : r.getCrAmount());
         }
 
-        BigDecimal difference = totalDr.subtract(totalCr);
+        BigDecimal diff = totalDr.subtract(totalCr);
 
-        if (difference.compareTo(BigDecimal.ZERO) == 0) {
-            return; // already balanced
+        if (diff.compareTo(BigDecimal.ZERO) == 0) {
+            return;
         }
+
+        BigDecimal amount = diff.abs();
+
+        String type = diff.compareTo(BigDecimal.ZERO) > 0 ? "CR" : "DR";
 
         Long supplierGl = getSupplierGlPoid(dto.getSupplierPoid());
 
-        if (supplierGl == null) {
-            throw new ValidationException("Supplier not configured.");
-        }
-
-        Long newDet =
+        Long detRowId =
                 apPurchaseInvoiceGlDtlRepository
                         .findMaxDetRowIdByTransactionPoid(transactionPoid);
-
-        if (newDet == null) {
-            newDet = 1L;
-        }
 
         ApPurchaseInvoiceGlDtlEntity entity =
                 new ApPurchaseInvoiceGlDtlEntity();
 
-        entity.setId(new ApPurchaseInvoiceGlDtlKey(transactionPoid, newDet));
-        entity.setCompanyPoid(dto.getCompanyPoid());
+        entity.setId(
+                new ApPurchaseInvoiceGlDtlKey(
+                        transactionPoid,
+                        detRowId
+                )
+        );
+
+        entity.setCompanyPoid(Long.valueOf(dto.getCompanyPoid()));
         entity.setGlPoid(supplierGl);
+        entity.setType(type);
 
-        BigDecimal billAmount;
+        if ("DR".equals(type)) {
 
-        if (difference.compareTo(BigDecimal.ZERO) > 0) {
-            // DR ज्यादा है → CR row create
-            entity.setType("CR");
-            entity.setDrAmount(BigDecimal.ZERO);
-            entity.setCrAmount(difference);
-            billAmount = difference;
-        } else {
-            // CR ज्यादा है → DR row create
-            entity.setType("DR");
-            entity.setDrAmount(difference.abs());
+            entity.setDrAmount(amount);
             entity.setCrAmount(BigDecimal.ZERO);
-            billAmount = difference.abs();
+
+        } else {
+
+            entity.setDrAmount(BigDecimal.ZERO);
+            entity.setCrAmount(amount);
         }
 
-        entity.setCreatedBy(getCurrentUser());
-        entity.setCreatedDate(LocalDateTime.now());
-        entity.setLastModifiedBy(getCurrentUser());
-        entity.setLastModifiedDate(LocalDateTime.now());
+        entity.setTotalAmount(amount);
 
         apPurchaseInvoiceGlDtlRepository.save(entity);
 
-        // 🔥 BILLWISE AUTO CREATE
+        // Billwise only if applicable
         if (isBillwiseApplicable(supplierGl)) {
 
             createBillwiseForSupplier(
                     transactionPoid,
                     supplierGl,
-                    newDet,
+                    detRowId,
                     dto,
-                    entity.getType(),
-                    billAmount
+                    type,
+                    amount
             );
         }
-
-    /*    loggingService.createLogSummaryEntry(
-                UserContext.getDocumentId(),
-                transactionPoid.toString(),
-                "Auto Supplier GL + Billwise balancing row created"
-        );*/
     }
 
     private void createBillwiseForSupplier(
@@ -2361,14 +2399,33 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
             String type,
             BigDecimal amount) {
 
-        BillwiseBreakupRequestDto billDto =
-                new BillwiseBreakupRequestDto();
+        Long groupPoid = UserContext.getGroupPoid();
+        Long companyPoid = UserContext.getCompanyPoid();
+        String docId = "200-103";
 
-        billDto.setGroupPoid(UserContext.getGroupPoid());
-        billDto.setCompanyPoid(UserContext.getCompanyPoid());
-        billDto.setDocId("200-103");
+        GlVoucherLoadBillwiseBreakupResponseDto existing =
+                billwiseBreakupService.loadBillwiseBreakup(
+                        groupPoid, companyPoid, docId, transactionPoid);
+
+        Long nextBillDetRowId = 1L;
+
+        if (existing != null && existing.getLoadBillwiseBreakupResponseDtoList() != null) {
+            nextBillDetRowId =
+                    existing.getLoadBillwiseBreakupResponseDtoList().stream()
+                            .map(e -> e.getBillDetRowId())
+                            .filter(Objects::nonNull)
+                            .max(Long::compareTo)
+                            .orElse(0L) + 1;
+        }
+
+        BillwiseBreakupRequestDto billDto = new BillwiseBreakupRequestDto();
+
+        billDto.setGroupPoid(groupPoid);
+        billDto.setCompanyPoid(companyPoid);
+        billDto.setDocId(docId);
         billDto.setTransactionPoid(transactionPoid);
-        billDto.setBillDetRowId(1L);
+        billDto.setBillDetRowId(nextBillDetRowId);
+
         billDto.setGlPoid(supplierGl);
         billDto.setMainDetRowId(mainDetRowId);
 
@@ -2376,6 +2433,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         billDto.setBillRef(dto.getSupplierInvNo());
         billDto.setBillDueDate(dto.getDueDate());
 
+        // ⭐ Legacy behaviour
         if ("DR".equalsIgnoreCase(type)) {
             billDto.setDrAmt(amount);
             billDto.setCrAmt(BigDecimal.ZERO);
@@ -2383,10 +2441,9 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
             billDto.setDrAmt(BigDecimal.ZERO);
             billDto.setCrAmt(amount);
         }
+        billDto.setCrAmt(BigDecimal.ZERO);
 
-        billwiseBreakupService.insertBillwiseBreakup(
-                List.of(billDto)
-        );
+        billwiseBreakupService.insertBillwiseBreakup(List.of(billDto));
     }
 
     private void deleteOldAutoBalancingRow(

@@ -43,7 +43,6 @@ public class DebitNoteController {
 
     private final DebitNoteService debitNoteService;
     private final LoggingService loggingService;
-
     // -------------------------------------------------------
     // CREATE
     // -------------------------------------------------------
@@ -128,7 +127,8 @@ public class DebitNoteController {
             )
             @Valid @RequestBody DebitNoteHeaderDto dto
     ) {
-        return success("Debit Note created successfully", debitNoteService.createDebitNote(dto));
+        DebitNoteHeaderDto response = debitNoteService.createDebitNote(dto);
+        return success("Debit Note created successfully", response);
     }
 
     // -------------------------------------------------------
@@ -368,4 +368,13 @@ public class DebitNoteController {
             return error("Failed to generate PDF: " + e.getMessage(), 500);
         }
     }
+
+    @Operation(summary = "Validate Edit Request", description = "Validates debit note edit request data without saving.")
+    @AllowedAction(UserRolesRightsEnum.VIEW)
+    @GetMapping("/{transactionPoid}/validate-edit")
+    public ResponseEntity<?> validateEditRequest(@PathVariable Long transactionPoid) {
+        Map<String, Object> result = debitNoteService.validateEditRequest(transactionPoid);
+        return success("Validation completed", result);
+    }
+
 }

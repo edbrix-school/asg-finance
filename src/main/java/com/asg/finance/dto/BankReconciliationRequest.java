@@ -1,6 +1,6 @@
 package com.asg.finance.dto;
 
-import java.util.Date;
+import java.time.LocalDate;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -20,7 +20,7 @@ public class BankReconciliationRequest {
 	@Positive(message = "Invalid Transaction Poid")
 	private Long transactionPoid;
 	@NotNull(message = "Transaction date is required")
-	private Date transactionDate;
+	private LocalDate transactionDate;
 	@NotNull(message = "DocRef is required")
 	private String docRef;
 	private String chequeRef;
@@ -35,6 +35,6 @@ public class BankReconciliationRequest {
 	private Double drAmt;
 	private Double crAmt;
 	private Long postedBy;
-	private Date clearanceDate;
+	private LocalDate clearanceDate;
 	private String userAuto;
 }

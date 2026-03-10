@@ -478,36 +478,51 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         List<Long> toDelete = new ArrayList<>();
         List<LogRequestDto<ArGenReceiptPymtDetails>> logRequests = new ArrayList<>();
         
+        // Delete first
+        for (GeneralReceiptPaymentDto payment : payments) {
+            String action = payment.getActionType() != null ? payment.getActionType().toUpperCase() : "NOCHANGE";
+            if ("ISDELETED".equals(action) && payment.getDetRowId() != null) {
+                toDelete.add(payment.getDetRowId());
+                loggingService.logDelete(payment, docId, docKeyPoid);
+            }
+        }
+        
+        if (!toDelete.isEmpty()) {
+            pymtDetailsRepository.deleteByTransactionPoidAndDetRowIdIn(transactionPoid, toDelete);
+            entityManager.flush();
+        }
+        
         Long maxDetRowId = pymtDetailsRepository.findMaxDetRowIdByTransactionPoid(transactionPoid);
+        if (maxDetRowId == null) maxDetRowId = 0L;
         
         for (GeneralReceiptPaymentDto payment : payments) {
             String action = payment.getActionType() != null ? payment.getActionType().toUpperCase() : "NOCHANGE";
-            switch (action) {
-                case "ISCREATED":
-                    toSave.add(ArGenReceiptPymtDetails.builder()
-                            .transactionPoid(transactionPoid)
-                            .detRowId(++maxDetRowId)
-                            .pymtType(payment.getType())
-                            .amount(payment.getAmount())
-                            .chqCardno(payment.getChequeNo())
-                            .chqDate(payment.getChequeDate())
-                            .bankPoid(payment.getBankPoid())
-                            .accountPoid(payment.getAccountPoid())
-                            .accountName(payment.getAccountName())
-                            .accountNo(payment.getAccountNumber())
-                            .ttBankPoid(payment.getTtBankPoid())
-                            .ttRef(payment.getTtRef())
-                            .creditCardRef(payment.getCreditCardRef())
-                            .cardType(payment.getCardType())
-                            .cardPoid(payment.getCardPoid())
-                            .build());
-                    break;
-                    
-                case "ISUPDATED":
-                    ArGenReceiptPymtDetails existingPayment = pymtDetailsRepository
-                            .findByTransactionPoidAndDetRowId(transactionPoid, payment.getDetRowId())
-                            .orElseThrow(() -> new ResourceNotFoundException("Payment not found", "detRowId", payment.getDetRowId()));
-                    
+            if ("ISDELETED".equals(action)) continue;
+            
+            if ("ISCREATED".equals(action)) {
+                toSave.add(ArGenReceiptPymtDetails.builder()
+                        .transactionPoid(transactionPoid)
+                        .detRowId(++maxDetRowId)
+                        .pymtType(payment.getType())
+                        .amount(payment.getAmount())
+                        .chqCardno(payment.getChequeNo())
+                        .chqDate(payment.getChequeDate())
+                        .bankPoid(payment.getBankPoid())
+                        .accountPoid(payment.getAccountPoid())
+                        .accountName(payment.getAccountName())
+                        .accountNo(payment.getAccountNumber())
+                        .ttBankPoid(payment.getTtBankPoid())
+                        .ttRef(payment.getTtRef())
+                        .creditCardRef(payment.getCreditCardRef())
+                        .cardType(payment.getCardType())
+                        .cardPoid(payment.getCardPoid())
+                        .build());
+            } else if ("ISUPDATED".equals(action)) {
+                Optional<ArGenReceiptPymtDetails> existingPaymentOpt = pymtDetailsRepository
+                        .findByTransactionPoidAndDetRowId(transactionPoid, payment.getDetRowId());
+                
+                if (existingPaymentOpt.isPresent()) {
+                    ArGenReceiptPymtDetails existingPayment = existingPaymentOpt.get();
                     ArGenReceiptPymtDetails oldPayment = new ArGenReceiptPymtDetails();
                     BeanUtils.copyProperties(existingPayment, oldPayment);
                     
@@ -530,12 +545,25 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                     
                     String logDetailForUpdate = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", transactionPoid, payment.getDetRowId());
                     logRequests.add(new LogRequestDto<>(oldPayment, existingPayment, ArGenReceiptPymtDetails.class, docId, docKeyPoid, logDetailForUpdate));
-                    break;
-                    
-                case "ISDELETED":
-                    toDelete.add(payment.getDetRowId());
-                    loggingService.logDelete(payment, docId, docKeyPoid);
-                    break;
+                } else {
+                    toSave.add(ArGenReceiptPymtDetails.builder()
+                            .transactionPoid(transactionPoid)
+                            .detRowId(++maxDetRowId)
+                            .pymtType(payment.getType())
+                            .amount(payment.getAmount())
+                            .chqCardno(payment.getChequeNo())
+                            .chqDate(payment.getChequeDate())
+                            .bankPoid(payment.getBankPoid())
+                            .accountPoid(payment.getAccountPoid())
+                            .accountName(payment.getAccountName())
+                            .accountNo(payment.getAccountNumber())
+                            .ttBankPoid(payment.getTtBankPoid())
+                            .ttRef(payment.getTtRef())
+                            .creditCardRef(payment.getCreditCardRef())
+                            .cardType(payment.getCardType())
+                            .cardPoid(payment.getCardPoid())
+                            .build());
+                }
             }
         }
         
@@ -552,10 +580,6 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
             if (!logRequests.isEmpty()) {
                 loggingService.createLogBatch(logRequests);
             }
-        }
-
-        if (!toDelete.isEmpty()) {
-            pymtDetailsRepository.deleteByTransactionPoidAndDetRowIdIn(transactionPoid, toDelete);
         }
     }
 
@@ -869,10 +893,26 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
     }
 
     // ===== PRIVATE HELPER METHODS =====
-
+    
     private void validateGeneralReceiptRequest(GeneralReceiptRequest request) {
         GeneralReceiptHeaderDto header = request.getHeader();
 
+        
+        List<GeneralReceiptBillDto> activeBills = new ArrayList<>();
+        if (request.getBills() != null) {
+            activeBills = request.getBills().stream()
+                    .filter(bill -> bill.getActionType() == null ||
+                            !"ISDELETED".equalsIgnoreCase(bill.getActionType()))
+                    .collect(Collectors.toList());
+        }
+
+        List<GeneralReceiptChargeDto> activeCharges = new ArrayList<>();
+        if (request.getExtraCharges() != null) {
+            activeCharges = request.getExtraCharges().stream()
+                    .filter(charge -> charge.getActionType() == null ||
+                            !"ISDELETED".equalsIgnoreCase(charge.getActionType()))
+                    .collect(Collectors.toList());
+        }
 
         Long creditGlPoid;
         try {
@@ -892,20 +932,18 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
 
         if (isBillwiseEnabled) {
             BigDecimal billTotal = BigDecimal.ZERO;
-            if (request.getBills() != null && !request.getBills().isEmpty()) {
-                billTotal = request.getBills().stream()
-                        .map(GeneralReceiptBillDto::getAmount)
-                        .filter(amount -> amount != null)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add);
-            }
+            billTotal = activeBills.stream()
+                    .map(GeneralReceiptBillDto::getAmount)
+                    .filter(amount -> amount != null)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
 
             if (billTotal.compareTo(BigDecimal.ZERO) == 0) {
                 throw new ValidationException("Zero values found in Billwise total Amount... , please check");
             }
         }
 
-        if (request.getBills() != null && !request.getBills().isEmpty()) {
-            for (GeneralReceiptBillDto bill : request.getBills()) {
+        if (!activeBills.isEmpty()) {
+            for (GeneralReceiptBillDto bill : activeBills) {
                 if (bill.getBillDueDate() == null) {
                     throw new ValidationException("Due date is required for all bills");
                 }
@@ -932,6 +970,10 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
 
         if (request.getPayments() != null && !request.getPayments().isEmpty()) {
             BigDecimal paymentTotal = request.getPayments().stream()
+                    .filter(payment -> {
+                        String action = payment.getActionType();
+                        return action == null || !action.toUpperCase().equals("ISDELETED");
+                    })
                     .map(GeneralReceiptPaymentDto::getAmount)
                     .filter(amount -> amount != null)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -951,30 +993,30 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         BigDecimal amountToCompare = "BHD".equalsIgnoreCase(header.getCurrency())
                 ? header.getReceiptAmount()
                 : (header.getBhdAmount() != null ? header.getBhdAmount() : header.getReceiptAmount().multiply(header.getRate()));
-        validateBillAmountMatchesReceiptAmount(request.getBills(), request.getExtraCharges(), amountToCompare);
+        validateBillAmountMatchesReceiptAmount(activeBills, activeCharges, amountToCompare);
 
         // 8. Validate cheque dates if applicable
         validateChequeDates(request.getPayments());
 
         // 9. Validate cost center for specific charge types
-        validateCostCenterRequirement(request.getExtraCharges());
-
+        validateCostCenterRequirement(activeCharges);
+        
         // 10. Validate rounding limit
-        validateRoundingLimit(request.getExtraCharges());
+        validateRoundingLimit(activeCharges);
 
         // 11. Validate multi-company if applicable
         if ("Y".equals(header.getMulticompany())) {
-            validateMultiCompany(request.getBills(), header.getCompanyPoid());
+            validateMultiCompany(activeBills, header.getCompanyPoid());
         }
-
+        
         // 12. Validate bill references if refType is AGAINST
-        if ("AGAINST".equals(header.getRefType()) && (request.getBills() == null || request.getBills().isEmpty())) {
+        if ("AGAINST".equals(header.getRefType()) && activeBills.isEmpty()) {
             throw new ValidationException("Bill details are required when Ref Type is AGAINST");
         }
 
         // 13. Validate bill references using stored procedure (PROC_GEN_RECE_NEW_BILLREF_CHK)
-        if (request.getBills() != null && !request.getBills().isEmpty()) {
-            validateBillReferencesUsingProcedure(request.getBills(), creditGL.getGlPoid(), header.getCompanyPoid());
+        if (!activeBills.isEmpty()) {
+            validateBillReferencesUsingProcedure(activeBills, creditGL.getGlPoid(), header.getCompanyPoid());
         }
     }
 
@@ -1134,6 +1176,13 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
             creditGlPoid = Long.parseLong(dto.getCreditGL());
         } catch (NumberFormatException ex) {
             throw new ValidationException("Credit GL not found: " + dto.getCreditGL());
+        }
+
+        
+        if (dto.getTransactionDate() != null) {
+            header.setTransactionDate(dto.getTransactionDate());
+        } else {
+            header.setTransactionDate(LocalDate.now());
         }
 
         header.setRcvdOthPoid(creditGlPoid);

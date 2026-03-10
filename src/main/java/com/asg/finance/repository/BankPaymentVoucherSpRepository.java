@@ -2,6 +2,7 @@ package com.asg.finance.repository;
 
 import java.math.BigDecimal;
 import java.sql.Date;
+import java.time.LocalDate;
 import java.util.Map;
 
 public interface BankPaymentVoucherSpRepository {
@@ -12,7 +13,7 @@ public interface BankPaymentVoucherSpRepository {
 
     Map<String, BigDecimal> getBankBalance(String docId,
                                            Long docKeyPoid,
-                                           Date docDate,
+                                           LocalDate docDate,
                                            Long bankPoid);
     
     String getNextChequeNumber(Long bankPoid);

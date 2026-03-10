@@ -133,7 +133,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         apPurchaseInvoiceHdrDto.setPartyTinNumber(apPurchaseInvoiceHdrEntity.getPartyTinNumber());
         apPurchaseInvoiceHdrDto.setPaidAgainst(apPurchaseInvoiceHdrEntity.getPaidAgainst());
         apPurchaseInvoiceHdrDto.setFdaCoveringRef(apPurchaseInvoiceHdrEntity.getFdaCoveringRef());
-       /* if (apPurchaseInvoiceHdrEntity.getGroupPoid() != null) {
+        if (apPurchaseInvoiceHdrEntity.getGroupPoid() != null) {
             apPurchaseInvoiceHdrDto.setGroupDet(lovService.getDetailsByPoidAndLovName(apPurchaseInvoiceHdrEntity.getGroupPoid(), "GROUP"));
         }
         if (apPurchaseInvoiceHdrEntity.getCompanyPoid() != null) {
@@ -150,7 +150,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         }
         if (apPurchaseInvoiceHdrEntity.getGrnSupplierPoid() != null) {
             apPurchaseInvoiceHdrDto.setGrnSupplierDet(lovService.getDetailsByPoidAndLovName(apPurchaseInvoiceHdrEntity.getGrnSupplierPoid(), "SUPPLIER"));
-        }*/
+        }
         apPurchaseInvoiceHdrDto.setItemDtls(buildItemDtls(apPurchaseInvoiceItemDtlRepository.findByIdTransactionPoid(transactionPoid)));
         List<ApPurchaseInvoiceGlDtlDto> glDetailDtos = buildGlDtls(apPurchaseInvoiceGlDtlRepository.findByIdTransactionPoid(transactionPoid));
         loadBillwiseAndCostCenterBreakup(glDetailDtos, transactionPoid, apPurchaseInvoiceHdrEntity);
@@ -2358,7 +2358,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                 )
         );
 
-        entity.setCompanyPoid(Long.valueOf(dto.getCompanyPoid()));
+        entity.setCompanyPoid(dto.getCompanyPoid());
         entity.setGlPoid(supplierGl);
         entity.setType(type);
 
@@ -2433,7 +2433,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         billDto.setBillRef(dto.getSupplierInvNo());
         billDto.setBillDueDate(dto.getDueDate());
 
-        // ⭐ Legacy behaviour
+        //  Legacy behaviour
         if ("DR".equalsIgnoreCase(type)) {
             billDto.setDrAmt(amount);
             billDto.setCrAmt(BigDecimal.ZERO);
@@ -2441,7 +2441,6 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
             billDto.setDrAmt(BigDecimal.ZERO);
             billDto.setCrAmt(amount);
         }
-        billDto.setCrAmt(BigDecimal.ZERO);
 
         billwiseBreakupService.insertBillwiseBreakup(List.of(billDto));
     }

@@ -183,7 +183,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
     @Transactional
     @Override
     public void softDeleteByTransactionPoid(Long transactionPoid, DeleteReasonDto deleteReasonDto) {
-        glChequeCashConvertHdrRepository.findById(transactionPoid)
+        GlChequeCashConvertHdrEntity existing = glChequeCashConvertHdrRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("ChequeAndCashConvert", "transactionPoid", transactionPoid));
 
         // Use DocumentDeleteService for consistent soft delete handling
@@ -192,7 +192,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
                 "GL_CHEQUE_CASH_CONVERT_HDR",
                 "TRANSACTION_POID",
                 deleteReasonDto,
-                null
+                existing.getTransactionDate()
         );
     }
 
@@ -877,7 +877,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
             }
             long daysDiff = java.time.temporal.ChronoUnit.DAYS.between(today, in.getChqDate());
             if (new BigDecimal(daysDiff).compareTo(validateDaysBd) < 0) {
-                throw new ValidationException("Cheque Date is less than " + validateDaysBd.abs() + " days...");
+                throw new ValidationException("Cheque Date should be less than " + validateDaysBd.abs() + " days...");
             }
         }
     }

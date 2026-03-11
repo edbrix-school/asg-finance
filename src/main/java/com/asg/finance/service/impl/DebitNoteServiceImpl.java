@@ -128,7 +128,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         // Log the creation
         loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), savedEntity.getTransactionPoid().toString());
 
-//        glPostingService.performGlPosting(UserContext.getDocumentId(), savedEntity.getTransactionPoid(), refreshedEntity.getDocRef());
+        glPostingService.performGlPosting(UserContext.getDocumentId(), savedEntity.getTransactionPoid(), refreshedEntity.getDocRef());
 
         return getDebitNote(savedEntity.getTransactionPoid());
     }
@@ -201,7 +201,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
             globalLogSummaryRepository.saveAll(detailSummaryLogs);
         }
 
-//        glPostingService.performGlPosting(UserContext.getDocumentId(), transactionPoid, existingEntity.getDocRef());
+        glPostingService.performGlPosting(UserContext.getDocumentId(), transactionPoid, existingEntity.getDocRef());
 
         return getDebitNote(transactionPoid);
     }

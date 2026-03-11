@@ -1146,12 +1146,21 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
             throw new ValidationException("Credit GL not found: " + dto.getCreditGL());
         }
 
+        BigDecimal receiptAmount = dto.getReceiptAmount();
+        BigDecimal invoiceAmount = dto.getInvoiceAmount();
+        
+        // Apply legacy logic: receipt amount = invoice amount for all currencies
+        if (invoiceAmount != null) {
+            receiptAmount = invoiceAmount;
+        }
+
         return ArGenReceiptHdr.builder()
                 .transactionDate(dto.getTransactionDate() != null ? dto.getTransactionDate() : LocalDate.now())
                 .groupPoid(DEFAULT_GROUP_POID)
                 .companyPoid(dto.getCompanyPoid())
                 .rcvdOthPoid(creditGlPoid)
-                .rcptAmount(dto.getReceiptAmount())
+                .rcptAmount(receiptAmount)
+                .invoiceAmount(invoiceAmount)
                 .remarks(dto.getNarration())
                 .rcvdFromDtlPrint(dto.getReceivedFrom())
                 .refType(dto.getRefType())
@@ -1165,8 +1174,8 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                 .verified("N")
                 .dataLoaded("N")
                 .extraCharges(dto.getExtraCharges() != null ? dto.getExtraCharges() : "N")
-                .lineType("GENERAL")  // Set line type
-                .rcvdType("GENERAL")  // Set received type
+                .lineType("GENERAL")
+                .rcvdType("GENERAL")
                 .build();
     }
 
@@ -1178,15 +1187,23 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
             throw new ValidationException("Credit GL not found: " + dto.getCreditGL());
         }
 
-        
         if (dto.getTransactionDate() != null) {
             header.setTransactionDate(dto.getTransactionDate());
         } else {
             header.setTransactionDate(LocalDate.now());
         }
 
+        BigDecimal receiptAmount = dto.getReceiptAmount();
+        BigDecimal invoiceAmount = dto.getInvoiceAmount();
+        
+        // Apply legacy logic: receipt amount = invoice amount for all currencies
+        if (invoiceAmount != null) {
+            receiptAmount = invoiceAmount;
+        }
+
         header.setRcvdOthPoid(creditGlPoid);
-        header.setRcptAmount(dto.getReceiptAmount());
+        header.setRcptAmount(receiptAmount);
+        header.setInvoiceAmount(invoiceAmount);
         header.setRemarks(dto.getNarration());
         header.setRcvdFromDtlPrint(dto.getReceivedFrom());
         header.setRefType(dto.getRefType());
@@ -1617,6 +1634,12 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
             bhdAmount = header.getRcptAmount().multiply(header.getCurrencyRate());
         }
 
+        // For response: receipt amount should equal invoice amount
+        BigDecimal responseReceiptAmount = header.getInvoiceAmount();
+        if (responseReceiptAmount == null) {
+            responseReceiptAmount = header.getRcptAmount();
+        }
+
         // Fetch approval status from GLOBAL_APPROVAL_STATUS table
         final String approvalStatus = approvalService.getApprovalStatus(UserContext.getDocumentId(), header.getTransactionPoid());
 
@@ -1663,7 +1686,8 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                 .transactionPoid(header.getTransactionPoid())
                 .transactionDate(header.getTransactionDate())
                 .companyPoid(header.getCompanyPoid())
-                .receiptAmount(header.getRcptAmount())
+                .receiptAmount(responseReceiptAmount)
+                .invoiceAmount(header.getInvoiceAmount())
                 .currencyCode(header.getCurrencyCode())
                 .currencyRate(currencyRate)
                 .bhdAmount(bhdAmount)

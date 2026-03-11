@@ -1772,7 +1772,12 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                             popupDto.setCostPoid(item.getCostPoid());
                             popupDto.setAmount(BigDecimal.valueOf(item.getAmount()));
                             if (StringUtils.isNotEmpty(item.getCostPoid()) && StringUtils.isNotEmpty(item.getCostGroup())) {
-                                popupDto.setCostCenterDetails(lovService.getDetailsByCodeAndLovName(item.getCostPoid(), item.getCostGroup()));
+                                try {
+                                    Long poid = Long.parseLong(item.getCostPoid());
+                                    popupDto.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(poid, "GL_COST_GROUPS"));
+                                } catch (NumberFormatException e) {
+                                    popupDto.setCostCenterDetails(lovService.getDetailsByCodeAndLovName(item.getCostPoid(), "GL_COST_GROUPS"));
+                                }
                             }
                             return popupDto;
                         })

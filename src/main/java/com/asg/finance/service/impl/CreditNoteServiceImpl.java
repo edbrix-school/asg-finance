@@ -2195,9 +2195,10 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                                 popupDto.setAmount(item.getAmount() != null ? BigDecimal.valueOf(item.getAmount()) : null);
                                 if (StringUtils.isNotEmpty(item.getCostPoid()) && StringUtils.isNotEmpty(item.getCostGroup())) {
                                     try {
-                                        popupDto.setCostCenterDetails(lovService.getDetailsByCodeAndLovName(item.getCostPoid(), item.getCostGroup()));
-                                    } catch (Exception e) {
-                                        log.warn("Failed to get cost center details for costPoid: {}, costGroup: {}", item.getCostPoid(), item.getCostGroup());
+                                        Long poid = Long.parseLong(item.getCostPoid());
+                                        popupDto.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(poid, "GL_COST_GROUPS"));
+                                    } catch (NumberFormatException e) {
+                                        popupDto.setCostCenterDetails(lovService.getDetailsByCodeAndLovName(item.getCostPoid(), "GL_COST_GROUPS"));
                                     }
                                 }
                                 return popupDto;

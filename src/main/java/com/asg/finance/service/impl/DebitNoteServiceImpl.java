@@ -579,6 +579,11 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         for (DebitNoteGlDetailDto dto : glDetails) {
             if (dto.isEmpty()) continue;
             
+            String actionType = dto.getActionType();
+            if (actionType == null || !actionType.equalsIgnoreCase("isCreated")) {
+                continue;
+            }
+            
             Long incomingDetRowId = dto.getDetRowId();
             if (incomingDetRowId != null) {
                 detRowId = Math.max(detRowId, incomingDetRowId);
@@ -605,6 +610,11 @@ public class DebitNoteServiceImpl implements DebitNoteService {
 
         for (DebitNoteChargeDetailDto dto : chargeDetails) {
             if (dto.isEmpty()) continue;
+            
+            String actionType = dto.getActionType();
+            if (actionType == null || !actionType.equalsIgnoreCase("isCreated")) {
+                continue;
+            }
             
             Long incomingDetRowId = dto.getDetRowId();
             if (incomingDetRowId != null) {

@@ -267,6 +267,12 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
             List<GlobalLogSummary> detailSummaryLogs = new ArrayList<>();
             if (creditNoteDto.getGlDetails() != null) {
+                applyAutoBalancing(
+                        transactionPoid,
+                        creditNoteDto.getGlDetails(),
+                        creditNoteDto.getPartyPoid(),
+                        creditNoteDto.getPartyType()
+                );
                 updateGLDetailsWithLogging(transactionPoid, creditNoteDto.getGlDetails(), detailSummaryLogs);
             }
 

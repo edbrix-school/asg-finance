@@ -267,6 +267,12 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
             List<GlobalLogSummary> detailSummaryLogs = new ArrayList<>();
             if (creditNoteDto.getGlDetails() != null) {
+                applyAutoBalancing(
+                        transactionPoid,
+                        creditNoteDto.getGlDetails(),
+                        creditNoteDto.getPartyPoid(),
+                        creditNoteDto.getPartyType()
+                );
                 updateGLDetailsWithLogging(transactionPoid, creditNoteDto.getGlDetails(), detailSummaryLogs);
             }
 
@@ -2195,9 +2201,10 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                                 popupDto.setAmount(item.getAmount() != null ? BigDecimal.valueOf(item.getAmount()) : null);
                                 if (StringUtils.isNotEmpty(item.getCostPoid()) && StringUtils.isNotEmpty(item.getCostGroup())) {
                                     try {
-                                        popupDto.setCostCenterDetails(lovService.getDetailsByCodeAndLovName(item.getCostPoid(), item.getCostGroup()));
-                                    } catch (Exception e) {
-                                        log.warn("Failed to get cost center details for costPoid: {}, costGroup: {}", item.getCostPoid(), item.getCostGroup());
+                                        Long poid = Long.parseLong(item.getCostPoid());
+                                        popupDto.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(poid, "GL_COST_GROUPS"));
+                                    } catch (NumberFormatException e) {
+                                        popupDto.setCostCenterDetails(lovService.getDetailsByCodeAndLovName(item.getCostPoid(), "GL_COST_GROUPS"));
                                     }
                                 }
                                 return popupDto;
@@ -2275,29 +2282,35 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         BigDecimal totalCr = BigDecimal.ZERO;
 
         for (CreditNoteGLDetailDto dto : glDetails) {
+            String actionType = dto.getActionType();
+            if (actionType != null && "ISDELETED".equalsIgnoreCase(actionType.trim().toUpperCase())) {
+                continue;
+            }
             if (dto.getType().equals("DR") && dto.getDrAmt() != null) {
                 totalDr = totalDr.add(dto.getDrAmt());
-                totalDr = totalDr.add(dto.getTaxAmount());
+                if (dto.getTaxAmount() != null) {
+                    totalDr = totalDr.add(dto.getTaxAmount());
+                }
             }
             if (dto.getType().equals("CR") && dto.getCrAmt() != null) {
                 totalCr = totalCr.add(dto.getCrAmt());
-                totalCr = totalCr.add(dto.getTaxAmount());
+                if (dto.getTaxAmount() != null) {
+                    totalCr = totalCr.add(dto.getTaxAmount());
+                }
             }
         }
 
         if (totalDr.compareTo(totalCr) == 0) {
-            return; // already balanced
+            return;
         }
 
         Long partyGlPoid = getPartyGLPoid(partyPoid, partyType);
-
-        //  Tax copy source (first row)
-        CreditNoteGLDetailDto sourceRow = glDetails.get(0);
 
         CreditNoteGLDetailDto balancingRow = new CreditNoteGLDetailDto();
         balancingRow.setGlPoid(partyGlPoid);
         balancingRow.setCompanyPoid(UserContext.getCompanyPoid());
         balancingRow.setRemarks("Auto Balance Entry");
+        balancingRow.setActionType("ISCREATED");
 
         BigDecimal difference = totalDr.subtract(totalCr);
 
@@ -2312,6 +2325,8 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         }
 
         balancingRow.setTotalAmount(difference.abs());
+        balancingRow.setTaxAmount(BigDecimal.ZERO);
+        balancingRow.setTaxPercentage(BigDecimal.ZERO);
 
         glDetails.add(balancingRow);
     }

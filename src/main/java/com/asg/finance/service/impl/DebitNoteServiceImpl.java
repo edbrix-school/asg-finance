@@ -128,7 +128,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         // Log the creation
         loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), savedEntity.getTransactionPoid().toString());
 
-//        glPostingService.performGlPosting(UserContext.getDocumentId(), savedEntity.getTransactionPoid(), refreshedEntity.getDocRef());
+        glPostingService.performGlPosting(UserContext.getDocumentId(), savedEntity.getTransactionPoid(), refreshedEntity.getDocRef());
 
         return getDebitNote(savedEntity.getTransactionPoid());
     }
@@ -201,7 +201,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
             globalLogSummaryRepository.saveAll(detailSummaryLogs);
         }
 
-//        glPostingService.performGlPosting(UserContext.getDocumentId(), transactionPoid, existingEntity.getDocRef());
+        glPostingService.performGlPosting(UserContext.getDocumentId(), transactionPoid, existingEntity.getDocRef());
 
         return getDebitNote(transactionPoid);
     }
@@ -579,6 +579,11 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         for (DebitNoteGlDetailDto dto : glDetails) {
             if (dto.isEmpty()) continue;
             
+            String actionType = dto.getActionType();
+            if (actionType == null || !actionType.equalsIgnoreCase("isCreated")) {
+                continue;
+            }
+            
             Long incomingDetRowId = dto.getDetRowId();
             if (incomingDetRowId != null) {
                 detRowId = Math.max(detRowId, incomingDetRowId);
@@ -605,6 +610,11 @@ public class DebitNoteServiceImpl implements DebitNoteService {
 
         for (DebitNoteChargeDetailDto dto : chargeDetails) {
             if (dto.isEmpty()) continue;
+            
+            String actionType = dto.getActionType();
+            if (actionType == null || !actionType.equalsIgnoreCase("isCreated")) {
+                continue;
+            }
             
             Long incomingDetRowId = dto.getDetRowId();
             if (incomingDetRowId != null) {
@@ -657,7 +667,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         entity.setTaxPoid(dto.getTaxId());
         entity.setTaxPercentage(dto.getTaxPercentage());
         entity.setTaxAmount(dto.getTaxAmount());
-        entity.setCostAmount(dto.getCostAmount());
+        entity.setPdaAmount(dto.getCostAmount());
         entity.setCostPoid(dto.getCostPoid());
         entity.setCostGroup(dto.getCostGroup() != null ? dto.getCostGroup().toString() : null);
         entity.setCheckAll(dto.getCheckAll());

@@ -40,9 +40,10 @@ public class GeneralReceiptHeaderDto {
     @Schema(description = "Currency exchange rate", example = "0.376", required = true)
     private BigDecimal rate;
 
-    @NotNull(message = "Receipt amount is required")
-    @DecimalMin(value = "0.0", inclusive = false, message = "Receipt amount must be greater than 0")
-    @Schema(description = "Total receipt amount", example = "1000", required = true)
+    @Schema(description = "Invoice amount (foreign currency)", example = "1000")
+    private BigDecimal invoiceAmount;
+
+    @Schema(description = "Total receipt amount (BHD)", example = "376")
     private BigDecimal receiptAmount;
 
     @Schema(description = "BHD amount (calculated as receiptAmount * rate)", example = "376")

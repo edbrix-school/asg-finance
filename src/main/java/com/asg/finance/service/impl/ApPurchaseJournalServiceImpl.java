@@ -578,22 +578,12 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
             e.setType(g.getType());
             e.setCompanyPoid(g.getCompanyPoid());
             e.setGlPoid(g.getGlPoid());
-            BigDecimal amount = BigDecimal.ZERO;
-
-            if (g.getDrAmount() != null) {
-                amount = g.getDrAmount();
-            } else if (g.getCrAmount() != null) {
-                amount = g.getCrAmount();
-            }
-
+            
             if ("DR".equalsIgnoreCase(g.getType())) {
-
-                e.setDrAmount(amount);
+                e.setDrAmount(g.getDrAmount() != null ? g.getDrAmount() : BigDecimal.ZERO);
                 e.setCrAmount(BigDecimal.ZERO);
-
             } else if ("CR".equalsIgnoreCase(g.getType())) {
-
-                e.setCrAmount(amount);
+                e.setCrAmount(g.getCrAmount() != null ? g.getCrAmount() : BigDecimal.ZERO);
                 e.setDrAmount(BigDecimal.ZERO);
             }
 
@@ -641,24 +631,17 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                     dto1.setBillRefType(popup.getBillRefType());
                     dto1.setBillRef(popup.getBillRef());
                     dto1.setBillDueDate(popup.getBillDueDate());
-                    amount = g.getDrAmount() != null
-                            ? g.getDrAmount()
-                            : g.getCrAmount();
+                    BigDecimal amount = popup.getAmount();
 
                     if ("DR".equalsIgnoreCase(g.getType())) {
-
                         dto1.setDrAmt(amount);
                         dto1.setCrAmt(BigDecimal.ZERO);
-
                     } else if ("CR".equalsIgnoreCase(g.getType())) {
-
                         dto1.setDrAmt(BigDecimal.ZERO);
                         dto1.setCrAmt(amount);
-
                     } else {
-
                         dto1.setDrAmt(BigDecimal.ZERO);
-                        dto1.setCrAmt(amount);
+                        dto1.setCrAmt(BigDecimal.ZERO);
                     }
                     dto1.setBillRemarks(popup.getBillRemarks());
                     billwiseList.add(dto1);

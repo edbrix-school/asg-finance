@@ -2282,7 +2282,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
         for (CreditNoteGLDetailDto dto : glDetails) {
             String actionType = dto.getActionType();
-            if (actionType != null && "ISDELETED".equalsIgnoreCase(actionType.trim())) {
+            if (actionType != null && "ISDELETED".equalsIgnoreCase(actionType.trim().toUpperCase())) {
                 continue;
             }
             if (dto.getType().equals("DR") && dto.getDrAmt() != null) {

@@ -993,6 +993,16 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         BigDecimal amountToCompare = "BHD".equalsIgnoreCase(header.getCurrency())
                 ? header.getReceiptAmount()
                 : (header.getBhdAmount() != null ? header.getBhdAmount() : header.getReceiptAmount().multiply(header.getRate()));
+        
+        // When extra charges are present, add charge total to receipt amount for validation
+        if ("Y".equals(header.getExtraCharges()) && activeCharges != null && !activeCharges.isEmpty()) {
+            BigDecimal chargeTotal = activeCharges.stream()
+                    .map(GeneralReceiptChargeDto::getTotalAmount)
+                    .filter(amount -> amount != null)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            amountToCompare = amountToCompare.add(chargeTotal);
+        }
+        
         validateBillAmountMatchesReceiptAmount(activeBills, activeCharges, amountToCompare);
 
         // 8. Validate cheque dates if applicable
@@ -1032,20 +1042,10 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                 .filter(amount -> amount != null)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal chargeTotal = BigDecimal.ZERO;
-        if (charges != null && !charges.isEmpty()) {
-            chargeTotal = charges.stream()
-                    .map(GeneralReceiptChargeDto::getTotalAmount)
-                    .filter(amount -> amount != null)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-        }
-
-        BigDecimal expectedTotal = billTotal.add(chargeTotal);
-
-        if (amountToCompare.compareTo(expectedTotal) != 0) {
+        if (amountToCompare.compareTo(billTotal) != 0) {
             throw new ValidationException(String.format(
-                    "Receipt amount (%.3f) does not match bill amount (%.3f) ,please check",
-                    amountToCompare, billTotal, chargeTotal, expectedTotal));
+                    "Billwise total (%.3f) is not matching with Receipt Amount (%.3f), please check",
+                    billTotal, amountToCompare));
         }
     }
 

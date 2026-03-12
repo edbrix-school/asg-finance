@@ -90,8 +90,6 @@ public class PurchaseOrderController {
             PurchaseOrderResponse response = service.createGeneralPurchaseOrder(UserContext.getDocumentId(), request);
             return success("Purchase Order created successfully", response);
 
-        } catch (ValidationException ex) {
-            throw ex;
         } catch (Exception e) {
             log.error("Error creating purchase order: {}", e.getMessage(), e);
             return internalServerError("Failed to create purchase order : " + e.getMessage());
@@ -125,8 +123,6 @@ public class PurchaseOrderController {
             PurchaseOrderResponse response = service.updatePurchaseOrder(UserContext.getDocumentId(), transactionPoid, request);
             return success("Purchase Order updated successfully", response);
 
-        } catch (ValidationException ex) {
-            throw ex;
         } catch (Exception e) {
             log.error("Error updating purchase order: {}", e.getMessage(), e);
             return internalServerError("Failed to update purchase order: " + e.getMessage());
@@ -162,8 +158,6 @@ public class PurchaseOrderController {
             loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
             return success("Purchase Order fetched successfully", response);
 
-        } catch (ValidationException ex) {
-            throw ex;
         } catch (Exception e) {
             log.error("Error fetching purchase order: {}", e.getMessage(), e);
             return internalServerError("Failed to fetch purchase order: " + e.getMessage());
@@ -291,8 +285,6 @@ public class PurchaseOrderController {
             java.time.LocalDate endDateValue = endDate != null ? java.time.LocalDate.parse(endDate) : null;
             Map<String, Object> data = service.listPurchaseOrder(UserContext.getDocumentId(), filters, startDateValue, endDateValue, pageable);
             return success("Purchase Order fetched successfully", data);
-        } catch (ValidationException ex) {
-            throw ex;
         } catch (Exception ex) {
             return internalServerError("Unable to fetch Purchase Order list: " + ex.getMessage());
         }
@@ -364,8 +356,6 @@ public class PurchaseOrderController {
 
             return success("PO created successfully from RFQ", result);
 
-        } catch (ValidationException ex) {
-            throw ex;
         } catch (Exception e) {
             log.error("Error creating PO from RFQ: {}", e.getMessage(), e);
             return internalServerError("Failed to create PO from RFQ: " + e.getMessage());
@@ -394,8 +384,6 @@ public class PurchaseOrderController {
                             "attachment; filename=purchase-order-" + transactionPoid + ".pdf")
                     .contentType(MediaType.APPLICATION_PDF)
                     .body(pdf);
-        } catch (ValidationException ex) {
-            throw ex;
         } catch (Exception e) {
             log.error("Failed to generate PDF for Purchase Order: {}", transactionPoid, e);
             return error("Failed to generate PDF: " + e.getMessage(), 500);

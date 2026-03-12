@@ -30,7 +30,7 @@ public interface BankPaymentVoucherSpRepository {
     
     void releaseCheque(Long groupPoid, String loginUser, Long companyPoid, Long transactionPoid, String releasedTo, String contact);
     
-    void unReleaseCheque(Long groupPoid, String loginUser, Long companyPoid, Long transactionPoid);
+    void unReleaseCheque(Long groupPoid, Long loginUser, Long companyPoid, Long transactionPoid);
     
     void resetChequeStatus(Long groupPoid, Long companyPoid, Long userPoid, Long docKeyPoid);
     

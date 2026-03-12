@@ -2287,15 +2287,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             }
             if (dto.getType().equals("DR") && dto.getDrAmt() != null) {
                 totalDr = totalDr.add(dto.getDrAmt());
-                if (dto.getTaxAmount() != null) {
-                    totalDr = totalDr.add(dto.getTaxAmount());
-                }
+                totalDr = totalDr.add(dto.getTaxAmount());
             }
             if (dto.getType().equals("CR") && dto.getCrAmt() != null) {
                 totalCr = totalCr.add(dto.getCrAmt());
-                if (dto.getTaxAmount() != null) {
-                    totalCr = totalCr.add(dto.getTaxAmount());
-                }
+                totalCr = totalCr.add(dto.getTaxAmount());
             }
         }
 

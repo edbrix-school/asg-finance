@@ -185,7 +185,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
             log.info("Receipt data committed. Now calling GL posting procedure...");
             // Process GL posting or approval - called OUTSIDE any transaction
             // so the Oracle procedure can see the committed data
-            // processGLPostingOrApproval(header);
+             processGLPostingOrApproval(header);
         } catch (Exception e) {
             log.error("GL posting failed for receipt {}, but receipt data is saved", header.getDocRef(), e);
         }

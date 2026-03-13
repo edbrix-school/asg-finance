@@ -46,6 +46,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 
 import jakarta.persistence.EntityManager;
 
@@ -140,23 +141,8 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         GlBankDebitHdr savedHeader = headerRepository.save(header);
         entityManager.flush();
 
-        if (request.getFfRef() != null) {
-            bankPaymentVoucherSpRepository.updateFfCost(
-                    UserContext.getGroupPoid(),
-                    UserContext.getCompanyPoid(),
-                    UserContext.getUserPoid(),
-                    String.valueOf(header.getFfRef()),
-                    savedHeader.getTransactionPoid());
-        }
-        if (request.getFdaRef() != null) {
-            bankPaymentVoucherSpRepository.updateFdaCost(
-                    UserContext.getGroupPoid(),
-                    UserContext.getCompanyPoid(),
-                    UserContext.getUserPoid(),
-                    String.valueOf(header.getFdaRef()),
-                    savedHeader.getTransactionPoid());
-        }
-
+        // Post-save job cost updates (mirrors legacy DocumentAfterSave)
+        updateJobCostsInNewTransaction(savedHeader);
 
         persistChildCollections(request, savedHeader.getTransactionPoid(), true,documentId);
 
@@ -258,23 +244,8 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         entityManager.flush();
         entityManager.refresh(header);
 
-        if (request.getFfRef() != null) {
-            bankPaymentVoucherSpRepository.updateFfCost(
-                    UserContext.getGroupPoid(),
-                    UserContext.getCompanyPoid(),
-                    UserContext.getUserPoid(),
-                    String.valueOf(header.getFfRef()),
-                    header.getTransactionPoid());
-        }
-        if (request.getFdaRef() != null) {
-            bankPaymentVoucherSpRepository.updateFdaCost(
-                    UserContext.getGroupPoid(),
-                    UserContext.getCompanyPoid(),
-                    UserContext.getUserPoid(),
-                    String.valueOf(header.getFdaRef()),
-                    header.getTransactionPoid());
-        }
-
+        // Post-update job cost updates (mirrors legacy DocumentAfterSave)
+        updateJobCostsInNewTransaction(header);
 
         persistChildCollections(request, header.getTransactionPoid(), false,documentId);
 
@@ -1220,6 +1191,50 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         }
         params.put("BANK_DEBIT_VOUCHER_SUBREPORT_1", printService.load("Finance/BankPayments/BankDebitVoucher_subreport1.jrxml"));
         return printService.fillReportToPdf(mainReport, params, dataSource);
+    }
+
+    /**
+     * Post-save/post-update job cost updates (equivalent to BankDebitVoucherBean.DocumentAfterSave):
+     * - For RefType = FDA JOBS → PROC_AP_PI_FDA_UPDATE_COST
+     * - For RefType = FF JOBS  → PROC_AP_PI_FF_UPDATE_COST
+     * - For RefType = MTA RFQ  → PROC_BANK_MTA_UPDATE
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    protected void updateJobCostsInNewTransaction(GlBankDebitHdr header) {
+        if (header == null || header.getRefType() == null) {
+            return;
+        }
+
+        String refType = header.getRefType();
+        Long groupPoid = header.getGroupPoid();
+        Long companyPoid = header.getCompanyPoid();
+        Long userPoid = UserContext.getUserPoid();
+
+        try {
+            switch (refType.toUpperCase()) {
+                case "FDA JOBS" -> {
+                    if (header.getFdaRef() != null) {
+                        bankPaymentVoucherSpRepository.updateFdaCost(groupPoid, companyPoid, userPoid, String.valueOf(header.getFdaRef()), header.getTransactionPoid());
+                    }
+                }
+                case "FF JOBS" -> {
+                    if (header.getFfRef() != null) {
+                        bankPaymentVoucherSpRepository.updateFfCost(groupPoid, companyPoid, userPoid, header.getFfRef(), header.getTransactionPoid());
+                    }
+                }
+                case "MTA RFQ" -> {
+                    if (header.getSalesQtnRef() != null) {
+                        bankPaymentVoucherSpRepository.updateMtaCost(groupPoid, companyPoid, userPoid, header.getTransactionPoid(), String.valueOf(header.getSalesQtnRef()));
+                    }
+                }
+                default -> {
+                    // No job-cost update required for other ref types
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to update job costs for refType {} on transaction {}: {}",
+                    refType, header.getTransactionPoid(), e.getMessage());
+        }
     }
 
     /**

@@ -13,6 +13,7 @@ import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
+import com.asg.finance.annotation.PerformGlPosting;
 import com.asg.finance.dto.ImcoDepositRefundRequestDTO;
 import com.asg.finance.dto.ImcoDepositRefundResponseDTO;
 import com.asg.finance.dto.ImcoRefundLoadResponseDto;
@@ -66,6 +67,7 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
     
     @Override
     @Transactional
+    @PerformGlPosting
     public ImcoDepositRefundResponseDTO createImcoDepositRefund(ImcoDepositRefundRequestDTO request) {
         validateRequest(request);
 

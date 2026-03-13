@@ -232,7 +232,7 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
         GlBankDepositVoucherHdr hdr = hdrRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Bank Deposit Voucher", "transactionPoid", transactionPoid));
 
-        List<GlBankDepositVoucherDtl> details = dtlRepository.findByTransactionPoid(transactionPoid);
+        List<GlBankDepositVoucherDtl> details = dtlRepository.findByTransactionPoidOrderByChqSeqNumAsc(transactionPoid);
 
         return BankDepositVoucherResponseDto.builder()
                 .transactionPoid(hdr.getTransactionPoid())

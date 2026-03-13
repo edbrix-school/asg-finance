@@ -892,7 +892,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         
         spRepository.unReleaseCheque(
                 UserContext.getGroupPoid(),
-                UserContext.getUserId(),
+                UserContext.getUserPoid(),
                 UserContext.getCompanyPoid(),
                 transactionPoid
         );

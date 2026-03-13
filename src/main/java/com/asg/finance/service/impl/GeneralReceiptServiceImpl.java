@@ -8,6 +8,7 @@ import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.*;
 import com.asg.common.lib.utility.ASGHelperUtils;
 import com.asg.common.lib.utility.PaginationUtil;
+import com.asg.finance.annotation.PerformGlPosting;
 import com.asg.finance.dto.*;
 import com.asg.finance.entity.*;
 import com.asg.finance.repository.*;
@@ -183,7 +184,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
             log.info("Receipt data committed. Now calling GL posting procedure...");
             // Process GL posting or approval - called OUTSIDE any transaction
             // so the Oracle procedure can see the committed data
-            // processGLPostingOrApproval(header);
+             processGLPostingOrApproval(header);
         } catch (Exception e) {
             log.error("GL posting failed for receipt {}, but receipt data is saved", header.getDocRef(), e);
         }

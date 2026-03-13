@@ -34,7 +34,7 @@ public class ApPurchaseInvoiceItemDtlEntity {
     private Long stockUnitPoid;
 
     @Column(name = "PO_QTY")
-    private Long poQty;
+    private BigDecimal poQty;
 
     @AuditIgnore
     @Column(name = "DN_QTY")
@@ -48,7 +48,7 @@ public class ApPurchaseInvoiceItemDtlEntity {
     private BigDecimal price;
 
     @Column(name = "DISCOUNT")
-    private Long discount;
+    private BigDecimal discount;
 
     @Column(name = "TOTAL")
     private BigDecimal total;
@@ -91,7 +91,7 @@ public class ApPurchaseInvoiceItemDtlEntity {
     private Long taxPoid;
 
     @Column(name = "TAX_PERCENTAGE")
-    private Long taxPercentage;
+    private BigDecimal taxPercentage;
 
     @Column(name = "TAX_AMOUNT")
     private BigDecimal taxAmount;

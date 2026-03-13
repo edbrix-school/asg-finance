@@ -14,11 +14,11 @@ public class ApPurchaseInvoiceItemDtlDto {
 
     private Long stockPoid;
     private Long stockUnitPoid;
-    private Long poQty;
+    private BigDecimal poQty;
     private Long dnQty;
     private Long qtyReceived;
     private BigDecimal price;
-    private Long discount;
+    private BigDecimal discount;
     private BigDecimal total;
     private String remarks;
     private String createdBy;
@@ -30,7 +30,7 @@ public class ApPurchaseInvoiceItemDtlDto {
     private String checkAll;
     private Long refDetRowId;
     private Long taxPoid;
-    private Long taxPercentage;
+    private BigDecimal taxPercentage;
     private BigDecimal taxAmount;
     private BigDecimal amount;
     private BigDecimal baseAmount;

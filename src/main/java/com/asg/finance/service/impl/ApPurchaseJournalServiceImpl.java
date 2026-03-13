@@ -34,6 +34,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -510,7 +511,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
             e.setQtyReceived(d.getQtyReceived());
             e.setPrice(d.getPrice());
             e.setDiscount(d.getDiscount());
-            e.setTotal(d.getTotal());
+            //e.setTotal(d.getTotal());
             e.setRemarks(d.getRemarks());
 
             e.setCreatedBy(getCurrentUser());
@@ -524,11 +525,60 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
             e.setRefDetRowId(d.getRefDetRowId());
             e.setTaxPoid(d.getTaxPoid());
             e.setTaxPercentage(d.getTaxPercentage());
-            e.setTaxAmount(d.getTaxAmount());
-            e.setAmount(d.getAmount());
-            e.setBaseAmount(d.getBaseAmount());
+            //e.setTaxAmount(d.getTaxAmount());
+            //e.setAmount(d.getAmount());
+            //e.setBaseAmount(d.getBaseAmount());
+
+            /* ---------- LEGACY CALCULATION ---------- */
+
+            BigDecimal price =
+                    Optional.ofNullable(d.getPrice()).orElse(BigDecimal.ZERO);
+
+            BigDecimal discount =
+                    Optional.ofNullable(d.getDiscount()).orElse(BigDecimal.ZERO);
+
+            BigDecimal qty =
+                    Optional.ofNullable(d.getPoQty()).orElse(BigDecimal.ZERO);
+
+            BigDecimal taxPer =
+                    Optional.ofNullable(d.getTaxPercentage()).orElse(BigDecimal.ZERO);
+
+            // Base Amount
+            BigDecimal baseAmount =
+                    price.subtract(discount);
+
+            // Amount
+            BigDecimal amount =
+                    qty.multiply(baseAmount);
+
+            // Tax Amount
+            BigDecimal taxAmount =
+                    amount.multiply(taxPer)
+                            .divide(new BigDecimal("100"), 3, RoundingMode.HALF_UP);
+
+            // Total
+            BigDecimal total =
+                    amount.add(taxAmount);
+
+            e.setBaseAmount(baseAmount);
+            e.setAmount(amount);
+            e.setTaxAmount(taxAmount);
+            e.setTotal(total);
 
             items.add(e);
+        }
+
+        BigDecimal itemTotal =
+                items.stream()
+                        .map(ApPurchaseInvoiceItemDtlEntity::getTotal)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        if (dto.getBhdAmount() != null &&
+                itemTotal.compareTo(dto.getBhdAmount()) != 0) {
+
+            throw new ValidationException(
+                    "Item total not matching Invoice Total"
+            );
         }
 
         apPurchaseInvoiceItemDtlRepository.saveAll(items);
@@ -1271,7 +1321,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                         item.setQtyReceived(idto.getQtyReceived());
                         item.setPrice(idto.getPrice());
                         item.setDiscount(idto.getDiscount());
-                        item.setTotal(idto.getTotal());
+                        //item.setTotal(idto.getTotal());
                         item.setRemarks(idto.getRemarks());
                         item.setCreatedBy(apPurchaseInvoiceHdrDto.getLastModifiedBy());
                         item.setCreatedDate(LocalDateTime.now());
@@ -1283,9 +1333,33 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                         item.setRefDetRowId(idto.getRefDetRowId());
                         item.setTaxPoid(idto.getTaxPoid());
                         item.setTaxPercentage(idto.getTaxPercentage());
-                        item.setTaxAmount(idto.getTaxAmount());
-                        item.setAmount(idto.getAmount());
-                        item.setBaseAmount(idto.getBaseAmount());
+                        //item.setTaxAmount(idto.getTaxAmount());
+                       // item.setAmount(idto.getAmount());
+                        //item.setBaseAmount(idto.getBaseAmount());
+
+                        BigDecimal price = Optional.ofNullable(idto.getPrice()).orElse(BigDecimal.ZERO);
+                        BigDecimal discount = Optional.ofNullable(idto.getDiscount()).orElse(BigDecimal.ZERO);
+                        BigDecimal qty = Optional.ofNullable(idto.getPoQty()).orElse(BigDecimal.ZERO);
+                        BigDecimal taxPer = Optional.ofNullable(idto.getTaxPercentage()).orElse(BigDecimal.ZERO);
+
+// Legacy base amount
+                        BigDecimal baseAmount = price.subtract(discount);
+
+// Legacy amount
+                        BigDecimal amount = qty.multiply(baseAmount);
+
+// Legacy tax
+                        BigDecimal taxAmount = amount
+                                .multiply(taxPer)
+                                .divide(new BigDecimal("100"), 3, RoundingMode.HALF_UP);
+
+// Legacy total
+                        BigDecimal total = amount.add(taxAmount);
+
+                        item.setBaseAmount(baseAmount);
+                        item.setAmount(amount);
+                        item.setTaxAmount(taxAmount);
+                        item.setTotal(total);
 
                         apPurchaseInvoiceItemDtlRepository.save(item);
 

@@ -16,6 +16,7 @@ import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.utility.ASGHelperUtils;
+import com.asg.finance.annotation.PerformGlPosting;
 import com.asg.finance.dto.*;
 import com.asg.finance.repository.ArCreditNoteChargeDtlRepository;
 import com.asg.finance.repository.ArCreditNoteDtlRepository;
@@ -28,6 +29,7 @@ import com.asg.finance.service.BillwiseBreakupService;
 import com.asg.finance.service.ChargeLovService;
 import com.asg.finance.service.CostCenterBreakupService;
 import com.asg.finance.service.CreditNoteService;
+import com.asg.finance.service.GlPostingService;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;
 import org.apache.commons.lang3.StringUtils;
@@ -107,8 +109,12 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     @Autowired
     private GlobalLogSummaryRepository globalLogSummaryRepository;
 
+    @Autowired
+    private GlPostingService glPostingService;
+
     @Override
     @Transactional(propagation = Propagation.REQUIRED)
+    @PerformGlPosting
     public CreditNoteHeaderDto createCreditNote(CreditNoteHeaderDto creditNoteDto) {
         try {
             filterUnselectedCharges(creditNoteDto);
@@ -303,6 +309,13 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             if (!detailSummaryLogs.isEmpty()) {
                 globalLogSummaryRepository.saveAll(detailSummaryLogs);
             }
+
+            glPostingService.performGlPosting(
+                    UserContext.getDocumentId(),
+                    transactionPoid,
+                    result.getDocRef()
+            );
+
             return result;
         } catch (SQLException e) {
             log.error("Database error updating credit note", e);

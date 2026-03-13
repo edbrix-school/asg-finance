@@ -40,5 +40,35 @@ public class ImcoSaveRefundRepository {
 
         return (String) query.getOutputParameterValue(8);
     }
+
+    public String callImcoRefundAfterSave(
+            Long groupPoid,
+            Long companyPoid,
+            Long userPoid,
+            String docId,
+            Long transactionPoid,
+            String docRef
+    ) {
+        StoredProcedureQuery query = em.createStoredProcedureQuery("PROC_IMCO_REFUND_AFTER_SAVE");
+
+        query.registerStoredProcedureParameter(1, Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(2, Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(3, Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(4, String.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(5, Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(6, String.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(7, String.class, ParameterMode.OUT);
+
+        query.setParameter(1, groupPoid);
+        query.setParameter(2, companyPoid);
+        query.setParameter(3, userPoid);
+        query.setParameter(4, docId);
+        query.setParameter(5, transactionPoid);
+        query.setParameter(6, docRef);
+
+        query.execute();
+
+        return (String) query.getOutputParameterValue(7);
+    }
 }
 

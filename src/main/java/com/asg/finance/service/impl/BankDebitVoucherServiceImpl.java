@@ -1201,7 +1201,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     protected void updateJobCostsInNewTransaction(GlBankDebitHdr header) {
-        if (header == null || header.getRefType() == null) {
+        if (header == null || StringUtils.isBlank(header.getRefType())) {
             return;
         }
 

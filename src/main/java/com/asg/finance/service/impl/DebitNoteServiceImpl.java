@@ -11,6 +11,7 @@ import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.common.lib.utility.ASGHelperUtils;
+import com.asg.finance.annotation.PerformGlPosting;
 import com.asg.finance.client.GlPostingServiceClient;
 import com.asg.finance.dto.*;
 import com.asg.finance.entity.ArDebitNoteChargeDtl;
@@ -90,6 +91,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
 
     @Override
     @Transactional
+    @PerformGlPosting
     public DebitNoteHeaderDto createDebitNote(DebitNoteHeaderDto debitNoteDto) {
 
         // VALIDATION BEFORE SAVE
@@ -119,9 +121,9 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         // Load breakups into response
         loadBreakups(result, savedEntity.getTransactionPoid());
 
-        debitNoteHdrRepository.flush();
+       /* debitNoteHdrRepository.flush();
         debitNoteDtlRepository.flush();
-        debitNoteChargeDtlRepository.flush();
+        debitNoteChargeDtlRepository.flush();*/
         
         ArDebitNoteHdr refreshedEntity = debitNoteHdrRepository.findById(savedEntity.getTransactionPoid())
                 .orElseThrow(() -> new ResourceNotFoundException("DebitNote", "transactionPoid", savedEntity.getTransactionPoid()));

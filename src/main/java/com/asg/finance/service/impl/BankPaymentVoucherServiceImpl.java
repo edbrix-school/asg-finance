@@ -1,48 +1,40 @@
 package com.asg.finance.service.impl;
 
-import com.asg.common.lib.dto.DeleteReasonDto;
-import com.asg.common.lib.dto.FilterDto;
-import com.asg.common.lib.dto.FilterRequestDto;
-import com.asg.common.lib.dto.RawSearchResult;
-import com.asg.common.lib.dto.ReconcileResultDto;
+import com.asg.common.lib.dto.*;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
 import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.LoadBillwiseBreakupResponseDto;
-import com.asg.common.lib.service.DocumentDeleteService;
-import com.asg.common.lib.service.DocumentSearchService;
-import com.asg.common.lib.service.LovDataService;
-import com.asg.common.lib.service.PrintService;
-import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.exception.ValidationException;
+import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.*;
+import com.asg.common.lib.utility.PaginationUtil;
+import com.asg.finance.annotation.PerformGlPosting;
 import com.asg.finance.dto.*;
 import com.asg.finance.entity.GLPaymentVoucherDtlGLEntity;
 import com.asg.finance.entity.GLPaymentVoucherHDREntity;
 import com.asg.finance.entity.GlBankPaymentChargeDtlEntity;
 import com.asg.finance.entity.GlBankPaymentItemDtlEntity;
 import com.asg.finance.repository.*;
-import com.asg.common.lib.exception.ValidationException;
-import com.asg.common.lib.security.util.UserContext;
-import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.BankPaymentVoucherService;
 import com.asg.finance.service.BillwiseBreakupService;
 import com.asg.finance.service.CostCenterBreakupService;
-import net.sf.jasperreports.engine.JasperReport;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 import com.nimbusds.oauth2.sdk.util.CollectionUtils;
-
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.ParameterMode;
 import jakarta.persistence.StoredProcedureQuery;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import net.sf.jasperreports.engine.JasperReport;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.sql.DataSource;
 import java.math.BigDecimal;
@@ -160,6 +152,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
     @Override
     @Transactional
+    @PerformGlPosting
     public BankPaymentVoucherResponse createBankPaymentVoucher(BankPaymentVoucherRequest req, String documentId) {
 
         validateRefType(req);
@@ -219,6 +212,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
     @Override
     @Transactional
+    @PerformGlPosting
     public BankPaymentVoucherResponse updateBankPaymentVoucher(Long transactionPoid, BankPaymentVoucherRequest req, String documentId) {
 
         GLPaymentVoucherHDREntity existing = paymentVoucherRepository.findById(transactionPoid)

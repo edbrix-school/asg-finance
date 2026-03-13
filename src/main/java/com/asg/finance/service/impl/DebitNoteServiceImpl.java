@@ -148,6 +148,10 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         // Create a copy of the old entity for logging
         ArDebitNoteHdr oldEntity = new ArDebitNoteHdr();
         BeanUtils.copyProperties(existingEntity, oldEntity);
+//
+//        // Store old FDA references for after-save processing
+        String oldFdaRef = existingEntity.getFdaRef();
+        String oldRefType = existingEntity.getRefType();
 
         validateDebitNoteInput(debitNoteDto);
         // Validate using stored procedure for Edit
@@ -208,6 +212,9 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         }
 
         glPostingService.performGlPosting(UserContext.getDocumentId(), transactionPoid, existingEntity.getDocRef());
+
+        // Call after-save procedures for update
+        performAfterSaveProcessing(existingEntity, oldFdaRef, oldRefType);
 
         return getDebitNote(transactionPoid);
     }

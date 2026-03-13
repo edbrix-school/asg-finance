@@ -12,6 +12,7 @@ import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.finance.annotation.PerformGlPosting;
 import com.asg.finance.service.ApPurchaseServiceJournal;
 import com.asg.finance.service.BillwiseBreakupService;
 import com.asg.finance.service.CostCenterBreakupService;
@@ -321,6 +322,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
     @Override
     @Transactional
+    @PerformGlPosting
     public ApPurchaseInvoiceHdrDto createApPurchaseInvoice(ApPurchaseInvoiceHdrDto apPurchaseInvoiceHdrDto, String documentId) {
 
         validateBeforePersist(apPurchaseInvoiceHdrDto, documentId);
@@ -378,7 +380,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         apPurchaseInvoiceHdrEntity.setFdaCoveringRef(apPurchaseInvoiceHdrDto.getFdaCoveringRef());
 
         ApPurchaseInvoiceHdrEntity savedApPurchaseInvoiceHdrEntity = repository.save(apPurchaseInvoiceHdrEntity);
-        entityManager.flush();
+        //entityManager.flush();
         entityManager.refresh(savedApPurchaseInvoiceHdrEntity);
 
         Long transactionPoid = savedApPurchaseInvoiceHdrEntity.getTransactionPoid();
@@ -457,12 +459,12 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         String key = transactionPoid.toString();
         loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, documentId, key);
 
-        repository.flush();
+       /* repository.flush();
         apPurchaseInvoiceItemDtlRepository.flush();
         apPurchaseInvoiceGlDtlRepository.flush();
         apPurchaseInvoiceAssetDtlRepository.flush();
         apPurchaseInvRjvDetailsRepository.flush();
-        purchaseInvoiceChargeDtlRepository.flush();
+        purchaseInvoiceChargeDtlRepository.flush();*/
 
         glPostingService.performGlPosting(documentId, transactionPoid, savedApPurchaseInvoiceHdrEntity.getDocRef());
 

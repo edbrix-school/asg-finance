@@ -9,10 +9,12 @@ import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.GlobalTermsResponseDto;
 import com.asg.common.lib.exception.ResourceAlreadyExistsException;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.finance.annotation.PerformGlPosting;
 import com.asg.finance.client.GlobalTermsServiceClient;
 import com.asg.finance.repository.GLMasterRepository;
 import com.asg.finance.repository.TaxMasterRepository;
@@ -30,6 +32,7 @@ import com.asg.finance.service.BankDebitVoucherService;
 import com.asg.finance.service.BillwiseBreakupService;
 import com.asg.finance.service.CostCenterBreakupService;
 import com.asg.finance.validator.BankDebitVoucherValidator;
+import com.asg.finance.repository.GlChequeCashConvertRepository;
 import com.nimbusds.oauth2.sdk.util.CollectionUtils;
 import jakarta.persistence.ParameterMode;
 import jakarta.persistence.StoredProcedureQuery;
@@ -88,7 +91,9 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
     private final DataSource dataSource;
     private final LoggingService loggingService;
     private final DocumentDeleteService documentDeleteService;
+    private final GlChequeCashConvertRepository glChequeCashConvertRepository;
 
+    @PerformGlPosting
     @Override
     public BankDebitVoucherResponse createBankDebitVoucher(BankDebitVoucherRequest request, String documentId) {
 
@@ -128,6 +133,8 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
         GlBankDebitHdr header = new GlBankDebitHdr();
         mapRequestToEntity(request, header);
+        // Mirror GL_BANK_DEBIT_HDR trigger rules at application level
+        validateTriggerRulesForCreate(header);
         populateCreateAudit(header);
 
         GlBankDebitHdr savedHeader = headerRepository.save(header);
@@ -195,6 +202,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         return response;
     }
 
+    @PerformGlPosting
     @Override
     public BankDebitVoucherResponse updateBankDebitVoucher(Long transactionPoid, BankDebitVoucherRequest request,String documentId) {
 
@@ -239,6 +247,8 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         runPreSaveProcedures(header);
 
         mapRequestToEntity(request, header);
+        // Apply GL_BANK_DEBIT_HDR trigger-equivalent checks when updating
+        validateTriggerRulesForUpdate(oldEntity, header);
 
         validator.validateVoucherStatusInNewTransaction(header);
 
@@ -403,7 +413,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                    // populateCreateAudit(entity);
                     mapToPaymentGlEntity(dtl, entity);
                     paymentGlRepository.save(entity);
-                    
+
                     String logDetail = String.format("Row Created on Payment GL Detail with detRowId: %s", detRowId);
                     loggingService.createLogSummaryEntry(docId, key, logDetail);
 
@@ -460,14 +470,14 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
                     GlBankDebitDtlGl entity = paymentGlRepository.findById(new GlBankDebitDtlGlId(transactionPoid, dtl.getDetRowId()))
                             .orElseThrow(() -> new ResourceNotFoundException("Payment GL Detail", "detRowId", dtl.getDetRowId()));
-                    
+
                     GlBankDebitDtlGl oldEntity = new GlBankDebitDtlGl();
                     BeanUtils.copyProperties(entity, oldEntity);
-                    
+
                     //populateUpdateAudit(entity);
                     mapToPaymentGlEntity(dtl, entity);
                     paymentGlRepository.save(entity);
-                    
+
                     String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", transactionPoid, dtl.getDetRowId());
                     logRequests.add(new LogRequestDto<>(oldEntity, entity, GlBankDebitDtlGl.class, docId, key, logDetail));
 
@@ -576,7 +586,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                     //populateCreateAudit(entity);
                     mapToChargeEntity(dto, entity);
                     chargeDetailRepository.save(entity);
-                    
+
                     String logDetail = String.format("Row Created on Charge Detail with detRowId: %s", detRowId);
                     loggingService.createLogSummaryEntry(docId, key, logDetail);
                 }
@@ -590,14 +600,14 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
                     GlBankDebitChargeDtl entity = chargeDetailRepository.findById(new GlBankDebitChargeDtlId(transactionPoid, dto.getDetRowId()))
                             .orElseThrow(() -> new ResourceNotFoundException("Charge Detail", "detRowId", dto.getDetRowId()));
-                    
+
                     GlBankDebitChargeDtl oldEntity = new GlBankDebitChargeDtl();
                     BeanUtils.copyProperties(entity, oldEntity);
-                    
+
                    // populateUpdateAudit(entity);
                     mapToChargeEntity(dto, entity);
                     chargeDetailRepository.save(entity);
-                    
+
                     String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", transactionPoid, dto.getDetRowId());
                     logRequests.add(new LogRequestDto<>(oldEntity, entity, GlBankDebitChargeDtl.class, docId, key, logDetail));
                 }
@@ -1047,7 +1057,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                                                     ? BigDecimal.valueOf(cc.getAmount())
                                                     : BigDecimal.ZERO
                                     );
-                                    if (cc.getCostPoid() != null && !cc.getCostPoid().isEmpty() && 
+                                    if (cc.getCostPoid() != null && !cc.getCostPoid().isEmpty() &&
                                         cc.getCostGroup() != null && !cc.getCostGroup().isEmpty()) {
                                         dto.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(
                                                 Long.valueOf(cc.getCostPoid()), cc.getCostGroup()));
@@ -1210,6 +1220,49 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         }
         params.put("BANK_DEBIT_VOUCHER_SUBREPORT_1", printService.load("Finance/BankPayments/BankDebitVoucher_subreport1.jrxml"));
         return printService.fillReportToPdf(mainReport, params, dataSource);
+    }
+
+    /**
+     * Validates trigger rules before INSERT on GL_BANK_DEBIT_HDR (mirrors GL_BANK_DEBIT_HDR_GTTRG):
+     * - Financial year check for transaction date.
+     */
+    private void validateTriggerRulesForCreate(GlBankDebitHdr header) {
+        if (header.getCompanyPoid() == null || header.getTransactionDate() == null) {
+            return;
+        }
+        LocalDate txDate = header.getTransactionDate().toLocalDate();
+        if (!glChequeCashConvertRepository.isFinancialYearValid(header.getCompanyPoid(), txDate)) {
+            throw new ValidationException("Changes allowed only within current Financial Period. Please set transaction date within the open financial period.");
+        }
+    }
+
+    /**
+     * Validates trigger rules before UPDATE on GL_BANK_DEBIT_HDR (mirrors GL_BANK_DEBIT_HDR_GTTRG):
+     * - Financial year check for new transaction date.
+     * - If date is changing: transaction period check for new date.
+     * - Transaction period check for old transaction date (current period for edit).
+     */
+    private void validateTriggerRulesForUpdate(GlBankDebitHdr oldHeader, GlBankDebitHdr newHeader) {
+        if (newHeader.getCompanyPoid() == null) {
+            return;
+        }
+        Long companyPoid = newHeader.getCompanyPoid();
+        LocalDate oldDate = oldHeader.getTransactionDate() != null ? oldHeader.getTransactionDate().toLocalDate() : null;
+        LocalDate newDate = newHeader.getTransactionDate() != null ? newHeader.getTransactionDate().toLocalDate() : oldDate;
+
+        if (newDate != null && !glChequeCashConvertRepository.isFinancialYearValid(companyPoid, newDate)) {
+            throw new ValidationException("Changes allowed only within current Financial Period. Please set transaction date within the open financial period.");
+        }
+
+        if (oldDate != null && !oldDate.equals(newDate)) {
+            if (newDate != null && !glChequeCashConvertRepository.isTransactionYearValid(companyPoid, newDate)) {
+                throw new ValidationException("Transaction date cannot be updated. The new date is outside the current transaction period.");
+            }
+        }
+
+        if (oldDate != null && !glChequeCashConvertRepository.isTransactionYearValid(companyPoid, oldDate)) {
+            throw new ValidationException("Changes allowed only within current Transaction Period. This record's transaction date is outside the editable period.");
+        }
     }
 
 }

@@ -83,6 +83,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
     private final DocumentDeleteService documentDeleteService;
     private final LoggingService loggingService;
     private final GlobalLogSummaryRepository globalLogSummaryRepository;
+    private final DebitNoteProcedureRepository debitNoteProcedureRepository;
     private final TaxMasterRepository taxMasterRepository;
     private final GlPostingService glPostingService;
 
@@ -131,6 +132,9 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), savedEntity.getTransactionPoid().toString());
 
         glPostingService.performGlPosting(UserContext.getDocumentId(), savedEntity.getTransactionPoid(), refreshedEntity.getDocRef());
+
+        // Call after-save procedures
+        performAfterSaveProcessing(refreshedEntity, null, null);
 
         return getDebitNote(savedEntity.getTransactionPoid());
     }
@@ -1338,6 +1342,61 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         return errors.isEmpty() 
             ? Map.of("valid", true) 
             : Map.of("valid", false, "errors", errors);
+    }
+
+    /**
+     * Performs after-save processing including bill reference updates and FDA amount updates
+     */
+    private void performAfterSaveProcessing(ArDebitNoteHdr entity, String oldFdaRef, String oldRefType) {
+        try {
+            // Handle old FDA references first (like in DocumentAfterSave)
+            if (oldRefType != null && oldFdaRef != null) {
+                if ("FDA".equalsIgnoreCase(oldRefType)) {
+                    String result = debitNoteProcedureRepository.updateFdaAmount(
+                        entity.getGroupPoid(),
+                        entity.getCompanyPoid(),
+                        UserContext.getUserPoid(),
+                        oldFdaRef
+                    );
+                    log.info("Old FDA reference amount update completed: {}", result);
+                }
+            }
+
+            // 1. Bill Reference Update for GENERAL RefType
+            if ("GENERAL".equalsIgnoreCase(entity.getRefType())) {
+                String result = debitNoteProcedureRepository.updateBillReference(
+                    entity.getGroupPoid(),
+                    entity.getCompanyPoid(), 
+                    UserContext.getUserPoid(),
+                    entity.getTransactionPoid(),
+                    entity.getDocRef(),
+                    debitNoteDocId, // "300-110"
+                    entity.getRefType(),
+                    entity.getPartyType()
+                );
+                log.info("Bill reference update completed for GENERAL RefType: {}", result);
+            }
+
+            // 2. FDA Amount Updates for FDA RefType only
+            if ("FDA".equalsIgnoreCase(entity.getRefType()) && entity.getFdaRef() != null) {
+                String result = debitNoteProcedureRepository.updateFdaAmount(
+                    entity.getGroupPoid(),
+                    entity.getCompanyPoid(),
+                    UserContext.getUserPoid(),
+                    entity.getFdaRef()
+                );
+                log.info("FDA amount update completed for FDA RefType: {}", result);
+                
+                if (result != null && result.contains("ERROR")) {
+                    log.error("FDA amount update failed: {}", result);
+                    // Don't throw exception to avoid breaking the save process
+                }
+            }
+
+        } catch (Exception e) {
+            log.error("Error in after-save processing for transaction {}: {}", entity.getTransactionPoid(), e.getMessage(), e);
+            // Log error but don't throw to avoid breaking the main save process
+        }
     }
 
 }

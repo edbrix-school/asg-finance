@@ -80,38 +80,45 @@ public class DebitNoteProcedureRepository {
         return (String) query.getOutputParameterValue("P_STATUS");
     }
 
-    public String updateBillReference(Long groupPoid, Long companyPoid, Long userPoid, Long transactionPoid) {
+    public String updateBillReference(Long groupPoid, Long companyPoid, Long userPoid, Long transactionPoid, String docRef, String docId, String refType, String partyType) {
         StoredProcedureQuery query = entityManager
                 .createStoredProcedureQuery("PROC_DR_CR_BILL_REF_UPDATE")
-                .registerStoredProcedureParameter("P_GROUP_POID", Long.class, ParameterMode.IN)
-                .registerStoredProcedureParameter("P_COMPANY_POID", Long.class, ParameterMode.IN)
-                .registerStoredProcedureParameter("P_USER_POID", Long.class, ParameterMode.IN)
+                .registerStoredProcedureParameter("P_LOGIN_GROUP_POID", Long.class, ParameterMode.IN)
+                .registerStoredProcedureParameter("P_LOGIN_USER_POID", Long.class, ParameterMode.IN)
+                .registerStoredProcedureParameter("P_LOGIN_COMPANY_POID", Long.class, ParameterMode.IN)
                 .registerStoredProcedureParameter("P_TRANSACTION_POID", Long.class, ParameterMode.IN)
-                .registerStoredProcedureParameter("P_STATUS", String.class, ParameterMode.OUT)
-                .setParameter("P_GROUP_POID", groupPoid)
-                .setParameter("P_COMPANY_POID", companyPoid)
-                .setParameter("P_USER_POID", userPoid)
-                .setParameter("P_TRANSACTION_POID", transactionPoid);
+                .registerStoredProcedureParameter("P_DOC_REF", String.class, ParameterMode.IN)
+                .registerStoredProcedureParameter("P_DOC_ID", String.class, ParameterMode.IN)
+                .registerStoredProcedureParameter("P_REF_TYPE", String.class, ParameterMode.IN)
+                .registerStoredProcedureParameter("P_PARTY_TYPE", String.class, ParameterMode.IN)
+                .setParameter("P_LOGIN_GROUP_POID", groupPoid)
+                .setParameter("P_LOGIN_USER_POID", userPoid)
+                .setParameter("P_LOGIN_COMPANY_POID", companyPoid)
+                .setParameter("P_TRANSACTION_POID", transactionPoid)
+                .setParameter("P_DOC_REF", docRef)
+                .setParameter("P_DOC_ID", docId)
+                .setParameter("P_REF_TYPE", refType)
+                .setParameter("P_PARTY_TYPE", partyType);
 
         query.execute();
-        return (String) query.getOutputParameterValue("P_STATUS");
+        return "SUCCESS";
     }
 
-    public String updateFdaAmount(Long groupPoid, Long companyPoid, Long userPoid, Long transactionPoid) {
+    public String updateFdaAmount(Long groupPoid, Long companyPoid, Long userPoid, String fdaPoid) {
         StoredProcedureQuery query = entityManager
                 .createStoredProcedureQuery("PROC_AR_UPDATE_FDA_AMOUNT")
-                .registerStoredProcedureParameter("P_GROUP_POID", Long.class, ParameterMode.IN)
-                .registerStoredProcedureParameter("P_COMPANY_POID", Long.class, ParameterMode.IN)
-                .registerStoredProcedureParameter("P_USER_POID", Long.class, ParameterMode.IN)
-                .registerStoredProcedureParameter("P_TRANSACTION_POID", Long.class, ParameterMode.IN)
-                .registerStoredProcedureParameter("P_STATUS", String.class, ParameterMode.OUT)
-                .setParameter("P_GROUP_POID", groupPoid)
-                .setParameter("P_COMPANY_POID", companyPoid)
-                .setParameter("P_USER_POID", userPoid)
-                .setParameter("P_TRANSACTION_POID", transactionPoid);
+                .registerStoredProcedureParameter("P_LOGIN_GROUP_POID", Long.class, ParameterMode.IN)
+                .registerStoredProcedureParameter("P_LOGIN_COMPANY_POID", Long.class, ParameterMode.IN)
+                .registerStoredProcedureParameter("P_LOGIN_USER_POID", Long.class, ParameterMode.IN)
+                .registerStoredProcedureParameter("P_FDA_POID", String.class, ParameterMode.IN)
+                .registerStoredProcedureParameter("P_RESULT", String.class, ParameterMode.OUT)
+                .setParameter("P_LOGIN_GROUP_POID", groupPoid)
+                .setParameter("P_LOGIN_COMPANY_POID", companyPoid)
+                .setParameter("P_LOGIN_USER_POID", userPoid)
+                .setParameter("P_FDA_POID", fdaPoid);
 
         query.execute();
-        return (String) query.getOutputParameterValue("P_STATUS");
+        return (String) query.getOutputParameterValue("P_RESULT");
     }
 
     public String validateDebitNotePartyCompany(Long groupPoid, Long companyPoid, Long userPoid, Long transactionPoid) {

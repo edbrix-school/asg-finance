@@ -1,12 +1,10 @@
 package com.asg.finance.aspect;
 
-import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.annotation.PerformGlPosting;
 import com.asg.finance.service.GlPostingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.catalina.User;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.AfterReturning;
 import org.aspectj.lang.annotation.Aspect;
@@ -38,23 +36,20 @@ public class GlPostingAspect {
 
             Long transactionPoid = extractLongValue(result, "getPoid", "getTransactionPoid");
             String docRef = extractStringValue(result, "getDocRef");
-            String postingResult = null;
+
             if (transactionPoid != null && StringUtils.hasText(docId)) {
-                postingResult = glPostingService.performGlPosting(docId, transactionPoid, docRef);
+                glPostingService.performGlPosting(docId, transactionPoid, docRef);
             } else {
                 log.warn("PerformGlPosting: Could not extract necessary information. DocId: {}, Poid: {}, DocRef: {}", 
                         docId, transactionPoid, docRef);
             }
 
-            if (postingResult != null && postingResult.contains("ERROR")) {
-                log.error("GL posting failed: {}", result);
-                UserContext.setGlPostingError("GL Posting failed: " + result);
-            }
-
-
         } catch (Exception e) {
             log.error("Error in GlPostingAspect: {}", e.getMessage(), e);
-            UserContext.setGlPostingError(String.format("Unexpected error during automatic GL Posting: %s", e.getMessage()));
+            if (e instanceof RuntimeException) {
+                throw e;
+            }
+            throw new RuntimeException("Unexpected error during automatic GL Posting", e);
         }
     }
 

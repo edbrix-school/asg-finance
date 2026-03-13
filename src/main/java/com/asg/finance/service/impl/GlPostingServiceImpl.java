@@ -49,6 +49,12 @@ public class GlPostingServiceImpl implements GlPostingService {
 
             cs.execute();
             String result = cs.getString(7);
+
+            if (result != null && result.contains("ERROR")) {
+                log.error("GL posting failed: {}", result);
+                throw new ValidationException("GL Posting failed: " + result);
+            }
+
             log.info("GL posting completed successfully: {}", result);
             return result;
 

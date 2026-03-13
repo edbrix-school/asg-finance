@@ -8,6 +8,7 @@ import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.*;
 import com.asg.common.lib.utility.ASGHelperUtils;
 import com.asg.common.lib.utility.PaginationUtil;
+import com.asg.finance.annotation.PerformGlPosting;
 import com.asg.finance.dto.*;
 import com.asg.finance.entity.*;
 import com.asg.finance.repository.*;
@@ -71,6 +72,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
     private ApplicationContext applicationContext;
 
     @Override
+    @PerformGlPosting
     public GeneralReceiptResponse createGeneralReceipt(GeneralReceiptRequest request) {
         // Step 1: Get self-reference to enable proxy interception for @Transactional
         GeneralReceiptServiceImpl self = applicationContext.getBean(GeneralReceiptServiceImpl.class);

@@ -33,9 +33,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.ParameterMode;
+import jakarta.persistence.StoredProcedureQuery;
 
 import javax.sql.DataSource;
 import java.math.BigDecimal;
@@ -49,7 +52,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
-    
+
     private final GlImcoChequeRefundHdrRepository hdrRepository;
     private final GlImcoChequeRefundDtlRepository dtlRepository;
     private final GlImcoChequeBillDtlRepository billDtlRepository;
@@ -58,13 +61,14 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
     private final ImcoChequeDetailsRepository repository;
     private final ImcoDepositRefundRepository depositRefundRepository;
     private final ImcoSaveRefundRepository imcoSaveRefundRepository;
-    private final LovDataService lovService;
     private final PrintService printService;
     private final DataSource dataSource;
     private final LoggingService loggingService;
     private final GlobalLogSummaryRepository globalLogSummaryRepository;
 
-    
+    @PersistenceContext
+    private EntityManager entityManager;
+
     @Override
     @Transactional
     @PerformGlPosting
@@ -86,6 +90,7 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
                     .build();
 
             final GlImcoChequeRefundHdr savedHeader = hdrRepository.save(header);
+            hdrRepository.flush();
             final Long hdrPoid = savedHeader.getTransactionPoid();
 
             List<GlImcoChequeRefundDtl> refundDetails = request.getChequeRefundDetails().stream()
@@ -115,9 +120,10 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
                     .collect(Collectors.toList());
 
             List<GlImcoChequeRefundDtl> savedRefundDetails = dtlRepository.saveAll(refundDetails);
-            
+
             savedRefundDetails.forEach(refundDetail -> {
-                String logDetail = String.format("Row Created on Cheque Refund with detRowId: %s", refundDetail.getDetRowId());
+                String logDetail = String.format("Row Created on Cheque Refund with detRowId: %s",
+                        refundDetail.getDetRowId());
                 loggingService.createLogSummaryEntry(UserContext.getDocumentId(), hdrPoid.toString(), logDetail);
             });
 
@@ -132,23 +138,29 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
                     .collect(Collectors.toList());
 
             List<GlImcoChequeBillDtl> savedBillDetails = billDtlRepository.saveAll(billDetails);
-            
+
             savedBillDetails.forEach(billDetail -> {
-                String logDetail = String.format("Row Created on Cheque Bill with detRowId: %s", billDetail.getDetRowId());
+                String logDetail = String.format("Row Created on Cheque Bill with detRowId: %s",
+                        billDetail.getDetRowId());
                 loggingService.createLogSummaryEntry(UserContext.getDocumentId(), hdrPoid.toString(), logDetail);
             });
 
-            callAfterSaveProcedure(savedHeader);
+            dtlRepository.flush();
+            billDtlRepository.flush();
+            entityManager.refresh(savedHeader);
+
+            callAfterSaveProcedure(savedHeader, request.getDocRef());
 
             String docId = UserContext.getDocumentId();
             String docKeyPoid = savedHeader.getTransactionPoid().toString();
             LocalDateTime now = LocalDateTime.now();
             String createdMessage = String.format("Created - - DOC:%s KEY:%s", docId, docKeyPoid);
-            GlobalLogSummary headerLog = createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, createdMessage, now);
+            GlobalLogSummary headerLog = createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid,
+                    createdMessage, now);
             globalLogSummaryRepository.save(headerLog);
 
-            return buildResponse(savedHeader, refundDetails, billDetails);
-        }catch (Exception ex) {
+            return buildResponse(savedHeader, savedRefundDetails, savedBillDetails);
+        } catch (Exception ex) {
             String errorMessage = extractTriggerErrorMessage(ex);
             throw new ValidationException(errorMessage);
         }
@@ -159,7 +171,7 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
                 .map(ImcoDepositRefundRequestDTO.ChequeBillDetailDTO::getBillAmount)
                 .filter(amount -> amount != null)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        
+
         BigDecimal totalRefundAmount = request.getChequeRefundDetails().stream()
                 .map(ImcoDepositRefundRequestDTO.ChequeRefundDetailDTO::getAmount)
                 .filter(amount -> amount != null)
@@ -167,22 +179,21 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
 
         BigDecimal total = totalBillAmount.add(totalRefundAmount);
         if (total.compareTo(BigDecimal.ZERO) != 0) {
-            throw new ValidationException("Total Bill Amount (BillAmt) does not match the Receipt Amount (ReceiptAmt).");
+            throw new ValidationException(
+                    "Total Bill Amount (BillAmt) does not match the Receipt Amount (ReceiptAmt).");
         }
     }
 
-    
-    private ImcoDepositRefundResponseDTO buildResponse(GlImcoChequeRefundHdr header, 
-                                                     List<GlImcoChequeRefundDtl> refundDetails,
-                                                     List<GlImcoChequeBillDtl> billDetails) {
+    private ImcoDepositRefundResponseDTO buildResponse(GlImcoChequeRefundHdr header,
+            List<GlImcoChequeRefundDtl> refundDetails,
+            List<GlImcoChequeBillDtl> billDetails) {
         DetailsDto receiptNumDtl = new DetailsDto(
                 null,
                 header.getReceiptNum(),
                 header.getReceiptNum(),
                 null,
                 header.getReceiptNum(),
-                null
-        );
+                null);
         return ImcoDepositRefundResponseDTO.builder()
                 .poid(header.getTransactionPoid())
                 .transactionDate(header.getTransactionDate())
@@ -207,8 +218,9 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
                         .collect(Collectors.toList()))
                 .build();
     }
-    
-    private ImcoDepositRefundResponseDTO.ChequeRefundDetailResponseDTO mapToRefundDetailResponse(GlImcoChequeRefundDtl entity) {
+
+    private ImcoDepositRefundResponseDTO.ChequeRefundDetailResponseDTO mapToRefundDetailResponse(
+            GlImcoChequeRefundDtl entity) {
         return ImcoDepositRefundResponseDTO.ChequeRefundDetailResponseDTO.builder()
                 .poid(entity.getTransactionPoid())
                 .detRowId(entity.getDetRowId())
@@ -233,8 +245,9 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
                 .paymentMainPoid(entity.getPaymentMainPoid())
                 .build();
     }
-    
-    private ImcoDepositRefundResponseDTO.ChequeBillDetailResponseDTO mapToBillDetailResponse(GlImcoChequeBillDtl entity) {
+
+    private ImcoDepositRefundResponseDTO.ChequeBillDetailResponseDTO mapToBillDetailResponse(
+            GlImcoChequeBillDtl entity) {
         return ImcoDepositRefundResponseDTO.ChequeBillDetailResponseDTO.builder()
                 .poid(entity.getTransactionPoid())
                 .detRowId(entity.getDetRowId())
@@ -243,13 +256,15 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
                 .remarks(entity.getRemarks())
                 .build();
     }
+
     private String getCurrentUser() {
         return UserContext.getUserId() != null ? String.valueOf(UserContext.getUserId()) : "SYSTEM";
     }
 
     public ImcoDepositRefundResponseDTO getImcoDepositRefundById(Long transactionPoid) {
         GlImcoChequeRefundHdr header = hdrRepository.findByTransactionPoid(transactionPoid)
-                .orElseThrow(() -> new ResourceNotFoundException("Refund header not found for ID: ", "transactionPoid",  transactionPoid));
+                .orElseThrow(() -> new ResourceNotFoundException("Refund header not found for ID: ", "transactionPoid",
+                        transactionPoid));
         List<GlImcoChequeRefundDtl> refundDetails = dtlRepository.findByTransactionPoid(transactionPoid);
         List<GlImcoChequeBillDtl> billDetails = billDtlRepository.findByTransactionPoid(transactionPoid);
         return buildResponse(header, refundDetails, billDetails);
@@ -259,19 +274,20 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
     @Transactional
     public void softDeleteImcoDepositRefund(Long transactionPoid, DeleteReasonDto deleteReasonDto) {
         GlImcoChequeRefundHdr existing = hdrRepository.findByTransactionPoid(transactionPoid)
-                .orElseThrow(() -> new ResourceNotFoundException("Refund header not found for ID: ", "transactionPoid", transactionPoid));
-        
+                .orElseThrow(() -> new ResourceNotFoundException("Refund header not found for ID: ", "transactionPoid",
+                        transactionPoid));
+
         documentDeleteService.deleteDocument(
                 transactionPoid,
                 "GL_IMCO_CHEQUE_REFUND_HDR",
                 "TRANSACTION_POID",
                 deleteReasonDto,
-                existing.getTransactionDate()
-        );
+                existing.getTransactionDate());
     }
 
     @Override
-    public Map<String, Object> listImcoDepositRefund(String documentId, FilterRequestDto request, LocalDate startDate, LocalDate endDate, Pageable pageable) {
+    public Map<String, Object> listImcoDepositRefund(String documentId, FilterRequestDto request, LocalDate startDate,
+            LocalDate endDate, Pageable pageable) {
         String operator = documentService.resolveOperator(request);
         String isDeleted = documentService.resolveIsDeleted(request);
         List<FilterDto> filters = documentService.resolveDateFilters(request, "TRANSACTION_DATE", startDate, endDate);
@@ -291,7 +307,8 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
         }
 
         if (!isValidReceipt(receiptPoid, receiptNumber)) {
-            throw new ResourceNotFoundException("Not found: ","Receipt number or Receipt number", String.format("%s, %s", receiptNumber, receiptPoid));
+            throw new ResourceNotFoundException("Not found: ", "Receipt number or Receipt number",
+                    String.format("%s, %s", receiptNumber, receiptPoid));
         }
 
         ImcoRefundLoadResponseDto result = repository.fetchChequeAndBillDetails(
@@ -299,8 +316,7 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
                 UserContext.getCompanyPoid(),
                 getCurrentUser(),
                 receiptPoid,
-                receiptNumber
-        );
+                receiptNumber);
         return result;
     }
 
@@ -310,31 +326,31 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
 
     public GlPostingViewResponseDto getGlPostingDetails(String docId, Long transactionPoid) {
 
-       hdrRepository.findByTransactionPoid(transactionPoid)
-                .orElseThrow(() -> new ResourceNotFoundException("Refund header not found for ID: ", "transactionPoid",  transactionPoid));
+        hdrRepository.findByTransactionPoid(transactionPoid)
+                .orElseThrow(() -> new ResourceNotFoundException("Refund header not found for ID: ", "transactionPoid",
+                        transactionPoid));
 
         GlPostingViewResponseDto result = depositRefundRepository.fetchGlPostingDetails(
                 UserContext.getGroupPoid(),
                 UserContext.getCompanyPoid(),
                 docId,
-                transactionPoid
-        );
+                transactionPoid);
 
         return result;
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    protected void callAfterSaveProcedure(GlImcoChequeRefundHdr header) {
-        String payingTo = imcoSaveRefundRepository.callImcoRefundLoadProcedure(
+    @Transactional
+    protected void callAfterSaveProcedure(GlImcoChequeRefundHdr header, String docRef) {
+        String result = imcoSaveRefundRepository.callImcoRefundAfterSave(
                 header.getGroupPoid(),
                 header.getCompanyPoid(),
-                getCurrentUser(),
-                header.getReceiptNum(),
-                header.getBlNumber()
-        );
-        if (payingTo != null && !payingTo.equals(header.getPayingTo())) {
-            header.setPayingTo(payingTo);
-            hdrRepository.save(header);
+                UserContext.getUserPoid(),
+                "400-108",
+                header.getTransactionPoid(),
+                docRef);
+
+        if (result != null && result.contains("ERROR")) {
+            throw new ValidationException(result);
         }
     }
 
@@ -358,16 +374,15 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
     }
 
     private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum,
-                                                   String docId,
-                                                   String docKeyPoid,
-                                                   String customMessage,
-                                                   LocalDateTime logDateTime) {
+            String docId,
+            String docKeyPoid,
+            String customMessage,
+            LocalDateTime logDateTime) {
 
         GlobalLogSummary summary = new GlobalLogSummary();
         summary.setLogUserPoid(UserContext.getUserPoid());
         summary.setLogDateTime(
-                logDateTime != null ? logDateTime : LocalDateTime.now()
-        );
+                logDateTime != null ? logDateTime : LocalDateTime.now());
         summary.setLogDocId(docId);
         summary.setLogDocKeyPoid(docKeyPoid);
         summary.setLogDetails(customMessage);

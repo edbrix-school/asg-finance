@@ -549,7 +549,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
         BigDecimal itemTotal =
                 items.stream()
-                        .map(ApPurchaseInvoiceItemDtlEntity::getAmount)
+                        .map(ApPurchaseInvoiceItemDtlEntity::getTotal)
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         if (dto.getBhdAmount() != null &&

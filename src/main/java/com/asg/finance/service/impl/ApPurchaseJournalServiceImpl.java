@@ -531,48 +531,25 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
             //e.setAmount(d.getAmount());
             //e.setBaseAmount(d.getBaseAmount());
 
-            /* ---------- LEGACY CALCULATION ---------- */
-
-            BigDecimal price =
-                    Optional.ofNullable(d.getPrice()).orElse(BigDecimal.ZERO);
-
-            BigDecimal discount =
-                    Optional.ofNullable(d.getDiscount()).orElse(BigDecimal.ZERO);
-
-            BigDecimal qty =
-                    Optional.ofNullable(d.getPoQty()).orElse(BigDecimal.ZERO);
-
-            BigDecimal taxPer =
-                    Optional.ofNullable(d.getTaxPercentage()).orElse(BigDecimal.ZERO);
-
-            // Base Amount
-            BigDecimal baseAmount =
-                    price.subtract(discount);
-
-            // Amount
-            BigDecimal amount =
-                    qty.multiply(baseAmount);
-
-            // Tax Amount
-            BigDecimal taxAmount =
-                    amount.multiply(taxPer)
-                            .divide(new BigDecimal("100"), 3, RoundingMode.HALF_UP);
-
-            // Total
-            BigDecimal total =
-                    amount.add(taxAmount);
-
-            e.setBaseAmount(baseAmount);
-            e.setAmount(amount);
-            e.setTaxAmount(taxAmount);
-            e.setTotal(total);
+            applyLegacyItemCalculation(
+                    e,
+                    d.getPrice(),
+                    d.getDiscount(),
+                    d.getPoQty(),
+                    d.getTaxPercentage()
+            );
 
             items.add(e);
         }
 
-        BigDecimal itemTotal =
+       /* BigDecimal itemTotal =
                 items.stream()
                         .map(ApPurchaseInvoiceItemDtlEntity::getTotal)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);*/
+
+        BigDecimal itemTotal =
+                items.stream()
+                        .map(ApPurchaseInvoiceItemDtlEntity::getAmount)
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         if (dto.getBhdAmount() != null &&
@@ -1339,29 +1316,13 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                        // item.setAmount(idto.getAmount());
                         //item.setBaseAmount(idto.getBaseAmount());
 
-                        BigDecimal price = Optional.ofNullable(idto.getPrice()).orElse(BigDecimal.ZERO);
-                        BigDecimal discount = Optional.ofNullable(idto.getDiscount()).orElse(BigDecimal.ZERO);
-                        BigDecimal qty = Optional.ofNullable(idto.getPoQty()).orElse(BigDecimal.ZERO);
-                        BigDecimal taxPer = Optional.ofNullable(idto.getTaxPercentage()).orElse(BigDecimal.ZERO);
-
-// Legacy base amount
-                        BigDecimal baseAmount = price.subtract(discount);
-
-// Legacy amount
-                        BigDecimal amount = qty.multiply(baseAmount);
-
-// Legacy tax
-                        BigDecimal taxAmount = amount
-                                .multiply(taxPer)
-                                .divide(new BigDecimal("100"), 3, RoundingMode.HALF_UP);
-
-// Legacy total
-                        BigDecimal total = amount.add(taxAmount);
-
-                        item.setBaseAmount(baseAmount);
-                        item.setAmount(amount);
-                        item.setTaxAmount(taxAmount);
-                        item.setTotal(total);
+                        applyLegacyItemCalculation(
+                                item,
+                                idto.getPrice(),
+                                idto.getDiscount(),
+                                idto.getPoQty(),
+                                idto.getTaxPercentage()
+                        );
 
                         apPurchaseInvoiceItemDtlRepository.save(item);
 
@@ -2567,6 +2528,37 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                 );
             }
         }
+    }
+
+    private void applyLegacyItemCalculation(ApPurchaseInvoiceItemDtlEntity item,
+                                            BigDecimal price,
+                                            BigDecimal discount,
+                                            BigDecimal qty,
+                                            BigDecimal taxPer) {
+
+        price = Optional.ofNullable(price).orElse(BigDecimal.ZERO);
+        discount = Optional.ofNullable(discount).orElse(BigDecimal.ZERO);
+        qty = Optional.ofNullable(qty).orElse(BigDecimal.ZERO);
+        taxPer = Optional.ofNullable(taxPer).orElse(BigDecimal.ZERO);
+
+        // Legacy Base Amount
+        BigDecimal baseAmount = price.subtract(discount);
+
+        // Legacy Amount
+        BigDecimal amount = qty.multiply(baseAmount)
+                .setScale(3, RoundingMode.HALF_UP);
+
+        // Legacy Tax
+        BigDecimal taxAmount = baseAmount.multiply(taxPer)
+                .divide(new BigDecimal("100"), 3, RoundingMode.HALF_UP);
+
+        // Legacy Total
+        BigDecimal total = baseAmount.add(taxAmount);
+
+        item.setBaseAmount(baseAmount);
+        item.setAmount(amount);
+        item.setTaxAmount(taxAmount);
+        item.setTotal(total);
     }
 
 }

@@ -13,8 +13,6 @@ import jakarta.persistence.StoredProcedureQuery;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.ResultSet;
 import java.util.ArrayList;
@@ -39,9 +37,9 @@ public class BankDepositVoucherProcRepositoryImpl implements BankDepositVoucherP
         query.registerStoredProcedureParameter("P_BANK_GL_POID", Long.class, ParameterMode.IN);
         query.registerStoredProcedureParameter("P_RESULT", String.class, ParameterMode.OUT);
 
-        query.setParameter("P_LOGIN_GROUP_POID", 1L);
-        query.setParameter("P_LOGIN_USER_POID", 1L);
-        query.setParameter("P_LOGIN_COMPANY_POID", companyPoid);
+        query.setParameter("P_LOGIN_GROUP_POID", UserContext.getGroupPoid());
+        query.setParameter("P_LOGIN_USER_POID", UserContext.getUserPoid());
+        query.setParameter("P_LOGIN_COMPANY_POID", companyPoid != null ? companyPoid : UserContext.getCompanyPoid());
         query.setParameter("P_BANK_GL_POID", bankPoid);
         query.execute();
 
@@ -83,7 +81,7 @@ public class BankDepositVoucherProcRepositoryImpl implements BankDepositVoucherP
         query.registerStoredProcedureParameter("P_RESULT", String.class, ParameterMode.OUT);
         query.registerStoredProcedureParameter("OUTDATA", void.class, ParameterMode.REF_CURSOR);
 
-        query.setParameter("P_LOGIN_GROUP_POID", UserContext.getGroupPoid() != null ? UserContext.getUserPoid(): null);
+        query.setParameter("P_LOGIN_GROUP_POID", UserContext.getGroupPoid() != null ? UserContext.getGroupPoid() : null);
         query.setParameter("P_LOGIN_USER_POID", UserContext.getUserPoid() != null ? UserContext.getUserPoid() : null);
         query.setParameter("P_LOGIN_COMPANY_POID", UserContext.getCompanyPoid()!= null ? UserContext.getCompanyPoid() : null);
         query.setParameter("P_PAYMENT_TYPE", type);
@@ -164,8 +162,7 @@ public class BankDepositVoucherProcRepositoryImpl implements BankDepositVoucherP
     }
 
     @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void markPaymentsCompleted(Long transactionPoid, Long groupPoid, Long companyPoid, String paymentType) {
+    public void markPaymentsCompleted(Long transactionPoid, String paymentType) {
         StoredProcedureQuery query = entityManager.createStoredProcedureQuery("PROC_GL_BANK_DEPOSIT_UPDT_PYMT");
         query.registerStoredProcedureParameter("P_LOGIN_GROUP_POID", Long.class, ParameterMode.IN);
         query.registerStoredProcedureParameter("P_LOGIN_USER_POID", Long.class, ParameterMode.IN);
@@ -174,9 +171,9 @@ public class BankDepositVoucherProcRepositoryImpl implements BankDepositVoucherP
         query.registerStoredProcedureParameter("P_PAYMENT_TYPE", String.class, ParameterMode.IN);
         query.registerStoredProcedureParameter("P_RESULT", String.class, ParameterMode.OUT);
 
-        query.setParameter("P_LOGIN_GROUP_POID", groupPoid);
-        query.setParameter("P_LOGIN_USER_POID", 1L);
-        query.setParameter("P_LOGIN_COMPANY_POID", companyPoid);
+        query.setParameter("P_LOGIN_GROUP_POID", UserContext.getGroupPoid());
+        query.setParameter("P_LOGIN_USER_POID", UserContext.getUserPoid());
+        query.setParameter("P_LOGIN_COMPANY_POID", UserContext.getCompanyPoid());
         query.setParameter("P_BDV_POID", transactionPoid);
         query.setParameter("P_PAYMENT_TYPE", paymentType);
         query.execute();

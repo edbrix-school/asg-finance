@@ -14,6 +14,7 @@ import com.asg.finance.repository.*;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.service.GeneralReceiptService;
+import com.asg.finance.service.GlPostingService;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -65,6 +66,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
     
     private final DocumentDeleteService documentDeleteService;
     private final ApprovalService approvalService;
+    private final GlPostingService glPostingService;
 
     
     @Autowired
@@ -164,6 +166,16 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), header.getTransactionPoid().toString());
         
         log.info("Successfully created general receipt: {}", header.getDocRef());
+        
+        // Flush all repositories before GL posting
+        receiptHdrRepository.flush();
+        pymtDetailsRepository.flush();
+        billDtlRepository.flush();
+        chargesDtlRepository.flush();
+        advanceDtlRepository.flush();
+        
+        // Call GL posting after all data is committed
+        glPostingService.performGlPosting(UserContext.getDocumentId(), header.getTransactionPoid(), header.getDocRef());
         
         // Return the header so GL posting can be done in a separate transaction
         return header;

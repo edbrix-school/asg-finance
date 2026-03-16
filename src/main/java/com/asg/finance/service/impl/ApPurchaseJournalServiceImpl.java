@@ -322,7 +322,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
     @Override
     @Transactional
-    @PerformGlPosting
+   @PerformGlPosting
     public ApPurchaseInvoiceHdrDto createApPurchaseInvoice(ApPurchaseInvoiceHdrDto apPurchaseInvoiceHdrDto, String documentId) {
 
         validateBeforePersist(apPurchaseInvoiceHdrDto, documentId);
@@ -466,7 +466,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         apPurchaseInvRjvDetailsRepository.flush();
         purchaseInvoiceChargeDtlRepository.flush();*/
 
-        glPostingService.performGlPosting(documentId, transactionPoid, savedApPurchaseInvoiceHdrEntity.getDocRef());
+      /*  glPostingService.performGlPosting(documentId, transactionPoid, savedApPurchaseInvoiceHdrEntity.getDocRef());*/
 
         return fetchApPurchaseInvoiceHdr(transactionPoid);
     }
@@ -552,11 +552,20 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                         .map(ApPurchaseInvoiceItemDtlEntity::getTotal)
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        if (dto.getBhdAmount() != null &&
-                itemTotal.compareTo(dto.getBhdAmount()) != 0) {
+        BigDecimal itemTotalRounded = itemTotal.setScale(3, RoundingMode.HALF_UP);
+        BigDecimal invoiceTotalRounded = dto.getBhdAmount().setScale(3, RoundingMode.HALF_UP);
+
+        if (itemTotalRounded.compareTo(invoiceTotalRounded) != 0) {
+
+            BigDecimal difference = itemTotalRounded.subtract(invoiceTotalRounded);
 
             throw new ValidationException(
-                    "Item total not matching Invoice Total"
+                    "Item total mismatch. Calculated Item Total = "
+                            + itemTotalRounded
+                            + ", Invoice Total = "
+                            + invoiceTotalRounded
+                            + ", Difference = "
+                            + difference
             );
         }
 
@@ -2541,23 +2550,24 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         qty = Optional.ofNullable(qty).orElse(BigDecimal.ZERO);
         taxPer = Optional.ofNullable(taxPer).orElse(BigDecimal.ZERO);
 
-        // Legacy Base Amount
-        BigDecimal baseAmount = price.subtract(discount);
+        // unit price after discount
+        BigDecimal unitPrice = price.subtract(discount);
 
-        // Legacy Amount
-        BigDecimal amount = qty.multiply(baseAmount)
+        // Base Amount (qty * unit price)
+        BigDecimal baseAmount = qty.multiply(unitPrice)
                 .setScale(3, RoundingMode.HALF_UP);
 
-        // Legacy Tax
+        // Tax Amount
         BigDecimal taxAmount = baseAmount.multiply(taxPer)
                 .divide(new BigDecimal("100"), 3, RoundingMode.HALF_UP);
 
-        // Legacy Total
-        BigDecimal total = baseAmount.add(taxAmount);
+        // Total
+        BigDecimal total = baseAmount.add(taxAmount)
+                .setScale(3, RoundingMode.HALF_UP);
 
         item.setBaseAmount(baseAmount);
-        item.setAmount(amount);
         item.setTaxAmount(taxAmount);
+        item.setAmount(baseAmount);
         item.setTotal(total);
     }
 

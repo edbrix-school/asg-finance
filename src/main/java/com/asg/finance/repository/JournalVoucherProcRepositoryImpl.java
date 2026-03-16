@@ -160,7 +160,7 @@ public class JournalVoucherProcRepositoryImpl implements JournalVoucherProcRepos
     }
 
     @Override
-    public void updateAssetDetail(Long faPoid, BigDecimal scrapSoldValue, LocalDate scrapSoldDate, String process, Long transactionPoid) {
+    public void updateAssetDetail(Long transactionPoid) {
         StoredProcedureQuery query = entityManager
                 .createStoredProcedureQuery("PROC_JV_UPDATE_ASSET_DTL");
 

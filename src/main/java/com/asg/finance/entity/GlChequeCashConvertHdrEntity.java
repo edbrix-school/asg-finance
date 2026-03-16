@@ -4,6 +4,8 @@ import com.asg.common.lib.annotation.AuditIgnore;
 import com.asg.common.lib.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Data;
+import org.hibernate.annotations.Generated;
+import org.hibernate.generator.EventType;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -38,6 +40,7 @@ public class GlChequeCashConvertHdrEntity extends BaseEntity {
     private Long companyPoid;
 
     @Column(name = "DOC_REF")
+    @Generated(event = EventType.INSERT)
     private String docRef;
 
     @Column(name = "TYPE")

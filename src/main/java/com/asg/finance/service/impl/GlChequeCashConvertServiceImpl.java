@@ -13,6 +13,7 @@ import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
+import com.asg.finance.annotation.PerformGlPosting;
 import com.asg.finance.dto.GlChequeCashConvertHdrDto;
 import com.asg.finance.dto.GlChequeCashConvertInDtlDto;
 import com.asg.finance.dto.GlChequeCashConvertOutDtlDto;
@@ -26,9 +27,11 @@ import com.asg.finance.entity.key.GlChequeCashConvertOutDtlKey;
 import com.asg.finance.repository.GlChequeCashConvertHdrRepository;
 import com.asg.finance.repository.GlChequeCashConvertInDtlRepository;
 import com.asg.finance.repository.GlChequeCashConvertOutDtlRepository;
+import com.asg.finance.repository.ChequeCashConvertCustomRepository;
 import com.asg.finance.repository.GlChequeCashConvertRepository;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.GlChequeCashConvertService;
+import com.asg.finance.service.GlPostingService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,7 +45,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-
+import org.springframework.context.ApplicationEventPublisher;
+import com.asg.finance.event.GlChequeCashConvertSaveEvent;
 
 import javax.sql.DataSource;
 import java.math.BigDecimal;
@@ -74,18 +78,22 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
     private final DocumentDeleteService documentDeleteService;
     private final LoggingService loggingService;
     private final ParameterServiceClient parameterServiceClient;
+    private final GlPostingService glPostingService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public GlChequeCashConvertValidateEditResponseDto validateForEdit(Long transactionPoid) {
         glChequeCashConvertHdrRepository.findById(transactionPoid)
-                .orElseThrow(() -> new ResourceNotFoundException("GlChequeCashConvert", "transactionPoid", transactionPoid));
+                .orElseThrow(
+                        () -> new ResourceNotFoundException("GlChequeCashConvert", "transactionPoid", transactionPoid));
         validateStatusForEdit(transactionPoid);
         return new GlChequeCashConvertValidateEditResponseDto(true, "Record is eligible for edit.");
     }
 
     @Override
     public GlChequeCashConvertHdrDto getGlChequeCashConvert(Long transactionPoid) {
-        GlChequeCashConvertHdrEntity glChequeCashConvertHdrEntity = glChequeCashConvertHdrRepository.findByTransactionPoid(transactionPoid);
+        GlChequeCashConvertHdrEntity glChequeCashConvertHdrEntity = glChequeCashConvertHdrRepository
+                .findByTransactionPoid(transactionPoid);
         if (glChequeCashConvertHdrEntity == null) {
 
             throw new ResourceNotFoundException("ChequeAndCashConvention", "transactionPoid", transactionPoid);
@@ -129,10 +137,6 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
             inDtlDto.setChqDate(inDtl.getChqDate());
             inDtlDto.setAmount(inDtl.getAmount());
             inDtlDto.setRemarks(inDtl.getRemarks());
-           /* inDtlDto.setCreatedBy(inDtl.getCreatedBy());
-            inDtlDto.setCreatedDate(inDtl.getCreatedDate());
-            inDtlDto.setLastModifiedBy(inDtl.getLastModifiedBy());
-            inDtlDto.setLastModifiedDate(inDtl.getLastModifiedDate());*/
             inDtlDto.setVoucherType(inDtl.getVoucherType());
             inDtlDto.setChequeCompanyPoid(inDtl.getChequeCompanyPoid());
             inDtlDto.setPaymentMainPoid(inDtl.getPaymentMainPoid());
@@ -144,8 +148,10 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
             inDtlDto.setCardType(inDtl.getCardType());
             inDtlDto.setCreditCardRef(inDtl.getCreditCardRef());
             inDtlDto.setBankDet(lovService.getDetailsByPoidAndLovName(inDtl.getBankPoid(), "CUSTOMER_BANK_MASTER"));
-            inDtlDto.setChequeCompanyDet(lovService.getDetailsByPoidAndLovName(inDtl.getChequeCompanyPoid(), "COMPANY"));
-            inDtlDto.setPaymentMainDet(lovService.getDetailsByPoidAndLovName(inDtl.getPaymentMainPoid(), "PAYMENT_MAIN"));
+            inDtlDto.setChequeCompanyDet(
+                    lovService.getDetailsByPoidAndLovName(inDtl.getChequeCompanyPoid(), "COMPANY"));
+            inDtlDto.setPaymentMainDet(
+                    lovService.getDetailsByPoidAndLovName(inDtl.getPaymentMainPoid(), "PAYMENT_MAIN"));
             inDtlDto.setTtBankDet(lovService.getDetailsByPoidAndLovName(inDtl.getTtBankPoid(), "CUSTOMER_BANK_MASTER"));
             inDtlDto.setCardDet(lovService.getDetailsByPoidAndLovName(inDtl.getCardPoid(), "CARD"));
 
@@ -175,7 +181,8 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
             outDtlDto.setVoucherType(outDtl.getVoucherType());
             outDtlDto.setLineType(outDtl.getLineType());
             outDtlDto.setBankDet(lovService.getDetailsByPoidAndLovName(outDtl.getBankPoid(), "CUSTOMER_BANK_MASTER"));
-            outDtlDto.setPaymentMainDet(lovService.getDetailsByPoidAndLovName(outDtl.getPaymentMainPoid(), "PAYMENT_MAIN"));
+            outDtlDto.setPaymentMainDet(
+                    lovService.getDetailsByPoidAndLovName(outDtl.getPaymentMainPoid(), "PAYMENT_MAIN"));
             return outDtlDto;
         }).collect(Collectors.toList());
     }
@@ -184,7 +191,8 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
     @Override
     public void softDeleteByTransactionPoid(Long transactionPoid, DeleteReasonDto deleteReasonDto) {
         GlChequeCashConvertHdrEntity existing = glChequeCashConvertHdrRepository.findById(transactionPoid)
-                .orElseThrow(() -> new ResourceNotFoundException("ChequeAndCashConvert", "transactionPoid", transactionPoid));
+                .orElseThrow(() -> new ResourceNotFoundException("ChequeAndCashConvert", "transactionPoid",
+                        transactionPoid));
 
         // Use DocumentDeleteService for consistent soft delete handling
         documentDeleteService.deleteDocument(
@@ -192,15 +200,16 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
                 "GL_CHEQUE_CASH_CONVERT_HDR",
                 "TRANSACTION_POID",
                 deleteReasonDto,
-                existing.getTransactionDate()
-        );
+                existing.getTransactionDate());
     }
 
-    public Map<String, Object> listOfRecordsAndGenericSearch(String documentId, FilterRequestDto filters, LocalDate startDate, LocalDate endDate, Pageable pageable) {
+    public Map<String, Object> listOfRecordsAndGenericSearch(String documentId, FilterRequestDto filters,
+            LocalDate startDate, LocalDate endDate, Pageable pageable) {
 
         String operator = documentService.resolveOperator(filters);
         String isDeleted = documentService.resolveIsDeleted(filters);
-        List<FilterDto> filterList = documentService.resolveDateFilters(filters, "TRANSACTION_DATE", startDate, endDate);
+        List<FilterDto> filterList = documentService.resolveDateFilters(filters, "TRANSACTION_DATE", startDate,
+                endDate);
 
         RawSearchResult raw = documentService.search(documentId, filterList, operator, pageable, isDeleted,
                 "TRANSACTION_POID",
@@ -217,7 +226,8 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
 
         GlChequeCashConvertHdrEntity hdrEntity = new GlChequeCashConvertHdrEntity();
 
-        // Validate transaction date and trigger rules at application level (mirrors GL_CHEQUE_CASH_CONVERT_HDR_GTTRG)
+        // Validate transaction date and trigger rules at application level (mirrors
+        // GL_CHEQUE_CASH_CONVERT_HDR_GTTRG)
         if (dto.getTransactionDate() == null) {
             throw new ValidationException("Transaction date is required and must be within the open financial period.");
         }
@@ -330,6 +340,18 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         String docId = UserContext.getDocumentId();
         String docKeyPoid = savedHdr.getTransactionPoid().toString();
         loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, docKeyPoid);
+        glChequeCashConvertInDtlRepository.flush();
+        glChequeCashConvertOutDtlRepository.flush();
+                savedHdr.getTransactionPoid());
+
+        eventPublisher.publishEvent(new GlChequeCashConvertSaveEvent(
+                this,
+                savedHdr,
+                UserContext.getGroupPoid(),
+                UserContext.getCompanyPoid(),
+                UserContext.getUserPoid(),
+                getCurrentUser()
+        ));
 
         return getGlChequeCashConvert(savedHdr.getTransactionPoid());
     }
@@ -385,6 +407,20 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         loggingService.createLogBatch(headerLogRequests);
 
         loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, docId, docKeyPoid);
+
+        glChequeCashConvertInDtlRepository.flush();
+        glChequeCashConvertOutDtlRepository.flush();
+
+        eventPublisher.publishEvent(new GlChequeCashConvertSaveEvent(
+                this,
+                savedHdr,
+                UserContext.getGroupPoid(),
+                UserContext.getCompanyPoid(),
+                UserContext.getUserPoid(),
+                getCurrentUser()
+        ));
+        
+        glPostingService.performGlPosting(UserContext.getDocumentId(),savedHdr.getTransactionPoid(),savedHdr.getDocRef());
 
         return getGlChequeCashConvert(savedHdr.getTransactionPoid());
     }

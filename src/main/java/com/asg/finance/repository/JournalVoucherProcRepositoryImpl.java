@@ -10,7 +10,6 @@ import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.StoredProcedureQuery;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
-import java.math.BigDecimal;
 
 import java.sql.Date;
 import java.sql.ResultSet;
@@ -160,7 +159,7 @@ public class JournalVoucherProcRepositoryImpl implements JournalVoucherProcRepos
     }
 
     @Override
-    public void updateAssetDetail(Long faPoid, BigDecimal scrapSoldValue, LocalDate scrapSoldDate, String process, Long transactionPoid) {
+    public void updateAssetDetail(Long transactionPoid) {
         StoredProcedureQuery query = entityManager
                 .createStoredProcedureQuery("PROC_JV_UPDATE_ASSET_DTL");
 

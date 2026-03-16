@@ -141,6 +141,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
 
     @Override
     @Transactional
+    @PerformGlPosting
     public DebitNoteHeaderDto updateDebitNote(Long transactionPoid, DebitNoteHeaderDto debitNoteDto) {
         ArDebitNoteHdr existingEntity = debitNoteHdrRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("DebitNote", "transactionPoid", transactionPoid));
@@ -211,10 +212,10 @@ public class DebitNoteServiceImpl implements DebitNoteService {
             globalLogSummaryRepository.saveAll(detailSummaryLogs);
         }
 
-        glPostingService.performGlPosting(UserContext.getDocumentId(), transactionPoid, existingEntity.getDocRef());
 
         // Call after-save procedures for update
         performAfterSaveProcessing(existingEntity, oldFdaRef, oldRefType);
+
 
         return getDebitNote(transactionPoid);
     }

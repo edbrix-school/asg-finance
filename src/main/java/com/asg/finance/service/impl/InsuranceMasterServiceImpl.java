@@ -1058,6 +1058,10 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
             throw new ValidationException("Details are already added to the renewal history");
         }
 
+        // Create copy of old entity for logging
+        InsuranceMaster oldEntity = new InsuranceMaster();
+        BeanUtils.copyProperties(existing, oldEntity);
+
         // User confirmed - proceed with renewal
         InsuranceRenewalLog renewalLog = InsuranceRenewalLog.builder()
                 .transactionPoid(existing.getTransactionPoid())
@@ -1083,6 +1087,18 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         existing.setLastModifiedDate(LocalDateTime.now());
 
         InsuranceMaster renewed = insuranceMasterRepository.save(existing);
+        
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = insuranceId.toString();
+        LocalDateTime now = LocalDateTime.now();
+        
+        // Log header changes
+        loggingService.logChanges(oldEntity, renewed, InsuranceMaster.class, docId, docKeyPoid, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+        
+        // Log renewal log row creation
+        String msg = String.format("Row Created on Insurance Renewal Log with DetRowId: %s", renewalLog.getDetRowId());
+        globalLogSummaryRepository.save(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, msg, now));
+        
         return mapToResponseDto(renewed);
     }
 }

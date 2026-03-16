@@ -72,7 +72,6 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
     private ApplicationContext applicationContext;
 
     @Override
-    @PerformGlPosting
     public GeneralReceiptResponse createGeneralReceipt(GeneralReceiptRequest request) {
         // Step 1: Get self-reference to enable proxy interception for @Transactional
         GeneralReceiptServiceImpl self = applicationContext.getBean(GeneralReceiptServiceImpl.class);
@@ -90,7 +89,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
     /**
      * Save receipt data in a NEW transaction that commits immediately when method completes.
      * REQUIRES_NEW ensures this transaction is independent of any calling context.
-     * 
+     *
      * This method is public to allow Spring AOP to intercept it and create a new transaction.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)

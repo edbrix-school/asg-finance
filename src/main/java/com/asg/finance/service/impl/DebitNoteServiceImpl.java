@@ -894,14 +894,15 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         }
 
         if (entity.getCostPoid() != null) {
+            String customLov = getCustomLovList(entity.getCostPoid()).getOrDefault("lovName", "DN_GL_COST_CENTRE");
             try {
-                LovGetListDto details = lovService.getDetailsByPoidAndLovName(Long.valueOf(entity.getCostPoid()), "DN_GL_COST_CENTRE");
+                LovGetListDto details = lovService.getDetailsByPoidAndLovName(Long.valueOf(entity.getCostPoid()), customLov);
                 if (details == null || details.getCode() == null) {
-                    details = lovService.getDetailsByCodeAndLovName(entity.getCostPoid(), "DN_GL_COST_CENTRE");
+                    details = lovService.getDetailsByCodeAndLovName(entity.getCostPoid(), customLov);
                 }
                 dto.setCostCenterDetails(details);
             } catch (NumberFormatException e) {
-                dto.setCostCenterDetails(lovService.getDetailsByCodeAndLovName(entity.getCostPoid(), "DN_GL_COST_CENTRE"));
+                dto.setCostCenterDetails(lovService.getDetailsByCodeAndLovName(entity.getCostPoid(), customLov));
             }
         }
         
@@ -1405,6 +1406,61 @@ public class DebitNoteServiceImpl implements DebitNoteService {
             log.error("Error in after-save processing for transaction {}: {}", entity.getTransactionPoid(), e.getMessage(), e);
             // Log error but don't throw to avoid breaking the main save process
         }
+    }
+
+    @Override
+    public Map<String, String> getCustomLovList(String costGroup) {
+        if (costGroup == null || costGroup.trim().isEmpty()) {
+            return Map.of(
+                "customLovList", "ChargePoid=DEBIT_NOTE_OTHER_CHARGES,ChargePoid,POID,false,250,false;CostPoid=DN_GL_COST_CENTRE,CostPoid,CODE,false,180,false;"
+            );
+        }
+
+        String customLovList = "ChargePoid=DEBIT_NOTE_OTHER_CHARGES,ChargePoid,POID,false,250,false;";
+        String lovName = "DN_GL_COST_CENTRE";
+
+        switch (costGroup.toUpperCase()) {
+            case "GL_SH_BLS":
+                lovName = "GL_SH_BLS";
+                break;
+            case "GL_FDA_JOBS":
+                lovName = "GL_FDA_JOBS";
+                break;
+            case "GL_FF_JOBS":
+                lovName = "GL_FF_JOBS";
+                break;
+            case "GL_FFP_JOBS":
+                lovName = "GL_FFP_JOBS";
+                break;
+            case "ANOOD_MANSION":
+                lovName = "ANOOD_MANSION";
+                break;
+            case "NAJOOD_MANSION":
+                lovName = "NAJOOD_MANSION";
+                break;
+            case "PROPERTIES":
+                lovName = "DN_PROPERTIES";
+                break;
+            case "GL_COST_CENTRE":
+                lovName = "DN_GL_COST_CENTRE";
+                break;
+            case "FIXED_ASSET":
+                lovName = "DN_FIXED_ASSET";
+                break;
+            case "OASIS":
+                lovName = "DN_OASIS";
+                break;
+            default:
+                lovName = "DN_GL_COST_CENTRE";
+        }
+
+        customLovList += "CostPoid=" + lovName + ",CostPoid,CODE,false,180,false;";
+
+        return Map.of(
+            "customLovList", customLovList,
+            "costGroup", costGroup,
+            "lovName", lovName
+        );
     }
 
 }

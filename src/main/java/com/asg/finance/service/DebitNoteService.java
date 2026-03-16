@@ -34,4 +34,6 @@ public interface DebitNoteService {
 
     Map<String, Object> validateEditRequest(Long transactionPoid);
 
+    Map<String, String> getCustomLovList(String costGroup);
+
 }

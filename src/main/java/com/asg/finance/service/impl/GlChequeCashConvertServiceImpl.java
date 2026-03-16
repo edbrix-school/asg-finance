@@ -342,8 +342,6 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, docKeyPoid);
         glChequeCashConvertInDtlRepository.flush();
         glChequeCashConvertOutDtlRepository.flush();
-                savedHdr.getTransactionPoid());
-
         eventPublisher.publishEvent(new GlChequeCashConvertSaveEvent(
                 this,
                 savedHdr,

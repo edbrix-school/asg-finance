@@ -10,7 +10,6 @@ import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.StoredProcedureQuery;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
-import java.math.BigDecimal;
 
 import java.sql.Date;
 import java.sql.ResultSet;

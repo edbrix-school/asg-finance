@@ -1,11 +1,11 @@
 package com.asg.finance.service.impl;
 
-import com.asg.common.lib.client.ParameterServiceClient;
 import com.asg.common.lib.dto.*;
 import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.common.lib.service.GlobalParameterService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.finance.client.GlobalTermsServiceClient;
@@ -61,7 +61,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     private final DataSource dataSource;
     private final LoggingService loggingService;
     private final DocumentDeleteService documentDeleteService;
-    private final ParameterServiceClient parameterServiceClient;
+    private final GlobalParameterService globalParameterService;
 
     @Override
     @Transactional
@@ -712,9 +712,12 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             return;
         }
 
-        BigDecimal inputTaxLimit = parameterServiceClient.getParameterValueByNameAsDecimal("USER", "INPUT_TAX_VARIANCE_LIMIT");
-        if (inputTaxLimit == null) {
-            throw new ValidationException("INPUT_TAX_VARIANCE_LIMIT parameter is not configured.");
+        String inputTaxLimitValue = globalParameterService.getParameterValue("INPUT_TAX_VARIANCE_LIMIT", "GROUP", "1", "0");
+        BigDecimal inputTaxLimit;
+        try {
+            inputTaxLimit = new BigDecimal(inputTaxLimitValue);
+        } catch (NumberFormatException ex) {
+            throw new ValidationException("INPUT_TAX_VARIANCE_LIMIT parameter is not configured correctly.");
         }
 
         BigDecimal hundred = BigDecimal.valueOf(100);

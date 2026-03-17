@@ -69,8 +69,8 @@ public class BillwiseBreakupServiceImpl implements BillwiseBreakupService {
         billwiseBreakupDtlRepository.insertBillwiseBreakup(breakupList);
 
         // Log the creation
-        String key = first.getTransactionPoid().toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, first.getDocId(), key);
+        //String key = first.getTransactionPoid().toString();
+       // loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, first.getDocId(), key);
     }
 
     @Override

@@ -917,6 +917,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
     @Override
     @Transactional
+    @PerformGlPosting
     public ApPurchaseInvoiceHdrDto updateApPurchaseInvoice(Long transactionPoid, ApPurchaseInvoiceHdrDto apPurchaseInvoiceHdrDto) {
         ApPurchaseInvoiceHdrEntity apPurchaseInvoiceHdrEntity = repository.findById(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("ApPurchaseJournal", "transactionPoid", transactionPoid));
@@ -1170,6 +1171,16 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                         loggingService.createLogBatch(logRequests);
                     }
                 }
+
+                deleteOldAutoBalancingRow(
+                        transactionPoid,
+                        getSupplierGlPoid(apPurchaseInvoiceHdrDto.getSupplierPoid())
+                );
+
+                autoCreateBalancingGlRowWithBillwise(
+                        transactionPoid,
+                        apPurchaseInvoiceHdrDto
+                );
 
                 break;
             }
@@ -1518,7 +1529,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         loggingService.logChanges(oldEntity, savedEntity, ApPurchaseInvoiceHdrEntity.class,
                 UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
-        glPostingService.performGlPosting(UserContext.getDocumentId(), savedEntity.getTransactionPoid(), savedEntity.getDocRef());
+        //glPostingService.performGlPosting(UserContext.getDocumentId(), savedEntity.getTransactionPoid(), savedEntity.getDocRef());
 
         return fetchApPurchaseInvoiceHdr(savedEntity.getTransactionPoid());
     }
@@ -2435,6 +2446,17 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         entity.setTotalAmount(amount);
 
         apPurchaseInvoiceGlDtlRepository.save(entity);
+
+        String logDetail = String.format(
+                "Row Created on Purchase GL with detRowId: %s",
+                detRowId
+        );
+
+        loggingService.createLogSummaryEntry(
+                UserContext.getDocumentId(),
+                transactionPoid.toString(),
+                logDetail
+        );
 
         // Billwise only if applicable
         if (isBillwiseApplicable(supplierGl)) {

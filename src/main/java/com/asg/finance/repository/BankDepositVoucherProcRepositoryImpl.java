@@ -180,7 +180,7 @@ public class BankDepositVoucherProcRepositoryImpl implements BankDepositVoucherP
 
         String result = (String) query.getOutputParameterValue("P_RESULT");
         if (result != null && result.contains("ERROR")) {
-            throw new ValidationException("PROC_GL_BANK_DEPOSIT_UPDT_PYMT returned error: " + result);
+            log.warn("PROC_GL_BANK_DEPOSIT_UPDT_PYMT returned error: {}", result);
         }
     }
 }

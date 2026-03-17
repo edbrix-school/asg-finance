@@ -119,6 +119,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         try {
             filterUnselectedCharges(creditNoteDto);
             executeBeforeSaveValidation(creditNoteDto);
+            DocumentBeforeSaveBillwiseCostGroups(creditNoteDto);
             calculateDueDateFromCreditPeriod(creditNoteDto);
             // Save header and flush immediately
             ArCreditNoteHdr header = mapToEntity(creditNoteDto);
@@ -151,13 +152,6 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             if (creditNoteDto.getGlDetails() != null) {
                 log.info("Starting to save GL details for transactionPoid: {}", transactionPoid);
                 String issueType = creditNoteDto.getIssueType() != null ? creditNoteDto.getIssueType() : "Y";
-               applyAutoBalancing(
-                        transactionPoid,
-                        creditNoteDto.getGlDetails(),
-                        creditNoteDto.getPartyPoid(),
-                        creditNoteDto.getPartyType()
-                );
-
                 saveGLDetailsWithIssueType(transactionPoid, creditNoteDto.getGlDetails(), issueType);
                 log.info("GL details saved successfully for transactionPoid: {}", transactionPoid);
             }
@@ -259,6 +253,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         try {
             filterUnselectedCharges(creditNoteDto);
             executeBeforeSaveValidation(creditNoteDto);
+            DocumentBeforeSaveBillwiseCostGroups(creditNoteDto);
             calculateDueDateFromCreditPeriod(creditNoteDto);
 
             // Create a copy of the old entity for logging
@@ -273,12 +268,6 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
             List<GlobalLogSummary> detailSummaryLogs = new ArrayList<>();
             if (creditNoteDto.getGlDetails() != null) {
-                applyAutoBalancing(
-                        transactionPoid,
-                        creditNoteDto.getGlDetails(),
-                        creditNoteDto.getPartyPoid(),
-                        creditNoteDto.getPartyType()
-                );
                 updateGLDetailsWithLogging(transactionPoid, creditNoteDto.getGlDetails(), detailSummaryLogs);
             }
 
@@ -2284,60 +2273,191 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         }
     }
 
-    private void applyAutoBalancing(Long transactionPoid,
-                                    List<CreditNoteGLDetailDto> glDetails,
-                                    Long partyPoid,
-                                    String partyType) throws SQLException {
-
-        if (glDetails == null || glDetails.isEmpty()) return;
-
-        BigDecimal totalDr = BigDecimal.ZERO;
-        BigDecimal totalCr = BigDecimal.ZERO;
-
-        for (CreditNoteGLDetailDto dto : glDetails) {
-            String actionType = dto.getActionType();
-            if (actionType != null && "ISDELETED".equalsIgnoreCase(actionType.trim().toUpperCase())) {
-                continue;
-            }
-            if (dto.getType().equals("DR") && dto.getDrAmt() != null) {
-                totalDr = totalDr.add(dto.getDrAmt());
-                totalDr = totalDr.add(dto.getTaxAmount());
-            }
-            if (dto.getType().equals("CR") && dto.getCrAmt() != null) {
-                totalCr = totalCr.add(dto.getCrAmt());
-                totalCr = totalCr.add(dto.getTaxAmount());
-            }
+    private void DocumentBeforeSaveBillwiseCostGroups(CreditNoteHeaderDto dto) {
+        BigDecimal documentTotal = firstNonNull(dto.getBhdAmount(), dto.getGrandTotal());
+        if (documentTotal == null) {
+            throw new ValidationException("Total Amount is not found...");
+        }
+        if (dto.getPartyPoid() == null) {
+            throw new ValidationException("Party is not found...");
+        }
+        if (StringUtils.isBlank(dto.getRefType())) {
+            throw new ValidationException("Ref Type is not found...");
         }
 
-        if (totalDr.compareTo(totalCr) == 0) {
+        String refType = dto.getRefType();
+
+        // GENERAL logic 
+        if ("GENERAL".equalsIgnoreCase(refType)) {
+            Long partyGl;
+            try {
+                partyGl = getPartyGLPoid(dto.getPartyPoid(), dto.getPartyType());
+            } catch (Exception e) {
+                throw new ValidationException("Selected Party GL_CODE is not found...");
+            }
+            if (partyGl == null) {
+                throw new ValidationException("Selected Party GL_CODE is not found...");
+            }
+
+            List<CreditNoteGLDetailDto> effectiveGlDetails = getEffectiveGlDetailsForBillwise(dto);
+            BigDecimal totalDrAmt = sumByTypeForBillwise(effectiveGlDetails, "DR");
+            BigDecimal totalCrAmt = sumByTypeForBillwise(effectiveGlDetails, "CR");
+
+            if (totalDrAmt.compareTo(BigDecimal.ZERO) == 0) {
+                throw new ValidationException("No Debit Entries Entered...");
+            }
+
+            boolean partyGlFound = effectiveGlDetails.stream()
+                    .anyMatch(gl -> Objects.equals(gl.getGlPoid(), partyGl));
+
+            if (!partyGlFound) {
+                BigDecimal balancingAmount = totalDrAmt.subtract(totalCrAmt);
+                if (balancingAmount.compareTo(BigDecimal.ZERO) <= 0) {
+                    balancingAmount = documentTotal;
+                }
+
+                Long nextDetRowId = effectiveGlDetails.stream()
+                        .map(CreditNoteGLDetailDto::getDetRowId)
+                        .filter(Objects::nonNull)
+                        .max(Long::compareTo)
+                        .orElse(0L) + 1;
+
+                CreditNoteGLDetailDto balancingRow = new CreditNoteGLDetailDto();
+                balancingRow.setType("CR");
+                balancingRow.setCompanyPoid(UserContext.getCompanyPoid());
+                balancingRow.setGlPoid(partyGl);
+                balancingRow.setDrAmt(BigDecimal.ZERO);
+                balancingRow.setCrAmt(balancingAmount);
+                balancingRow.setTotalAmount(balancingAmount);
+                balancingRow.setRemarks("Auto Balance Entry");
+                balancingRow.setActionType("isCreated");
+                balancingRow.setDetRowId(nextDetRowId);
+
+                if (isBillwiseApplicableForCn(partyGl)) {
+                    balancingRow.setBreakupList(List.of(createDefaultBillwiseBreakupForCn(dto, balancingAmount)));
+                }
+
+                if (dto.getGlDetails() == null) {
+                    dto.setGlDetails(new ArrayList<>());
+                }
+                dto.getGlDetails().add(balancingRow);
+
+                effectiveGlDetails = getEffectiveGlDetailsForBillwise(dto);
+                totalDrAmt = sumByTypeForBillwise(effectiveGlDetails, "DR");
+                totalCrAmt = sumByTypeForBillwise(effectiveGlDetails, "CR");
+            }
+
+            if (totalCrAmt.compareTo(documentTotal) != 0) {
+                throw new ValidationException(
+                        "Amount (" + documentTotal + ") is not matching with party credit amount(" + totalCrAmt + ")"
+                );
+            }
+
+            if (totalDrAmt.compareTo(totalCrAmt) != 0) {
+                throw new ValidationException(
+                        "Total Debits and Credits not tallying. Dr> " + totalDrAmt + " Cr> " + totalCrAmt
+                );
+            }
             return;
         }
 
-        Long partyGlPoid = getPartyGLPoid(partyPoid, partyType);
+        // CUSTOM logic 
+        if ("CUSTOM".equalsIgnoreCase(refType)) {
+            List<CreditNoteGLDetailDto> effectiveGlDetails = getEffectiveGlDetailsForBillwise(dto);
+            BigDecimal totalDrAmt = sumByTypeForBillwise(effectiveGlDetails, "DR");
+            BigDecimal totalCrAmt = sumByTypeForBillwise(effectiveGlDetails, "CR");
 
-        CreditNoteGLDetailDto balancingRow = new CreditNoteGLDetailDto();
-        balancingRow.setGlPoid(partyGlPoid);
-        balancingRow.setCompanyPoid(UserContext.getCompanyPoid());
-        balancingRow.setRemarks("Auto Balance Entry");
-        balancingRow.setActionType("ISCREATED");
-
-        BigDecimal difference = totalDr.subtract(totalCr);
-
-        if (difference.compareTo(BigDecimal.ZERO) > 0) {
-            balancingRow.setType("CR");
-            balancingRow.setCrAmt(difference);
-            balancingRow.setDrAmt(BigDecimal.ZERO);
-        } else {
-            balancingRow.setType("DR");
-            balancingRow.setDrAmt(difference.abs());
-            balancingRow.setCrAmt(BigDecimal.ZERO);
+            if (totalDrAmt.compareTo(BigDecimal.ZERO) == 0) {
+                throw new ValidationException("WARNING : No debit entries entered.");
+            }
+            if (totalCrAmt.compareTo(BigDecimal.ZERO) == 0) {
+                throw new ValidationException("WARNING : No credit entries entered.");
+            }
+            if (totalCrAmt.compareTo(totalDrAmt) != 0) {
+                throw new ValidationException(
+                        "Total Debit (" + totalDrAmt + ") Amounts and Credit (" + totalCrAmt + ") Amounts are not tallying."
+                );
+            }
+            if (totalDrAmt.compareTo(documentTotal) != 0) {
+                throw new ValidationException(
+                        "Paid Amount (" + documentTotal + ") is not matching with total party credit amount(" + totalDrAmt + ")"
+                );
+            }
         }
+    }
 
-        balancingRow.setTotalAmount(difference.abs());
-        balancingRow.setTaxAmount(BigDecimal.ZERO);
-        balancingRow.setTaxPercentage(BigDecimal.ZERO);
+    private List<CreditNoteGLDetailDto> getEffectiveGlDetailsForBillwise(CreditNoteHeaderDto dto) {
+        if (dto.getGlDetails() == null) {
+            return new ArrayList<>();
+        }
+        return dto.getGlDetails().stream()
+                .filter(Objects::nonNull)
+                .filter(gl -> !"ISDELETED".equalsIgnoreCase(normalizeActionTypeForBillwise(gl.getActionType())))
+                .collect(Collectors.toCollection(ArrayList::new));
+    }
 
-        glDetails.add(balancingRow);
+    private BigDecimal sumByTypeForBillwise(List<CreditNoteGLDetailDto> glDetails, String type) {
+        return glDetails.stream()
+                .filter(gl -> type.equalsIgnoreCase(gl.getType()))
+                .map(this::resolveLineAmountForBillwise)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private BigDecimal resolveLineAmountForBillwise(CreditNoteGLDetailDto glDetail) {
+        if ("DR".equalsIgnoreCase(glDetail.getType())) {
+            return firstNonNull(glDetail.getDrAmt(), glDetail.getTotalAmount(), BigDecimal.ZERO);
+        }
+        if ("CR".equalsIgnoreCase(glDetail.getType())) {
+            return firstNonNull(glDetail.getCrAmt(), glDetail.getTotalAmount(), BigDecimal.ZERO);
+        }
+        return firstNonNull(glDetail.getTotalAmount(), BigDecimal.ZERO);
+    }
+
+    private String normalizeActionTypeForBillwise(String actionType) {
+        return actionType == null ? "" : actionType.trim().toUpperCase();
+    }
+
+    @SafeVarargs
+    private final <T> T firstNonNull(T... values) {
+        for (T value : values) {
+            if (value != null) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    private boolean isBillwiseApplicableForCn(Long glPoid) {
+        if (glPoid == null) {
+            return false;
+        }
+        return glMasterRepository
+                .findByGlPoid(glPoid)
+                .map(gl -> "Y".equalsIgnoreCase(gl.getBillwise()))
+                .orElse(false);
+    }
+
+    private BillwiseBreakupPopupRequestDto createDefaultBillwiseBreakupForCn(CreditNoteHeaderDto dto, BigDecimal amount) {
+        BillwiseBreakupPopupRequestDto billwise = new BillwiseBreakupPopupRequestDto();
+        billwise.setBillDueDate(dto.getDueDate());
+        billwise.setBillRefType("NEW");
+        billwise.setBillRef(StringUtils.defaultIfBlank(dto.getDocRef(), "CN-TEMP"));
+        billwise.setBillDueDate(resolveDueDateForBillwise(dto));
+        billwise.setType("CR");
+        billwise.setAmount(amount);
+        billwise.setBillRemarks(dto.getPostingNarration());
+        billwise.setActionType("isCreated");
+        return billwise;
+    }
+
+    private LocalDate resolveDueDateForBillwise(CreditNoteHeaderDto dto) {
+        if (dto.getDueDate() != null) {
+            return dto.getDueDate();
+        }
+        if (dto.getCreditPeriod() != null && dto.getCreditPeriod() > 0) {
+            return LocalDate.now().plusDays(dto.getCreditPeriod());
+        }
+        return LocalDate.now();
     }
 
     private void filterUnselectedCharges(CreditNoteHeaderDto dto) {

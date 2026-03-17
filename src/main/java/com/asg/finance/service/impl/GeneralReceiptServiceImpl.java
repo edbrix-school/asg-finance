@@ -794,7 +794,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                     toSave.add(ArGenReceiptAdvanceDtl.builder()
                             .transactionPoid(transactionPoid)
                             .detRowId(advance.getDetRowId())
-                            .advanceRefDocId(advance.getAdvanceRefDocId())
+                            .advanceRefDocId("110-161")
                             .advanceRefPoid(advance.getAdvanceRefPoid())
                             .amount(advance.getAmount())
                             .remarks(advance.getRemarks())
@@ -809,7 +809,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                     ArGenReceiptAdvanceDtl oldAdvance = new ArGenReceiptAdvanceDtl();
                     BeanUtils.copyProperties(existingAdvance, oldAdvance);
                     
-                    existingAdvance.setAdvanceRefDocId(advance.getAdvanceRefDocId());
+                    existingAdvance.setAdvanceRefDocId("110-161");
                     existingAdvance.setAdvanceRefPoid(advance.getAdvanceRefPoid());
                     existingAdvance.setAmount(advance.getAmount());
                     existingAdvance.setRemarks(advance.getRemarks());
@@ -1449,7 +1449,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
             ArGenReceiptAdvanceDtl detail = ArGenReceiptAdvanceDtl.builder()
                     .transactionPoid(header.getTransactionPoid())
                     .detRowId(detId)
-                    .advanceRefDocId(advance.getAdvanceRefDocId())
+                    .advanceRefDocId("110-161")
                     .advanceRefPoid(advance.getAdvanceRefPoid())
                     .amount(advance.getAmount())
                     .remarks(advance.getRemarks())

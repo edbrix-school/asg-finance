@@ -1365,10 +1365,10 @@ public class DebitNoteServiceImpl implements DebitNoteService {
 
     private BigDecimal resolveLineAmount(DebitNoteGlDetailDto glDetail) {
         if ("DR".equalsIgnoreCase(glDetail.getType())) {
-            return firstNonNull(glDetail.getDebitAmount(), glDetail.getTotalAmount(), BigDecimal.ZERO);
+            return firstNonNull(glDetail.getTotalAmount(), glDetail.getDebitAmount(), BigDecimal.ZERO);
         }
         if ("CR".equalsIgnoreCase(glDetail.getType())) {
-            return firstNonNull(glDetail.getCreditAmount(), glDetail.getTotalAmount(), BigDecimal.ZERO);
+            return firstNonNull(glDetail.getTotalAmount(), glDetail.getCreditAmount(), BigDecimal.ZERO);
         }
         return firstNonNull(glDetail.getTotalAmount(), BigDecimal.ZERO);
     }

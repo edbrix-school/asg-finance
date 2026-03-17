@@ -2406,10 +2406,10 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
     private BigDecimal resolveLineAmountForBillwise(CreditNoteGLDetailDto glDetail) {
         if ("DR".equalsIgnoreCase(glDetail.getType())) {
-            return firstNonNull(glDetail.getDrAmt(), glDetail.getTotalAmount(), BigDecimal.ZERO);
+            return firstNonNull(glDetail.getTotalAmount(), glDetail.getDrAmt(), BigDecimal.ZERO);
         }
         if ("CR".equalsIgnoreCase(glDetail.getType())) {
-            return firstNonNull(glDetail.getCrAmt(), glDetail.getTotalAmount(), BigDecimal.ZERO);
+            return firstNonNull(glDetail.getTotalAmount(), glDetail.getCrAmt(),BigDecimal.ZERO);
         }
         return firstNonNull(glDetail.getTotalAmount(), BigDecimal.ZERO);
     }

@@ -99,4 +99,13 @@ public interface PettyCashPaymentVoucherCustomRepository {
             StringBuilder resultOut
     );
 
+    void updateSalesGrnStatus(
+            Long loginGroupPoid,
+            Long loginCompanyPoid,
+            Long loginUserPoid,
+            String docId,
+            Long bookPoid,
+            StringBuilder resultOut
+    );
+
 }

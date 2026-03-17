@@ -1,5 +1,6 @@
 package com.asg.finance.service.impl;
 
+import com.asg.common.lib.client.ParameterServiceClient;
 import com.asg.common.lib.dto.*;
 import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.exception.ValidationException;
@@ -39,6 +40,7 @@ import org.springframework.stereotype.Service;
 
 import javax.sql.DataSource;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -59,6 +61,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     private final DataSource dataSource;
     private final LoggingService loggingService;
     private final DocumentDeleteService documentDeleteService;
+    private final ParameterServiceClient parameterServiceClient;
 
     @Override
     @Transactional
@@ -670,6 +673,9 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     private void validatePurchaseOrder(PurchaseOrderRequest request, Long transactionPoid, String documentId) {
         // Validate items exist and have totals
         validateItemTotals(request);
+
+        // Validate input tax amount variance against item base amount and tax percentage
+        validateInputTaxVariance(request);
         
         // Validate supplier VAT
         if (request.getSupplierPoid() != null) {
@@ -698,6 +704,49 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         
         if (totalAmount.compareTo(BigDecimal.ZERO) == 0) {
             throw new ValidationException("No total amounts found in this transaction.");
+        }
+    }
+
+    private void validateInputTaxVariance(PurchaseOrderRequest request) {
+        if (request.getItems() == null || request.getItems().isEmpty()) {
+            return;
+        }
+
+        BigDecimal inputTaxLimit = parameterServiceClient.getParameterValueByNameAsDecimal("USER", "INPUT_TAX_VARIANCE_LIMIT");
+        if (inputTaxLimit == null) {
+            throw new ValidationException("INPUT_TAX_VARIANCE_LIMIT parameter is not configured.");
+        }
+
+        BigDecimal hundred = BigDecimal.valueOf(100);
+
+        for (int i = 0; i < request.getItems().size(); i++) {
+            PurchaseOrderItemRequestDto item = request.getItems().get(i);
+            if (item.getBaseAmount() == null || item.getTaxPercentage() == null) {
+                continue;
+            }
+
+            BigDecimal enteredTaxAmount = item.getTaxAmount() != null
+                    ? BigDecimal.valueOf(item.getTaxAmount()).setScale(3, RoundingMode.HALF_UP)
+                    : BigDecimal.ZERO.setScale(3, RoundingMode.HALF_UP);
+            BigDecimal baseAmount = BigDecimal.valueOf(item.getBaseAmount()).setScale(3, RoundingMode.HALF_UP);
+
+            if (baseAmount.compareTo(BigDecimal.ZERO) == 0 && enteredTaxAmount.compareTo(BigDecimal.ZERO) == 0) {
+                continue;
+            }
+
+            BigDecimal taxPercentage = BigDecimal.valueOf(item.getTaxPercentage());
+            BigDecimal expectedTaxAmount = baseAmount.multiply(taxPercentage)
+                    .divide(hundred, 3, RoundingMode.HALF_UP);
+            BigDecimal difference = enteredTaxAmount.subtract(expectedTaxAmount).abs();
+
+            if (difference.compareTo(inputTaxLimit) > 0) {
+                throw new ValidationException(String.format(
+                        "WARNING : Please check the row number %d, Maximum allowed VAT difference is %s. Current difference is %s+/-",
+                        i + 1,
+                        inputTaxLimit.stripTrailingZeros().toPlainString(),
+                        difference.stripTrailingZeros().toPlainString()
+                ));
+            }
         }
     }
 

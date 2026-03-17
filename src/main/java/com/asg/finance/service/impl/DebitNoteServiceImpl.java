@@ -304,7 +304,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         String docKeyPoid = transactionPoid.toString();
 
         List<ArDebitNoteDtl> toSave = new ArrayList<>();
-        List<ArDebitNoteDtl> newlyCreated = new ArrayList<>();
+        List<ArDebitNoteDtl> toUpdate = new ArrayList<>();
         List<Long> toDelete = new ArrayList<>();
         List<LogRequestDto<ArDebitNoteDtl>> logRequests = new ArrayList<>();
 
@@ -320,18 +320,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         for (DebitNoteGlDetailDto dto : glDetails) {
             if (dto.isEmpty()) continue;
 
-            String actionType = dto.getActionType();
-            if (actionType == null || actionType.trim().isEmpty()) {
-                actionType = (dto.getDetRowId() == null) ? "ISCREATED" : "ISUPDATED";
-            } else {
-                actionType = actionType.trim().toUpperCase();
-            }
-            if ("NOCHANGES".equals(actionType)) {
-                actionType = "NOCHANGE";
-            }
-            if ("ISUPDATED".equals(actionType) && dto.getDetRowId() == null) {
-                actionType = "ISCREATED";
-            }
+            String actionType = resolveDetailUpdateActionType(dto.getActionType(), dto.getDetRowId());
 
             switch (actionType) {
                 case "ISCREATED": {
@@ -351,30 +340,16 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                     newEntity.setLastModifiedBy(currentUser);
                     newEntity.setLastModifiedDate(now);
                     toSave.add(newEntity);
-                    newlyCreated.add(newEntity);
                     break;
                 }
                 case "ISUPDATED": {
                     Long detRowId = dto.getDetRowId();
                     if (detRowId == null) {
-                        break;
+                        throw new ValidationException("Debit Note GL Detail detRowId is required for update");
                     }
                     ArDebitNoteDtl existing = existingMap.get(detRowId);
                     if (existing == null) {
-                        Long newDetRowId = detRowId;
-                        if (newDetRowId > nextDetRowId) {
-                            nextDetRowId = newDetRowId;
-                        }
-                        ArDebitNoteDtl newEntity = new ArDebitNoteDtl();
-                        mapGlDtoToEntity(dto, newEntity, transactionPoid);
-                        newEntity.setDetRowId(newDetRowId);
-                        newEntity.setCreatedBy(currentUser);
-                        newEntity.setCreatedDate(now);
-                        newEntity.setLastModifiedBy(currentUser);
-                        newEntity.setLastModifiedDate(now);
-                        toSave.add(newEntity);
-                        newlyCreated.add(newEntity);
-                        break;
+                        throw new ValidationException("Debit Note GL Detail not found for detRowId: " + detRowId);
                     }
 
                     ArDebitNoteDtl oldEntity = new ArDebitNoteDtl();
@@ -382,7 +357,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                     mapGlDtoToEntity(dto, existing, transactionPoid);
                     existing.setLastModifiedBy(currentUser);
                     existing.setLastModifiedDate(now);
-                    toSave.add(existing);
+                    toUpdate.add(existing);
 
                     String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", docKeyPoid, detRowId);
                     logRequests.add(new LogRequestDto<>(oldEntity, existing, ArDebitNoteDtl.class, docId, docKeyPoid, logDetail));
@@ -391,17 +366,10 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                 case "ISDELETED": {
                     Long detRowId = dto.getDetRowId();
                     if (detRowId == null) {
-                        break;
+                        throw new ValidationException("Debit Note GL Detail detRowId is required for delete");
                     }
                     toDelete.add(detRowId);
-                    ArDebitNoteDtl oldEntityForDelete = existingMap.get(detRowId);
-                    if (oldEntityForDelete != null) {
-                        String deletedRecordString = String.format("detRowId:%s, transactionPoid:%s, glPoid:%s, drAmt:%s, crAmt:%s, remarks:%s",
-                                oldEntityForDelete.getDetRowId(), transactionPoid, oldEntityForDelete.getGlPoid(),
-                                oldEntityForDelete.getDrAmt(), oldEntityForDelete.getCrAmt(), oldEntityForDelete.getRemarks());
-                        String deleteSummaryMessage = String.format("Row Deleted %s", deletedRecordString);
-                        loggingService.createLogSummaryEntry(docId, docKeyPoid, deleteSummaryMessage);
-                    }
+                    loggingService.logDelete(dto, docId, docKeyPoid);
                     break;
                 }
                 case "NOCHANGE":
@@ -411,19 +379,20 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         }
 
         if (!toSave.isEmpty()) {
-            debitNoteDtlRepository.saveAll(toSave);
-            for (ArDebitNoteDtl newlyCreatedEntity : newlyCreated) {
-                if (newlyCreatedEntity.getDetRowId() != null) {
-                    String summaryMessage = String.format("Row Created on Debit Note GL Detail with DetRowId: %s", newlyCreatedEntity.getDetRowId());
-                    loggingService.createLogSummaryEntry(docId, docKeyPoid, summaryMessage);
-                }
+            List<ArDebitNoteDtl> savedItems = debitNoteDtlRepository.saveAll(toSave);
+            savedItems.forEach(entity -> {
+                String summaryMessage = String.format("Row Created on Debit Note GL Detail with DetRowId: %s", entity.getDetRowId());
+                loggingService.createLogSummaryEntry(docId, docKeyPoid, summaryMessage);
+            });
+        }
+        if (!toUpdate.isEmpty()) {
+            debitNoteDtlRepository.saveAll(toUpdate);
+            if (!logRequests.isEmpty()) {
+                loggingService.createLogBatch(logRequests);
             }
         }
         if (!toDelete.isEmpty()) {
             debitNoteDtlRepository.deleteByTransactionPoidAndDetRowIdIn(transactionPoid, toDelete);
-        }
-        if (!logRequests.isEmpty()) {
-            loggingService.createLogBatch(logRequests);
         }
     }
 
@@ -436,7 +405,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         String docKeyPoid = transactionPoid.toString();
 
         List<ArDebitNoteChargeDtl> toSave = new ArrayList<>();
-        List<ArDebitNoteChargeDtl> newlyCreated = new ArrayList<>();
+        List<ArDebitNoteChargeDtl> toUpdate = new ArrayList<>();
         List<Long> toDelete = new ArrayList<>();
         List<LogRequestDto<ArDebitNoteChargeDtl>> logRequests = new ArrayList<>();
 
@@ -452,18 +421,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         for (DebitNoteChargeDetailDto dto : chargeDetails) {
             if (dto.isEmpty()) continue;
 
-            String actionType = dto.getActionType();
-            if (actionType == null || actionType.trim().isEmpty()) {
-                actionType = (dto.getDetRowId() == null) ? "ISCREATED" : "ISUPDATED";
-            } else {
-                actionType = actionType.trim().toUpperCase();
-            }
-            if ("NOCHANGES".equals(actionType)) {
-                actionType = "NOCHANGE";
-            }
-            if ("ISUPDATED".equals(actionType) && dto.getDetRowId() == null) {
-                actionType = "ISCREATED";
-            }
+            String actionType = resolveDetailUpdateActionType(dto.getActionType(), dto.getDetRowId());
 
             switch (actionType) {
                 case "ISCREATED": {
@@ -483,30 +441,16 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                     newEntity.setLastModifiedBy(currentUser);
                     newEntity.setLastModifiedDate(now);
                     toSave.add(newEntity);
-                    newlyCreated.add(newEntity);
                     break;
                 }
                 case "ISUPDATED": {
                     Long detRowId = dto.getDetRowId();
                     if (detRowId == null) {
-                        break;
+                        throw new ValidationException("Debit Note Charge Detail detRowId is required for update");
                     }
                     ArDebitNoteChargeDtl existing = existingMap.get(detRowId);
                     if (existing == null) {
-                        Long newDetRowId = detRowId;
-                        if (newDetRowId > nextDetRowId) {
-                            nextDetRowId = newDetRowId;
-                        }
-                        ArDebitNoteChargeDtl newEntity = new ArDebitNoteChargeDtl();
-                        mapChargeDtoToEntity(dto, newEntity, transactionPoid);
-                        newEntity.setDetRowId(newDetRowId);
-                        newEntity.setCreatedBy(currentUser);
-                        newEntity.setCreatedDate(now);
-                        newEntity.setLastModifiedBy(currentUser);
-                        newEntity.setLastModifiedDate(now);
-                        toSave.add(newEntity);
-                        newlyCreated.add(newEntity);
-                        break;
+                        throw new ValidationException("Debit Note Charge Detail not found for detRowId: " + detRowId);
                     }
 
                     ArDebitNoteChargeDtl oldEntity = new ArDebitNoteChargeDtl();
@@ -514,7 +458,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                     mapChargeDtoToEntity(dto, existing, transactionPoid);
                     existing.setLastModifiedBy(currentUser);
                     existing.setLastModifiedDate(now);
-                    toSave.add(existing);
+                    toUpdate.add(existing);
 
                     String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", docKeyPoid, detRowId);
                     logRequests.add(new LogRequestDto<>(oldEntity, existing, ArDebitNoteChargeDtl.class, docId, docKeyPoid, logDetail));
@@ -523,17 +467,10 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                 case "ISDELETED": {
                     Long detRowId = dto.getDetRowId();
                     if (detRowId == null) {
-                        break;
+                        throw new ValidationException("Debit Note Charge Detail detRowId is required for delete");
                     }
                     toDelete.add(detRowId);
-                    ArDebitNoteChargeDtl oldEntityForDelete = existingMap.get(detRowId);
-                    if (oldEntityForDelete != null) {
-                        String deletedRecordString = String.format("detRowId:%s, transactionPoid:%s, chargePoid:%s, chargeAmount:%s, remarks:%s",
-                                oldEntityForDelete.getDetRowId(), transactionPoid, oldEntityForDelete.getChargePoid(),
-                                oldEntityForDelete.getChargeAmount(), oldEntityForDelete.getRemarks());
-                        String deleteSummaryMessage = String.format("Row Deleted %s", deletedRecordString);
-                        loggingService.createLogSummaryEntry(docId, docKeyPoid, deleteSummaryMessage);
-                    }
+                    loggingService.logDelete(dto, docId, docKeyPoid);
                     break;
                 }
                 case "NOCHANGE":
@@ -543,25 +480,44 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         }
 
         if (!toSave.isEmpty()) {
-            debitNoteChargeDtlRepository.saveAll(toSave);
-            for (ArDebitNoteChargeDtl newlyCreatedEntity : newlyCreated) {
-                if (newlyCreatedEntity.getDetRowId() != null) {
-                    String summaryMessage = String.format("Row Created on Debit Note Charge Detail with DetRowId: %s", newlyCreatedEntity.getDetRowId());
-                    loggingService.createLogSummaryEntry(docId, docKeyPoid, summaryMessage);
-                }
+            List<ArDebitNoteChargeDtl> savedItems = debitNoteChargeDtlRepository.saveAll(toSave);
+            savedItems.forEach(entity -> {
+                String summaryMessage = String.format("Row Created on Debit Note Charge Detail with DetRowId: %s", entity.getDetRowId());
+                loggingService.createLogSummaryEntry(docId, docKeyPoid, summaryMessage);
+            });
+        }
+        if (!toUpdate.isEmpty()) {
+            debitNoteChargeDtlRepository.saveAll(toUpdate);
+            if (!logRequests.isEmpty()) {
+                loggingService.createLogBatch(logRequests);
             }
         }
         if (!toDelete.isEmpty()) {
             debitNoteChargeDtlRepository.deleteByTransactionPoidAndDetRowIdIn(transactionPoid, toDelete);
-        }
-        if (!logRequests.isEmpty()) {
-            loggingService.createLogBatch(logRequests);
         }
     }
 
     private void deleteExistingDetails(Long transactionPoid) {
         debitNoteDtlRepository.deleteByTransactionPoid(transactionPoid);
         debitNoteChargeDtlRepository.deleteByTransactionPoid(transactionPoid);
+    }
+
+    private String normalizeDetailUpdateActionType(String actionType) {
+        String normalizedActionType = normalizeActionType(actionType);
+        if (normalizedActionType.isEmpty()) {
+            return "NOCHANGE";
+        }
+        if ("NOCHANGES".equals(normalizedActionType)) {
+            return "NOCHANGE";
+        }
+        return normalizedActionType;
+    }
+
+    private String resolveDetailUpdateActionType(String actionType, Long detRowId) {
+        if (detRowId == null) {
+            return "ISCREATED";
+        }
+        return normalizeDetailUpdateActionType(actionType);
     }
 
     private void loadDetails(DebitNoteHeaderDto dto, Long transactionPoid, String refType) {

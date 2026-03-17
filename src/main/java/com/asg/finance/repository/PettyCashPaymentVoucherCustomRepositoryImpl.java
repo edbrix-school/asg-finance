@@ -140,7 +140,11 @@ public class PettyCashPaymentVoucherCustomRepositoryImpl implements PettyCashPay
             result.append(resultOut);
 
         } catch (Exception e) {
-            throw new RuntimeException("Error executing PROC_AP_PI_FF_UPDATE_COST", e);
+            log.error("Error executing PROC_AP_PI_FF_UPDATE_COST", e);
+            if (result != null) {
+                result.setLength(0);
+                result.append("ERROR : ").append(e.getMessage());
+            }
         }
     }
 
@@ -184,8 +188,11 @@ public class PettyCashPaymentVoucherCustomRepositoryImpl implements PettyCashPay
             result.append(resultOut);
 
         } catch (Exception e) {
-
-            throw new RuntimeException("Error executing PROC_AP_PI_FDA_UPDATE_COST", e);
+            log.error("Error executing PROC_AP_PI_FDA_UPDATE_COST", e);
+            if (result != null) {
+                result.setLength(0);
+                result.append("ERROR : ").append(e.getMessage());
+            }
         }
     }
 
@@ -228,8 +235,11 @@ public class PettyCashPaymentVoucherCustomRepositoryImpl implements PettyCashPay
             resultOut.append(result != null ? result : "");
 
         } catch (Exception e) {
-
-            throw new RuntimeException("Error executing PROC_AP_PO_UPDATE_STATUS", e);
+            log.error("Error executing PROC_AP_PO_UPDATE_STATUS", e);
+            if (resultOut != null) {
+                resultOut.setLength(0);
+                resultOut.append("ERROR : ").append(e.getMessage());
+            }
         }
     }
 
@@ -480,7 +490,11 @@ public class PettyCashPaymentVoucherCustomRepositoryImpl implements PettyCashPay
             String result = (String) query.getOutputParameterValue("P_RESULT");
             resultOut.append(result != null ? result : "");
         } catch (Exception e) {
-            throw new RuntimeException("Error executing PROC_RFQ_UPDATE_PURCHASE_PRICE", e);
+            log.error("Error executing PROC_RFQ_UPDATE_PURCHASE_PRICE", e);
+            if (resultOut != null) {
+                resultOut.setLength(0);
+                resultOut.append("ERROR : ").append(e.getMessage());
+            }
         }
     }
 
@@ -513,7 +527,11 @@ public class PettyCashPaymentVoucherCustomRepositoryImpl implements PettyCashPay
             String result = (String) query.getOutputParameterValue("P_RESULT");
             resultOut.append(result != null ? result : "");
         } catch (Exception e) {
-            throw new RuntimeException("Error executing PROC_SALES_GRN_UPDATE_STATUS", e);
+            log.error("Error executing PROC_SALES_GRN_UPDATE_STATUS", e);
+            if (resultOut != null) {
+                resultOut.setLength(0);
+                resultOut.append("ERROR : ").append(e.getMessage());
+            }
         }
     }
 }

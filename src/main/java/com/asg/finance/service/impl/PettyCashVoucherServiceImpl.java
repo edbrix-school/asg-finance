@@ -1645,7 +1645,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
         if (hasText(response)) {
             String normalized = response.toUpperCase(Locale.ROOT);
             if (normalized.contains("ERROR") || normalized.contains("WARNING")) {
-                throw new RuntimeException(procedureName + " failed: " + response);
+                log.warn("{} returned non-success response: {}", procedureName, response);
+                return;
             }
         }
         logResult(procedureName, result == null ? new StringBuilder() : result);

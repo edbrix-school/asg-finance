@@ -56,21 +56,17 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
     private final ChequeReturnLoadRepository chequeReturnLoadRepository;
     private final LovDataService lovService;
     private final LoggingService loggingService;
+    private final JdbcTemplate jdbcTemplate;
+
 
     @PersistenceContext
     private EntityManager entityManager;
 
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
 
     private static final String DOC_ID_CHEQUE_RETURN = "400-114";
 
-    // ============================================================
-    // CREATE
-    // ============================================================
     @Override
     @Transactional
-    @PerformGlPosting
     public ChequeReturnResponse createChequeReturn(ChequeReturnRequest request) {
         validateRequest(request, false);
         Date dbDate = getCurrentDbDate();
@@ -124,9 +120,6 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
         return toResponse(header, request, "Cheque Return created successfully.");
     }
 
-    // ============================================================
-    // UPDATE (LIMITED: Status/Narration/Close Details)
-    // ============================================================
     @Transactional
     public ChequeReturnResponse updateChequeReturnMinimal(Long transactionPoid, ChequeReturnEditRequest request) {
         // 🔹 1. Validate header record existence
@@ -135,7 +128,16 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
 
         // 🔹 2. Check if already closed
         if ("CLOSED".equalsIgnoreCase(header.getStatus())) {
-            throw new IllegalArgumentException("Cannot edit Cheque Return - already in CLOSED status");
+            throw new ValidationException("Cheque return is in closed status, can not edit...");
+        }
+
+        String currentStatus = chequeReturnLoadRepository.getChequeCurrentStatus(transactionPoid);
+        if (currentStatus != null) {
+            if (currentStatus.contains("DEPOSIT:NOT_ALLOWED")) {
+                throw new ValidationException("Edit not allowed as cheque number last modified in Deposit");
+            } else if (currentStatus.contains("CONVERT:NOT_ALLOWED")) {
+                throw new ValidationException("Edit not allowed as cheque number last modified in cheque cash conversion");
+            }
         }
 
         // 🔹 3. Normalize and update status + details
@@ -171,7 +173,6 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
     // ============================================================
     @Override
     @Transactional
-    @PerformGlPosting
     public ChequeReturnResponse updateChequeReturnV2(Long transactionPoid, ChequeReturnRequest request) {
         validateRequest(request, true);
         Date dbDate = getCurrentDbDate();
@@ -185,9 +186,17 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
         ChequeReturn oldEntity = new ChequeReturn();
         BeanUtils.copyProperties(header, oldEntity);
 
-        // Check if already closed
         if ("CLOSED".equalsIgnoreCase(header.getStatus())) {
-            throw new IllegalArgumentException("Cannot edit Cheque Return - already in CLOSED status");
+            throw new ValidationException("Cheque return is in closed status, can not edit...");
+        }
+
+        String currentStatus = chequeReturnLoadRepository.getChequeCurrentStatus(transactionPoid);
+        if (currentStatus != null) {
+            if (currentStatus.contains("DEPOSIT:NOT_ALLOWED")) {
+                throw new ValidationException("Edit not allowed as cheque number last modified in Deposit");
+            } else if (currentStatus.contains("CONVERT:NOT_ALLOWED")) {
+                throw new ValidationException("Edit not allowed as cheque number last modified in cheque cash conversion");
+            }
         }
 
         // Update header (except docRef)
@@ -406,10 +415,29 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
     // ============================================================
     private void validateRequest(ChequeReturnRequest request, boolean isUpdate) {
 
-        double detailsTotal = request.getChequeDetails().stream()
+        String headerChqNum = request.getChequeHeader().getChequeNumber();
+        if (StringUtils.isBlank(headerChqNum)) {
+            throw new ValidationException("Cheque number not entered, Please enter cheque number");
+        }
+
+        List<ChequeReturnRequest.ChequeDetailDto> activeDetails = request.getChequeDetails().stream()
                 .filter(detail -> !isUpdate ||
                         detail.getActionType() == null ||
                         !"isdeleted".equalsIgnoreCase(detail.getActionType()))
+                .collect(Collectors.toList());
+
+        if (activeDetails.isEmpty()) {
+            throw new ValidationException("No Detail present for the cheque");
+        }
+
+        // Check if header cheque number matches detail cheque numbers
+        for (ChequeReturnRequest.ChequeDetailDto detail : activeDetails) {
+            if (detail.getChqCardNo() != null && !detail.getChqCardNo().equalsIgnoreCase(headerChqNum)) {
+                throw new ValidationException("Cheque numbers are not matching");
+            }
+        }
+
+        double detailsTotal = activeDetails.stream()
                 .mapToDouble(ChequeReturnRequest.ChequeDetailDto::getAmount)
                 .sum();
 
@@ -422,10 +450,11 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
                 .sum();
 
         if (Math.round(detailsTotal * 100.0) != Math.round(glDrTotal * 100.0)) {
-            throw new IllegalArgumentException(
-                    "Total of cheque details must match total GL DR amount");
+            throw new ValidationException(
+                    "Total of cheque amount (" + detailsTotal + ") is not matched with GL amount (" + glDrTotal + ")");
         }
     }
+
 
     // ============================================================
     // BUILD METHODS

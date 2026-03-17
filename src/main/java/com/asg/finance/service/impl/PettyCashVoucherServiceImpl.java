@@ -11,9 +11,11 @@ import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.LoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.ShowPendingBillwiseBreakupResponseDto;
 import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.common.lib.service.DocumentDeleteService;
+import com.asg.common.lib.service.GlobalParameterService;
 import com.asg.finance.annotation.PerformGlPosting;
 import com.asg.finance.entity.GLMaster;
 import com.asg.finance.repository.GLMasterRepository;
@@ -49,6 +51,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import javax.sql.DataSource;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -84,6 +87,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
     private final PrintService printService;
     private final DataSource dataSource;
     private final LoggingService loggingService;
+    private final GlobalParameterService globalParameterService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -117,6 +121,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     requestDto.getPettyCashGlPoid(), taxInputGlPoid, result
             );
             logResult("PROC_GL_DTL_BEFORE_SAVE_VAL_V2", result);
+            validateTaxAndVatRules(requestDto, taxInputGlPoid.toString());
 
 
             List<AdvanceDetailDto> advanceDetails = new ArrayList<>();
@@ -864,13 +869,14 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
             //  Step 3: Validate job before saving (FF/FDA/MTQ)
             StringBuilder validationResult = new StringBuilder();
+            String validationRefPoid = resolveRefPoidByType(requestDto, requestDto.getRefType());
             pettyCashPaymentVoucherCustomRepository.validateJobBeforeSave(
                     userGroupPoid,
                     userPoid,
                     userCompanyPoid,
                     requestDto.getDocId(),
                     requestDto.getRefType(),
-                    requestDto.getFfRef(),
+                    validationRefPoid,
                     validationResult
             );
 
@@ -878,6 +884,19 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     validationResult.toString().startsWith("WARNING")) {
                 throw new RuntimeException("Job validation failed: " + validationResult);
             }
+
+            StringBuilder glPoidString = new StringBuilder();
+            StringBuilder taxInputGlPoid = new StringBuilder();
+            StringBuilder beforeSaveResult = new StringBuilder();
+            pettyCashPaymentVoucherCustomRepository.validateBeforeSave(
+                    userGroupPoid, userPoid, userCompanyPoid,
+                    requestDto.getDocId(), requestDto.getRefType(),
+                    glPoidString.toString(), glPoidString.toString(),
+                    "", requestDto.getRefType(),
+                    requestDto.getPettyCashGlPoid(), taxInputGlPoid, beforeSaveResult
+            );
+            logResult("PROC_GL_DTL_BEFORE_SAVE_VAL_V2", beforeSaveResult);
+            validateTaxAndVatRules(requestDto, taxInputGlPoid.toString());
 
             // Step 4: Update parent (header) fields
             updateHeaderFields(existingHdr, requestDto, userPoid);
@@ -1949,6 +1968,116 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
         String type = popup == null ? "" : trim(popup.getType()).toUpperCase(Locale.ROOT);
         BigDecimal amount = popup == null ? BigDecimal.ZERO : safe(popup.getAmount());
         return "CR".equals(type) ? amount : BigDecimal.ZERO;
+    }
+
+    private void validateTaxAndVatRules(PettyCashRequestBase requestDto, String taxInputGlPoidValue) {
+        if (!isVatValidationApplicable(requestDto.getRefType())) {
+            return;
+        }
+
+        List<GlPettyCashPaymentDtlRequestDto> details = Optional.ofNullable(requestDto.getGlPettyCashPaymentDtlRequestDtos())
+                .orElse(Collections.emptyList())
+                .stream()
+                .filter(this::isNotDeletedAction)
+                .toList();
+
+        if (details.isEmpty()) {
+            return;
+        }
+
+        BigDecimal vatAmountLimit = getConfiguredDecimal("PETTY_CASH_VAT_AMOUNT_LIMIT", BigDecimal.ZERO);
+        BigDecimal inputTaxVarianceLimit = getConfiguredDecimal("INPUT_TAX_VARIANCE_LIMIT", BigDecimal.ZERO);
+        Long inputTaxGlPoid = parseLongOrNull(hasText(taxInputGlPoidValue)
+                ? taxInputGlPoidValue
+                : globalParameterService.getParameterValue("TAX_INPUT_GL_POID", "TAX", "1", "0"));
+
+        BigDecimal hundred = BigDecimal.valueOf(100);
+        for (int i = 0; i < details.size(); i++) {
+            GlPettyCashPaymentDtlRequestDto row = details.get(i);
+            int rowNum = i + 1;
+            BigDecimal drAmt = safe(row.getDrAmt());
+            BigDecimal crAmt = safe(row.getCrAmt());
+            BigDecimal vatAmount = safe(row.getVatAmount());
+            BigDecimal taxPercentage = safe(row.getTaxPercentage());
+
+            if (vatAmount.compareTo(BigDecimal.ZERO) > 0) {
+                if (row.getVatSupplier() == null || row.getVatSupplier() <= 0) {
+                    throw new ValidationException("VAT supplier not found. Please note the row number " + rowNum);
+                }
+                if (!hasText(row.getInputVatNumber())) {
+                    throw new ValidationException("Input VAT Number not found. Please note the row number " + rowNum);
+                }
+                if (row.getSupplierInvDate() == null) {
+                    throw new ValidationException("Supplier Invoice Date not found. Please note the row number " + rowNum);
+                }
+                if (vatAmountLimit.compareTo(BigDecimal.ZERO) > 0 && drAmt.compareTo(vatAmountLimit) > 0) {
+                    throw new ValidationException("Cash Purchase having VAT should be within "
+                            + vatAmountLimit.stripTrailingZeros().toPlainString()
+                            + "BD. Please note the row number " + rowNum);
+                }
+            }
+
+            if (inputTaxGlPoid != null && inputTaxGlPoid > 0 &&
+                    row.getGlPoid() != null && row.getGlPoid().equals(inputTaxGlPoid)) {
+                BigDecimal amount = drAmt.compareTo(BigDecimal.ZERO) != 0 ? drAmt : crAmt.abs();
+                if (vatAmountLimit.compareTo(BigDecimal.ZERO) > 0 && amount.compareTo(vatAmountLimit) > 0) {
+                    throw new ValidationException("Cash Purchase having VAT should be within "
+                            + vatAmountLimit.stripTrailingZeros().toPlainString()
+                            + "BD. Please note the row number " + rowNum);
+                }
+            }
+
+            if (inputTaxVarianceLimit.compareTo(BigDecimal.ZERO) > 0 &&
+                    drAmt.compareTo(BigDecimal.ZERO) > 0 &&
+                    taxPercentage.compareTo(BigDecimal.ZERO) > 0) {
+                BigDecimal expectedTaxAmount = drAmt.multiply(taxPercentage)
+                        .divide(hundred, 3, RoundingMode.HALF_UP);
+                BigDecimal difference = vatAmount.subtract(expectedTaxAmount).abs();
+                if (difference.compareTo(inputTaxVarianceLimit) > 0) {
+                    throw new ValidationException("WARNING : Input tax difference ("
+                            + difference.stripTrailingZeros().toPlainString()
+                            + "/-) should be within "
+                            + inputTaxVarianceLimit.stripTrailingZeros().toPlainString()
+                            + "/- Please note the row number " + rowNum);
+                }
+            }
+        }
+    }
+
+    private boolean isVatValidationApplicable(String refType) {
+        String normalized = normalizeRefType(refType);
+        return "GENERAL".equals(normalized)
+                || "CUSTOM".equals(normalized)
+                || "SUPPLIER".equals(normalized)
+                || "CUSTOMER".equals(normalized);
+    }
+
+    private boolean isNotDeletedAction(GlPettyCashPaymentDtlRequestDto row) {
+        String action = row == null || row.getActionType() == null ? "" : row.getActionType().trim().toUpperCase(Locale.ROOT);
+        return !"ISDELETED".equals(action);
+    }
+
+    private BigDecimal getConfiguredDecimal(String paramName, BigDecimal defaultValue) {
+        String value = globalParameterService.getParameterValue(paramName, "GROUP", "1", defaultValue.toPlainString());
+        if (!hasText(value)) {
+            return defaultValue;
+        }
+        try {
+            return new BigDecimal(value.trim());
+        } catch (NumberFormatException ex) {
+            throw new ValidationException(paramName + " parameter is not configured correctly.");
+        }
+    }
+
+    private Long parseLongOrNull(String value) {
+        if (!hasText(value)) {
+            return null;
+        }
+        try {
+            return Long.valueOf(value.trim());
+        } catch (NumberFormatException ex) {
+            return null;
+        }
     }
 
 }

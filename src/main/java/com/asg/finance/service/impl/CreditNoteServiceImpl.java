@@ -246,6 +246,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
     @Override
     @Transactional
+    @PerformGlPosting
     public CreditNoteHeaderDto updateCreditNote(Long transactionPoid, CreditNoteHeaderDto creditNoteDto) {
         ArCreditNoteHdr existing = creditNoteHdrRepository.findByTransactionPoidAndDeleted(transactionPoid, "N")
                 .orElseThrow(() -> new ResourceNotFoundException("Credit Note", "transactionPoid", transactionPoid));
@@ -294,17 +295,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
             // Log the update
             loggingService.logChanges(oldEntity, existing, ArCreditNoteHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
-            loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), transactionPoid.toString());
             if (!detailSummaryLogs.isEmpty()) {
                 globalLogSummaryRepository.saveAll(detailSummaryLogs);
             }
-
-            glPostingService.performGlPosting(
-                    UserContext.getDocumentId(),
-                    transactionPoid,
-                    result.getDocRef()
-            );
-
             return result;
         } catch (SQLException e) {
             log.error("Database error updating credit note", e);

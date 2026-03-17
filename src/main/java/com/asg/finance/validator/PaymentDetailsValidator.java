@@ -17,6 +17,14 @@ public class PaymentDetailsValidator
             return true;
         }
 
+        // Skip validation for deleted or unchanged rows
+        if (payment.getActionType() != null) {
+            String action = payment.getActionType().toUpperCase();
+            if ("ISDELETED".equals(action) || "NOCHANGE".equals(action)) {
+                return true;
+            }
+        }
+
         String type = payment.getType();
 
         context.disableDefaultConstraintViolation();

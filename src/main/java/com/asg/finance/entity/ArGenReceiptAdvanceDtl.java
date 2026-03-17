@@ -35,6 +35,7 @@ public class ArGenReceiptAdvanceDtl extends BaseEntity {
     private ArGenReceiptHdr receiptHdr;
 
     @Column(name = "ADVANCE_REF_DOC_ID", length = 300)
+    @AuditIgnore
     private String advanceRefDocId;
 
     @Column(name = "ADVANCE_REF_POID")

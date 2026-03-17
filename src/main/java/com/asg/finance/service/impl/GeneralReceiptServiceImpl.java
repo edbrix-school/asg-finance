@@ -72,7 +72,6 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
     private ApplicationContext applicationContext;
 
     @Override
-    @PerformGlPosting
     public GeneralReceiptResponse createGeneralReceipt(GeneralReceiptRequest request) {
         // Step 1: Get self-reference to enable proxy interception for @Transactional
         GeneralReceiptServiceImpl self = applicationContext.getBean(GeneralReceiptServiceImpl.class);
@@ -90,7 +89,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
     /**
      * Save receipt data in a NEW transaction that commits immediately when method completes.
      * REQUIRES_NEW ensures this transaction is independent of any calling context.
-     * 
+     *
      * This method is public to allow Spring AOP to intercept it and create a new transaction.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -795,7 +794,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                     toSave.add(ArGenReceiptAdvanceDtl.builder()
                             .transactionPoid(transactionPoid)
                             .detRowId(advance.getDetRowId())
-                            .advanceRefDocId(advance.getAdvanceRefDocId())
+                            .advanceRefDocId("110-161")
                             .advanceRefPoid(advance.getAdvanceRefPoid())
                             .amount(advance.getAmount())
                             .remarks(advance.getRemarks())
@@ -810,7 +809,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                     ArGenReceiptAdvanceDtl oldAdvance = new ArGenReceiptAdvanceDtl();
                     BeanUtils.copyProperties(existingAdvance, oldAdvance);
                     
-                    existingAdvance.setAdvanceRefDocId(advance.getAdvanceRefDocId());
+                    existingAdvance.setAdvanceRefDocId("110-161");
                     existingAdvance.setAdvanceRefPoid(advance.getAdvanceRefPoid());
                     existingAdvance.setAmount(advance.getAmount());
                     existingAdvance.setRemarks(advance.getRemarks());
@@ -1450,7 +1449,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
             ArGenReceiptAdvanceDtl detail = ArGenReceiptAdvanceDtl.builder()
                     .transactionPoid(header.getTransactionPoid())
                     .detRowId(detId)
-                    .advanceRefDocId(advance.getAdvanceRefDocId())
+                    .advanceRefDocId("110-161")
                     .advanceRefPoid(advance.getAdvanceRefPoid())
                     .amount(advance.getAmount())
                     .remarks(advance.getRemarks())

@@ -15,5 +15,5 @@ public interface JournalVoucherProcRepository {
     
     List<JournalVoucherCapitalizationDto> fetchFixedAssetDetails(Long faPoid) throws SQLException;
     
-    void updateAssetDetail(Long faPoid, java.math.BigDecimal scrapSoldValue, java.time.LocalDate scrapSoldDate, String process,Long transactionPoid);
+    void updateAssetDetail(Long transactionPoid);
 }

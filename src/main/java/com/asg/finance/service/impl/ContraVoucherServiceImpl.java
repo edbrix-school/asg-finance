@@ -29,6 +29,7 @@ import com.asg.finance.repository.GlContraVoucherDtlRepository;
 import com.asg.finance.repository.GlContraVoucherHdrRepository;
 import com.asg.common.lib.security.util.UserContext;
 
+import com.asg.finance.annotation.PerformGlPosting;
 import com.asg.finance.service.ContraVoucherService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -190,6 +191,7 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
 
     @Override
     @Transactional
+    @PerformGlPosting
     public ContraVoucherFullResponse createContraVoucher(ContraVoucherRequest request) {
         log.info("createContraVoucher started");
 

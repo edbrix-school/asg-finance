@@ -483,4 +483,37 @@ public class PettyCashPaymentVoucherCustomRepositoryImpl implements PettyCashPay
             throw new RuntimeException("Error executing PROC_RFQ_UPDATE_PURCHASE_PRICE", e);
         }
     }
+
+    @Override
+    public void updateSalesGrnStatus(
+            Long loginGroupPoid,
+            Long loginCompanyPoid,
+            Long loginUserPoid,
+            String docId,
+            Long bookPoid,
+            StringBuilder resultOut
+    ) {
+        try {
+            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("PROC_SALES_GRN_UPDATE_STATUS");
+
+            query.registerStoredProcedureParameter("P_LOGIN_GROUP_POID", Long.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("P_LOGIN_COMPANY_POID", Long.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("P_LOGIN_USER_POID", Long.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("P_DOC_ID", String.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("P_BOOK_POID", Long.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("P_RESULT", String.class, ParameterMode.OUT);
+
+            query.setParameter("P_LOGIN_GROUP_POID", loginGroupPoid);
+            query.setParameter("P_LOGIN_COMPANY_POID", loginCompanyPoid);
+            query.setParameter("P_LOGIN_USER_POID", loginUserPoid);
+            query.setParameter("P_DOC_ID", docId);
+            query.setParameter("P_BOOK_POID", bookPoid);
+            query.execute();
+
+            String result = (String) query.getOutputParameterValue("P_RESULT");
+            resultOut.append(result != null ? result : "");
+        } catch (Exception e) {
+            throw new RuntimeException("Error executing PROC_SALES_GRN_UPDATE_STATUS", e);
+        }
+    }
 }

@@ -535,6 +535,8 @@ public class DebitNoteServiceImpl implements DebitNoteService {
 
         Long detRowId = 0L;
         String user = ASGHelperUtils.getCurrentUser();
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = transactionPoid.toString();
 
         for (DebitNoteGlDetailDto dto : glDetails) {
             if (dto.isEmpty()) continue;
@@ -558,7 +560,10 @@ public class DebitNoteServiceImpl implements DebitNoteService {
             entity.setCreatedBy(user);
             entity.setCreatedDate(LocalDateTime.now());
 
-            debitNoteDtlRepository.save(entity);
+            ArDebitNoteDtl saved = debitNoteDtlRepository.save(entity);
+
+            String summaryMessage = String.format("Row Created on Debit Note GL Detail with DetRowId: %s", saved.getDetRowId());
+            loggingService.createLogSummaryEntry(docId, docKeyPoid, summaryMessage);
         }
     }
 
@@ -567,6 +572,8 @@ public class DebitNoteServiceImpl implements DebitNoteService {
 
         Long detRowId = 0L;
         String user = ASGHelperUtils.getCurrentUser();
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = transactionPoid.toString();
 
         for (DebitNoteChargeDetailDto dto : chargeDetails) {
             if (dto.isEmpty()) continue;
@@ -590,7 +597,10 @@ public class DebitNoteServiceImpl implements DebitNoteService {
             entity.setCreatedBy(user);
             entity.setCreatedDate(LocalDateTime.now());
 
-            debitNoteChargeDtlRepository.save(entity);
+            ArDebitNoteChargeDtl saved = debitNoteChargeDtlRepository.save(entity);
+
+            String summaryMessage = String.format("Row Created on Debit Note Charge Detail with DetRowId: %s", saved.getDetRowId());
+            loggingService.createLogSummaryEntry(docId, docKeyPoid, summaryMessage);
         }
     }
 

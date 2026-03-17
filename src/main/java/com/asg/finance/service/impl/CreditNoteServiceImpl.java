@@ -1994,7 +1994,13 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     req.setCompanyPoid(companyPoid);
                     req.setDocId(docId);
                     req.setTransactionPoid(transactionPoid);
-                    req.setBillDetRowId(popup.getBillDetRowId());
+
+                    Long billDetRowId = popup.getBillDetRowId();
+                    if (billDetRowId == null || billDetRowId == 0L) {
+                        billDetRowId = inital;
+                    }
+                    req.setBillDetRowId(billDetRowId);
+
                     req.setBillRefType(popup.getBillRefType());
                     req.setBillRef(popup.getBillRef());
                     req.setBillDueDate(popup.getBillDueDate());
@@ -2289,12 +2295,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
         // GENERAL logic 
         if ("GENERAL".equalsIgnoreCase(refType)) {
-            Long partyGl;
-            try {
-                partyGl = getPartyGLPoid(dto.getPartyPoid(), dto.getPartyType());
-            } catch (Exception e) {
-                throw new ValidationException("Selected Party GL_CODE is not found...");
-            }
+            Long partyGl = getPartyGLPoid(dto.getPartyPoid(), dto.getPartyType());
             if (partyGl == null) {
                 throw new ValidationException("Selected Party GL_CODE is not found...");
             }

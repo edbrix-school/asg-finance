@@ -7,6 +7,7 @@ import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
@@ -35,8 +36,7 @@ import com.asg.finance.service.GlPostingService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import com.asg.common.lib.exception.ValidationException;
-import com.asg.common.lib.client.ParameterServiceClient;
+import com.asg.common.lib.service.GlobalParameterService;
 
 import net.sf.jasperreports.engine.JasperReport;
 import org.apache.commons.lang3.StringUtils;
@@ -77,7 +77,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
     private final DataSource dataSource;
     private final DocumentDeleteService documentDeleteService;
     private final LoggingService loggingService;
-    private final ParameterServiceClient parameterServiceClient;
+    private final GlobalParameterService globalParameterService;
     private final GlPostingService glPostingService;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -222,6 +222,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
 
     @Override
     @Transactional
+    @PerformGlPosting
     public GlChequeCashConvertHdrDto createGlChequeCashConvert(GlChequeCashConvertHdrDto dto) {
 
         GlChequeCashConvertHdrEntity hdrEntity = new GlChequeCashConvertHdrEntity();
@@ -356,6 +357,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
 
     @Override
     @Transactional
+    @PerformGlPosting
     public GlChequeCashConvertHdrDto updateGlChequeCashConvert(Long transactionPoid, GlChequeCashConvertHdrDto dto) {
 
         validateStatusForEdit(transactionPoid);
@@ -417,8 +419,6 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
                 UserContext.getUserPoid(),
                 getCurrentUser()
         ));
-        
-        glPostingService.performGlPosting(UserContext.getDocumentId(),savedHdr.getTransactionPoid(),savedHdr.getDocRef());
 
         return getGlChequeCashConvert(savedHdr.getTransactionPoid());
     }
@@ -871,7 +871,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
     }
 
     private BigDecimal getRoundingLimitParam() {
-        String val = parameterServiceClient.findParameterValueByName("ROUNDING_LIMIT").orElse("0.099");
+        String val = globalParameterService.getParameterValue("ROUNDING_LIMIT", "GROUP", "1", "0.099");
         try {
             return new BigDecimal(val.trim());
         } catch (NumberFormatException e) {
@@ -897,7 +897,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         if (inDtls == null || inDtls.isEmpty()) {
             return;
         }
-        String validateDaysStr = parameterServiceClient.findParameterValueByName("CHEQUE_DATE_VALIDATION_DAYS").orElse("1");
+        String validateDaysStr = globalParameterService.getParameterValue("CHEQUE_DATE_VALIDATION_DAYS", "GROUP", "1", "1");
         BigDecimal validateDaysBd;
         try {
             validateDaysBd = new BigDecimal(validateDaysStr.trim());

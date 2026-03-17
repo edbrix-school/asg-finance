@@ -76,6 +76,15 @@ public interface GeneralReceiptService {
     String getGlBillwiseYn(Long glPoid);
 
     /**
+     * Check if a GL account requires a cost center
+     * Calls PROC_AR_GL_COSTCENTER_YN and returns flag (Y/N/NILL)
+     *
+     * @param glPoid GL POID
+     * @return Cost center flag (Y/N/NILL)
+     */
+    String getGlCostCenterYn(Long glPoid);
+
+    /**
      * @param transactionPoid
      * @return
      * @throws Exception

@@ -92,8 +92,8 @@ public class GeneralReceiptProcedureRepository {
                 .registerStoredProcedureParameter("P_ACTION", String.class, ParameterMode.IN)
                 .registerStoredProcedureParameter("P_ACTION_MESSAGE", String.class, ParameterMode.IN)
                 .registerStoredProcedureParameter("P_DOC_SUMMARY_INFO", String.class, ParameterMode.IN)
-                .registerStoredProcedureParameter("P_DOC_REF", Long.class, ParameterMode.IN)
-                .registerStoredProcedureParameter("P_DOC_DATE", String.class, ParameterMode.IN)
+                .registerStoredProcedureParameter("P_DOC_REF", String.class, ParameterMode.IN)
+                .registerStoredProcedureParameter("P_DOC_DATE", Date.class, ParameterMode.IN)
                 .registerStoredProcedureParameter("P_SUBMIT_TO_USER_POID", Long.class, ParameterMode.IN)
                 .registerStoredProcedureParameter("P_ACTION_RESULT", String.class, ParameterMode.OUT)
                 .registerStoredProcedureParameter("P_ACTION_RESULT_USER_POID_LIST", String.class, ParameterMode.OUT)
@@ -107,7 +107,7 @@ public class GeneralReceiptProcedureRepository {
                 .setParameter("P_ACTION_MESSAGE", "General Receipt submitted for approval")
                 .setParameter("P_DOC_SUMMARY_INFO", null)
                 .setParameter("P_DOC_REF", docRefNumber)
-                .setParameter("P_DOC_DATE", docDate.toString())
+                .setParameter("P_DOC_DATE", docDate)
                 .setParameter("P_SUBMIT_TO_USER_POID", null);
 
         query.execute();
@@ -336,6 +336,19 @@ public class GeneralReceiptProcedureRepository {
 
         StoredProcedureQuery query = entityManager
                 .createStoredProcedureQuery("PROC_AR_GL_BILWISE_YN")
+                .registerStoredProcedureParameter("P_GL_POID", Long.class, ParameterMode.IN)
+                .registerStoredProcedureParameter("P_RESULT", String.class, ParameterMode.OUT)
+                .setParameter("P_GL_POID", glPoid);
+
+        query.execute();
+        return (String) query.getOutputParameterValue("P_RESULT");
+    }
+
+    public String fetchGLCostCenterFlag(Long glPoid) {
+        log.debug("Calling PROC_AR_GL_COSTCENTER_YN for GL: {}", glPoid);
+
+        StoredProcedureQuery query = entityManager
+                .createStoredProcedureQuery("PROC_AR_GL_COSTCENTER_YN")
                 .registerStoredProcedureParameter("P_GL_POID", Long.class, ParameterMode.IN)
                 .registerStoredProcedureParameter("P_RESULT", String.class, ParameterMode.OUT)
                 .setParameter("P_GL_POID", glPoid);

@@ -972,23 +972,41 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                 }
             }
         }
-
-        // 4. Validate FDA advance amount matches BHD amount
+        
+        // 4. Validate FDA advance amount matches BHD amount + Extra charges
         if ("FDA_ADVANCE".equals(header.getRefType())) {
             if (request.getAdvances() == null || request.getAdvances().isEmpty()) {
                 throw new ValidationException("FDA advance details are required when Ref Type is FDA_ADVANCE");
             }
 
+            // Calculate FDA Advance Total
             BigDecimal advanceTotal = request.getAdvances().stream()
+                    .filter(advance -> advance.getActionType() == null || !"ISDELETED".equalsIgnoreCase(advance.getActionType()))
                     .map(GeneralReceiptAdvanceDto::getAmount)
                     .filter(amount -> amount != null)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-            BigDecimal bhdAmount = header.getBhdAmount() != null ? header.getBhdAmount()
-                    : header.getReceiptAmount().multiply(header.getRate());
-
-            if (bhdAmount.compareTo(advanceTotal) != 0) {
-                throw new ValidationException("BHD amount doesn't match with FDA Amount");
+            
+            if (advanceTotal.compareTo(BigDecimal.ZERO) == 0) {
+                throw new ValidationException("Zero values found in Total Advance Amount... ,please check");
+            }
+            
+            // Calculate Extra Charges Total
+            BigDecimal extraChargesTotal = BigDecimal.ZERO;
+            if ("Y".equals(header.getExtraCharges()) && activeCharges != null && !activeCharges.isEmpty()) {
+                extraChargesTotal = activeCharges.stream()
+                        .map(GeneralReceiptChargeDto::getTotalAmount)
+                        .filter(amount -> amount != null)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+            }
+            
+            // Calculate Total Amount (Receipt Amount + Extra Charges)
+            BigDecimal bhdAmount = header.getBhdAmount() != null ? header.getBhdAmount() : header.getReceiptAmount().multiply(header.getRate());
+            BigDecimal totalAmount = bhdAmount.add(extraChargesTotal);
+            
+            if (advanceTotal.compareTo(totalAmount) != 0) {
+                throw new ValidationException(String.format(
+                        "Total Amount (%.3f) not matching with Advance Details (%.3f) ,please check",
+                        totalAmount, advanceTotal));
             }
         }
 
@@ -1067,8 +1085,20 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         }
 
         BigDecimal billTotal = bills.stream()
-                .map(GeneralReceiptBillDto::getAmount)
-                .filter(amount -> amount != null)
+                .filter(bill -> bill.getAmount() != null)
+                .map(bill -> {
+                    BigDecimal amount = bill.getAmount();
+                    String drCr = bill.getDrCr();
+                    // If CREDIT, add the amount; if DEBIT, subtract the amount
+                    if ("CREDIT".equalsIgnoreCase(drCr)) {
+                        return amount;
+                    } else if ("DEBIT".equalsIgnoreCase(drCr)) {
+                        return amount.negate();
+                    } else {
+                        // Default to CREDIT if DR/CR is not specified
+                        return amount;
+                    }
+                })
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         if (amountToCompare.compareTo(billTotal) != 0) {

@@ -1091,9 +1091,13 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         String docId = UserContext.getDocumentId();
         String docKeyPoid = insuranceId.toString();
         LocalDateTime now = LocalDateTime.now();
-        
         // Log header changes
         loggingService.logChanges(oldEntity, renewed, InsuranceMaster.class, docId, docKeyPoid, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+        
+        // Log renewal header message
+        String msg1 = String.format("renewal logs are added to history table (from date: %s to date: %s)",
+                renewalLog.getFromDate(), renewalLog.getExpiryDate());
+        loggingService.createLogSummaryEntry(docId, docKeyPoid, msg1);
         
         // Log renewal log row creation
         String msg = String.format("Row Created on Insurance Renewal Log with DetRowId: %s", renewalLog.getDetRowId());

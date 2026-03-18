@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 
 @Data
 @NoArgsConstructor
@@ -17,7 +18,7 @@ public class CostCenterBreakupResponseDto {
     private Long costDetRowId;
     private String costGroup;
     private String costPoid;
-    private Long amount;
+    private BigDecimal amount;
     private String description;
 
 }

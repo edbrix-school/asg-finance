@@ -64,7 +64,7 @@ public class CostCenterBreakupDtlRepositoryImpl implements CostCenterBreakupDtlR
                 dto.setCostDetRowId(rs.getLong("COST_DET_ROW_ID"));
                 dto.setCostGroup(rs.getString("COST_GROUP"));
                 dto.setCostPoid(rs.getString("COST_POID"));
-                dto.setAmount(rs.getLong("AMOUNT"));
+                dto.setAmount(rs.getBigDecimal("AMOUNT"));
                 dto.setDescription(rs.getString("DESCRIPTION"));
                 costBreakupList.add(dto);
             }

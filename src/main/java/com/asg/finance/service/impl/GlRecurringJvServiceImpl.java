@@ -235,7 +235,7 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
                     dto.setCostDetRowId(cc.getCostDetRowId());
                     dto.setCostGroup(cc.getCostGroup());
                     dto.setCostPoid(cc.getCostPoid());
-                    dto.setAmount(BigDecimal.valueOf(cc.getAmount()));
+                    dto.setAmount(cc.getAmount());
                     return dto;
                 })
                 .collect(Collectors.toList());
@@ -664,7 +664,7 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
                             dto.setCostDetRowId(cc.getCostDetRowId());
                             dto.setCostGroup(cc.getCostGroup());
                             dto.setCostPoid(cc.getCostPoid());
-                            dto.setAmount(BigDecimal.valueOf(cc.getAmount()));
+                            dto.setAmount(cc.getAmount());
                             return dto;
                         })
                         .collect(Collectors.toList());

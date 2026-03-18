@@ -1387,7 +1387,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                             .costDetRowId(cc.getCostDetRowId())
                             .costGroup(cc.getCostGroup())
                             .costPoid(cc.getCostPoid())
-                            .amount(BigDecimal.valueOf(cc.getAmount()))
+                            .amount(cc.getAmount())
                             .build();
                     if (cc.getCostPoid() != null && !cc.getCostPoid().isEmpty() && 
                         cc.getCostGroup() != null && !cc.getCostGroup().isEmpty()) {

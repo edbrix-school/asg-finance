@@ -1172,11 +1172,6 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                     }
                 }
 
-                deleteOldAutoBalancingRow(
-                        transactionPoid,
-                        getSupplierGlPoid(apPurchaseInvoiceHdrDto.getSupplierPoid())
-                );
-
                 autoCreateBalancingGlRowWithBillwise(
                         transactionPoid,
                         apPurchaseInvoiceHdrDto
@@ -1810,7 +1805,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                             popupDto.setCostDetRowId(item.getCostDetRowId());
                             popupDto.setCostGroup(item.getCostGroup());
                             popupDto.setCostPoid(item.getCostPoid());
-                            popupDto.setAmount(BigDecimal.valueOf(item.getAmount()));
+                            popupDto.setAmount(item.getAmount());
                             if (StringUtils.isNotEmpty(item.getCostPoid()) && StringUtils.isNotEmpty(item.getCostGroup())) {
                                 try {
                                     Long poid = Long.parseLong(item.getCostPoid());

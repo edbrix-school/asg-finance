@@ -840,8 +840,8 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         String sql = "BEGIN PROC_CR_NOTE_CREATE_FROM_FF(?, ?, ?, ?, ?, ?); END;";
         try (Connection conn = dataSource.getConnection();
              CallableStatement cs = conn.prepareCall(sql)) {
-            Long groupPoid = 1L;
-            Long companyPoid = 3L;
+            Long groupPoid = UserContext.getGroupPoid();
+            Long companyPoid = UserContext.getCompanyPoid();
             Long userPoid = UserContext.getUserPoid();
 
             cs.setLong(1, groupPoid); // P_LOGIN_GROUP_POID
@@ -858,8 +858,8 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         String sql = "BEGIN PROC_AR_CREDIT_NT_FROM_SH_INV(?, ?, ?, ?, ?, ?, ?); END;";
         try (Connection conn = dataSource.getConnection();
              CallableStatement cs = conn.prepareCall(sql)) {
-            Long groupPoid = 1L;
-            Long companyPoid = 3L;
+            Long groupPoid = UserContext.getGroupPoid();
+            Long companyPoid = UserContext.getCompanyPoid();
             Long userPoid = UserContext.getUserPoid();
             cs.setLong(1, groupPoid); // P_LOGIN_GROUP_POID
             cs.setLong(2, companyPoid); // P_LOGIN_COMPANY_POID
@@ -876,8 +876,8 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         String sql = "BEGIN PROC_AR_CN_CREATE_FROM_DN(?, ?, ?, ?, ?, ?, ?); END;";
         try (Connection conn = dataSource.getConnection();
              CallableStatement cs = conn.prepareCall(sql)) {
-            Long groupPoid = 1L;
-            Long companyPoid = 3L;
+            Long groupPoid = UserContext.getGroupPoid();
+            Long companyPoid = UserContext.getCompanyPoid();
             Long userPoid = UserContext.getUserPoid();
 
             cs.setLong(1, groupPoid); // P_LOGIN_GROUP_POID
@@ -895,8 +895,8 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         String sql = "BEGIN PROC_AR_CREDIT_CREATE_FROM_FDA(?, ?, ?, ?, ?, ?, ?); END;";
         try (Connection conn = dataSource.getConnection();
              CallableStatement cs = conn.prepareCall(sql)) {
-            Long groupPoid = 1L;
-            Long companyPoid = 3L;
+            Long groupPoid = UserContext.getGroupPoid();
+            Long companyPoid = UserContext.getCompanyPoid();
             Long userPoid = UserContext.getUserPoid();
 
             cs.setLong(1, groupPoid); // P_LOGIN_GROUP_POID
@@ -985,7 +985,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                 String sql = "BEGIN PROC_GET_CHARGE_TAX_PER_V3(?, ?, ?, ?, ?, ?); END;";
                 try (Connection conn = dataSource.getConnection();
                      CallableStatement cs = conn.prepareCall(sql)) {
-                    Long companyPoid = 3L; // Default company
+                    Long companyPoid = UserContext.getCompanyPoid();
 
                     cs.setLong(1, companyPoid); // P_COMPANY_POID
                     cs.setTimestamp(2, Timestamp.valueOf(LocalDateTime.now())); // P_TRANSACTION_DATE
@@ -1060,7 +1060,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         } else if ("DN_INVOICE".equals(refType) || "DN".equals(refType)) {
             executeDNInvUpdate(transactionPoid, dto.getDnInvoicePoid());
         } else if ("FDA".equals(refType)) {
-            executeFDAAmountUpdate(transactionPoid);
+            executeFDAAmountUpdate(transactionPoid, dto.getDnFdaReference());
         }
     }
 
@@ -1068,8 +1068,8 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         String sql = "BEGIN PROC_GL_VOUCHERS_VALIDATIONS(?, ?, ?, ?, ?, ?, ?); END;";
         try (Connection conn = dataSource.getConnection();
              CallableStatement cs = conn.prepareCall(sql)) {
-            Long groupPoid = 1L;
-            Long companyPoid = 3L;
+            Long groupPoid = UserContext.getGroupPoid();
+            Long companyPoid = UserContext.getCompanyPoid();
             Long userPoid = UserContext.getUserPoid();
 
             cs.setLong(1, groupPoid); // P_LOGIN_GROUP_POID
@@ -1109,8 +1109,8 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         try (Connection conn = dataSource.getConnection();
              CallableStatement cs = conn.prepareCall(sql)) {
             cs.setLong(1, UserContext.getGroupPoid()); // P_LOGIN_GROUP_POID
-            cs.setLong(2, UserContext.getCompanyPoid()); // P_LOGIN_USER_POID
-            cs.setLong(3, UserContext.getUserPoid()); // P_LOGIN_COMPANY_POID
+            cs.setLong(2, UserContext.getUserPoid()); // P_LOGIN_USER_POID
+            cs.setLong(3, UserContext.getCompanyPoid()); // P_LOGIN_COMPANY_POID
             cs.setString(4, header.getDocRef()); // P_DOC_ID
             cs.setString(5, header.getRefType()); // P_REF_TYPE
             cs.setString(6, refPoid); // P_REF_POID
@@ -1145,8 +1145,8 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         String sql = "BEGIN PROC_DR_CR_BILL_REF_UPDATE(?, ?, ?, ?, ?, ?, ?, ?); END;";
         try (Connection conn = dataSource.getConnection();
              CallableStatement cs = conn.prepareCall(sql)) {
-            Long groupPoid = 1L;
-            Long companyPoid = 3L;
+            Long groupPoid = UserContext.getGroupPoid();
+            Long companyPoid = UserContext.getCompanyPoid();
             Long userPoid = UserContext.getUserPoid();
 
             // Get credit note header to get doc ref and party type
@@ -1175,9 +1175,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         String sql = "BEGIN PROC_AR_UPDATE_FF_INV_DTLS(?, ?, ?, ?, ?, ?); END;";
         try (Connection conn = dataSource.getConnection();
              CallableStatement cs = conn.prepareCall(sql)) {
-            cs.setLong(1, 1); // P_LOGIN_GROUP_POID
-            cs.setLong(2, 1); // P_LOGIN_COMPANY_POID
-            cs.setLong(3, 1); // P_LOGIN_USER_POID
+            cs.setLong(1, UserContext.getGroupPoid()); // P_LOGIN_GROUP_POID
+            cs.setLong(2, UserContext.getCompanyPoid()); // P_LOGIN_COMPANY_POID
+            cs.setLong(3, UserContext.getUserPoid()); // P_LOGIN_USER_POID
             cs.setLong(4, transactionPoid); // P_CN_POID
             cs.setLong(5, ffInvoicePoid != null ? ffInvoicePoid : 0); // P_FF_INV_POID
             cs.registerOutParameter(6, Types.VARCHAR); // P_RESULT OUT
@@ -1189,9 +1189,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         String sql = "BEGIN PROC_CR_NOTE_UPDATE_FF_COST(?, ?, ?, ?, ?, ?); END;";
         try (Connection conn = dataSource.getConnection();
              CallableStatement cs = conn.prepareCall(sql)) {
-            cs.setLong(1, 1); // P_LOGIN_GROUP_POID
-            cs.setLong(2, 1); // P_LOGIN_COMPANY_POID
-            cs.setLong(3, 1); // P_LOGIN_USER_POID
+            cs.setLong(1, UserContext.getGroupPoid()); // P_LOGIN_GROUP_POID
+            cs.setLong(2, UserContext.getCompanyPoid()); // P_LOGIN_COMPANY_POID
+            cs.setLong(3, UserContext.getUserPoid()); // P_LOGIN_USER_POID
             cs.setLong(4, ffInvoicePoid != null ? ffInvoicePoid : 0); // P_FF_POID
             cs.setLong(5, transactionPoid); // P_CN_POID
             cs.registerOutParameter(6, Types.VARCHAR); // P_RESULT OUT
@@ -1203,9 +1203,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         String sql = "BEGIN PROC_AR_UPDATE_SH_INV_DTLS(?, ?, ?, ?, ?, ?); END;";
         try (Connection conn = dataSource.getConnection();
              CallableStatement cs = conn.prepareCall(sql)) {
-            cs.setLong(1, 1); // P_LOGIN_GROUP_POID
-            cs.setLong(2, 1); // P_LOGIN_COMPANY_POID
-            cs.setLong(3, 1); // P_LOGIN_USER_POID
+            cs.setLong(1, UserContext.getGroupPoid()); // P_LOGIN_GROUP_POID
+            cs.setLong(2, UserContext.getCompanyPoid()); // P_LOGIN_COMPANY_POID
+            cs.setLong(3, UserContext.getUserPoid()); // P_LOGIN_USER_POID
             cs.setLong(4, transactionPoid); // P_CN_POID
             cs.setLong(5, shInvoicePoid != null ? shInvoicePoid : 0); // P_SH_INV_POID
             cs.registerOutParameter(6, Types.VARCHAR); // P_RESULT OUT
@@ -1217,9 +1217,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         String sql = "BEGIN PROC_AR_UPDATE_DN_INV_DTLS(?, ?, ?, ?, ?, ?); END;";
         try (Connection conn = dataSource.getConnection();
              CallableStatement cs = conn.prepareCall(sql)) {
-            cs.setLong(1, 1); // P_LOGIN_GROUP_POID
-            cs.setLong(2, 1); // P_LOGIN_COMPANY_POID
-            cs.setLong(3, 1); // P_LOGIN_USER_POID
+            cs.setLong(1, UserContext.getGroupPoid()); // P_LOGIN_GROUP_POID
+            cs.setLong(2, UserContext.getCompanyPoid()); // P_LOGIN_COMPANY_POID
+            cs.setLong(3, UserContext.getUserPoid()); // P_LOGIN_USER_POID
             cs.setLong(4, transactionPoid); // P_CN_POID
             cs.setLong(5, dnInvoicePoid != null ? dnInvoicePoid : 0); // P_DN_INV_POID
             cs.registerOutParameter(6, Types.VARCHAR); // P_RESULT OUT
@@ -1228,14 +1228,18 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     }
 
 
-    private void executeFDAAmountUpdate(Long transactionPoid) throws SQLException {
+    private void executeFDAAmountUpdate(Long transactionPoid, String fdaRef) throws SQLException {
+        if (fdaRef == null) {
+            log.warn("FDA ref is null for transactionPoid {}, skipping PROC_AR_UPDATE_FDA_AMOUNT", transactionPoid);
+            return;
+        }
         String sql = "BEGIN PROC_AR_UPDATE_FDA_AMOUNT(?, ?, ?, ?, ?); END;";
         try (Connection conn = dataSource.getConnection();
              CallableStatement cs = conn.prepareCall(sql)) {
-            cs.setLong(1, 1); // P_LOGIN_GROUP_POID
-            cs.setLong(2, 1); // P_LOGIN_COMPANY_POID
-            cs.setLong(3, 1); // P_LOGIN_USER_POID
-            cs.setString(4, "0"); // P_FDA_POID
+            cs.setLong(1, UserContext.getGroupPoid()); // P_LOGIN_GROUP_POID
+            cs.setLong(2, UserContext.getCompanyPoid()); // P_LOGIN_COMPANY_POID
+            cs.setLong(3, UserContext.getUserPoid()); // P_LOGIN_USER_POID
+            cs.setString(4, fdaRef); // P_FDA_POID
             cs.registerOutParameter(5, Types.VARCHAR); // P_RESULT OUT
             cs.execute();
         }

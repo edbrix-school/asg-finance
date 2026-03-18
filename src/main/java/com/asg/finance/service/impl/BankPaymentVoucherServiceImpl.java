@@ -9,6 +9,7 @@ import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.service.*;
+import com.asg.common.lib.utility.DateUtil;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.annotation.PerformGlPosting;
 import com.asg.finance.dto.*;
@@ -38,6 +39,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import javax.sql.DataSource;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
@@ -87,11 +89,18 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     @Autowired
     private CostCenterBreakupService costCenterBreakupService;
 
-    @Autowired private PrintService printService;
-    @Autowired private DataSource dataSource;
-    @Autowired private LoggingService loggingService;
-    @Autowired private DocumentDeleteService documentDeleteService;
-    @Autowired private EntityManager entityManager;
+    @Autowired
+    private PrintService printService;
+    @Autowired
+    private DataSource dataSource;
+    @Autowired
+    private LoggingService loggingService;
+    @Autowired
+    private DocumentDeleteService documentDeleteService;
+    @Autowired
+    private EntityManager entityManager;
+    @Autowired
+    private GlobalParameterService globalParameterService;
 
     @Override
     @Transactional
@@ -137,15 +146,15 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         BankPaymentVoucherResponse response =
                 mapToResponse(header, glList, chargeList, itemList);
 
-   for(BankPaymentGLDetailResponse dtl : response.getGlDetails()){
-    Long detRowId = dtl.getDetRowId();
-    if (null != billwiseResponse && CollectionUtils.isNotEmpty(billwiseResponse.getLoadBillwiseBreakupResponseDtoList())) {
-        dtl.setBillwiseBreakupList(mapToPopupDto(billwiseResponse.getLoadBillwiseBreakupResponseDtoList().stream().filter(x -> x.getMainDetRowId().equals(detRowId)).collect(Collectors.toList())));
-    }
-    if (null != costCenterResponse && CollectionUtils.isNotEmpty(costCenterResponse.getCostBreakupList())) {
-        dtl.setCostCenterBreakupList(mapToCostCenterPopupDto(costCenterResponse.getCostBreakupList().stream().filter(x -> x.getMainDetRowId().equals(detRowId)).collect(Collectors.toList())));
-    }
-}
+        for (BankPaymentGLDetailResponse dtl : response.getGlDetails()) {
+            Long detRowId = dtl.getDetRowId();
+            if (null != billwiseResponse && CollectionUtils.isNotEmpty(billwiseResponse.getLoadBillwiseBreakupResponseDtoList())) {
+                dtl.setBillwiseBreakupList(mapToPopupDto(billwiseResponse.getLoadBillwiseBreakupResponseDtoList().stream().filter(x -> x.getMainDetRowId().equals(detRowId)).collect(Collectors.toList())));
+            }
+            if (null != costCenterResponse && CollectionUtils.isNotEmpty(costCenterResponse.getCostBreakupList())) {
+                dtl.setCostCenterBreakupList(mapToCostCenterPopupDto(costCenterResponse.getCostBreakupList().stream().filter(x -> x.getMainDetRowId().equals(detRowId)).collect(Collectors.toList())));
+            }
+        }
 
         return response;
     }
@@ -156,6 +165,8 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     public BankPaymentVoucherResponse createBankPaymentVoucher(BankPaymentVoucherRequest req, String documentId) {
 
         validateRefType(req);
+        // Legacy DocumentBeforeSave validations
+        validateBeforeSaveRequest(req);
         if ("FF JOBS".equalsIgnoreCase(req.getRefType()) && req.getFfRefId() != null) {
             validateJobInNewTransaction(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), String.valueOf(req.getFfRefId()), "FF JOBS");
         }
@@ -189,7 +200,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         }
 
         if (req.getRefType().equalsIgnoreCase("FDA JOBS") ||
-        req.getRefType().equalsIgnoreCase("FF JOBS")){
+                req.getRefType().equalsIgnoreCase("FF JOBS")) {
             saveChargeDetails(req.getChargeDetailRequests(), savedHeader.getTransactionPoid());
         }
 
@@ -207,7 +218,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         String key = savedHeader.getTransactionPoid().toString();
         loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, documentId, key);
 
-        return getVoucherById(savedHeader.getTransactionPoid(),documentId);
+        return getVoucherById(savedHeader.getTransactionPoid(), documentId);
     }
 
     @Override
@@ -224,6 +235,8 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         String oldRefType = existing.getRefType();
 
+        // Legacy DocumentBeforeSave validations
+        validateBeforeSaveRequest(req);
         if ("FF JOBS".equalsIgnoreCase(req.getRefType()) && req.getFfRefId() != null) {
             validateJobInNewTransaction(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), String.valueOf(req.getFfRefId()), "FF JOBS");
         }
@@ -249,7 +262,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         // Log the update
         String key = transactionPoid.toString();
-        loggingService.logChanges(oldEntity, updatedHeader, GLPaymentVoucherHDREntity.class, 
+        loggingService.logChanges(oldEntity, updatedHeader, GLPaymentVoucherHDREntity.class,
                 documentId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
         return getVoucherById(transactionPoid, documentId);
@@ -301,9 +314,9 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         // Others must be empty arrays, not null
         // =====================================================================
 
-        boolean hasGL      = glList != null && !glList.isEmpty();
-        boolean hasCharge  = chargeList != null && !chargeList.isEmpty();
-        boolean hasItem    = itemList != null && !itemList.isEmpty();
+        boolean hasGL = glList != null && !glList.isEmpty();
+        boolean hasCharge = chargeList != null && !chargeList.isEmpty();
+        boolean hasItem = itemList != null && !itemList.isEmpty();
 
         // ----------------------------- GL DETAILS -----------------------------
         if (hasGL) {
@@ -427,6 +440,160 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         }
     }
 
+    // ============================================================
+    // LEGACY DocumentBeforeSave VALIDATIONS
+    // Ported from BankPaymentVoucherBean.java (ADF)
+    // ============================================================
+
+    /**
+     * Cheque date must not be back-dated beyond the configured CHEQUE_DATE_VALIDATION_DAYS
+     * Post-dated cheques are not allowed for MTA RFQ / FF JOBS / FDA JOBS
+     * At least one detail row must exist for the matching ref type
+     */
+    private void validateBeforeSaveRequest(BankPaymentVoucherRequest req) {
+
+        LocalDate today = DateUtil.getCurrentDateInUserTimeZone();
+
+        validateChequeDate(req, today);
+        validatePostDatedCheque(req, today);
+        validateDetailsByRefType(req);
+        validateInputTax(req);
+    }
+
+    private void validateChequeDate(BankPaymentVoucherRequest req, LocalDate today) {
+        if (isEmpty(req.getChequeDate())) return;
+
+        LocalDate chqDate = LocalDate.parse(req.getChequeDate());
+
+        try {
+            BigDecimal validateDays = new BigDecimal(
+                    globalParameterService.getParameterValue("CHEQUE_DATE_VALIDATION_DAYS", "GROUP", "1", "0")
+            );
+
+            long noOfDays = java.time.temporal.ChronoUnit.DAYS.between(today, chqDate);
+            BigDecimal noOfDaysBD = BigDecimal.valueOf(noOfDays);
+
+            if (noOfDaysBD.compareTo(validateDays) < 0) {
+                throw new ValidationException(
+                        "Back Dated entries less than " + validateDays.abs() +
+                                " days is not allowed from Payment Voucher, Please verify the Cheque Date...");
+            }
+
+        } catch (ValidationException e) {
+            throw e;
+        } catch (Exception e) {
+            log.warn("Cheque date validation skipped: {}", e.getMessage());
+        }
+    }
+
+    private void validatePostDatedCheque(BankPaymentVoucherRequest req, LocalDate today) {
+        if (isEmpty(req.getChequeDate())) return;
+
+        String refType = req.getRefType();
+        if (!isRefType(refType, "MTA RFQ", "FF JOBS", "FDA JOBS")) return;
+
+        LocalDate chqDate = LocalDate.parse(req.getChequeDate());
+
+        if (chqDate.isAfter(today)) {
+            throw new ValidationException(
+                    "Posted Date Cheques not allowed against MTA RFQ, FF, FDA...");
+        }
+    }
+
+    private void validateDetailsByRefType(BankPaymentVoucherRequest req) {
+        String refType = req.getRefType();
+        if (refType == null) return;
+
+        switch (refType.toUpperCase()) {
+            case "FDA JOBS", "FF JOBS" -> {
+                if (isEmpty(req.getChargeDetailRequests())) {
+                    throw new ValidationException("No Details in this Transaction...");
+                }
+            }
+            case "MTA RFQ" -> {
+                if (isEmpty(req.getItemDetailRequests())) {
+                    throw new ValidationException("No Details in this Transaction...");
+                }
+            }
+            case "GENERAL", "CUSTOM" -> {
+                if (isEmpty(req.getGlDetails())) {
+                    throw new ValidationException("No Details in this Transaction...");
+                }
+            }
+        }
+    }
+
+    private void validateInputTax(BankPaymentVoucherRequest req) {
+
+        String refType = req.getRefType();
+        if (!isRefType(refType, "GENERAL", "CUSTOM")) return;
+
+        List<BankPaymentGLDetailRequest> glDetails = req.getGlDetails();
+        if (isEmpty(glDetails)) return;
+
+        BigDecimal inputTaxLimit = getInputTaxLimit();
+        if (inputTaxLimit == null) return;
+
+        for (int i = 0; i < glDetails.size(); i++) {
+            BankPaymentGLDetailRequest row = glDetails.get(i);
+            int rowNum = i + 1;
+
+            validateTax(row.getDrAmt(), row, inputTaxLimit, rowNum);
+            validateTax(row.getCrAmt(), row, inputTaxLimit, rowNum);
+        }
+    }
+
+    private void validateTax(Double amount, BankPaymentGLDetailRequest row,
+                             BigDecimal limit, int rowNum) {
+
+        if (amount == null || row.getTaxPercentage() == null) return;
+
+        BigDecimal amt = BigDecimal.valueOf(amount);
+        if (amt.compareTo(BigDecimal.ZERO) == 0) return;
+
+        BigDecimal taxPerc = BigDecimal.valueOf(row.getTaxPercentage())
+                .divide(BigDecimal.valueOf(100), 10, RoundingMode.HALF_UP);
+
+        BigDecimal expectedTax = amt.multiply(taxPerc).setScale(3, RoundingMode.HALF_UP);
+
+        BigDecimal enteredTax = row.getTaxAmount() != null
+                ? BigDecimal.valueOf(row.getTaxAmount()).setScale(3, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO.setScale(3);
+
+        BigDecimal difference = enteredTax.subtract(expectedTax).abs();
+
+        if (difference.compareTo(limit) > 0) {
+            throw new ValidationException(
+                    "WARNING : Input tax difference (" + difference +
+                            "/-) should be within " + limit +
+                            "/- Please note the row number " + rowNum);
+        }
+    }
+
+    private boolean isEmpty(String val) {
+        return val == null || val.trim().isEmpty();
+    }
+
+    private boolean isEmpty(Collection<?> list) {
+        return list == null || list.isEmpty();
+    }
+
+    private boolean isRefType(String refType, String... values) {
+        if (refType == null) return false;
+        return Arrays.stream(values).anyMatch(v -> v.equalsIgnoreCase(refType));
+    }
+
+    private BigDecimal getInputTaxLimit() {
+        try {
+            return new BigDecimal(
+                    globalParameterService.getParameterValue("INPUT_TAX_VARIANCE_LIMIT", "GROUP", "1", "0")
+            );
+        } catch (Exception e) {
+            log.warn("INPUT_TAX_VARIANCE_LIMIT not available: {}", e.getMessage());
+            return null;
+        }
+    }
+
     private GLPaymentVoucherHDREntity mapHeaderFromRequest(BankPaymentVoucherRequest req) {
         GLPaymentVoucherHDREntity entity = new GLPaymentVoucherHDREntity();
 
@@ -506,7 +673,6 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         }
 
         List<GLPaymentVoucherDtlGLEntity> savedEntities = paymentVoucherDetailsRepository.saveAll(entities);
-        
         // Log child record creation
         savedEntities.forEach(entity -> {
             String logDetail = String.format("Row Created on GL Detail with detRowId: %s", entity.getDetRowId());
@@ -524,7 +690,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         // Fetch existing charge entries for this transaction
         List<GlBankPaymentChargeDtlEntity> existing = chargeDtlRepository
                 .findByTransactionPoid(transactionPoid);
-        
+
         Map<Long, GlBankPaymentChargeDtlEntity> existingMap = existing.stream()
                 .collect(Collectors.toMap(GlBankPaymentChargeDtlEntity::getDetRowId, d -> d));
 
@@ -532,7 +698,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         List<GlBankPaymentChargeDtlEntity> toDelete = new ArrayList<>();
         List<LogRequestDto<GlBankPaymentChargeDtlEntity>> logRequests = new ArrayList<>();
         String documentId = UserContext.getDocumentId();
-        
+
         // Auto-generate detRowId for new records
         Long maxDetRowId = existing.stream()
                 .mapToLong(GlBankPaymentChargeDtlEntity::getDetRowId)
@@ -562,10 +728,10 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                         // Create copy for logging
                         GlBankPaymentChargeDtlEntity oldEntity = new GlBankPaymentChargeDtlEntity();
                         BeanUtils.copyProperties(existingEntity, oldEntity);
-                        
+
                         mapChargeFields(existingEntity, detail, transactionPoid);
                         toSave.add(existingEntity);
-                        
+
                         // Add to batch logging
                         String logDetail = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", transactionPoid, detail.getDetRowId());
                         logRequests.add(new LogRequestDto<>(oldEntity, existingEntity, GlBankPaymentChargeDtlEntity.class, documentId, transactionPoid.toString(), logDetail));
@@ -599,21 +765,21 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         // Save all entities to the repository
         List<GlBankPaymentChargeDtlEntity> savedEntities = chargeDtlRepository.saveAll(toSave);
-        
+
         // Process batch logging for updates
         if (!logRequests.isEmpty()) {
             loggingService.createLogBatch(logRequests);
         }
-        
+
         // Log creation for new records
         savedEntities.stream()
-            .filter(entity -> entity.getCreatedDate() != null && entity.getCreatedDate().isAfter(LocalDateTime.now().minusMinutes(1)))
-            .forEach(entity -> {
-                String logDetail = String.format("Row Created on Charge Detail with detRowId: %s", entity.getDetRowId());
-                loggingService.createLogSummaryEntry(documentId, transactionPoid.toString(), logDetail);
-            });
+                .filter(entity -> entity.getCreatedDate() != null && entity.getCreatedDate().isAfter(LocalDateTime.now().minusMinutes(1)))
+                .forEach(entity -> {
+                    String logDetail = String.format("Row Created on Charge Detail with detRowId: %s", entity.getDetRowId());
+                    loggingService.createLogSummaryEntry(documentId, transactionPoid.toString(), logDetail);
+                });
     }
-    
+
     private void mapChargeFields(GlBankPaymentChargeDtlEntity entity, BankPaymentChargeDetailRequest detail, Long transactionPoid) {
         entity.setTransactionPoid(transactionPoid);
         entity.setDetRowId(detail.getDetRowId());
@@ -637,7 +803,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         List<GlBankPaymentItemDtlEntity> existing = itemRepository
                 .findByTransactionPoid(transactionPoid);
-        
+
         Map<Long, GlBankPaymentItemDtlEntity> existingMap = existing.stream()
                 .collect(Collectors.toMap(GlBankPaymentItemDtlEntity::getDetRowId, d -> d));
 
@@ -645,7 +811,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         List<GlBankPaymentItemDtlEntity> toDelete = new ArrayList<>();
         List<LogRequestDto<GlBankPaymentItemDtlEntity>> logRequests = new ArrayList<>();
         String documentId = UserContext.getDocumentId();
-        
+
         // Auto-generate detRowId for new records
         Long maxDetRowId = existing.stream()
                 .mapToLong(GlBankPaymentItemDtlEntity::getDetRowId)
@@ -675,10 +841,10 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                         // Create copy for logging
                         GlBankPaymentItemDtlEntity oldEntity = new GlBankPaymentItemDtlEntity();
                         BeanUtils.copyProperties(existingEntity, oldEntity);
-                        
+
                         mapItemFields(existingEntity, detail, transactionPoid);
                         toSave.add(existingEntity);
-                        
+
                         // Add to batch logging
                         String logDetail = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", transactionPoid, detail.getDetRowId());
                         logRequests.add(new LogRequestDto<>(oldEntity, existingEntity, GlBankPaymentItemDtlEntity.class, documentId, transactionPoid.toString(), logDetail));
@@ -711,21 +877,21 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         }
 
         List<GlBankPaymentItemDtlEntity> savedEntities = itemRepository.saveAll(toSave);
-        
+
         // Process batch logging for updates
         if (!logRequests.isEmpty()) {
             loggingService.createLogBatch(logRequests);
         }
-        
+
         // Log creation for new records
         savedEntities.stream()
-            .filter(entity -> entity.getCreatedDate() != null && entity.getCreatedDate().isAfter(LocalDateTime.now().minusMinutes(1)))
-            .forEach(entity -> {
-                String logDetail = String.format("Row Created on Item Detail with detRowId: %s", entity.getDetRowId());
-                loggingService.createLogSummaryEntry(documentId, transactionPoid.toString(), logDetail);
-            });
+                .filter(entity -> entity.getCreatedDate() != null && entity.getCreatedDate().isAfter(LocalDateTime.now().minusMinutes(1)))
+                .forEach(entity -> {
+                    String logDetail = String.format("Row Created on Item Detail with detRowId: %s", entity.getDetRowId());
+                    loggingService.createLogSummaryEntry(documentId, transactionPoid.toString(), logDetail);
+                });
     }
-    
+
     private void mapItemFields(GlBankPaymentItemDtlEntity entity, BankPaymentItemDetailRequest detail, Long transactionPoid) {
         entity.setTransactionPoid(transactionPoid);
         entity.setDetRowId(detail.getDetRowId());
@@ -802,7 +968,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     public void markChequePrinted(Long transactionPoid) {
         GLPaymentVoucherHDREntity header = paymentVoucherRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ValidationException("Voucher not found"));
-        
+
         // Create a copy of the existing entity for logging
         GLPaymentVoucherHDREntity oldEntity = GLPaymentVoucherHDREntity.builder()
                 .transactionPoid(header.getTransactionPoid())
@@ -810,7 +976,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                 .chqPrintedUserCode(header.getChqPrintedUserCode())
                 .chqPrintedDate(header.getChqPrintedDate())
                 .build();
-        
+
         spRepository.afterChequePrint(
                 UserContext.getGroupPoid(),
                 getCurrentUser(),
@@ -820,15 +986,15 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                 header.getChqSignType(),
                 UserContext.getUserPoid()
         );
-        
+
         // Reload entity to get updated values
         GLPaymentVoucherHDREntity updatedHeader = paymentVoucherRepository.findById(transactionPoid)
                 .orElse(header);
-        
+
         // Log the update
         String key = transactionPoid.toString();
         String docId = UserContext.getDocumentId();
-        loggingService.logChanges(oldEntity, updatedHeader, GLPaymentVoucherHDREntity.class, 
+        loggingService.logChanges(oldEntity, updatedHeader, GLPaymentVoucherHDREntity.class,
                 docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
     }
 
@@ -837,7 +1003,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     public void releaseCheque(Long transactionPoid, String releasedTo, String contact) {
         GLPaymentVoucherHDREntity header = paymentVoucherRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ValidationException("Voucher not found"));
-        
+
         // Create a copy of the existing entity for logging
         GLPaymentVoucherHDREntity oldEntity = GLPaymentVoucherHDREntity.builder()
                 .transactionPoid(header.getTransactionPoid())
@@ -847,7 +1013,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                 .releasedByUserCode(header.getReleasedByUserCode())
                 .releasedDate(header.getReleasedDate())
                 .build();
-        
+
         spRepository.releaseCheque(
                 header.getGroupPoid(),
                 getCurrentUser(),
@@ -856,15 +1022,15 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                 releasedTo,
                 contact
         );
-        
+
         // Reload entity to get updated values
         GLPaymentVoucherHDREntity updatedHeader = paymentVoucherRepository.findById(transactionPoid)
                 .orElse(header);
-        
+
         // Log the update
         String key = transactionPoid.toString();
         String docId = UserContext.getDocumentId();
-        loggingService.logChanges(oldEntity, updatedHeader, GLPaymentVoucherHDREntity.class, 
+        loggingService.logChanges(oldEntity, updatedHeader, GLPaymentVoucherHDREntity.class,
                 docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
     }
 
@@ -873,7 +1039,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     public void unReleaseCheque(Long transactionPoid) {
         GLPaymentVoucherHDREntity header = paymentVoucherRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ValidationException("Voucher not found"));
-        
+
         // Create a copy of the existing entity for logging
         GLPaymentVoucherHDREntity oldEntity = GLPaymentVoucherHDREntity.builder()
                 .transactionPoid(header.getTransactionPoid())
@@ -883,22 +1049,22 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                 .releasedByUserCode(header.getReleasedByUserCode())
                 .releasedDate(header.getReleasedDate())
                 .build();
-        
+
         spRepository.unReleaseCheque(
                 UserContext.getGroupPoid(),
                 UserContext.getUserPoid(),
                 UserContext.getCompanyPoid(),
                 transactionPoid
         );
-        
+
         // Reload entity to get updated values
         GLPaymentVoucherHDREntity updatedHeader = paymentVoucherRepository.findById(transactionPoid)
                 .orElse(header);
-        
+
         // Log the update
         String key = transactionPoid.toString();
         String docId = UserContext.getDocumentId();
-        loggingService.logChanges(oldEntity, updatedHeader, GLPaymentVoucherHDREntity.class, 
+        loggingService.logChanges(oldEntity, updatedHeader, GLPaymentVoucherHDREntity.class,
                 docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
     }
 
@@ -907,7 +1073,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     public void resetChequeStatus(Long transactionPoid) {
         GLPaymentVoucherHDREntity header = paymentVoucherRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ValidationException("Voucher not found"));
-        
+
         // Create a copy of the existing entity for logging
         GLPaymentVoucherHDREntity oldEntity = GLPaymentVoucherHDREntity.builder()
                 .transactionPoid(header.getTransactionPoid())
@@ -920,22 +1086,22 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                 .releasedByUserCode(header.getReleasedByUserCode())
                 .releasedDate(header.getReleasedDate())
                 .build();
-        
+
         spRepository.resetChequeStatus(
                 header.getGroupPoid(),
                 header.getCompanyPoid(),
                 null,
                 transactionPoid
         );
-        
+
         // Reload entity to get updated values
         GLPaymentVoucherHDREntity updatedHeader = paymentVoucherRepository.findById(transactionPoid)
                 .orElse(header);
-        
+
         // Log the update
         String key = transactionPoid.toString();
         String docId = UserContext.getDocumentId();
-        loggingService.logChanges(oldEntity, updatedHeader, GLPaymentVoucherHDREntity.class, 
+        loggingService.logChanges(oldEntity, updatedHeader, GLPaymentVoucherHDREntity.class,
                 docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
     }
 
@@ -944,13 +1110,13 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     public String revertReconciliation(Long transactionPoid, String documentId) {
         GLPaymentVoucherHDREntity header = paymentVoucherRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ValidationException("Voucher not found"));
-        
+
         // Create a copy of the existing entity for logging
         GLPaymentVoucherHDREntity oldEntity = GLPaymentVoucherHDREntity.builder()
                 .transactionPoid(header.getTransactionPoid())
                 .reconciledDate(header.getReconciledDate())
                 .build();
-        
+
         String status = spRepository.revertReconciliation(
                 UserContext.getGroupPoid(),
                 UserContext.getCompanyPoid(),
@@ -959,16 +1125,16 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                 String.valueOf(transactionPoid),
                 "Y"
         );
-        
+
         // Reload entity to get updated values
         GLPaymentVoucherHDREntity updatedHeader = paymentVoucherRepository.findById(transactionPoid)
                 .orElse(header);
-        
+
         // Log the update
         String key = transactionPoid.toString();
-        loggingService.logChanges(oldEntity, updatedHeader, GLPaymentVoucherHDREntity.class, 
+        loggingService.logChanges(oldEntity, updatedHeader, GLPaymentVoucherHDREntity.class,
                 documentId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
-        
+
         return status;
     }
 
@@ -1102,7 +1268,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         List<GLPaymentVoucherDtlGLEntity> toSave = new ArrayList<>();
         List<GLPaymentVoucherDtlGLEntity> toDelete = new ArrayList<>();
         List<LogRequestDto<GLPaymentVoucherDtlGLEntity>> logRequests = new ArrayList<>();
-        
+
         // Auto-generate detRowId for new records
         Long maxDetRowId = existing.stream()
                 .mapToLong(GLPaymentVoucherDtlGLEntity::getDetRowId)
@@ -1132,10 +1298,10 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                         // Create copy for logging
                         GLPaymentVoucherDtlGLEntity oldEntity = new GLPaymentVoucherDtlGLEntity();
                         BeanUtils.copyProperties(existingEntity, oldEntity);
-                        
+
                         mapGLFields(existingEntity, detail, transactionPoid);
                         toSave.add(existingEntity);
-                        
+
                         // Add to batch logging
                         String logDetail = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", transactionPoid, detail.getDetRowId());
                         logRequests.add(new LogRequestDto<>(oldEntity, existingEntity, GLPaymentVoucherDtlGLEntity.class, documentId, transactionPoid.toString(), logDetail));
@@ -1169,23 +1335,23 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         // Save records and log creations
         List<GLPaymentVoucherDtlGLEntity> savedEntities = paymentVoucherDetailsRepository.saveAll(toSave);
-        
+
         // Process batch logging for updates
         if (!logRequests.isEmpty()) {
             loggingService.createLogBatch(logRequests);
         }
-        
+
         savedEntities.stream()
-            .filter(entity -> entity.getCreatedDate() != null && entity.getCreatedDate().isAfter(LocalDateTime.now().minusMinutes(1)))
-            .forEach(entity -> {
-                String logDetail = String.format("Row Created on GL Detail with detRowId: %s", entity.getDetRowId());
-                loggingService.createLogSummaryEntry(documentId, transactionPoid.toString(), logDetail);
-            });
+                .filter(entity -> entity.getCreatedDate() != null && entity.getCreatedDate().isAfter(LocalDateTime.now().minusMinutes(1)))
+                .forEach(entity -> {
+                    String logDetail = String.format("Row Created on GL Detail with detRowId: %s", entity.getDetRowId());
+                    loggingService.createLogSummaryEntry(documentId, transactionPoid.toString(), logDetail);
+                });
 
         // Update billwise breakup (keep existing logic)
         updateBillwiseBreakup(glDetails, transactionPoid, documentId);
     }
-    
+
     private void mapGLFields(GLPaymentVoucherDtlGLEntity entity, BankPaymentGLDetailRequest detail, Long transactionPoid) {
         entity.setTransactionPoid(transactionPoid);
         entity.setDetRowId(detail.getDetRowId());
@@ -1268,24 +1434,23 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         }
 
 
-
         if (!costCenterList.isEmpty()) {
             costCenterBreakupDtlRepository.insertCostBreakup(costCenterList);
         }
     }
 
-    
+
     // ============================================================
     // UPDATE BILLWISE BREAKUP
     // ============================================================
-    
+
     private void updateBillwiseBreakup(List<BankPaymentGLDetailRequest> glDetails, Long transactionPoid, String documentId) {
 
 
         List<BillwiseBreakupRequestDto> billwiseList = new ArrayList<>();
         Long userPoid = UserContext.getUserPoid();
 
-       for (BankPaymentGLDetailRequest glDetail : glDetails) {
+        for (BankPaymentGLDetailRequest glDetail : glDetails) {
 
             if (glDetail.getBillWiseBreakup() != null &&
                     !glDetail.getBillWiseBreakup().isEmpty()) {
@@ -1315,7 +1480,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         }
 
         if (!billwiseList.isEmpty()) {
-            billwiseBreakupService.updateBillwiseBreakups(billwiseList,userPoid );
+            billwiseBreakupService.updateBillwiseBreakups(billwiseList, userPoid);
         }
 
         // === COST CENTER BREAKUP ===
@@ -1389,8 +1554,8 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                             .costPoid(cc.getCostPoid())
                             .amount(cc.getAmount())
                             .build();
-                    if (cc.getCostPoid() != null && !cc.getCostPoid().isEmpty() && 
-                        cc.getCostGroup() != null && !cc.getCostGroup().isEmpty()) {
+                    if (cc.getCostPoid() != null && !cc.getCostPoid().isEmpty() &&
+                            cc.getCostGroup() != null && !cc.getCostGroup().isEmpty()) {
                         dto.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(
                                 Long.valueOf(cc.getCostPoid()), cc.getCostGroup()));
                     }

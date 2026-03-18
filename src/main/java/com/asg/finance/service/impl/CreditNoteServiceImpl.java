@@ -7,6 +7,7 @@ import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.LoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.service.GlobalParameterService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.finance.entity.*;
@@ -112,6 +113,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     @Autowired
     private GlPostingService glPostingService;
 
+    @Autowired
+    private GlobalParameterService globalParameterService;
+
     @Override
     @Transactional(propagation = Propagation.REQUIRED)
     @PerformGlPosting
@@ -139,11 +143,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             creditNoteDto.setDocRef(savedHeader.getDocRef());
 
             ArCreditNoteHdr reloadedHeader = creditNoteHdrRepository.findById(savedHeader.getTransactionPoid())
-                    .orElseThrow(() -> new RuntimeException("Header not found after insert (trigger modified it)"));
+                    .orElseThrow(() -> new ValidationException("Header not found after insert (trigger modified it)"));
 
             Long transactionPoid = reloadedHeader.getTransactionPoid();
             if (transactionPoid == null) {
-                throw new RuntimeException("Database trigger failed to generate TRANSACTION_POID");
+                throw new ValidationException("Database trigger failed to generate TRANSACTION_POID");
             }
 
             log.info("Credit note header saved with transactionPoid: {}", transactionPoid);
@@ -169,7 +173,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                 executePostSaveUpdates(transactionPoid, creditNoteDto);
             } catch (Exception e) {
                 log.error("Error in post-save processing for transactionPoid {}: {}", transactionPoid, e.getMessage());
-                throw new RuntimeException("Post-save processing failed: " + e.getMessage(), e);
+                throw new ValidationException("Post-save processing failed: " + e.getMessage());
             }
 
             CreditNoteHeaderDto result = mapToDto(reloadedHeader);
@@ -196,7 +200,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             return result;
 
         } catch (SQLException e) {
-            throw new RuntimeException("Database error: " + e.getMessage());
+            throw new ValidationException("Database error: " + e.getMessage());
         }
     }
 
@@ -256,9 +260,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             DocumentBeforeSaveBillwiseCostGroups(creditNoteDto);
             calculateDueDateFromCreditPeriod(creditNoteDto);
 
-            // Create a copy of the old entity for logging
+            // Create a copy of the old entity for logging and old-ref tracking
             ArCreditNoteHdr oldEntity = new ArCreditNoteHdr();
             BeanUtils.copyProperties(existing, oldEntity);
+            String oldFdaRef = oldEntity.getFdaRef();
+            String oldFfRef = oldEntity.getFfRef();
 
             updateHeaderFromDto(existing, creditNoteDto);
             existing.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
@@ -280,8 +286,25 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             saveBillwiseForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111", true);
             saveCostCenterForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111", true);
 
-            // Re-trigger manifest updates if charge amount or issue type changed
+            // Re-trigger manifest updates
             executePostSaveUpdates(transactionPoid, creditNoteDto);
+
+            // When FDA ref changed, also update old FDA ref amounts (matches PageBean DocumentAfterSave)
+            if ("FDA".equals(creditNoteDto.getRefType())
+                    && oldFdaRef != null && !oldFdaRef.equals(creditNoteDto.getDnFdaReference())) {
+                executeFDAAmountUpdate(transactionPoid, oldFdaRef);
+            }
+
+            // When FF ref changed, also update old FF cost (matches PageBean DocumentAfterSave)
+            if ("FF".equals(creditNoteDto.getRefType())
+                    && oldFfRef != null && !oldFfRef.equals(existing.getFfRef())) {
+                try {
+                    Long oldFfPoid = Long.parseLong(oldFfRef);
+                    executeFFCostUpdate(transactionPoid, oldFfPoid);
+                } catch (NumberFormatException e) {
+                    log.warn("Could not parse old ffRef '{}' as Long for transactionPoid {}", oldFfRef, transactionPoid);
+                }
+            }
 
             CreditNoteHeaderDto result = mapToDto(existing);
             List<ArCreditNoteDtl> glDetails = creditNoteDtlRepository.findByTransactionPoidOrderByDetRowId(transactionPoid);
@@ -308,10 +331,10 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             return result;
         } catch (SQLException e) {
             log.error("Database error updating credit note", e);
-            throw new RuntimeException("Database error occurred while updating credit note");
+            throw new ValidationException("Database error occurred while updating credit note");
         } catch (Exception e) {
             log.error("Unexpected error updating credit note", e);
-            throw new RuntimeException("Failed to update credit note");
+            throw new ValidationException("Failed to update credit note");
         }
     }
 
@@ -331,7 +354,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             );
         } catch (Exception e) {
             log.error("Error deleting credit note", e);
-            throw new RuntimeException("Failed to delete credit note: " + e.getMessage());
+            throw new ValidationException("Failed to delete credit note: " + e.getMessage());
         }
     }
 
@@ -344,7 +367,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             throw e;
         } catch (Exception e) {
             log.error("Error fetching FF invoice charges for refNo {}: {}", refNo, e.getMessage());
-            throw new RuntimeException("Failed to fetch FF invoice charges");
+            throw new ValidationException("Failed to fetch FF invoice charges");
         }
     }
 
@@ -357,7 +380,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             throw e;
         } catch (Exception e) {
             log.error("Error fetching SH invoice charges for refNo {}: {}", refNo, e.getMessage());
-            throw new RuntimeException("Failed to fetch SH invoice charges");
+            throw new ValidationException("Failed to fetch SH invoice charges");
         }
     }
 
@@ -462,7 +485,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             log.error("Validation error fetching FF invoice charges for refNo {}: {}", refNo, e.getMessage());
             throw e;
         } catch (Exception e) {
-            throw new RuntimeException("Failed to fetch DN invoice charges");
+            throw new ValidationException("Failed to fetch DN invoice charges");
         }
     }
 
@@ -475,7 +498,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             log.error("Validation error fetching FF invoice charges for refNo {}: {}", fdaRef, e.getMessage());
             throw e;
         } catch (Exception e) {
-            throw new RuntimeException("Failed to fetch FDA details");
+            throw new ValidationException("Failed to fetch FDA details");
         }
     }
 
@@ -569,11 +592,23 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     private void executeBeforeSaveValidation(CreditNoteHeaderDto dto) throws SQLException {
         validateMandatoryFields(dto);
         validateMultiCompanyFields(dto);
-       // validateTaxFields(dto);
         validateGrandTotalWithCharges(dto);
+        validateCreditPeriod(dto);
 
         // Call GL voucher validation to check reference document status
         executeGLVoucherValidation(dto);
+
+        // Calculate total tax amount from detail rows (matches PageBean: sums TaxAmount per refType)
+        BigDecimal totalTaxAmount = BigDecimal.ZERO;
+        if (dto.getChargeDetails() != null) {
+            totalTaxAmount = dto.getChargeDetails().stream()
+                    .map(c -> c.getTaxAmount() != null ? c.getTaxAmount() : BigDecimal.ZERO)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+        } else if (dto.getGlDetails() != null) {
+            totalTaxAmount = dto.getGlDetails().stream()
+                    .map(gl -> gl.getTaxAmount() != null ? gl.getTaxAmount() : BigDecimal.ZERO)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+        }
 
         // Call stored procedure validation
         String sql = "BEGIN PROC_AR_CN_BEFORE_SAVE_VAL(?, ?, ?, ?, ?, ?, ?, ?, ?); END;";
@@ -583,20 +618,25 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             Long companyPoid = UserContext.getCompanyPoid();
             Long userPoid = UserContext.getUserPoid();
 
+            LocalDate txnDate = dto.getTransactionDate() != null ? dto.getTransactionDate() : LocalDate.now();
+
             cs.setLong(1, groupPoid);
             cs.setLong(2, companyPoid);
             cs.setLong(3, userPoid);
             cs.setString(4, "300-111");
             cs.setLong(5, dto.getTransactionPoid() != null ? dto.getTransactionPoid() : 0);
             cs.setLong(6, dto.getPartyPoid() != null ? dto.getPartyPoid() : 0);
-            cs.setBigDecimal(7, dto.getGrandTotal());
-            cs.setTimestamp(8, Timestamp.valueOf(LocalDateTime.now()));
+            cs.setBigDecimal(7, totalTaxAmount); // TaxAmount sum (not grandTotal)
+            cs.setTimestamp(8, Timestamp.valueOf(txnDate.atStartOfDay()));
             cs.registerOutParameter(9, Types.VARCHAR);
             cs.execute();
 
             String result = cs.getString(9);
-            if (result != null && !"SUCCESS".equals(result)) {
-                throw new RuntimeException("Validation failed: " + result);
+            if (result != null && result.contains("ERROR")) {
+                throw new ValidationException(result);
+            }
+            if (result != null && result.contains("WARNING")) {
+                throw new ValidationException(result.substring(result.indexOf(":") + 1).trim());
             }
         }
     }
@@ -604,17 +644,48 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     private void validateMandatoryFields(CreditNoteHeaderDto dto) {
         // Reference-specific validations
         if ("FF_INVOICE".equals(dto.getRefType()) && dto.getFfInvoicePoid() == null) {
-            throw new RuntimeException("FF Invoice Reference is mandatory for FF_INVOICE type");
+            throw new ValidationException("FF Invoice Reference is mandatory for FF_INVOICE type");
         }
         if ("SH_INVOICE".equals(dto.getRefType()) && dto.getShInvoicePoid() == null) {
-            throw new RuntimeException("SH Invoice Reference is mandatory for SH_INVOICE type");
+            throw new ValidationException("SH Invoice Reference is mandatory for SH_INVOICE type");
         }
         if ("DN_INVOICE".equals(dto.getRefType()) && dto.getDnInvoicePoid() == null) {
-            throw new RuntimeException("DN Invoice Reference is mandatory for DN_INVOICE type");
+            throw new ValidationException("DN Invoice Reference is mandatory for DN_INVOICE type");
         }
         if ("FDA".equals(dto.getRefType()) && dto.getDnFdaReference() == null) {
-            throw new RuntimeException("DN FDA Reference is mandatory for FDA type");
+            throw new ValidationException("DN FDA Reference is mandatory for FDA type");
         }
+
+        // Validate that at least one detail row exists (matches PageBean DocumentBeforeSave check)
+        String refType = dto.getRefType();
+        if ("GENERAL".equals(refType) || "CUSTOM".equals(refType)) {
+            if (dto.getGlDetails() == null || dto.getGlDetails().isEmpty()) {
+                throw new ValidationException("No Details in this Transaction.");
+            }
+        } else if ("FDA".equals(refType) || "FF".equals(refType) || "SH_INVOICE".equals(refType)
+                || "FF_INVOICE".equals(refType) || "DN_INVOICE".equals(refType) || "VOYAGE".equals(refType)) {
+            if (dto.getChargeDetails() == null || dto.getChargeDetails().isEmpty()) {
+                throw new ValidationException("No Details in this Transaction.");
+            }
+        }
+    }
+
+    private void validateCreditPeriod(CreditNoteHeaderDto dto) {
+        if (dto.getCreditPeriod() == null) return;
+        long maxDays = getCreditPeriodValidationDays();
+        if (dto.getCreditPeriod() > maxDays) {
+            throw new ValidationException("Credit Period is greater than " + maxDays + " days.");
+        }
+    }
+
+    private long getCreditPeriodValidationDays() {
+        try {
+            String value = globalParameterService.getParameterValue("CREDIT_PERIOD_VALIDATION_DAYS", "GROUP", "1", "120");
+            return Long.parseLong(value);
+        } catch (Exception e) {
+            log.warn("Failed to get CREDIT_PERIOD_VALIDATION_DAYS parameter: {}", e.getMessage());
+        }
+        return 120L;
     }
 
     private void validateMultiCompanyFields(CreditNoteHeaderDto dto) {
@@ -622,7 +693,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             if (dto.getGlDetails() != null) {
                 for (var glDetail : dto.getGlDetails()) {
                     if (glDetail.getCompanyPoid() == null) {
-                        throw new RuntimeException("Company field is mandatory for each GL detail when Multi Company is selected");
+                        throw new ValidationException("Company field is mandatory for each GL detail when Multi Company is selected");
                     }
                 }
             }
@@ -634,7 +705,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             for (int i = 0; i < dto.getGlDetails().size(); i++) {
                 var glDetail = dto.getGlDetails().get(i);
                 if (glDetail.getTaxPoid() == null) {
-                    throw new RuntimeException("Tax Poid is mandatory for GL Detail row " + (i + 1));
+                    throw new ValidationException("Tax Poid is mandatory for GL Detail row " + (i + 1));
                 }
             }
         }
@@ -643,7 +714,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             for (int i = 0; i < dto.getChargeDetails().size(); i++) {
                 var chargeDetail = dto.getChargeDetails().get(i);
                 if (chargeDetail.getTaxPoid() == null) {
-                    throw new RuntimeException("Tax Poid is mandatory for Charge Detail row " + (i + 1));
+                    throw new ValidationException("Tax Poid is mandatory for Charge Detail row " + (i + 1));
                 }
             }
         }
@@ -688,7 +759,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         try {
             return executeSetDefaultCredit(partyPoid, partyType);
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to get default credit values: " + e.getMessage(), e);
+            throw new ValidationException("Failed to get default credit values: " + e.getMessage());
         }
     }
 
@@ -697,7 +768,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         try {
             return executeGetPartyGLPoid(partyPoid, partyType);
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to get party GL POID: " + e.getMessage(), e);
+            throw new ValidationException("Failed to get party GL POID: " + e.getMessage());
         }
     }
 
@@ -770,18 +841,14 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     }
 
     /**
-     * Calculate due date as per SRS requirement: Due Date = Current Date + Credit Period
+     * Calculate due date: DueDate = TransactionDate + CreditPeriod (matches PageBean DocumentBeforeSave).
+     * When credit period is null/0, DueDate = TransactionDate (0 days added).
      */
     private void calculateDueDateFromCreditPeriod(CreditNoteHeaderDto dto) {
-        if (dto.getCreditPeriod() != null && dto.getCreditPeriod() > 0) {
-            dto.setDueDate(LocalDate.now().plusDays(dto.getCreditPeriod()));
-            log.info("Due date calculated as per SRS: {} (Current Date + {} days)", dto.getDueDate(), dto.getCreditPeriod());
-        } else if (dto.getCreditPeriod() == null) {
-            // Set default credit period if not provided
-            dto.setCreditPeriod(30L); // Default 30 days
-            dto.setDueDate(LocalDate.now().plusDays(dto.getCreditPeriod()));
-            log.info("Default credit period applied: {} days, due date: {}", dto.getCreditPeriod(), dto.getDueDate());
-        }
+        LocalDate baseDate = dto.getTransactionDate() != null ? dto.getTransactionDate() : LocalDate.now();
+        long days = (dto.getCreditPeriod() != null && dto.getCreditPeriod() > 0) ? dto.getCreditPeriod() : 0L;
+        dto.setDueDate(baseDate.plusDays(days));
+        log.info("Due date calculated: {} (TransactionDate {} + {} days)", dto.getDueDate(), baseDate, days);
     }
 
     private Long executeGetPartyGLPoid(Long partyPoid, String partyType) throws SQLException {
@@ -803,7 +870,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
             Long partyGLPoid = cs.getLong(6);
             if (partyGLPoid == null || partyGLPoid == 0) {
-                throw new RuntimeException("Selected Party GL_CODE is not found.");
+                throw new ValidationException("Selected Party GL_CODE is not found.");
             }
             return partyGLPoid;
         }
@@ -1026,17 +1093,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
     private boolean checkVATApplicability() {
         try {
-            String sql = "SELECT PARAMETER_VALUE FROM GLOBAL_PARAMETERS WHERE PARAMETER_NAME = 'GLOBAL_TAX_APPLICABLE' AND DELETED = 'N'";
-            try (Connection conn = dataSource.getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) {
-                        String value = rs.getString("PARAMETER_VALUE");
-                        return "Y".equals(value) || "YES".equalsIgnoreCase(value) || "TRUE".equalsIgnoreCase(value);
-                    }
-                }
-            }
-        } catch (SQLException e) {
+            String value = globalParameterService.getParameterValue("GLOBAL_TAX_APPLICABLE", "TAX", "1", "Y");
+            return "Y".equals(value) || "YES".equalsIgnoreCase(value) || "TRUE".equalsIgnoreCase(value);
+        } catch (Exception e) {
             log.warn("Failed to check GLOBAL_TAX_APPLICABLE parameter: {}", e.getMessage());
         }
         return true; // Default to applicable if parameter not found
@@ -1044,17 +1103,30 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
     private void executePostSaveUpdates(Long transactionPoid, CreditNoteHeaderDto dto) throws SQLException {
         String refType = dto.getRefType();
-        List<UniversalChargeDetailDto> chargeDetails = dto.getChargeDetails();
-        executeGLBillRefUpdate(transactionPoid, refType);
 
-        // Check if any charge has Issue Invoice = Y
-        boolean hasIssueInvoice = hasIssueInvoice(chargeDetails);
+        // PROC_DR_CR_BILL_REF_UPDATE is only called for GENERAL type (matches PageBean DocumentAfterSave)
+        if ("GENERAL".equals(refType)) {
+            executeGLBillRefUpdate(transactionPoid, refType);
+        }
 
-        // Update manifest details based on reference type and issueInvoice/issueType
+        // Update manifest details based on reference type
         if ("FF_INVOICE".equals(refType)) {
-            Long ffPoid = dto.getFfInvoicePoid();
-            executeFFInvUpdate(transactionPoid, ffPoid);
-            executeFFCostUpdate(transactionPoid, ffPoid);
+            // FF_INVOICE: only update FF invoice details (NOT FF cost — that is for FF type)
+            executeFFInvUpdate(transactionPoid, dto.getFfInvoicePoid());
+        } else if ("FF".equals(refType)) {
+            // FF type: update FF cost via PROC_CR_NOTE_UPDATE_FF_COST
+            ArCreditNoteHdr hdr = creditNoteHdrRepository.findById(transactionPoid).orElse(null);
+            Long ffPoid = null;
+            if (hdr != null && hdr.getFfRef() != null) {
+                try {
+                    ffPoid = Long.parseLong(hdr.getFfRef());
+                } catch (NumberFormatException e) {
+                    log.warn("Could not parse ffRef '{}' as Long for transactionPoid {}", hdr.getFfRef(), transactionPoid);
+                }
+            }
+            if (ffPoid != null) {
+                executeFFCostUpdate(transactionPoid, ffPoid);
+            }
         } else if ("SH_INVOICE".equals(refType)) {
             executeSHInvUpdate(transactionPoid, dto.getShInvoicePoid());
         } else if ("DN_INVOICE".equals(refType) || "DN".equals(refType)) {
@@ -1083,7 +1155,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
             String result = cs.getString(7);
             if ("CLOSED".equalsIgnoreCase(result) || "CANCELLED".equalsIgnoreCase(result)) {
-                throw new RuntimeException("Reference document is CLOSED or CANCELLED");
+                throw new ValidationException("Reference document is CLOSED or CANCELLED");
             }
             if (result != null && !"SUCCESS".equalsIgnoreCase(result)) {
                 log.info("Reference document status: {}", result);
@@ -1121,8 +1193,8 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
     private String getOldJobPoid(ArCreditNoteHdr entity, String refType) {
         return switch (refType != null ? refType.toUpperCase() : "") {
-            case "FDA JOBS" -> entity.getFdaRef();
-            case "FF JOBS" -> entity.getFfRef() != null ? entity.getFfRef() : null;
+            case "FDA", "FDA JOBS" -> entity.getFdaRef();
+            case "FF", "FF JOBS" -> entity.getFfRef();
             default -> null;
         };
     }
@@ -2248,7 +2320,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             return executeFdaRefProcedure(lovName, lovValue);
         } catch (SQLException e) {
             log.error("Error fetching FDA reference for lovName: {}, lovValue: {}", lovName, lovValue, e);
-            throw new RuntimeException("Failed to fetch FDA reference: " + e.getMessage(), e);
+            throw new ValidationException("Failed to fetch FDA reference: " + e.getMessage());
         }
     }
 
@@ -2484,7 +2556,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         } catch (SQLException e) {
             log.error("Error fetching charge tax data for partyType: {}, partyPoid: {}, chargePoid: {}", 
                     partyType, partyPoid, chargePoid, e);
-            throw new RuntimeException("Failed to fetch charge tax data: " + e.getMessage(), e);
+            throw new ValidationException("Failed to fetch charge tax data: " + e.getMessage());
         }
     }
 

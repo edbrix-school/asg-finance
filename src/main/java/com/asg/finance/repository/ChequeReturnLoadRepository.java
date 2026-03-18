@@ -162,6 +162,20 @@ public class ChequeReturnLoadRepository {
         }
     }
 
+    public String getChequeCurrentStatus(Long transactionPoid) {
+        String sql = "{ ? = call FUNC_GET_CHEQUE_CURRENT_STATUS(?) }";
+        try (Connection connection = dataSource.getConnection();
+             CallableStatement cs = connection.prepareCall(sql)) {
+            cs.registerOutParameter(1, Types.VARCHAR);
+            cs.setLong(2, transactionPoid);
+            cs.execute();
+            return cs.getString(1);
+        } catch (SQLException e) {
+            log.error("Error executing FUNC_GET_CHEQUE_CURRENT_STATUS", e);
+            return "ERROR: " + e.getMessage();
+        }
+    }
+
     private static Long getLong(ResultSet rs, int index) throws SQLException {
         long v = rs.getLong(index);
         return rs.wasNull() ? null : v;

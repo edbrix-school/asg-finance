@@ -43,7 +43,6 @@ public class ArGenReceiptBillDtl extends BaseEntity {
     private String billRefType;
 
     @Column(name = "BILL_REFNO", length = 500)
-    @AuditIgnore
     private String billRefno;
 
     @Column(name = "BILL_DUE_DATE")

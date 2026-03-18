@@ -10,6 +10,8 @@ import org.aspectj.lang.annotation.AfterReturning;
 import org.aspectj.lang.annotation.Aspect;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.lang.reflect.Method;
 
@@ -23,12 +25,13 @@ public class GlPostingAspect {
 
     @AfterReturning(pointcut = "@annotation(performGlPosting)", returning = "result")
     public void performGlPosting(JoinPoint joinPoint, PerformGlPosting performGlPosting, Object result) {
-        try {
-            if (result == null) {
-                log.warn("PerformGlPosting: Method result is null, skipping GL posting.");
-                return;
-            }
 
+        if (result == null) {
+            log.warn("PerformGlPosting: Method result is null, skipping GL posting.");
+            return;
+        }
+
+        try {
             String docId = performGlPosting.docId();
             if (!StringUtils.hasText(docId)) {
                 docId = UserContext.getDocumentId();
@@ -37,19 +40,41 @@ public class GlPostingAspect {
             Long transactionPoid = extractLongValue(result, "getPoid", "getTransactionPoid");
             String docRef = extractStringValue(result, "getDocRef");
 
-            if (transactionPoid != null && StringUtils.hasText(docId)) {
-                glPostingService.performGlPosting(docId, transactionPoid, docRef);
-            } else {
-                log.warn("PerformGlPosting: Could not extract necessary information. DocId: {}, Poid: {}, DocRef: {}", 
+            if (transactionPoid == null || !StringUtils.hasText(docId)) {
+                log.warn("PerformGlPosting: Could not extract necessary information. DocId: {}, Poid: {}, DocRef: {}",
                         docId, transactionPoid, docRef);
+                return;
+            }
+
+            // 🔥 KEY CHANGE: run AFTER COMMIT
+            if (TransactionSynchronizationManager.isActualTransactionActive()) {
+                String finalDocId = docId;
+                Long finalTransactionPoid = transactionPoid;
+                String finalDocRef = docRef;
+
+                TransactionSynchronizationManager.registerSynchronization(
+                        new TransactionSynchronization() {
+                            @Override
+                            public void afterCommit() {
+                                try {
+                                    glPostingService.performGlPosting(finalDocId, finalTransactionPoid, finalDocRef);
+                                } catch (Exception e) {
+                                    log.error("Error during GL Posting after commit: {}", e.getMessage(), e);
+                                    throw e instanceof RuntimeException ? (RuntimeException) e :
+                                            new RuntimeException("GL Posting failed after commit", e);
+                                }
+                            }
+                        }
+                );
+            } else {
+                // fallback if no transaction
+                glPostingService.performGlPosting(docId, transactionPoid, docRef);
             }
 
         } catch (Exception e) {
             log.error("Error in GlPostingAspect: {}", e.getMessage(), e);
-            if (e instanceof RuntimeException) {
-                throw e;
-            }
-            throw new RuntimeException("Unexpected error during automatic GL Posting", e);
+            throw e instanceof RuntimeException ? (RuntimeException) e :
+                    new RuntimeException("Unexpected error during automatic GL Posting", e);
         }
     }
 

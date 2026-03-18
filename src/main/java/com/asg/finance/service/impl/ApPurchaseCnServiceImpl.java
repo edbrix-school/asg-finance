@@ -945,7 +945,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                         popup.setCostDetRowId(c.getCostDetRowId());
                         popup.setCostGroup(c.getCostGroup());
                         popup.setCostPoid(c.getCostPoid());
-                        popup.setAmount(BigDecimal.valueOf(c.getAmount()));
+                        popup.setAmount(c.getAmount());
 
                         if (StringUtils.isNotEmpty(c.getCostPoid()) && StringUtils.isNotEmpty(c.getCostGroup())) {
                             popup.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(Long.valueOf(c.getCostPoid()), c.getCostGroup()));
@@ -1082,7 +1082,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                     dto.setCostDetRowId(cc.getCostDetRowId());
                     dto.setCostGroup(cc.getCostGroup());
                     dto.setCostPoid(cc.getCostPoid());
-                    dto.setAmount(BigDecimal.valueOf(cc.getAmount()));
+                    dto.setAmount(cc.getAmount());
                     return dto;
                 })
                 .collect(Collectors.toList());

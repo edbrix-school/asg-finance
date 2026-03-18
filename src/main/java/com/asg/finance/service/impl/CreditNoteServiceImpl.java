@@ -7,6 +7,7 @@ import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.LoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.service.GlobalParameterService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.finance.entity.*;
@@ -112,6 +113,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     @Autowired
     private GlPostingService glPostingService;
 
+    @Autowired
+    private GlobalParameterService globalParameterService;
+
     @Override
     @Transactional(propagation = Propagation.REQUIRED)
     @PerformGlPosting
@@ -119,6 +123,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         try {
             filterUnselectedCharges(creditNoteDto);
             executeBeforeSaveValidation(creditNoteDto);
+            DocumentBeforeSaveBillwiseCostGroups(creditNoteDto);
             calculateDueDateFromCreditPeriod(creditNoteDto);
             // Save header and flush immediately
             ArCreditNoteHdr header = mapToEntity(creditNoteDto);
@@ -138,11 +143,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             creditNoteDto.setDocRef(savedHeader.getDocRef());
 
             ArCreditNoteHdr reloadedHeader = creditNoteHdrRepository.findById(savedHeader.getTransactionPoid())
-                    .orElseThrow(() -> new RuntimeException("Header not found after insert (trigger modified it)"));
+                    .orElseThrow(() -> new ValidationException("Header not found after insert (trigger modified it)"));
 
             Long transactionPoid = reloadedHeader.getTransactionPoid();
             if (transactionPoid == null) {
-                throw new RuntimeException("Database trigger failed to generate TRANSACTION_POID");
+                throw new ValidationException("Database trigger failed to generate TRANSACTION_POID");
             }
 
             log.info("Credit note header saved with transactionPoid: {}", transactionPoid);
@@ -151,13 +156,6 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             if (creditNoteDto.getGlDetails() != null) {
                 log.info("Starting to save GL details for transactionPoid: {}", transactionPoid);
                 String issueType = creditNoteDto.getIssueType() != null ? creditNoteDto.getIssueType() : "Y";
-               applyAutoBalancing(
-                        transactionPoid,
-                        creditNoteDto.getGlDetails(),
-                        creditNoteDto.getPartyPoid(),
-                        creditNoteDto.getPartyType()
-                );
-
                 saveGLDetailsWithIssueType(transactionPoid, creditNoteDto.getGlDetails(), issueType);
                 log.info("GL details saved successfully for transactionPoid: {}", transactionPoid);
             }
@@ -168,14 +166,14 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                 }
 
                 if (creditNoteDto.getChargeDetails() != null) {
-                    saveChargeDetails(transactionPoid, creditNoteDto.getChargeDetails());
-                    executeChargeTaxCalculation(transactionPoid, creditNoteDto.getPartyType(), creditNoteDto.getPartyPoid());
+                    saveChargeDetails(transactionPoid, creditNoteDto.getChargeDetails(), reloadedHeader);
+                    executeChargeTaxIfChanged(transactionPoid, creditNoteDto);
                 }
 
                 executePostSaveUpdates(transactionPoid, creditNoteDto);
             } catch (Exception e) {
                 log.error("Error in post-save processing for transactionPoid {}: {}", transactionPoid, e.getMessage());
-                throw new RuntimeException("Post-save processing failed: " + e.getMessage(), e);
+                throw new ValidationException("Post-save processing failed: " + e.getMessage());
             }
 
             CreditNoteHeaderDto result = mapToDto(reloadedHeader);
@@ -202,7 +200,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             return result;
 
         } catch (SQLException e) {
-            throw new RuntimeException("Database error: " + e.getMessage());
+            throw new ValidationException("Database error: " + e.getMessage());
         }
     }
 
@@ -252,6 +250,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
     @Override
     @Transactional
+    @PerformGlPosting
     public CreditNoteHeaderDto updateCreditNote(Long transactionPoid, CreditNoteHeaderDto creditNoteDto) {
         ArCreditNoteHdr existing = creditNoteHdrRepository.findByTransactionPoidAndDeleted(transactionPoid, "N")
                 .orElseThrow(() -> new ResourceNotFoundException("Credit Note", "transactionPoid", transactionPoid));
@@ -259,11 +258,14 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         try {
             filterUnselectedCharges(creditNoteDto);
             executeBeforeSaveValidation(creditNoteDto);
+            DocumentBeforeSaveBillwiseCostGroups(creditNoteDto);
             calculateDueDateFromCreditPeriod(creditNoteDto);
 
-            // Create a copy of the old entity for logging
+            // Create a copy of the old entity for logging and old-ref tracking
             ArCreditNoteHdr oldEntity = new ArCreditNoteHdr();
             BeanUtils.copyProperties(existing, oldEntity);
+            String oldFdaRef = oldEntity.getFdaRef();
+            String oldFfRef = oldEntity.getFfRef();
 
             updateHeaderFromDto(existing, creditNoteDto);
             existing.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
@@ -273,26 +275,36 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
             List<GlobalLogSummary> detailSummaryLogs = new ArrayList<>();
             if (creditNoteDto.getGlDetails() != null) {
-                applyAutoBalancing(
-                        transactionPoid,
-                        creditNoteDto.getGlDetails(),
-                        creditNoteDto.getPartyPoid(),
-                        creditNoteDto.getPartyType()
-                );
                 updateGLDetailsWithLogging(transactionPoid, creditNoteDto.getGlDetails(), detailSummaryLogs);
             }
 
             if (creditNoteDto.getChargeDetails() != null) {
-                updateChargeDetailsWithLogging(transactionPoid, creditNoteDto.getChargeDetails(), detailSummaryLogs);
-                // Recalculate tax if charge amount changed
-                executeChargeTaxCalculation(transactionPoid, creditNoteDto.getPartyType(), creditNoteDto.getPartyPoid());
+                updateChargeDetailsWithLogging(transactionPoid, creditNoteDto.getChargeDetails(), detailSummaryLogs, creditNoteDto);
+                executeChargeTaxIfChanged(transactionPoid, creditNoteDto);
             }
 
             saveBillwiseForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111", true);
             saveCostCenterForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111", true);
 
-            // Re-trigger manifest updates if charge amount or issue type changed
+            // Re-trigger manifest updates
             executePostSaveUpdates(transactionPoid, creditNoteDto);
+
+            // When FDA ref changed, also update old FDA ref amounts (matches PageBean DocumentAfterSave)
+            if ("FDA".equals(creditNoteDto.getRefType())
+                    && oldFdaRef != null && !oldFdaRef.equals(creditNoteDto.getDnFdaReference())) {
+                executeFDAAmountUpdate(transactionPoid, oldFdaRef);
+            }
+
+            // When FF ref changed, also update old FF cost (matches PageBean DocumentAfterSave)
+            if ("FF".equals(creditNoteDto.getRefType())
+                    && oldFfRef != null && !oldFfRef.equals(existing.getFfRef())) {
+                try {
+                    Long oldFfPoid = Long.parseLong(oldFfRef);
+                    executeFFCostUpdate(transactionPoid, oldFfPoid);
+                } catch (NumberFormatException e) {
+                    log.warn("Could not parse old ffRef '{}' as Long for transactionPoid {}", oldFfRef, transactionPoid);
+                }
+            }
 
             CreditNoteHeaderDto result = mapToDto(existing);
             List<ArCreditNoteDtl> glDetails = creditNoteDtlRepository.findByTransactionPoidOrderByDetRowId(transactionPoid);
@@ -305,24 +317,16 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
             // Log the update
             loggingService.logChanges(oldEntity, existing, ArCreditNoteHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
-            loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, UserContext.getDocumentId(), transactionPoid.toString());
             if (!detailSummaryLogs.isEmpty()) {
                 globalLogSummaryRepository.saveAll(detailSummaryLogs);
             }
-
-            glPostingService.performGlPosting(
-                    UserContext.getDocumentId(),
-                    transactionPoid,
-                    result.getDocRef()
-            );
-
             return result;
         } catch (SQLException e) {
             log.error("Database error updating credit note", e);
-            throw new RuntimeException("Database error occurred while updating credit note");
+            throw new ValidationException("Database error occurred while updating credit note");
         } catch (Exception e) {
             log.error("Unexpected error updating credit note", e);
-            throw new RuntimeException("Failed to update credit note");
+            throw new ValidationException("Failed to update credit note");
         }
     }
 
@@ -342,7 +346,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             );
         } catch (Exception e) {
             log.error("Error deleting credit note", e);
-            throw new RuntimeException("Failed to delete credit note: " + e.getMessage());
+            throw new ValidationException("Failed to delete credit note: " + e.getMessage());
         }
     }
 
@@ -355,7 +359,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             throw e;
         } catch (Exception e) {
             log.error("Error fetching FF invoice charges for refNo {}: {}", refNo, e.getMessage());
-            throw new RuntimeException("Failed to fetch FF invoice charges");
+            throw new ValidationException("Failed to fetch FF invoice charges");
         }
     }
 
@@ -368,7 +372,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             throw e;
         } catch (Exception e) {
             log.error("Error fetching SH invoice charges for refNo {}: {}", refNo, e.getMessage());
-            throw new RuntimeException("Failed to fetch SH invoice charges");
+            throw new ValidationException("Failed to fetch SH invoice charges");
         }
     }
 
@@ -473,7 +477,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             log.error("Validation error fetching FF invoice charges for refNo {}: {}", refNo, e.getMessage());
             throw e;
         } catch (Exception e) {
-            throw new RuntimeException("Failed to fetch DN invoice charges");
+            throw new ValidationException("Failed to fetch DN invoice charges");
         }
     }
 
@@ -486,7 +490,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             log.error("Validation error fetching FF invoice charges for refNo {}: {}", fdaRef, e.getMessage());
             throw e;
         } catch (Exception e) {
-            throw new RuntimeException("Failed to fetch FDA details");
+            throw new ValidationException("Failed to fetch FDA details");
         }
     }
 
@@ -580,11 +584,23 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     private void executeBeforeSaveValidation(CreditNoteHeaderDto dto) throws SQLException {
         validateMandatoryFields(dto);
         validateMultiCompanyFields(dto);
-       // validateTaxFields(dto);
         validateGrandTotalWithCharges(dto);
+        validateCreditPeriod(dto);
 
         // Call GL voucher validation to check reference document status
         executeGLVoucherValidation(dto);
+
+        // Calculate total tax amount from detail rows (matches PageBean: sums TaxAmount per refType)
+        BigDecimal totalTaxAmount = BigDecimal.ZERO;
+        if (dto.getChargeDetails() != null) {
+            totalTaxAmount = dto.getChargeDetails().stream()
+                    .map(c -> c.getTaxAmount() != null ? c.getTaxAmount() : BigDecimal.ZERO)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+        } else if (dto.getGlDetails() != null) {
+            totalTaxAmount = dto.getGlDetails().stream()
+                    .map(gl -> gl.getTaxAmount() != null ? gl.getTaxAmount() : BigDecimal.ZERO)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+        }
 
         // Call stored procedure validation
         String sql = "BEGIN PROC_AR_CN_BEFORE_SAVE_VAL(?, ?, ?, ?, ?, ?, ?, ?, ?); END;";
@@ -594,20 +610,25 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             Long companyPoid = UserContext.getCompanyPoid();
             Long userPoid = UserContext.getUserPoid();
 
+            LocalDate txnDate = dto.getTransactionDate() != null ? dto.getTransactionDate() : LocalDate.now();
+
             cs.setLong(1, groupPoid);
             cs.setLong(2, companyPoid);
             cs.setLong(3, userPoid);
             cs.setString(4, "300-111");
             cs.setLong(5, dto.getTransactionPoid() != null ? dto.getTransactionPoid() : 0);
             cs.setLong(6, dto.getPartyPoid() != null ? dto.getPartyPoid() : 0);
-            cs.setBigDecimal(7, dto.getGrandTotal());
-            cs.setTimestamp(8, Timestamp.valueOf(LocalDateTime.now()));
+            cs.setBigDecimal(7, totalTaxAmount); // TaxAmount sum (not grandTotal)
+            cs.setTimestamp(8, Timestamp.valueOf(txnDate.atStartOfDay()));
             cs.registerOutParameter(9, Types.VARCHAR);
             cs.execute();
 
             String result = cs.getString(9);
-            if (result != null && !"SUCCESS".equals(result)) {
-                throw new RuntimeException("Validation failed: " + result);
+            if (result != null && result.contains("ERROR")) {
+                throw new ValidationException(result);
+            }
+            if (result != null && result.contains("WARNING")) {
+                throw new ValidationException(result.substring(result.indexOf(":") + 1).trim());
             }
         }
     }
@@ -615,17 +636,48 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     private void validateMandatoryFields(CreditNoteHeaderDto dto) {
         // Reference-specific validations
         if ("FF_INVOICE".equals(dto.getRefType()) && dto.getFfInvoicePoid() == null) {
-            throw new RuntimeException("FF Invoice Reference is mandatory for FF_INVOICE type");
+            throw new ValidationException("FF Invoice Reference is mandatory for FF_INVOICE type");
         }
         if ("SH_INVOICE".equals(dto.getRefType()) && dto.getShInvoicePoid() == null) {
-            throw new RuntimeException("SH Invoice Reference is mandatory for SH_INVOICE type");
+            throw new ValidationException("SH Invoice Reference is mandatory for SH_INVOICE type");
         }
         if ("DN_INVOICE".equals(dto.getRefType()) && dto.getDnInvoicePoid() == null) {
-            throw new RuntimeException("DN Invoice Reference is mandatory for DN_INVOICE type");
+            throw new ValidationException("DN Invoice Reference is mandatory for DN_INVOICE type");
         }
         if ("FDA".equals(dto.getRefType()) && dto.getDnFdaReference() == null) {
-            throw new RuntimeException("DN FDA Reference is mandatory for FDA type");
+            throw new ValidationException("DN FDA Reference is mandatory for FDA type");
         }
+
+        // Validate that at least one detail row exists (matches PageBean DocumentBeforeSave check)
+        String refType = dto.getRefType();
+        if ("GENERAL".equals(refType) || "CUSTOM".equals(refType)) {
+            if (dto.getGlDetails() == null || dto.getGlDetails().isEmpty()) {
+                throw new ValidationException("No Details in this Transaction.");
+            }
+        } else if ("FDA".equals(refType) || "FF".equals(refType) || "SH_INVOICE".equals(refType)
+                || "FF_INVOICE".equals(refType) || "DN_INVOICE".equals(refType) || "VOYAGE".equals(refType)) {
+            if (dto.getChargeDetails() == null || dto.getChargeDetails().isEmpty()) {
+                throw new ValidationException("No Details in this Transaction.");
+            }
+        }
+    }
+
+    private void validateCreditPeriod(CreditNoteHeaderDto dto) {
+        if (dto.getCreditPeriod() == null) return;
+        long maxDays = getCreditPeriodValidationDays();
+        if (dto.getCreditPeriod() > maxDays) {
+            throw new ValidationException("Credit Period is greater than " + maxDays + " days.");
+        }
+    }
+
+    private long getCreditPeriodValidationDays() {
+        try {
+            String value = globalParameterService.getParameterValue("CREDIT_PERIOD_VALIDATION_DAYS", "GROUP", "1", "120");
+            return Long.parseLong(value);
+        } catch (Exception e) {
+            log.warn("Failed to get CREDIT_PERIOD_VALIDATION_DAYS parameter: {}", e.getMessage());
+        }
+        return 120L;
     }
 
     private void validateMultiCompanyFields(CreditNoteHeaderDto dto) {
@@ -633,7 +685,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             if (dto.getGlDetails() != null) {
                 for (var glDetail : dto.getGlDetails()) {
                     if (glDetail.getCompanyPoid() == null) {
-                        throw new RuntimeException("Company field is mandatory for each GL detail when Multi Company is selected");
+                        throw new ValidationException("Company field is mandatory for each GL detail when Multi Company is selected");
                     }
                 }
             }
@@ -645,7 +697,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             for (int i = 0; i < dto.getGlDetails().size(); i++) {
                 var glDetail = dto.getGlDetails().get(i);
                 if (glDetail.getTaxPoid() == null) {
-                    throw new RuntimeException("Tax Poid is mandatory for GL Detail row " + (i + 1));
+                    throw new ValidationException("Tax Poid is mandatory for GL Detail row " + (i + 1));
                 }
             }
         }
@@ -654,7 +706,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             for (int i = 0; i < dto.getChargeDetails().size(); i++) {
                 var chargeDetail = dto.getChargeDetails().get(i);
                 if (chargeDetail.getTaxPoid() == null) {
-                    throw new RuntimeException("Tax Poid is mandatory for Charge Detail row " + (i + 1));
+                    throw new ValidationException("Tax Poid is mandatory for Charge Detail row " + (i + 1));
                 }
             }
         }
@@ -699,7 +751,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         try {
             return executeSetDefaultCredit(partyPoid, partyType);
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to get default credit values: " + e.getMessage(), e);
+            throw new ValidationException("Failed to get default credit values: " + e.getMessage());
         }
     }
 
@@ -708,7 +760,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         try {
             return executeGetPartyGLPoid(partyPoid, partyType);
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to get party GL POID: " + e.getMessage(), e);
+            throw new ValidationException("Failed to get party GL POID: " + e.getMessage());
         }
     }
 
@@ -781,18 +833,14 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     }
 
     /**
-     * Calculate due date as per SRS requirement: Due Date = Current Date + Credit Period
+     * Calculate due date: DueDate = TransactionDate + CreditPeriod (matches PageBean DocumentBeforeSave).
+     * When credit period is null/0, DueDate = TransactionDate (0 days added).
      */
     private void calculateDueDateFromCreditPeriod(CreditNoteHeaderDto dto) {
-        if (dto.getCreditPeriod() != null && dto.getCreditPeriod() > 0) {
-            dto.setDueDate(LocalDate.now().plusDays(dto.getCreditPeriod()));
-            log.info("Due date calculated as per SRS: {} (Current Date + {} days)", dto.getDueDate(), dto.getCreditPeriod());
-        } else if (dto.getCreditPeriod() == null) {
-            // Set default credit period if not provided
-            dto.setCreditPeriod(30L); // Default 30 days
-            dto.setDueDate(LocalDate.now().plusDays(dto.getCreditPeriod()));
-            log.info("Default credit period applied: {} days, due date: {}", dto.getCreditPeriod(), dto.getDueDate());
-        }
+        LocalDate baseDate = dto.getTransactionDate() != null ? dto.getTransactionDate() : LocalDate.now();
+        long days = (dto.getCreditPeriod() != null && dto.getCreditPeriod() > 0) ? dto.getCreditPeriod() : 0L;
+        dto.setDueDate(baseDate.plusDays(days));
+        log.info("Due date calculated: {} (TransactionDate {} + {} days)", dto.getDueDate(), baseDate, days);
     }
 
     private Long executeGetPartyGLPoid(Long partyPoid, String partyType) throws SQLException {
@@ -814,7 +862,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
             Long partyGLPoid = cs.getLong(6);
             if (partyGLPoid == null || partyGLPoid == 0) {
-                throw new RuntimeException("Selected Party GL_CODE is not found.");
+                throw new ValidationException("Selected Party GL_CODE is not found.");
             }
             return partyGLPoid;
         }
@@ -851,8 +899,8 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         String sql = "BEGIN PROC_CR_NOTE_CREATE_FROM_FF(?, ?, ?, ?, ?, ?); END;";
         try (Connection conn = dataSource.getConnection();
              CallableStatement cs = conn.prepareCall(sql)) {
-            Long groupPoid = 1L;
-            Long companyPoid = 3L;
+            Long groupPoid = UserContext.getGroupPoid();
+            Long companyPoid = UserContext.getCompanyPoid();
             Long userPoid = UserContext.getUserPoid();
 
             cs.setLong(1, groupPoid); // P_LOGIN_GROUP_POID
@@ -869,8 +917,8 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         String sql = "BEGIN PROC_AR_CREDIT_NT_FROM_SH_INV(?, ?, ?, ?, ?, ?, ?); END;";
         try (Connection conn = dataSource.getConnection();
              CallableStatement cs = conn.prepareCall(sql)) {
-            Long groupPoid = 1L;
-            Long companyPoid = 3L;
+            Long groupPoid = UserContext.getGroupPoid();
+            Long companyPoid = UserContext.getCompanyPoid();
             Long userPoid = UserContext.getUserPoid();
             cs.setLong(1, groupPoid); // P_LOGIN_GROUP_POID
             cs.setLong(2, companyPoid); // P_LOGIN_COMPANY_POID
@@ -887,8 +935,8 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         String sql = "BEGIN PROC_AR_CN_CREATE_FROM_DN(?, ?, ?, ?, ?, ?, ?); END;";
         try (Connection conn = dataSource.getConnection();
              CallableStatement cs = conn.prepareCall(sql)) {
-            Long groupPoid = 1L;
-            Long companyPoid = 3L;
+            Long groupPoid = UserContext.getGroupPoid();
+            Long companyPoid = UserContext.getCompanyPoid();
             Long userPoid = UserContext.getUserPoid();
 
             cs.setLong(1, groupPoid); // P_LOGIN_GROUP_POID
@@ -906,8 +954,8 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         String sql = "BEGIN PROC_AR_CREDIT_CREATE_FROM_FDA(?, ?, ?, ?, ?, ?, ?); END;";
         try (Connection conn = dataSource.getConnection();
              CallableStatement cs = conn.prepareCall(sql)) {
-            Long groupPoid = 1L;
-            Long companyPoid = 3L;
+            Long groupPoid = UserContext.getGroupPoid();
+            Long companyPoid = UserContext.getCompanyPoid();
             Long userPoid = UserContext.getUserPoid();
 
             cs.setLong(1, groupPoid); // P_LOGIN_GROUP_POID
@@ -980,74 +1028,158 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         }
     }
 
-    private void executeChargeTaxCalculation(Long transactionPoid, String partyType, Long partyPoid) throws SQLException {
-        // Check VAT applicability using global parameter
-        boolean vatApplicable = checkVATApplicability();
-        if (!vatApplicable) {
-            log.info("VAT not applicable - skipping tax calculation for transactionPoid: {}", transactionPoid);
-            return;
+    /**
+     * Recalculates tax for charge rows that differ from the reference invoice charges.
+     * Fetches the reference charges based on refType (FF_INVOICE, SH_INVOICE, DN_INVOICE, FDA),
+     * then for each incoming DTO row checks if chargePoid is new or chargeAmount changed vs reference.
+     * For refTypes without a reference (GENERAL, CUSTOM, etc.), applies tax only for rows without taxPoid.
+     */
+    private void executeChargeTaxIfChanged(Long transactionPoid, CreditNoteHeaderDto dto) throws SQLException {
+        if (!checkVATApplicability()) return;
+
+        List<UniversalChargeDetailDto> incomingCharges = dto.getChargeDetails();
+        if (incomingCharges == null || incomingCharges.isEmpty()) return;
+
+        String refType = dto.getRefType();
+        String partyType = dto.getPartyType();
+        Long partyPoid = dto.getPartyPoid();
+
+        // Fetch reference charge amounts keyed by chargePoid (null = no reference for this refType)
+        Map<Long, BigDecimal> refAmountByChargePoid = fetchReferenceChargeAmounts(refType, dto);
+
+        // Load saved DB rows (after saveChargeDetails, these reflect the latest state)
+        List<ArCreditNoteChargeDtl> savedCharges = creditNoteChargeDtlRepository.findByTransactionPoidOrderByDetRowId(transactionPoid);
+        Map<Long, ArCreditNoteChargeDtl> savedByDetRowId = savedCharges.stream()
+                .filter(c -> c.getDetRowId() != null)
+                .collect(Collectors.toMap(ArCreditNoteChargeDtl::getDetRowId, c -> c));
+        Map<Long, ArCreditNoteChargeDtl> savedByChargePoid = savedCharges.stream()
+                .filter(c -> c.getChargePoid() != null)
+                .collect(Collectors.toMap(ArCreditNoteChargeDtl::getChargePoid, c -> c, (a, b) -> a));
+
+        for (UniversalChargeDetailDto incoming : incomingCharges) {
+            if (incoming.getChargePoid() == null) continue;
+
+            boolean needsRecalc;
+            if (refAmountByChargePoid != null) {
+                // Reference-based: recalculate if chargePoid not in reference or amount differs
+                BigDecimal refAmount = refAmountByChargePoid.get(incoming.getChargePoid());
+                BigDecimal incomingAmount = getRefComparableAmount(incoming, refType);
+                if (refAmount == null) {
+                    // chargePoid not found in reference → new/custom charge → apply tax
+                    needsRecalc = true;
+                } else {
+                    needsRecalc = incomingAmount == null || incomingAmount.compareTo(refAmount) != 0;
+                }
+            } else {
+                // No reference (GENERAL, CUSTOM, etc.) → apply only if taxPoid not already set
+                needsRecalc = (incoming.getTaxPoid() == null || incoming.getTaxPoid() == 0);
+            }
+
+            if (!needsRecalc) continue;
+
+            // Resolve the saved DB entity to update with the new tax values
+            ArCreditNoteChargeDtl charge = incoming.getDetRowId() != null
+                    ? savedByDetRowId.get(incoming.getDetRowId())
+                    : savedByChargePoid.get(incoming.getChargePoid());
+
+            if (charge != null && charge.getChargeAmount() != null) {
+                log.info("Applying changes to tax");
+                applyChargeTaxFromSP(charge, partyType, partyPoid);
+            }
+        }
+    }
+
+    /**
+     * Fetches reference charges from the appropriate SP based on refType.
+     * Returns null if there is no invoice reference for the given refType.
+     */
+    private Map<Long, BigDecimal> fetchReferenceChargeAmounts(String refType, CreditNoteHeaderDto dto) throws SQLException {
+        if (refType == null) return null;
+
+        List<UniversalChargeDetailDto> refCharges = null;
+        switch (refType.toUpperCase()) {
+            case "FF_INVOICE":
+                if (dto.getFfInvoicePoid() != null)
+                    refCharges = executeFFChargesFetchSP(dto.getFfInvoicePoid(), dto.getPartyPoid());
+                break;
+            case "SH_INVOICE":
+                if (dto.getShInvoicePoid() != null)
+                    refCharges = executeSHChargesFetchSP(dto.getShInvoicePoid(), dto.getPartyPoid());
+                break;
+            case "DN_INVOICE":
+                if (dto.getDnInvoicePoid() != null)
+                    refCharges = executeDNChargesSP(dto.getDnInvoicePoid(), dto.getPartyPoid());
+                break;
+            case "FDA":
+                if (dto.getFdaRefPoid() != null)
+                    refCharges = executeFDADetailsSP(dto.getFdaRefPoid(), dto.getPartyPoid());
+                break;
+            default:
+                return null;
         }
 
-        // Get all charge details for this transaction
-        List<ArCreditNoteChargeDtl> chargeDetails = creditNoteChargeDtlRepository.findByTransactionPoidOrderByDetRowId(transactionPoid);
+        if (refCharges == null) return null;
 
-        for (ArCreditNoteChargeDtl charge : chargeDetails) {
-            if (charge.getChargePoid() != null && charge.getChargeAmount() != null) {
-                String sql = "BEGIN PROC_GET_CHARGE_TAX_PER_V3(?, ?, ?, ?, ?, ?); END;";
-                try (Connection conn = dataSource.getConnection();
-                     CallableStatement cs = conn.prepareCall(sql)) {
-                    Long companyPoid = 3L; // Default company
+        Map<Long, BigDecimal> map = new HashMap<>();
+        for (UniversalChargeDetailDto ref : refCharges) {
+            if (ref.getChargePoid() == null) continue;
+            BigDecimal amount = getRefComparableAmount(ref, refType);
+            map.put(ref.getChargePoid(), amount);
+        }
+        return map;
+    }
 
-                    cs.setLong(1, companyPoid); // P_COMPANY_POID
-                    cs.setTimestamp(2, Timestamp.valueOf(LocalDateTime.now())); // P_TRANSACTION_DATE
-                    cs.setString(3, partyType != null ? partyType : "SUPPLIER"); // P_PARTY_TYPE
-                    cs.setLong(4, partyPoid != null ? partyPoid : 0); // P_PARTY_POID
-                    cs.setLong(5, charge.getChargePoid()); // P_CHARGE_POID
-                    cs.registerOutParameter(6, OracleTypes.CURSOR); // OUTDATA OUT
-                    cs.execute();
+    /**
+     * Returns the amount field used for reference comparison.
+     * FDA uses pdaAmount (cost amount from FDA); all other invoice types use chargeAmount.
+     */
+    private BigDecimal getRefComparableAmount(UniversalChargeDetailDto dto, String refType) {
+        if ("FDA".equalsIgnoreCase(refType)) return dto.getPdaAmount();
+        return dto.getChargeAmount();
+    }
 
-                    // Process tax calculation result
-                    try (ResultSet rs = (ResultSet) cs.getObject(6)) {
-                        if (rs != null && rs.next()) {
-                            charge.setTaxPercentage(rs.getBigDecimal("PERCENTAGE"));
-                            charge.setTaxPoid(rs.getLong("TAX_POID"));
+    /**
+     * Calls PROC_GET_CHARGE_TAX_PER_V3, updates the charge entity's tax fields, and saves it.
+     */
+    private void applyChargeTaxFromSP(ArCreditNoteChargeDtl charge, String partyType, Long partyPoid) throws SQLException {
+        String sql = "BEGIN PROC_GET_CHARGE_TAX_PER_V3(?, ?, ?, ?, ?, ?); END;";
+        try (Connection conn = dataSource.getConnection();
+             CallableStatement cs = conn.prepareCall(sql)) {
+            cs.setLong(1, UserContext.getCompanyPoid());
+            cs.setTimestamp(2, Timestamp.valueOf(LocalDateTime.now()));
+            cs.setString(3, partyType != null ? partyType : "SUPPLIER");
+            cs.setLong(4, partyPoid != null ? partyPoid : 0);
+            cs.setLong(5, charge.getChargePoid());
+            cs.registerOutParameter(6, OracleTypes.CURSOR);
+            cs.execute();
 
-                            // Calculate tax amount and total
-                            if (charge.getTaxPercentage() != null) {
-                                BigDecimal taxAmount = charge.getChargeAmount()
-                                        .multiply(charge.getTaxPercentage().divide(new BigDecimal(100)))
-                                        .setScale(3, java.math.RoundingMode.HALF_UP);
-                                charge.setTaxAmount(taxAmount);
-                                charge.setTotalAmount(charge.getChargeAmount().add(taxAmount));
-                            }
-                        } else {
-                            charge.setTaxPercentage(BigDecimal.ZERO);
-                            charge.setTaxPoid(0L);
-                            charge.setTaxAmount(BigDecimal.ZERO);
-                            charge.setTotalAmount(charge.getChargeAmount());
-                        }
-
-                        // Update the charge detail
-                        creditNoteChargeDtlRepository.save(charge);
+            try (ResultSet rs = (ResultSet) cs.getObject(6)) {
+                if (rs != null && rs.next()) {
+                    charge.setTaxPercentage(rs.getBigDecimal("PERCENTAGE"));
+                    charge.setTaxPoid(rs.getLong("TAX_POID"));
+                    if (charge.getTaxPercentage() != null) {
+                        BigDecimal taxAmount = charge.getChargeAmount()
+                                .multiply(charge.getTaxPercentage().divide(new BigDecimal(100)))
+                                .setScale(3, java.math.RoundingMode.HALF_UP);
+                        charge.setTaxAmount(taxAmount);
+                        charge.setTotalAmount(charge.getChargeAmount().add(taxAmount));
                     }
+                } else {
+                    charge.setTaxPercentage(BigDecimal.ZERO);
+                    charge.setTaxPoid(0L);
+                    charge.setTaxAmount(BigDecimal.ZERO);
+                    charge.setTotalAmount(charge.getChargeAmount());
                 }
+                creditNoteChargeDtlRepository.save(charge);
             }
         }
     }
 
     private boolean checkVATApplicability() {
         try {
-            String sql = "SELECT PARAMETER_VALUE FROM GLOBAL_PARAMETERS WHERE PARAMETER_NAME = 'GLOBAL_TAX_APPLICABLE' AND DELETED = 'N'";
-            try (Connection conn = dataSource.getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) {
-                        String value = rs.getString("PARAMETER_VALUE");
-                        return "Y".equals(value) || "YES".equalsIgnoreCase(value) || "TRUE".equalsIgnoreCase(value);
-                    }
-                }
-            }
-        } catch (SQLException e) {
+            String value = globalParameterService.getParameterValue("GLOBAL_TAX_APPLICABLE", "TAX", "1", "Y");
+            return "Y".equals(value) || "YES".equalsIgnoreCase(value) || "TRUE".equalsIgnoreCase(value);
+        } catch (Exception e) {
             log.warn("Failed to check GLOBAL_TAX_APPLICABLE parameter: {}", e.getMessage());
         }
         return true; // Default to applicable if parameter not found
@@ -1055,23 +1187,36 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
     private void executePostSaveUpdates(Long transactionPoid, CreditNoteHeaderDto dto) throws SQLException {
         String refType = dto.getRefType();
-        List<UniversalChargeDetailDto> chargeDetails = dto.getChargeDetails();
-        executeGLBillRefUpdate(transactionPoid, refType);
 
-        // Check if any charge has Issue Invoice = Y
-        boolean hasIssueInvoice = hasIssueInvoice(chargeDetails);
+        // PROC_DR_CR_BILL_REF_UPDATE is only called for GENERAL type (matches PageBean DocumentAfterSave)
+        if ("GENERAL".equals(refType)) {
+            executeGLBillRefUpdate(transactionPoid, refType);
+        }
 
-        // Update manifest details based on reference type and issueInvoice/issueType
+        // Update manifest details based on reference type
         if ("FF_INVOICE".equals(refType)) {
-            Long ffPoid = dto.getFfInvoicePoid();
-            executeFFInvUpdate(transactionPoid, ffPoid);
-            executeFFCostUpdate(transactionPoid, ffPoid);
+            // FF_INVOICE: only update FF invoice details (NOT FF cost — that is for FF type)
+            executeFFInvUpdate(transactionPoid, dto.getFfInvoicePoid());
+        } else if ("FF".equals(refType)) {
+            // FF type: update FF cost via PROC_CR_NOTE_UPDATE_FF_COST
+            ArCreditNoteHdr hdr = creditNoteHdrRepository.findById(transactionPoid).orElse(null);
+            Long ffPoid = null;
+            if (hdr != null && hdr.getFfRef() != null) {
+                try {
+                    ffPoid = Long.parseLong(hdr.getFfRef());
+                } catch (NumberFormatException e) {
+                    log.warn("Could not parse ffRef '{}' as Long for transactionPoid {}", hdr.getFfRef(), transactionPoid);
+                }
+            }
+            if (ffPoid != null) {
+                executeFFCostUpdate(transactionPoid, ffPoid);
+            }
         } else if ("SH_INVOICE".equals(refType)) {
             executeSHInvUpdate(transactionPoid, dto.getShInvoicePoid());
         } else if ("DN_INVOICE".equals(refType) || "DN".equals(refType)) {
             executeDNInvUpdate(transactionPoid, dto.getDnInvoicePoid());
         } else if ("FDA".equals(refType)) {
-            executeFDAAmountUpdate(transactionPoid);
+            executeFDAAmountUpdate(transactionPoid, dto.getDnFdaReference());
         }
     }
 
@@ -1079,8 +1224,8 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         String sql = "BEGIN PROC_GL_VOUCHERS_VALIDATIONS(?, ?, ?, ?, ?, ?, ?); END;";
         try (Connection conn = dataSource.getConnection();
              CallableStatement cs = conn.prepareCall(sql)) {
-            Long groupPoid = 1L;
-            Long companyPoid = 3L;
+            Long groupPoid = UserContext.getGroupPoid();
+            Long companyPoid = UserContext.getCompanyPoid();
             Long userPoid = UserContext.getUserPoid();
 
             cs.setLong(1, groupPoid); // P_LOGIN_GROUP_POID
@@ -1094,7 +1239,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
             String result = cs.getString(7);
             if ("CLOSED".equalsIgnoreCase(result) || "CANCELLED".equalsIgnoreCase(result)) {
-                throw new RuntimeException("Reference document is CLOSED or CANCELLED");
+                throw new ValidationException("Reference document is CLOSED or CANCELLED");
             }
             if (result != null && !"SUCCESS".equalsIgnoreCase(result)) {
                 log.info("Reference document status: {}", result);
@@ -1120,8 +1265,8 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         try (Connection conn = dataSource.getConnection();
              CallableStatement cs = conn.prepareCall(sql)) {
             cs.setLong(1, UserContext.getGroupPoid()); // P_LOGIN_GROUP_POID
-            cs.setLong(2, UserContext.getCompanyPoid()); // P_LOGIN_USER_POID
-            cs.setLong(3, UserContext.getUserPoid()); // P_LOGIN_COMPANY_POID
+            cs.setLong(2, UserContext.getUserPoid()); // P_LOGIN_USER_POID
+            cs.setLong(3, UserContext.getCompanyPoid()); // P_LOGIN_COMPANY_POID
             cs.setString(4, header.getDocRef()); // P_DOC_ID
             cs.setString(5, header.getRefType()); // P_REF_TYPE
             cs.setString(6, refPoid); // P_REF_POID
@@ -1132,8 +1277,8 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
     private String getOldJobPoid(ArCreditNoteHdr entity, String refType) {
         return switch (refType != null ? refType.toUpperCase() : "") {
-            case "FDA JOBS" -> entity.getFdaRef();
-            case "FF JOBS" -> entity.getFfRef() != null ? entity.getFfRef() : null;
+            case "FDA", "FDA JOBS" -> entity.getFdaRef();
+            case "FF", "FF JOBS" -> entity.getFfRef();
             default -> null;
         };
     }
@@ -1156,8 +1301,8 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         String sql = "BEGIN PROC_DR_CR_BILL_REF_UPDATE(?, ?, ?, ?, ?, ?, ?, ?); END;";
         try (Connection conn = dataSource.getConnection();
              CallableStatement cs = conn.prepareCall(sql)) {
-            Long groupPoid = 1L;
-            Long companyPoid = 3L;
+            Long groupPoid = UserContext.getGroupPoid();
+            Long companyPoid = UserContext.getCompanyPoid();
             Long userPoid = UserContext.getUserPoid();
 
             // Get credit note header to get doc ref and party type
@@ -1186,9 +1331,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         String sql = "BEGIN PROC_AR_UPDATE_FF_INV_DTLS(?, ?, ?, ?, ?, ?); END;";
         try (Connection conn = dataSource.getConnection();
              CallableStatement cs = conn.prepareCall(sql)) {
-            cs.setLong(1, 1); // P_LOGIN_GROUP_POID
-            cs.setLong(2, 1); // P_LOGIN_COMPANY_POID
-            cs.setLong(3, 1); // P_LOGIN_USER_POID
+            cs.setLong(1, UserContext.getGroupPoid()); // P_LOGIN_GROUP_POID
+            cs.setLong(2, UserContext.getCompanyPoid()); // P_LOGIN_COMPANY_POID
+            cs.setLong(3, UserContext.getUserPoid()); // P_LOGIN_USER_POID
             cs.setLong(4, transactionPoid); // P_CN_POID
             cs.setLong(5, ffInvoicePoid != null ? ffInvoicePoid : 0); // P_FF_INV_POID
             cs.registerOutParameter(6, Types.VARCHAR); // P_RESULT OUT
@@ -1200,9 +1345,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         String sql = "BEGIN PROC_CR_NOTE_UPDATE_FF_COST(?, ?, ?, ?, ?, ?); END;";
         try (Connection conn = dataSource.getConnection();
              CallableStatement cs = conn.prepareCall(sql)) {
-            cs.setLong(1, 1); // P_LOGIN_GROUP_POID
-            cs.setLong(2, 1); // P_LOGIN_COMPANY_POID
-            cs.setLong(3, 1); // P_LOGIN_USER_POID
+            cs.setLong(1, UserContext.getGroupPoid()); // P_LOGIN_GROUP_POID
+            cs.setLong(2, UserContext.getCompanyPoid()); // P_LOGIN_COMPANY_POID
+            cs.setLong(3, UserContext.getUserPoid()); // P_LOGIN_USER_POID
             cs.setLong(4, ffInvoicePoid != null ? ffInvoicePoid : 0); // P_FF_POID
             cs.setLong(5, transactionPoid); // P_CN_POID
             cs.registerOutParameter(6, Types.VARCHAR); // P_RESULT OUT
@@ -1214,9 +1359,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         String sql = "BEGIN PROC_AR_UPDATE_SH_INV_DTLS(?, ?, ?, ?, ?, ?); END;";
         try (Connection conn = dataSource.getConnection();
              CallableStatement cs = conn.prepareCall(sql)) {
-            cs.setLong(1, 1); // P_LOGIN_GROUP_POID
-            cs.setLong(2, 1); // P_LOGIN_COMPANY_POID
-            cs.setLong(3, 1); // P_LOGIN_USER_POID
+            cs.setLong(1, UserContext.getGroupPoid()); // P_LOGIN_GROUP_POID
+            cs.setLong(2, UserContext.getCompanyPoid()); // P_LOGIN_COMPANY_POID
+            cs.setLong(3, UserContext.getUserPoid()); // P_LOGIN_USER_POID
             cs.setLong(4, transactionPoid); // P_CN_POID
             cs.setLong(5, shInvoicePoid != null ? shInvoicePoid : 0); // P_SH_INV_POID
             cs.registerOutParameter(6, Types.VARCHAR); // P_RESULT OUT
@@ -1228,9 +1373,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         String sql = "BEGIN PROC_AR_UPDATE_DN_INV_DTLS(?, ?, ?, ?, ?, ?); END;";
         try (Connection conn = dataSource.getConnection();
              CallableStatement cs = conn.prepareCall(sql)) {
-            cs.setLong(1, 1); // P_LOGIN_GROUP_POID
-            cs.setLong(2, 1); // P_LOGIN_COMPANY_POID
-            cs.setLong(3, 1); // P_LOGIN_USER_POID
+            cs.setLong(1, UserContext.getGroupPoid()); // P_LOGIN_GROUP_POID
+            cs.setLong(2, UserContext.getCompanyPoid()); // P_LOGIN_COMPANY_POID
+            cs.setLong(3, UserContext.getUserPoid()); // P_LOGIN_USER_POID
             cs.setLong(4, transactionPoid); // P_CN_POID
             cs.setLong(5, dnInvoicePoid != null ? dnInvoicePoid : 0); // P_DN_INV_POID
             cs.registerOutParameter(6, Types.VARCHAR); // P_RESULT OUT
@@ -1239,14 +1384,18 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     }
 
 
-    private void executeFDAAmountUpdate(Long transactionPoid) throws SQLException {
+    private void executeFDAAmountUpdate(Long transactionPoid, String fdaRef) throws SQLException {
+        if (fdaRef == null) {
+            log.warn("FDA ref is null for transactionPoid {}, skipping PROC_AR_UPDATE_FDA_AMOUNT", transactionPoid);
+            return;
+        }
         String sql = "BEGIN PROC_AR_UPDATE_FDA_AMOUNT(?, ?, ?, ?, ?); END;";
         try (Connection conn = dataSource.getConnection();
              CallableStatement cs = conn.prepareCall(sql)) {
-            cs.setLong(1, 1); // P_LOGIN_GROUP_POID
-            cs.setLong(2, 1); // P_LOGIN_COMPANY_POID
-            cs.setLong(3, 1); // P_LOGIN_USER_POID
-            cs.setString(4, "0"); // P_FDA_POID
+            cs.setLong(1, UserContext.getGroupPoid()); // P_LOGIN_GROUP_POID
+            cs.setLong(2, UserContext.getCompanyPoid()); // P_LOGIN_COMPANY_POID
+            cs.setLong(3, UserContext.getUserPoid()); // P_LOGIN_USER_POID
+            cs.setString(4, fdaRef); // P_FDA_POID
             cs.registerOutParameter(5, Types.VARCHAR); // P_RESULT OUT
             cs.execute();
         }
@@ -1385,7 +1534,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         return null;
     }
 
-    private void saveChargeDetails(Long transactionPoid, List<UniversalChargeDetailDto> chargeDetails) {
+    private void saveChargeDetails(Long transactionPoid, List<UniversalChargeDetailDto> chargeDetails, ArCreditNoteHdr creditNoteHdr) {
         long detRowId = 0L;
         for (UniversalChargeDetailDto dto : chargeDetails) {
             if (dto == null) continue;
@@ -1420,13 +1569,28 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             entity.setChargeAmount(dto.getChargeAmount());
             entity.setChargeCostAmount(dto.getChargeCostAmount());
             entity.setRemarks(dto.getRemarks());
+            entity.setTaxPoid(dto.getTaxPoid());
+            entity.setTaxPercentage(dto.getTaxPercentage());
             entity.setTaxAmount(dto.getTaxAmount());
             entity.setTotalAmount(dto.getTotalAmount());
             entity.setCheckAll(dto.getSelected() != null && !dto.getSelected().trim().isEmpty()
                     ? dto.getSelected().trim()
                     : "N");
             entity.setIssueInvoice(dto.getIssueInvoice());
-            entity.setRefDocId("300-111");
+            if(creditNoteHdr.getShInvoicePoid() != null){
+                entity.setRefDocId("300-102");
+                entity.setRefDocPoid(creditNoteHdr.getShInvoicePoid());
+            } else if (creditNoteHdr.getDnInvoicePoid() != null){
+                entity.setRefDocId("300-110");
+                entity.setRefDocPoid(creditNoteHdr.getDnInvoicePoid());
+            } else if (creditNoteHdr.getFfInvoicePoid() != null) {
+                entity.setRefDocId("120-401");
+                entity.setRefDocPoid(creditNoteHdr.getFfInvoicePoid());
+            } else if (creditNoteHdr.getFdaRefPoid()!= null) {
+                entity.setRefDocId("110-161");
+                entity.setRefDocPoid(creditNoteHdr.getFdaRefPoid());
+            }
+
             entity.setCreatedBy(ASGHelperUtils.getCurrentUser());
             entity.setCreatedDate(LocalDateTime.now());
             entity.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
@@ -1625,7 +1789,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     }
 
     private void updateChargeDetailsWithLogging(Long transactionPoid, List<UniversalChargeDetailDto> chargeDetails,
-                                                List<GlobalLogSummary> summaryLogs) {
+                                                List<GlobalLogSummary> summaryLogs, CreditNoteHeaderDto creditNoteHdr) {
         if (chargeDetails == null || chargeDetails.isEmpty()) return;
 
         String currentUser = ASGHelperUtils.getCurrentUser();
@@ -1690,7 +1854,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     newEntity.setCreatedDate(now);
                     newEntity.setLastModifiedBy(currentUser);
                     newEntity.setLastModifiedDate(now);
-                    mapChargeDtoToEntity(dto, newEntity, transactionPoid);
+                    mapChargeDtoToEntity(dto, newEntity, transactionPoid, creditNoteHdr);
                     toSave.add(newEntity);
                     newlyCreated.add(newEntity);
                     break;
@@ -1712,7 +1876,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                         newEntity.setCreatedDate(now);
                         newEntity.setLastModifiedBy(currentUser);
                         newEntity.setLastModifiedDate(now);
-                        mapChargeDtoToEntity(dto, newEntity, transactionPoid);
+                        mapChargeDtoToEntity(dto, newEntity, transactionPoid, creditNoteHdr);
                         toSave.add(newEntity);
                         newlyCreated.add(newEntity);
                         break;
@@ -1720,7 +1884,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
                     ArCreditNoteChargeDtl oldEntity = new ArCreditNoteChargeDtl();
                     BeanUtils.copyProperties(existing, oldEntity);
-                    mapChargeDtoToEntity(dto, existing, transactionPoid);
+                    mapChargeDtoToEntity(dto, existing, transactionPoid, creditNoteHdr);
                     existing.setLastModifiedBy(currentUser);
                     existing.setLastModifiedDate(now);
                     toSave.add(existing);
@@ -1789,7 +1953,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         entity.setTotalAmount(dto.getTotalAmount());
     }
 
-    private void mapChargeDtoToEntity(UniversalChargeDetailDto dto, ArCreditNoteChargeDtl entity, Long transactionPoid) {
+    private void mapChargeDtoToEntity(UniversalChargeDetailDto dto, ArCreditNoteChargeDtl entity, Long transactionPoid, CreditNoteHeaderDto creditNoteHdr) {
         entity.setTransactionPoid(transactionPoid);
         entity.setChargePoid(dto.getChargePoid());
         entity.setChargeAmount(dto.getChargeAmount());
@@ -1798,10 +1962,27 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         entity.setCheckAll(dto.getSelected() != null && !dto.getSelected().trim().isEmpty()
                 ? dto.getSelected().trim()
                 : "N");
+        entity.setTaxPoid(dto.getTaxPoid());
+        entity.setTaxPercentage(dto.getTaxPercentage());
         entity.setTaxAmount(dto.getTaxAmount());
         entity.setTotalAmount(dto.getTotalAmount());
         entity.setIssueInvoice(dto.getIssueInvoice());
-        entity.setRefDocId("300-111");
+
+        if(creditNoteHdr.getShInvoicePoid() != null){
+            entity.setRefDocId("300-102");
+            entity.setRefDocPoid(creditNoteHdr.getShInvoicePoid());
+        } else if (creditNoteHdr.getDnInvoicePoid() != null){
+            entity.setRefDocId("300-110");
+            entity.setRefDocPoid(creditNoteHdr.getDnInvoicePoid());
+        } else if (creditNoteHdr.getFfInvoicePoid() != null) {
+            entity.setRefDocId("120-401");
+            entity.setRefDocPoid(creditNoteHdr.getFfInvoicePoid());
+        } else if (creditNoteHdr.getFdaRefPoid()!= null) {
+            entity.setRefDocId("110-161");
+            entity.setRefDocPoid(creditNoteHdr.getFdaRefPoid());
+        }
+
+//        entity.setRefDocId("300-111");
     }
 
     private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage) {
@@ -2005,7 +2186,13 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     req.setCompanyPoid(companyPoid);
                     req.setDocId(docId);
                     req.setTransactionPoid(transactionPoid);
-                    req.setBillDetRowId(popup.getBillDetRowId());
+
+                    Long billDetRowId = popup.getBillDetRowId();
+                    if (billDetRowId == null || billDetRowId == 0L) {
+                        billDetRowId = inital;
+                    }
+                    req.setBillDetRowId(billDetRowId);
+
                     req.setBillRefType(popup.getBillRefType());
                     req.setBillRef(popup.getBillRef());
                     req.setBillDueDate(popup.getBillDueDate());
@@ -2211,7 +2398,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                                 popupDto.setCostDetRowId(item.getCostDetRowId());
                                 popupDto.setCostGroup(item.getCostGroup());
                                 popupDto.setCostPoid(item.getCostPoid());
-                                popupDto.setAmount(item.getAmount() != null ? BigDecimal.valueOf(item.getAmount()) : null);
+                                popupDto.setAmount(item.getAmount());
                                 if (StringUtils.isNotEmpty(item.getCostPoid()) && StringUtils.isNotEmpty(item.getCostGroup())) {
                                     try {
                                         Long poid = Long.parseLong(item.getCostPoid());
@@ -2249,7 +2436,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             return executeFdaRefProcedure(lovName, lovValue);
         } catch (SQLException e) {
             log.error("Error fetching FDA reference for lovName: {}, lovValue: {}", lovName, lovValue, e);
-            throw new RuntimeException("Failed to fetch FDA reference: " + e.getMessage(), e);
+            throw new ValidationException("Failed to fetch FDA reference: " + e.getMessage());
         }
     }
 
@@ -2284,60 +2471,186 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         }
     }
 
-    private void applyAutoBalancing(Long transactionPoid,
-                                    List<CreditNoteGLDetailDto> glDetails,
-                                    Long partyPoid,
-                                    String partyType) throws SQLException {
-
-        if (glDetails == null || glDetails.isEmpty()) return;
-
-        BigDecimal totalDr = BigDecimal.ZERO;
-        BigDecimal totalCr = BigDecimal.ZERO;
-
-        for (CreditNoteGLDetailDto dto : glDetails) {
-            String actionType = dto.getActionType();
-            if (actionType != null && "ISDELETED".equalsIgnoreCase(actionType.trim().toUpperCase())) {
-                continue;
-            }
-            if (dto.getType().equals("DR") && dto.getDrAmt() != null) {
-                totalDr = totalDr.add(dto.getDrAmt());
-                totalDr = totalDr.add(dto.getTaxAmount());
-            }
-            if (dto.getType().equals("CR") && dto.getCrAmt() != null) {
-                totalCr = totalCr.add(dto.getCrAmt());
-                totalCr = totalCr.add(dto.getTaxAmount());
-            }
+    private void DocumentBeforeSaveBillwiseCostGroups(CreditNoteHeaderDto dto) {
+        BigDecimal documentTotal = firstNonNull(dto.getBhdAmount(), dto.getGrandTotal());
+        if (documentTotal == null) {
+            throw new ValidationException("Total Amount is not found...");
+        }
+        if (dto.getPartyPoid() == null) {
+            throw new ValidationException("Party is not found...");
+        }
+        if (StringUtils.isBlank(dto.getRefType())) {
+            throw new ValidationException("Ref Type is not found...");
         }
 
-        if (totalDr.compareTo(totalCr) == 0) {
+        String refType = dto.getRefType();
+
+        // GENERAL logic 
+        if ("GENERAL".equalsIgnoreCase(refType)) {
+            Long partyGl = getPartyGLPoid(dto.getPartyPoid(), dto.getPartyType());
+            if (partyGl == null) {
+                throw new ValidationException("Selected Party GL_CODE is not found...");
+            }
+
+            List<CreditNoteGLDetailDto> effectiveGlDetails = getEffectiveGlDetailsForBillwise(dto);
+            BigDecimal totalDrAmt = sumByTypeForBillwise(effectiveGlDetails, "DR");
+            BigDecimal totalCrAmt = sumByTypeForBillwise(effectiveGlDetails, "CR");
+
+            if (totalDrAmt.compareTo(BigDecimal.ZERO) == 0) {
+                throw new ValidationException("No Debit Entries Entered...");
+            }
+
+            boolean partyGlFound = effectiveGlDetails.stream()
+                    .anyMatch(gl -> Objects.equals(gl.getGlPoid(), partyGl));
+
+            if (!partyGlFound) {
+                BigDecimal balancingAmount = totalDrAmt.subtract(totalCrAmt);
+                if (balancingAmount.compareTo(BigDecimal.ZERO) <= 0) {
+                    balancingAmount = documentTotal;
+                }
+
+                Long nextDetRowId = effectiveGlDetails.stream()
+                        .map(CreditNoteGLDetailDto::getDetRowId)
+                        .filter(Objects::nonNull)
+                        .max(Long::compareTo)
+                        .orElse(0L) + 1;
+
+                CreditNoteGLDetailDto balancingRow = new CreditNoteGLDetailDto();
+                balancingRow.setType("CR");
+                balancingRow.setCompanyPoid(UserContext.getCompanyPoid());
+                balancingRow.setGlPoid(partyGl);
+                balancingRow.setDrAmt(BigDecimal.ZERO);
+                balancingRow.setCrAmt(balancingAmount);
+                balancingRow.setTotalAmount(balancingAmount);
+                balancingRow.setRemarks("Auto Balance Entry");
+                balancingRow.setActionType("isCreated");
+                balancingRow.setDetRowId(nextDetRowId);
+
+                if (isBillwiseApplicableForCn(partyGl)) {
+                    balancingRow.setBreakupList(List.of(createDefaultBillwiseBreakupForCn(dto, balancingAmount)));
+                }
+
+                if (dto.getGlDetails() == null) {
+                    dto.setGlDetails(new ArrayList<>());
+                }
+                dto.getGlDetails().add(balancingRow);
+
+                effectiveGlDetails = getEffectiveGlDetailsForBillwise(dto);
+                totalDrAmt = sumByTypeForBillwise(effectiveGlDetails, "DR");
+                totalCrAmt = sumByTypeForBillwise(effectiveGlDetails, "CR");
+            }
+
+            if (totalCrAmt.compareTo(documentTotal) != 0) {
+                throw new ValidationException(
+                        "Amount (" + documentTotal + ") is not matching with party credit amount(" + totalCrAmt + ")"
+                );
+            }
+
+            if (totalDrAmt.compareTo(totalCrAmt) != 0) {
+                throw new ValidationException(
+                        "Total Debits and Credits not tallying. Dr> " + totalDrAmt + " Cr> " + totalCrAmt
+                );
+            }
             return;
         }
 
-        Long partyGlPoid = getPartyGLPoid(partyPoid, partyType);
+        // CUSTOM logic 
+        if ("CUSTOM".equalsIgnoreCase(refType)) {
+            List<CreditNoteGLDetailDto> effectiveGlDetails = getEffectiveGlDetailsForBillwise(dto);
+            BigDecimal totalDrAmt = sumByTypeForBillwise(effectiveGlDetails, "DR");
+            BigDecimal totalCrAmt = sumByTypeForBillwise(effectiveGlDetails, "CR");
 
-        CreditNoteGLDetailDto balancingRow = new CreditNoteGLDetailDto();
-        balancingRow.setGlPoid(partyGlPoid);
-        balancingRow.setCompanyPoid(UserContext.getCompanyPoid());
-        balancingRow.setRemarks("Auto Balance Entry");
-        balancingRow.setActionType("ISCREATED");
-
-        BigDecimal difference = totalDr.subtract(totalCr);
-
-        if (difference.compareTo(BigDecimal.ZERO) > 0) {
-            balancingRow.setType("CR");
-            balancingRow.setCrAmt(difference);
-            balancingRow.setDrAmt(BigDecimal.ZERO);
-        } else {
-            balancingRow.setType("DR");
-            balancingRow.setDrAmt(difference.abs());
-            balancingRow.setCrAmt(BigDecimal.ZERO);
+            if (totalDrAmt.compareTo(BigDecimal.ZERO) == 0) {
+                throw new ValidationException("WARNING : No debit entries entered.");
+            }
+            if (totalCrAmt.compareTo(BigDecimal.ZERO) == 0) {
+                throw new ValidationException("WARNING : No credit entries entered.");
+            }
+            if (totalCrAmt.compareTo(totalDrAmt) != 0) {
+                throw new ValidationException(
+                        "Total Debit (" + totalDrAmt + ") Amounts and Credit (" + totalCrAmt + ") Amounts are not tallying."
+                );
+            }
+            if (totalDrAmt.compareTo(documentTotal) != 0) {
+                throw new ValidationException(
+                        "Paid Amount (" + documentTotal + ") is not matching with total party credit amount(" + totalDrAmt + ")"
+                );
+            }
         }
+    }
 
-        balancingRow.setTotalAmount(difference.abs());
-        balancingRow.setTaxAmount(BigDecimal.ZERO);
-        balancingRow.setTaxPercentage(BigDecimal.ZERO);
+    private List<CreditNoteGLDetailDto> getEffectiveGlDetailsForBillwise(CreditNoteHeaderDto dto) {
+        if (dto.getGlDetails() == null) {
+            return new ArrayList<>();
+        }
+        return dto.getGlDetails().stream()
+                .filter(Objects::nonNull)
+                .filter(gl -> !"ISDELETED".equalsIgnoreCase(normalizeActionTypeForBillwise(gl.getActionType())))
+                .collect(Collectors.toCollection(ArrayList::new));
+    }
 
-        glDetails.add(balancingRow);
+    private BigDecimal sumByTypeForBillwise(List<CreditNoteGLDetailDto> glDetails, String type) {
+        return glDetails.stream()
+                .filter(gl -> type.equalsIgnoreCase(gl.getType()))
+                .map(this::resolveLineAmountForBillwise)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private BigDecimal resolveLineAmountForBillwise(CreditNoteGLDetailDto glDetail) {
+        if ("DR".equalsIgnoreCase(glDetail.getType())) {
+            return firstNonNull(glDetail.getTotalAmount(), glDetail.getDrAmt(), BigDecimal.ZERO);
+        }
+        if ("CR".equalsIgnoreCase(glDetail.getType())) {
+            return firstNonNull(glDetail.getTotalAmount(), glDetail.getCrAmt(),BigDecimal.ZERO);
+        }
+        return firstNonNull(glDetail.getTotalAmount(), BigDecimal.ZERO);
+    }
+
+    private String normalizeActionTypeForBillwise(String actionType) {
+        return actionType == null ? "" : actionType.trim().toUpperCase();
+    }
+
+    @SafeVarargs
+    private final <T> T firstNonNull(T... values) {
+        for (T value : values) {
+            if (value != null) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    private boolean isBillwiseApplicableForCn(Long glPoid) {
+        if (glPoid == null) {
+            return false;
+        }
+        return glMasterRepository
+                .findByGlPoid(glPoid)
+                .map(gl -> "Y".equalsIgnoreCase(gl.getBillwise()))
+                .orElse(false);
+    }
+
+    private BillwiseBreakupPopupRequestDto createDefaultBillwiseBreakupForCn(CreditNoteHeaderDto dto, BigDecimal amount) {
+        BillwiseBreakupPopupRequestDto billwise = new BillwiseBreakupPopupRequestDto();
+        billwise.setBillDueDate(dto.getDueDate());
+        billwise.setBillRefType("NEW");
+        billwise.setBillRef(StringUtils.defaultIfBlank(dto.getDocRef(), "CN-TEMP"));
+        billwise.setBillDueDate(resolveDueDateForBillwise(dto));
+        billwise.setType("CR");
+        billwise.setAmount(amount);
+        billwise.setBillRemarks(dto.getPostingNarration());
+        billwise.setActionType("isCreated");
+        return billwise;
+    }
+
+    private LocalDate resolveDueDateForBillwise(CreditNoteHeaderDto dto) {
+        if (dto.getDueDate() != null) {
+            return dto.getDueDate();
+        }
+        if (dto.getCreditPeriod() != null && dto.getCreditPeriod() > 0) {
+            return LocalDate.now().plusDays(dto.getCreditPeriod());
+        }
+        return LocalDate.now();
     }
 
     private void filterUnselectedCharges(CreditNoteHeaderDto dto) {
@@ -2359,7 +2672,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         } catch (SQLException e) {
             log.error("Error fetching charge tax data for partyType: {}, partyPoid: {}, chargePoid: {}", 
                     partyType, partyPoid, chargePoid, e);
-            throw new RuntimeException("Failed to fetch charge tax data: " + e.getMessage(), e);
+            throw new ValidationException("Failed to fetch charge tax data: " + e.getMessage());
         }
     }
 

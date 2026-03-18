@@ -73,6 +73,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
     private final SupplierMasterRepository supplierMasterRepository;
     private final GLMasterRepository glMasterRepository;
     private final GlPostingService glPostingService;
+    private final ShipPrincipalMasterRepository shipPrincipalMasterRepository;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -917,6 +918,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
     @Override
     @Transactional
+    @PerformGlPosting
     public ApPurchaseInvoiceHdrDto updateApPurchaseInvoice(Long transactionPoid, ApPurchaseInvoiceHdrDto apPurchaseInvoiceHdrDto) {
         ApPurchaseInvoiceHdrEntity apPurchaseInvoiceHdrEntity = repository.findById(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("ApPurchaseJournal", "transactionPoid", transactionPoid));
@@ -1170,6 +1172,11 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                         loggingService.createLogBatch(logRequests);
                     }
                 }
+
+                autoCreateBalancingGlRowWithBillwise(
+                        transactionPoid,
+                        apPurchaseInvoiceHdrDto
+                );
 
                 break;
             }
@@ -1518,7 +1525,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         loggingService.logChanges(oldEntity, savedEntity, ApPurchaseInvoiceHdrEntity.class,
                 UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
-        glPostingService.performGlPosting(UserContext.getDocumentId(), savedEntity.getTransactionPoid(), savedEntity.getDocRef());
+        //glPostingService.performGlPosting(UserContext.getDocumentId(), savedEntity.getTransactionPoid(), savedEntity.getDocRef());
 
         return fetchApPurchaseInvoiceHdr(savedEntity.getTransactionPoid());
     }
@@ -1799,7 +1806,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                             popupDto.setCostDetRowId(item.getCostDetRowId());
                             popupDto.setCostGroup(item.getCostGroup());
                             popupDto.setCostPoid(item.getCostPoid());
-                            popupDto.setAmount(BigDecimal.valueOf(item.getAmount()));
+                            popupDto.setAmount(item.getAmount());
                             if (StringUtils.isNotEmpty(item.getCostPoid()) && StringUtils.isNotEmpty(item.getCostGroup())) {
                                 try {
                                     Long poid = Long.parseLong(item.getCostPoid());
@@ -2327,24 +2334,51 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                 || type.equals("MTA PO");
     }
 
-    private Long getSupplierGlPoid(Long supplierPoid) {
+    private Long getPartyGlPoid(String partyType, Long partyPoid) {
 
-        if (supplierPoid == null) {
-            throw new ValidationException("Supplier Poid is required");
+        if (partyType == null) {
+            throw new ValidationException("Party Type is required");
         }
 
-        SupplierMasterEntity supplier =
-                supplierMasterRepository.findBySupplierPoid(supplierPoid);
-
-        if (supplier == null) {
-            throw new ValidationException("Supplier not found");
+        if (partyPoid == null) {
+            throw new ValidationException("Party Poid is required");
         }
 
-        if (supplier.getGlPoid() == null) {
-            throw new ValidationException("Supplier GL not configured in AP_SUPPLIER_MASTER");
+        if ("SUPPLIER".equalsIgnoreCase(partyType)) {
+
+            SupplierMasterEntity supplier =
+                    supplierMasterRepository.findBySupplierPoid(partyPoid);
+
+            if (supplier == null) {
+                throw new ValidationException("Supplier not found");
+            }
+
+            if (supplier.getGlPoid() == null) {
+                throw new ValidationException("Supplier GL not configured in AP_SUPPLIER_MASTER");
+            }
+
+            return supplier.getGlPoid();
         }
 
-        return supplier.getGlPoid();
+        else if ("PRINCIPAL".equalsIgnoreCase(partyType)) {
+
+            ShipPrincipalMaster principal =
+                    shipPrincipalMasterRepository.findByPrincipalPoid(partyPoid);
+
+            if (principal == null) {
+                throw new ValidationException("Principal not found");
+            }
+
+            if (principal.getGlCodePoid() == null) {
+                throw new ValidationException("Principal GL not configured in SHIP_PRINCIPAL_MASTER");
+            }
+
+            return principal.getGlCodePoid();
+        }
+
+        else {
+            throw new ValidationException("Unsupported Party Type: " + partyType);
+        }
     }
 
     private boolean isBillwiseApplicable(Long glPoid) {
@@ -2401,7 +2435,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
         String type = diff.compareTo(BigDecimal.ZERO) > 0 ? "CR" : "DR";
 
-        Long supplierGl = getSupplierGlPoid(dto.getSupplierPoid());
+        Long partyGl = getPartyGlPoid(dto.getPartyType(), dto.getSupplierPoid());
 
         Long detRowId =
                 apPurchaseInvoiceGlDtlRepository
@@ -2418,7 +2452,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         );
 
         entity.setCompanyPoid(dto.getCompanyPoid());
-        entity.setGlPoid(supplierGl);
+        entity.setGlPoid(partyGl);
         entity.setType(type);
 
         if ("DR".equals(type)) {
@@ -2436,12 +2470,23 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
         apPurchaseInvoiceGlDtlRepository.save(entity);
 
+        String logDetail = String.format(
+                "Row Created on Purchase GL with detRowId: %s",
+                detRowId
+        );
+
+        loggingService.createLogSummaryEntry(
+                UserContext.getDocumentId(),
+                transactionPoid.toString(),
+                logDetail
+        );
+
         // Billwise only if applicable
-        if (isBillwiseApplicable(supplierGl)) {
+        if (isBillwiseApplicable(partyGl)) {
 
             createBillwiseForSupplier(
                     transactionPoid,
-                    supplierGl,
+                    partyGl,
                     detRowId,
                     dto,
                     type,

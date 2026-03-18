@@ -376,6 +376,12 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         }
     }
 
+    private void populateRefFields(UniversalChargeDetailDto dto, ResultSet rs) throws SQLException {
+        dto.setRefDocId(rs.getString("REF_DOC_ID"));
+        dto.setRefDocPoid(rs.getLong("REF_DOC_POID"));
+        dto.setFdaDetRowId(rs.getLong("FDA_DET_ROW_ID"));
+    }
+
     private List<UniversalChargeDetailDto> executeFFChargesFetchSP(Long refNo, Long partyPoid) throws SQLException {
 
         String sql = "BEGIN PROC_AR_CREDIT_NT_FROM_FF_INV(?, ?, ?, ?, ?, ?, ?); END;";
@@ -399,6 +405,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             try (ResultSet rs = (ResultSet) cs.getObject(7)) {
                 while (rs != null && rs.next()) {
                     UniversalChargeDetailDto dto = new UniversalChargeDetailDto();
+                    populateRefFields(dto, rs);
                     dto.setChargePoid(rs.getLong("CHARGE_POID"));
                     dto.setChargeAmount(rs.getBigDecimal("INV_AMOUNT"));
                     dto.setChargeCostAmount(rs.getBigDecimal("CHARGE_COST_AMOUNT"));
@@ -448,6 +455,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                      * CHARGE_POID, INV_AMOUNT, TAX_AMOUNT, TAX_POID, TAX_PERCENTAGE, TOTAL_AMOUNT, REMARKS
                      */
                     UniversalChargeDetailDto dto = new UniversalChargeDetailDto();
+                    populateRefFields(dto, rs);
                     dto.setChargePoid(rs.getLong("CHARGE_POID"));
                     dto.setChargeAmount(rs.getBigDecimal("INV_AMOUNT"));
                     dto.setChargeCostAmount(rs.getBigDecimal("CHARGE_COST_AMOUNT"));
@@ -519,6 +527,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             try (ResultSet rs = (ResultSet) cs.getObject(7)) {
                 while (rs != null && rs.next()) {
                     UniversalChargeDetailDto dto = new UniversalChargeDetailDto();
+                    populateRefFields(dto, rs);
                     dto.setChargePoid(rs.getLong("CHARGE_POID"));
                     dto.setChargeAmount(rs.getBigDecimal("CHARGE_AMOUNT"));
                     dto.setChargeCostAmount(rs.getBigDecimal("CHARGE_COST_AMOUNT"));
@@ -564,6 +573,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                 while (rs != null && rs.next()) {
 
                     UniversalChargeDetailDto dto = new UniversalChargeDetailDto();
+                    populateRefFields(dto, rs);
                     dto.setChargePoid(rs.getLong("CHARGE_POID"));
                     //dto.setChargeAmount(rs.getBigDecimal("CHARGE_AMOUNT"));
                     dto.setTaxPoid(rs.getLong("TAX_POID"));
@@ -1590,7 +1600,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                 entity.setRefDocId("110-161");
                 entity.setRefDocPoid(creditNoteHdr.getFdaRefPoid());
             }
-
+            entity.setFdaDetRowId(dto.getFdaDetRowId());
             entity.setCreatedBy(ASGHelperUtils.getCurrentUser());
             entity.setCreatedDate(LocalDateTime.now());
             entity.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
@@ -1981,6 +1991,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             entity.setRefDocId("110-161");
             entity.setRefDocPoid(creditNoteHdr.getFdaRefPoid());
         }
+        entity.setFdaDetRowId(dto.getFdaDetRowId());
 
 //        entity.setRefDocId("300-111");
     }
@@ -2145,6 +2156,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         dto.setSelected(entity.getCheckAll() != null && !entity.getCheckAll().trim().isEmpty()
                 ? entity.getCheckAll().trim()
                 : "N");
+        dto.setRefDocId(entity.getRefDocId());
+        dto.setRefDocPoid(entity.getRefDocPoid());
+        dto.setFdaDetRowId(entity.getFdaDetRowId());
         return dto;
     }
 

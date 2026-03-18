@@ -152,7 +152,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
                     lovService.getDetailsByPoidAndLovName(inDtl.getChequeCompanyPoid(), "COMPANY"));
             inDtlDto.setPaymentMainDet(
                     lovService.getDetailsByPoidAndLovName(inDtl.getPaymentMainPoid(), "PAYMENT_MAIN"));
-            inDtlDto.setTtBankDet(lovService.getDetailsByPoidAndLovName(inDtl.getTtBankPoid(), "CUSTOMER_BANK_MASTER"));
+            inDtlDto.setTtBankDet(lovService.getDetailsByPoidAndLovName(inDtl.getTtBankPoid(), "CCC_BANK_MASTER_COMPANY_WISE"));
             inDtlDto.setCardDet(lovService.getDetailsByPoidAndLovName(inDtl.getCardPoid(), "CARD"));
 
             return inDtlDto;

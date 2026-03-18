@@ -1926,7 +1926,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                             .costDetRowId(cc.getCostDetRowId())
                             .costGroup(cc.getCostGroup())
                             .costPoid(cc.getCostPoid())
-                            .amount(BigDecimal.valueOf(cc.getAmount()))
+                            .amount(cc.getAmount())
                             .actionType("noChanges")
                             .build();
                     if (cc.getCostPoid() != null && !cc.getCostPoid().isEmpty() && 

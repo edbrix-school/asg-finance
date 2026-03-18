@@ -2398,7 +2398,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                                 popupDto.setCostDetRowId(item.getCostDetRowId());
                                 popupDto.setCostGroup(item.getCostGroup());
                                 popupDto.setCostPoid(item.getCostPoid());
-                                popupDto.setAmount(item.getAmount() != null ? BigDecimal.valueOf(item.getAmount()) : null);
+                                popupDto.setAmount(item.getAmount());
                                 if (StringUtils.isNotEmpty(item.getCostPoid()) && StringUtils.isNotEmpty(item.getCostGroup())) {
                                     try {
                                         Long poid = Long.parseLong(item.getCostPoid());

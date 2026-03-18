@@ -1044,7 +1044,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                                     dto.setCostPoid(cc.getCostPoid());
                                     dto.setAmount(
                                             cc.getAmount() != null
-                                                    ? BigDecimal.valueOf(cc.getAmount())
+                                                    ? (cc.getAmount())
                                                     : BigDecimal.ZERO
                                     );
                                     if (cc.getCostPoid() != null && !cc.getCostPoid().isEmpty() && 

@@ -1104,7 +1104,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                                             x.getCostPoid() != null ? x.getCostPoid() : null
                                     );
                                     cb.setAmount(
-                                            x.getAmount() != null ? BigDecimal.valueOf(x.getAmount()) : BigDecimal.ZERO
+                                            x.getAmount() != null ? (x.getAmount()) : BigDecimal.ZERO
                                     );
 //                                    cb.setGlDescription(x.getDescription());  // optional: SRS uses description as GL desc
 

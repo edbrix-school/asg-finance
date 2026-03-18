@@ -166,8 +166,8 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                 }
 
                 if (creditNoteDto.getChargeDetails() != null) {
-                    saveChargeDetails(transactionPoid, creditNoteDto.getChargeDetails());
-                    executeChargeTaxCalculation(transactionPoid, creditNoteDto.getPartyType(), creditNoteDto.getPartyPoid());
+                    saveChargeDetails(transactionPoid, creditNoteDto.getChargeDetails(), reloadedHeader);
+                    executeChargeTaxIfChanged(transactionPoid, creditNoteDto);
                 }
 
                 executePostSaveUpdates(transactionPoid, creditNoteDto);
@@ -278,9 +278,8 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             }
 
             if (creditNoteDto.getChargeDetails() != null) {
-                updateChargeDetailsWithLogging(transactionPoid, creditNoteDto.getChargeDetails(), detailSummaryLogs);
-                // Recalculate tax if charge amount changed
-                executeChargeTaxCalculation(transactionPoid, creditNoteDto.getPartyType(), creditNoteDto.getPartyPoid());
+                updateChargeDetailsWithLogging(transactionPoid, creditNoteDto.getChargeDetails(), detailSummaryLogs, creditNoteDto);
+                executeChargeTaxIfChanged(transactionPoid, creditNoteDto);
             }
 
             saveBillwiseForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111", true);
@@ -1036,57 +1035,149 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         }
     }
 
-    private void executeChargeTaxCalculation(Long transactionPoid, String partyType, Long partyPoid) throws SQLException {
-        // Check VAT applicability using global parameter
-        boolean vatApplicable = checkVATApplicability();
-        if (!vatApplicable) {
-            log.info("VAT not applicable - skipping tax calculation for transactionPoid: {}", transactionPoid);
-            return;
+    /**
+     * Recalculates tax for charge rows that differ from the reference invoice charges.
+     * Fetches the reference charges based on refType (FF_INVOICE, SH_INVOICE, DN_INVOICE, FDA),
+     * then for each incoming DTO row checks if chargePoid is new or chargeAmount changed vs reference.
+     * For refTypes without a reference (GENERAL, CUSTOM, etc.), applies tax only for rows without taxPoid.
+     */
+    private void executeChargeTaxIfChanged(Long transactionPoid, CreditNoteHeaderDto dto) throws SQLException {
+        if (!checkVATApplicability()) return;
+
+        List<UniversalChargeDetailDto> incomingCharges = dto.getChargeDetails();
+        if (incomingCharges == null || incomingCharges.isEmpty()) return;
+
+        String refType = dto.getRefType();
+        String partyType = dto.getPartyType();
+        Long partyPoid = dto.getPartyPoid();
+
+        // Fetch reference charge amounts keyed by chargePoid (null = no reference for this refType)
+        Map<Long, BigDecimal> refAmountByChargePoid = fetchReferenceChargeAmounts(refType, dto);
+
+        // Load saved DB rows (after saveChargeDetails, these reflect the latest state)
+        List<ArCreditNoteChargeDtl> savedCharges = creditNoteChargeDtlRepository.findByTransactionPoidOrderByDetRowId(transactionPoid);
+        Map<Long, ArCreditNoteChargeDtl> savedByDetRowId = savedCharges.stream()
+                .filter(c -> c.getDetRowId() != null)
+                .collect(Collectors.toMap(ArCreditNoteChargeDtl::getDetRowId, c -> c));
+        Map<Long, ArCreditNoteChargeDtl> savedByChargePoid = savedCharges.stream()
+                .filter(c -> c.getChargePoid() != null)
+                .collect(Collectors.toMap(ArCreditNoteChargeDtl::getChargePoid, c -> c, (a, b) -> a));
+
+        for (UniversalChargeDetailDto incoming : incomingCharges) {
+            if (incoming.getChargePoid() == null) continue;
+
+            boolean needsRecalc;
+            if (refAmountByChargePoid != null) {
+                // Reference-based: recalculate if chargePoid not in reference or amount differs
+                BigDecimal refAmount = refAmountByChargePoid.get(incoming.getChargePoid());
+                BigDecimal incomingAmount = getRefComparableAmount(incoming, refType);
+                if (refAmount == null) {
+                    // chargePoid not found in reference → new/custom charge → apply tax
+                    needsRecalc = true;
+                } else {
+                    needsRecalc = incomingAmount == null || incomingAmount.compareTo(refAmount) != 0;
+                }
+            } else {
+                // No reference (GENERAL, CUSTOM, etc.) → apply only if taxPoid not already set
+                needsRecalc = (incoming.getTaxPoid() == null || incoming.getTaxPoid() == 0);
+            }
+
+            if (!needsRecalc) continue;
+
+            // Resolve the saved DB entity to update with the new tax values
+            ArCreditNoteChargeDtl charge = incoming.getDetRowId() != null
+                    ? savedByDetRowId.get(incoming.getDetRowId())
+                    : savedByChargePoid.get(incoming.getChargePoid());
+
+            if (charge != null && charge.getChargeAmount() != null) {
+                log.info("Applying changes to tax");
+                applyChargeTaxFromSP(charge, partyType, partyPoid);
+            }
+        }
+    }
+
+    /**
+     * Fetches reference charges from the appropriate SP based on refType.
+     * Returns null if there is no invoice reference for the given refType.
+     */
+    private Map<Long, BigDecimal> fetchReferenceChargeAmounts(String refType, CreditNoteHeaderDto dto) throws SQLException {
+        if (refType == null) return null;
+
+        List<UniversalChargeDetailDto> refCharges = null;
+        switch (refType.toUpperCase()) {
+            case "FF_INVOICE":
+                if (dto.getFfInvoicePoid() != null)
+                    refCharges = executeFFChargesFetchSP(dto.getFfInvoicePoid(), dto.getPartyPoid());
+                break;
+            case "SH_INVOICE":
+                if (dto.getShInvoicePoid() != null)
+                    refCharges = executeSHChargesFetchSP(dto.getShInvoicePoid(), dto.getPartyPoid());
+                break;
+            case "DN_INVOICE":
+                if (dto.getDnInvoicePoid() != null)
+                    refCharges = executeDNChargesSP(dto.getDnInvoicePoid(), dto.getPartyPoid());
+                break;
+            case "FDA":
+                if (dto.getFdaRefPoid() != null)
+                    refCharges = executeFDADetailsSP(dto.getFdaRefPoid(), dto.getPartyPoid());
+                break;
+            default:
+                return null;
         }
 
-        // Get all charge details for this transaction
-        List<ArCreditNoteChargeDtl> chargeDetails = creditNoteChargeDtlRepository.findByTransactionPoidOrderByDetRowId(transactionPoid);
+        if (refCharges == null) return null;
 
-        for (ArCreditNoteChargeDtl charge : chargeDetails) {
-            if (charge.getChargePoid() != null && charge.getChargeAmount() != null) {
-                String sql = "BEGIN PROC_GET_CHARGE_TAX_PER_V3(?, ?, ?, ?, ?, ?); END;";
-                try (Connection conn = dataSource.getConnection();
-                     CallableStatement cs = conn.prepareCall(sql)) {
-                    Long companyPoid = UserContext.getCompanyPoid();
+        Map<Long, BigDecimal> map = new HashMap<>();
+        for (UniversalChargeDetailDto ref : refCharges) {
+            if (ref.getChargePoid() == null) continue;
+            BigDecimal amount = getRefComparableAmount(ref, refType);
+            map.put(ref.getChargePoid(), amount);
+        }
+        return map;
+    }
 
-                    cs.setLong(1, companyPoid); // P_COMPANY_POID
-                    cs.setTimestamp(2, Timestamp.valueOf(LocalDateTime.now())); // P_TRANSACTION_DATE
-                    cs.setString(3, partyType != null ? partyType : "SUPPLIER"); // P_PARTY_TYPE
-                    cs.setLong(4, partyPoid != null ? partyPoid : 0); // P_PARTY_POID
-                    cs.setLong(5, charge.getChargePoid()); // P_CHARGE_POID
-                    cs.registerOutParameter(6, OracleTypes.CURSOR); // OUTDATA OUT
-                    cs.execute();
+    /**
+     * Returns the amount field used for reference comparison.
+     * FDA uses pdaAmount (cost amount from FDA); all other invoice types use chargeAmount.
+     */
+    private BigDecimal getRefComparableAmount(UniversalChargeDetailDto dto, String refType) {
+        if ("FDA".equalsIgnoreCase(refType)) return dto.getPdaAmount();
+        return dto.getChargeAmount();
+    }
 
-                    // Process tax calculation result
-                    try (ResultSet rs = (ResultSet) cs.getObject(6)) {
-                        if (rs != null && rs.next()) {
-                            charge.setTaxPercentage(rs.getBigDecimal("PERCENTAGE"));
-                            charge.setTaxPoid(rs.getLong("TAX_POID"));
+    /**
+     * Calls PROC_GET_CHARGE_TAX_PER_V3, updates the charge entity's tax fields, and saves it.
+     */
+    private void applyChargeTaxFromSP(ArCreditNoteChargeDtl charge, String partyType, Long partyPoid) throws SQLException {
+        String sql = "BEGIN PROC_GET_CHARGE_TAX_PER_V3(?, ?, ?, ?, ?, ?); END;";
+        try (Connection conn = dataSource.getConnection();
+             CallableStatement cs = conn.prepareCall(sql)) {
+            cs.setLong(1, UserContext.getCompanyPoid());
+            cs.setTimestamp(2, Timestamp.valueOf(LocalDateTime.now()));
+            cs.setString(3, partyType != null ? partyType : "SUPPLIER");
+            cs.setLong(4, partyPoid != null ? partyPoid : 0);
+            cs.setLong(5, charge.getChargePoid());
+            cs.registerOutParameter(6, OracleTypes.CURSOR);
+            cs.execute();
 
-                            // Calculate tax amount and total
-                            if (charge.getTaxPercentage() != null) {
-                                BigDecimal taxAmount = charge.getChargeAmount()
-                                        .multiply(charge.getTaxPercentage().divide(new BigDecimal(100)))
-                                        .setScale(3, java.math.RoundingMode.HALF_UP);
-                                charge.setTaxAmount(taxAmount);
-                                charge.setTotalAmount(charge.getChargeAmount().add(taxAmount));
-                            }
-                        } else {
-                            charge.setTaxPercentage(BigDecimal.ZERO);
-                            charge.setTaxPoid(0L);
-                            charge.setTaxAmount(BigDecimal.ZERO);
-                            charge.setTotalAmount(charge.getChargeAmount());
-                        }
-
-                        // Update the charge detail
-                        creditNoteChargeDtlRepository.save(charge);
+            try (ResultSet rs = (ResultSet) cs.getObject(6)) {
+                if (rs != null && rs.next()) {
+                    charge.setTaxPercentage(rs.getBigDecimal("PERCENTAGE"));
+                    charge.setTaxPoid(rs.getLong("TAX_POID"));
+                    if (charge.getTaxPercentage() != null) {
+                        BigDecimal taxAmount = charge.getChargeAmount()
+                                .multiply(charge.getTaxPercentage().divide(new BigDecimal(100)))
+                                .setScale(3, java.math.RoundingMode.HALF_UP);
+                        charge.setTaxAmount(taxAmount);
+                        charge.setTotalAmount(charge.getChargeAmount().add(taxAmount));
                     }
+                } else {
+                    charge.setTaxPercentage(BigDecimal.ZERO);
+                    charge.setTaxPoid(0L);
+                    charge.setTaxAmount(BigDecimal.ZERO);
+                    charge.setTotalAmount(charge.getChargeAmount());
                 }
+                creditNoteChargeDtlRepository.save(charge);
             }
         }
     }
@@ -1450,7 +1541,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         return null;
     }
 
-    private void saveChargeDetails(Long transactionPoid, List<UniversalChargeDetailDto> chargeDetails) {
+    private void saveChargeDetails(Long transactionPoid, List<UniversalChargeDetailDto> chargeDetails, ArCreditNoteHdr creditNoteHdr) {
         long detRowId = 0L;
         for (UniversalChargeDetailDto dto : chargeDetails) {
             if (dto == null) continue;
@@ -1485,13 +1576,28 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             entity.setChargeAmount(dto.getChargeAmount());
             entity.setChargeCostAmount(dto.getChargeCostAmount());
             entity.setRemarks(dto.getRemarks());
+            entity.setTaxPoid(dto.getTaxPoid());
+            entity.setTaxPercentage(dto.getTaxPercentage());
             entity.setTaxAmount(dto.getTaxAmount());
             entity.setTotalAmount(dto.getTotalAmount());
             entity.setCheckAll(dto.getSelected() != null && !dto.getSelected().trim().isEmpty()
                     ? dto.getSelected().trim()
                     : "N");
             entity.setIssueInvoice(dto.getIssueInvoice());
-            entity.setRefDocId("300-111");
+            if(creditNoteHdr.getShInvoicePoid() != null){
+                entity.setRefDocId("300-102");
+                entity.setRefDocPoid(creditNoteHdr.getShInvoicePoid());
+            } else if (creditNoteHdr.getDnInvoicePoid() != null){
+                entity.setRefDocId("300-110");
+                entity.setRefDocPoid(creditNoteHdr.getDnInvoicePoid());
+            } else if (creditNoteHdr.getFfInvoicePoid() != null) {
+                entity.setRefDocId("120-401");
+                entity.setRefDocPoid(creditNoteHdr.getFfInvoicePoid());
+            } else if (creditNoteHdr.getFdaRefPoid()!= null) {
+                entity.setRefDocId("110-161");
+                entity.setRefDocPoid(creditNoteHdr.getFdaRefPoid());
+            }
+
             entity.setCreatedBy(ASGHelperUtils.getCurrentUser());
             entity.setCreatedDate(LocalDateTime.now());
             entity.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
@@ -1690,7 +1796,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     }
 
     private void updateChargeDetailsWithLogging(Long transactionPoid, List<UniversalChargeDetailDto> chargeDetails,
-                                                List<GlobalLogSummary> summaryLogs) {
+                                                List<GlobalLogSummary> summaryLogs, CreditNoteHeaderDto creditNoteHdr) {
         if (chargeDetails == null || chargeDetails.isEmpty()) return;
 
         String currentUser = ASGHelperUtils.getCurrentUser();
@@ -1755,7 +1861,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     newEntity.setCreatedDate(now);
                     newEntity.setLastModifiedBy(currentUser);
                     newEntity.setLastModifiedDate(now);
-                    mapChargeDtoToEntity(dto, newEntity, transactionPoid);
+                    mapChargeDtoToEntity(dto, newEntity, transactionPoid, creditNoteHdr);
                     toSave.add(newEntity);
                     newlyCreated.add(newEntity);
                     break;
@@ -1777,7 +1883,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                         newEntity.setCreatedDate(now);
                         newEntity.setLastModifiedBy(currentUser);
                         newEntity.setLastModifiedDate(now);
-                        mapChargeDtoToEntity(dto, newEntity, transactionPoid);
+                        mapChargeDtoToEntity(dto, newEntity, transactionPoid, creditNoteHdr);
                         toSave.add(newEntity);
                         newlyCreated.add(newEntity);
                         break;
@@ -1785,7 +1891,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
                     ArCreditNoteChargeDtl oldEntity = new ArCreditNoteChargeDtl();
                     BeanUtils.copyProperties(existing, oldEntity);
-                    mapChargeDtoToEntity(dto, existing, transactionPoid);
+                    mapChargeDtoToEntity(dto, existing, transactionPoid, creditNoteHdr);
                     existing.setLastModifiedBy(currentUser);
                     existing.setLastModifiedDate(now);
                     toSave.add(existing);
@@ -1854,7 +1960,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         entity.setTotalAmount(dto.getTotalAmount());
     }
 
-    private void mapChargeDtoToEntity(UniversalChargeDetailDto dto, ArCreditNoteChargeDtl entity, Long transactionPoid) {
+    private void mapChargeDtoToEntity(UniversalChargeDetailDto dto, ArCreditNoteChargeDtl entity, Long transactionPoid, CreditNoteHeaderDto creditNoteHdr) {
         entity.setTransactionPoid(transactionPoid);
         entity.setChargePoid(dto.getChargePoid());
         entity.setChargeAmount(dto.getChargeAmount());
@@ -1863,10 +1969,27 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         entity.setCheckAll(dto.getSelected() != null && !dto.getSelected().trim().isEmpty()
                 ? dto.getSelected().trim()
                 : "N");
+        entity.setTaxPoid(dto.getTaxPoid());
+        entity.setTaxPercentage(dto.getTaxPercentage());
         entity.setTaxAmount(dto.getTaxAmount());
         entity.setTotalAmount(dto.getTotalAmount());
         entity.setIssueInvoice(dto.getIssueInvoice());
-        entity.setRefDocId("300-111");
+
+        if(creditNoteHdr.getShInvoicePoid() != null){
+            entity.setRefDocId("300-102");
+            entity.setRefDocPoid(creditNoteHdr.getShInvoicePoid());
+        } else if (creditNoteHdr.getDnInvoicePoid() != null){
+            entity.setRefDocId("300-110");
+            entity.setRefDocPoid(creditNoteHdr.getDnInvoicePoid());
+        } else if (creditNoteHdr.getFfInvoicePoid() != null) {
+            entity.setRefDocId("120-401");
+            entity.setRefDocPoid(creditNoteHdr.getFfInvoicePoid());
+        } else if (creditNoteHdr.getFdaRefPoid()!= null) {
+            entity.setRefDocId("110-161");
+            entity.setRefDocPoid(creditNoteHdr.getFdaRefPoid());
+        }
+
+//        entity.setRefDocId("300-111");
     }
 
     private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage) {

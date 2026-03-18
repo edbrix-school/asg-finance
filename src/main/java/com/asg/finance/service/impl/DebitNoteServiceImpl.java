@@ -184,7 +184,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
 
         existingEntity.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
         existingEntity.setLastModifiedDate(LocalDateTime.now());
-        existingEntity.setTransactionDate(LocalDate.now());
+        existingEntity.setTransactionDate(debitNoteDto.getTransactionDate());
         debitNoteHdrRepository.save(existingEntity);
 
         List<GlobalLogSummary> detailSummaryLogs = new ArrayList<>();
@@ -665,7 +665,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         Long nextId = debitNoteHdrRepository.getNextSequenceValue();
         entity.setTransactionPoid(nextId);
 
-        entity.setTransactionDate(LocalDate.now());
+        entity.setTransactionDate(dto.getTransactionDate());
         entity.setGroupPoid(UserContext.getGroupPoid());
         entity.setCompanyPoid(UserContext.getCompanyPoid());
         entity.setCurrencyCode(dto.getCurrencyCode());

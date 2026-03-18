@@ -682,21 +682,21 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                 .build();
         
         // Populate header LOV details
-//        if (entity.getInsuranceType() != null) {
-//            dto.setInsuranceTypeDetails(lovService.getDetailsByCodeAndLovName(entity.getInsuranceType(), "INSURANCE_TYPE"));
-//        }
-//        if (entity.getInsuranceCategory() != null) {
-//            dto.setInsuranceCategoryDetails(lovService.getDetailsByCodeAndLovName(entity.getInsuranceCategory(), "INSURANCE_CATEGORY"));
-//        }
-//        if (entity.getInsuranceProvider() != null) {
-//            dto.setInsuranceProviderDetails(lovService.getDetailsByCodeAndLovName(entity.getInsuranceProvider(), "INSURANCE_SUPPLIER_MASTER"));
-//        }
-//        if (entity.getCurrencyPoid() != null) {
-//            dto.setCurrencyDetails(lovService.getDetailsByPoidAndLovName(entity.getCurrencyPoid(), "CURRENCY"));
-//        }
-//        if (entity.getPaymentFrequency() != null) {
-//            dto.setPaymentFrequencyDetails(lovService.getDetailsByCodeAndLovName(entity.getPaymentFrequency(), "INSURANCE_PAYMENT_TYPE"));
-//        }
+        if (entity.getInsuranceType() != null) {
+            dto.setInsuranceTypeDetails(lovService.getDetailsByCodeAndLovName(entity.getInsuranceType(), "INSURANCE_TYPE"));
+        }
+        if (entity.getInsuranceCategory() != null) {
+            dto.setInsuranceCategoryDetails(lovService.getDetailsByCodeAndLovName(entity.getInsuranceCategory(), "INSURANCE_CATEGORY"));
+        }
+        if (entity.getInsuranceProvider() != null) {
+            dto.setInsuranceProviderDetails(lovService.getDetailsByCodeAndLovName(entity.getInsuranceProvider(), "INSURANCE_SUPPLIER_MASTER"));
+        }
+        if (entity.getCurrencyPoid() != null) {
+            dto.setCurrencyDetails(lovService.getDetailsByPoidAndLovName(entity.getCurrencyPoid(), "CURRENCY"));
+        }
+        if (entity.getPaymentFrequency() != null) {
+            dto.setPaymentFrequencyDetails(lovService.getDetailsByCodeAndLovName(entity.getPaymentFrequency(), "INSURANCE_PAYMENT_TYPE"));
+        }
         
         return dto;
     }

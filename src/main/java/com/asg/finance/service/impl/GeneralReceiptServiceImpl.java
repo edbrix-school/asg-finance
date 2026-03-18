@@ -726,7 +726,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                             .taxPercentage(charge.getTaxPercent())
                             .taxAmount(charge.getTaxAmount())
                             .totalAmount(charge.getTotalAmount())
-                            .costPoid(charge.getCostCenter())
+                            .costPoid(charge.getCostCenter() != null ? charge.getCostCenter().toString() : null)
                             .remarks(charge.getRemarks())
                             .build());
                     break;
@@ -755,7 +755,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                     existingCharge.setTaxPercentage(charge.getTaxPercent());
                     existingCharge.setTaxAmount(charge.getTaxAmount());
                     existingCharge.setTotalAmount(charge.getTotalAmount());
-                    existingCharge.setCostPoid(charge.getCostCenter());
+                    existingCharge.setCostPoid(charge.getCostCenter() != null ? charge.getCostCenter().toString() : null);
                     existingCharge.setRemarks(charge.getRemarks());
                     existingCharge.setLastModifiedBy(currentUser);
                     existingCharge.setLastModifiedDate(now);
@@ -1152,7 +1152,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         if (charges != null && !charges.isEmpty()) {
             for (GeneralReceiptChargeDto charge : charges) {
                 if (isChargeTypeThatRequiresCostCenter(charge.getChargeType()) && 
-                    (charge.getCostCenter() == null || charge.getCostCenter().isBlank())) {
+                    (charge.getCostCenter() == null)) {
                     throw new ValidationException(String.format(
                             "Cost center is required for charge type: %s", charge.getChargeType()));
                 }
@@ -1557,7 +1557,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                     .taxPercentage(charge.getTaxPercent())
                     .taxAmount(charge.getTaxAmount())
                     .totalAmount(charge.getTotalAmount())
-                    .costPoid(charge.getCostCenter())
+                    .costPoid(charge.getCostCenter() != null ? charge.getCostCenter().toString() : null)
                     .remarks(charge.getRemarks())
                     .build();
 
@@ -1978,7 +1978,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                             LovGetListDto costCenterLov = lovService.getDetailsByPoidAndLovName(costPoid,
                                     "AR_GEN_REC_COST_CENTER");
                             if (costCenterLov != null) {
-                                dto.setCostCenter(costCenterLov.getCode());
+                                dto.setCostCenter(costPoid);
                                 dto.setCostCenterDetails(costCenterLov);
                             }
                         } catch (Exception e) {

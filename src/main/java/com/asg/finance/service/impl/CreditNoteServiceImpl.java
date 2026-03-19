@@ -280,6 +280,10 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
             if (creditNoteDto.getChargeDetails() != null) {
                 updateChargeDetailsWithLogging(transactionPoid, creditNoteDto.getChargeDetails(), detailSummaryLogs, creditNoteDto);
+                if ("FF_INVOICE".equals(creditNoteDto.getRefType())) {
+                    // FF_INVOICE: only update FF invoice details
+                    executeFFInvUpdate(transactionPoid, creditNoteDto.getFfInvoicePoid());
+                }
                 executeChargeTaxIfChanged(transactionPoid, creditNoteDto);
             }
 
@@ -324,6 +328,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         } catch (SQLException e) {
             log.error("Database error updating credit note", e);
             throw new ValidationException("Database error occurred while updating credit note");
+        } catch (ValidationException e) {
+            log.error("Unexpected error updating credit note", e);
+            throw new ValidationException(e.getMessage());
         } catch (Exception e) {
             log.error("Unexpected error updating credit note", e);
             throw new ValidationException("Failed to update credit note");

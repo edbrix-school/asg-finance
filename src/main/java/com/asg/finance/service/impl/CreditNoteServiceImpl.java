@@ -281,7 +281,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             if (creditNoteDto.getChargeDetails() != null) {
                 updateChargeDetailsWithLogging(transactionPoid, creditNoteDto.getChargeDetails(), detailSummaryLogs, creditNoteDto);
                 if ("FF_INVOICE".equals(creditNoteDto.getRefType())) {
-                    // FF_INVOICE: only update FF invoice details
+                    entityManager.flush();
                     executeFFInvUpdate(transactionPoid, creditNoteDto.getFfInvoicePoid());
                 }
                 executeChargeTaxIfChanged(transactionPoid, creditNoteDto);

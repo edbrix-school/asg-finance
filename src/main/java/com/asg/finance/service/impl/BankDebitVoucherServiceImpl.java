@@ -9,10 +9,14 @@ import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.dto.response.GlobalTermsResponseDto;
 import com.asg.common.lib.exception.ResourceAlreadyExistsException;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.exception.ValidationException;
+import com.asg.common.lib.service.ApprovalService;
 import com.asg.common.lib.service.DocumentDeleteService;
+import com.asg.common.lib.service.GlobalParameterService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.finance.annotation.PerformGlPosting;
 import com.asg.finance.client.GlobalTermsServiceClient;
 import com.asg.finance.repository.GLMasterRepository;
 import com.asg.finance.repository.TaxMasterRepository;
@@ -27,9 +31,11 @@ import com.asg.finance.repository.master.ShipChargeRepository;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.BankDebitVoucherService;
+import com.asg.finance.service.GlPostingService;
 import com.asg.finance.service.BillwiseBreakupService;
 import com.asg.finance.service.CostCenterBreakupService;
 import com.asg.finance.validator.BankDebitVoucherValidator;
+import com.asg.finance.repository.GlChequeCashConvertRepository;
 import com.nimbusds.oauth2.sdk.util.CollectionUtils;
 import jakarta.persistence.ParameterMode;
 import jakarta.persistence.StoredProcedureQuery;
@@ -38,10 +44,14 @@ import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.persistence.EntityManager;
@@ -88,11 +98,39 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
     private final DataSource dataSource;
     private final LoggingService loggingService;
     private final DocumentDeleteService documentDeleteService;
+    private final GlChequeCashConvertRepository glChequeCashConvertRepository;
+    private final ApplicationEventPublisher eventPublisher;
+    private final ApprovalService approvalService;
+    private final GlPostingService glPostingService;
+    private final BankDebitVoucherProcedureRepository bankDebitVoucherProcedureRepository;
+    private final ApplicationContext applicationContext;
+    private final GlobalParameterService globalParameterService;
+
 
     @Override
     public BankDebitVoucherResponse createBankDebitVoucher(BankDebitVoucherRequest request, String documentId) {
+        // Step 1: Get self-reference to enable proxy interception for @Transactional
+        BankDebitVoucherServiceImpl self = applicationContext.getBean(BankDebitVoucherServiceImpl.class);
+
+        // Step 2: Save receipt data in a new transaction that commits immediately
+        BankDebitVoucherResponse header = self.saveBankDebitVoucher(request,documentId);
+
+        log.info("Receipt transaction committed. Data is now visible in database.");
+
+        // Step 3: Call GL posting procedure OUTSIDE any transaction
+        // The procedure can now see the committed data
+         completeGlPosting(documentId,header);
+
+         return header;
+
+    }
+
+//    @PerformGlPosting
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public BankDebitVoucherResponse saveBankDebitVoucher(BankDebitVoucherRequest request, String documentId) {
 
         validator.validate(request, true);
+        validateInputTaxVariance(request);
 
         // Step 2: Conditional field existence checks (only for fields that are required/validated)
         if (request.getBankPoid() == null || !glBankRepository.existsByBankPoid(request.getBankPoid())) {
@@ -128,38 +166,49 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
         GlBankDebitHdr header = new GlBankDebitHdr();
         mapRequestToEntity(request, header);
+        // Mirror GL_BANK_DEBIT_HDR trigger rules at application level
+        validateTriggerRulesForCreate(header);
         populateCreateAudit(header);
 
         GlBankDebitHdr savedHeader = headerRepository.save(header);
         entityManager.flush();
 
-        if (request.getFfRef() != null) {
-            bankPaymentVoucherSpRepository.updateFfCost(
-                    UserContext.getGroupPoid(),
-                    UserContext.getCompanyPoid(),
-                    UserContext.getUserPoid(),
-                    String.valueOf(header.getFfRef()),
-                    savedHeader.getTransactionPoid());
-        }
-        if (request.getFdaRef() != null) {
-            bankPaymentVoucherSpRepository.updateFdaCost(
-                    UserContext.getGroupPoid(),
-                    UserContext.getCompanyPoid(),
-                    UserContext.getUserPoid(),
-                    String.valueOf(header.getFdaRef()),
-                    savedHeader.getTransactionPoid());
-        }
+        // Post-save job cost updates (mirrors legacy DocumentAfterSave)
 
 
-        persistChildCollections(request, savedHeader.getTransactionPoid(), true,documentId);
+        persistChildCollections(request, savedHeader.getTransactionPoid(), true, documentId);
 
         // Log the creation
         String key = savedHeader.getTransactionPoid().toString();
         loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, documentId, key);
 
         BankDebitVoucherResponse response = mapEntityToResponse(savedHeader);
+
         loadBreakupsIntoResponse(response, savedHeader.getTransactionPoid(), documentId, savedHeader.getGroupPoid(), savedHeader.getCompanyPoid());
         return response;
+    }
+
+    private void completeGlPosting(String documentId, BankDebitVoucherResponse savedHeader) {
+        publishJobCostUpdateEvent(savedHeader, null, null);
+        handleApprovalOrGlPosting(documentId, savedHeader);
+    }
+
+    private void completeGlPostingForUpdate(String documentId, BankDebitVoucherResponse savedHeader, String oldRefType, String oldRef) {
+        publishJobCostUpdateEvent(savedHeader, oldRefType, oldRef);
+        handleApprovalOrGlPosting(documentId, savedHeader);
+    }
+
+    private void handleApprovalOrGlPosting(String documentId, BankDebitVoucherResponse savedHeader) {
+        String approvalStatus = approvalService.getApprovalStatus(documentId, savedHeader.getTransactionPoid());
+        if ("APPROVAL_NOT_APPLICABLE".equalsIgnoreCase(approvalStatus)) {
+            glPostingService.performGlPosting(documentId, savedHeader.getTransactionPoid(), savedHeader.getDocRef());
+        } else if (!"SUBMIT_FOR_APPROVAL".equalsIgnoreCase(approvalStatus)) {
+            String result = bankDebitVoucherProcedureRepository.callApprovalAction(
+                    savedHeader.getCompanyPoid(), UserContext.getUserPoid(),
+                    savedHeader.getTransactionPoid(), documentId,
+                    savedHeader.getDocRef(), savedHeader.getTransactionDate());
+            log.info("Approval submit result: {}", result);
+        }
     }
 
     @Override
@@ -196,18 +245,33 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
     }
 
     @Override
-    public BankDebitVoucherResponse updateBankDebitVoucher(Long transactionPoid, BankDebitVoucherRequest request,String documentId) {
+    public BankDebitVoucherResponse updateBankDebitVoucher(Long transactionPoid, BankDebitVoucherRequest request, String documentId) {
+        BankDebitVoucherServiceImpl self = applicationContext.getBean(BankDebitVoucherServiceImpl.class);
+
+        Object[] updateResult = self.persistBankDebitVoucherUpdate(transactionPoid, request, documentId);
+        BankDebitVoucherResponse response = (BankDebitVoucherResponse) updateResult[0];
+        String oldRefType = (String) updateResult[1];
+        String oldRef = (String) updateResult[2];
+
+        log.info("Update transaction committed. Data is now visible in database.");
+
+        completeGlPostingForUpdate(documentId, response, oldRefType, oldRef);
+
+        return response;
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public Object[] persistBankDebitVoucherUpdate(Long transactionPoid, BankDebitVoucherRequest request, String documentId) {
 
         GlBankDebitHdr header = headerRepository.findByTransactionPoidAndNotDeleted(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Bank Debit Voucher", "transactionPoid", transactionPoid));
 
-        // Create a copy of the existing entity for logging
         GlBankDebitHdr oldEntity = new GlBankDebitHdr();
         BeanUtils.copyProperties(header, oldEntity);
 
         validator.validate(request, false);
+        validateInputTaxVariance(request);
 
-        // Step 3: Conditional field existence checks
         if (request.getBankPoid() == null || !glBankRepository.existsByBankPoid(request.getBankPoid())) {
             throw new ResourceNotFoundException("Bank", "bankPoid", request.getBankPoid());
         }
@@ -236,9 +300,21 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 //            throw new ResourceAlreadyExistsException("Doc Ref", request.getDocRef());
 //        }
 
+        String approvalStatus = approvalService.getApprovalStatus(documentId, transactionPoid);
+        if ("APPROVED".equalsIgnoreCase(approvalStatus)) {
+            throw new ValidationException("Cannot update a Bank Debit Voucher that has been approved");
+        }
+
         runPreSaveProcedures(header);
 
+        // Capture old ref values before overwriting (mirrors legacy OldRefType/OldRef from PROC_GL_JOB_REL_OLD_VALUES)
+        String oldRefType = header.getRefType();
+        String oldRef = "FDA JOBS".equalsIgnoreCase(oldRefType) ? (header.getFdaRef() != null ? String.valueOf(header.getFdaRef()) : null)
+                      : "FF JOBS".equalsIgnoreCase(oldRefType)  ? header.getFfRef()
+                      : null;
+
         mapRequestToEntity(request, header);
+        validateTriggerRulesForUpdate(oldEntity, header);
 
         validator.validateVoucherStatusInNewTransaction(header);
 
@@ -248,34 +324,16 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         entityManager.flush();
         entityManager.refresh(header);
 
-        if (request.getFfRef() != null) {
-            bankPaymentVoucherSpRepository.updateFfCost(
-                    UserContext.getGroupPoid(),
-                    UserContext.getCompanyPoid(),
-                    UserContext.getUserPoid(),
-                    String.valueOf(header.getFfRef()),
-                    header.getTransactionPoid());
-        }
-        if (request.getFdaRef() != null) {
-            bankPaymentVoucherSpRepository.updateFdaCost(
-                    UserContext.getGroupPoid(),
-                    UserContext.getCompanyPoid(),
-                    UserContext.getUserPoid(),
-                    String.valueOf(header.getFdaRef()),
-                    header.getTransactionPoid());
-        }
+        // Post-update job cost updates (mirrors legacy DocumentAfterSave)
+        persistChildCollections(request, header.getTransactionPoid(), false, documentId);
 
-
-        persistChildCollections(request, header.getTransactionPoid(), false,documentId);
-
-        // Log the update
         String key = header.getTransactionPoid().toString();
         loggingService.logChanges(oldEntity, header, GlBankDebitHdr.class,
                 documentId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
         BankDebitVoucherResponse response = mapEntityToResponse(header);
         loadBreakupsIntoResponse(response, header.getTransactionPoid(), documentId, header.getGroupPoid(), header.getCompanyPoid());
-        return response;
+        return new Object[]{response, oldRefType, oldRef};
     }
 
     @Override
@@ -403,7 +461,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                    // populateCreateAudit(entity);
                     mapToPaymentGlEntity(dtl, entity);
                     paymentGlRepository.save(entity);
-                    
+
                     String logDetail = String.format("Row Created on Payment GL Detail with detRowId: %s", detRowId);
                     loggingService.createLogSummaryEntry(docId, key, logDetail);
 
@@ -460,14 +518,14 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
                     GlBankDebitDtlGl entity = paymentGlRepository.findById(new GlBankDebitDtlGlId(transactionPoid, dtl.getDetRowId()))
                             .orElseThrow(() -> new ResourceNotFoundException("Payment GL Detail", "detRowId", dtl.getDetRowId()));
-                    
+
                     GlBankDebitDtlGl oldEntity = new GlBankDebitDtlGl();
                     BeanUtils.copyProperties(entity, oldEntity);
-                    
+
                     //populateUpdateAudit(entity);
                     mapToPaymentGlEntity(dtl, entity);
                     paymentGlRepository.save(entity);
-                    
+
                     String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", transactionPoid, dtl.getDetRowId());
                     logRequests.add(new LogRequestDto<>(oldEntity, entity, GlBankDebitDtlGl.class, docId, key, logDetail));
 
@@ -576,7 +634,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                     //populateCreateAudit(entity);
                     mapToChargeEntity(dto, entity);
                     chargeDetailRepository.save(entity);
-                    
+
                     String logDetail = String.format("Row Created on Charge Detail with detRowId: %s", detRowId);
                     loggingService.createLogSummaryEntry(docId, key, logDetail);
                 }
@@ -590,14 +648,14 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
                     GlBankDebitChargeDtl entity = chargeDetailRepository.findById(new GlBankDebitChargeDtlId(transactionPoid, dto.getDetRowId()))
                             .orElseThrow(() -> new ResourceNotFoundException("Charge Detail", "detRowId", dto.getDetRowId()));
-                    
+
                     GlBankDebitChargeDtl oldEntity = new GlBankDebitChargeDtl();
                     BeanUtils.copyProperties(entity, oldEntity);
-                    
+
                    // populateUpdateAudit(entity);
                     mapToChargeEntity(dto, entity);
                     chargeDetailRepository.save(entity);
-                    
+
                     String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", transactionPoid, dto.getDetRowId());
                     logRequests.add(new LogRequestDto<>(oldEntity, entity, GlBankDebitChargeDtl.class, docId, key, logDetail));
                 }
@@ -621,9 +679,9 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         }
     }
 
-    private void runPreSaveProcedures(GlBankDebitHdr existingHeader) {
+    private String[] runPreSaveProcedures(GlBankDebitHdr existingHeader) {
         if (existingHeader != null) {
-            bankDebitVoucherCustomRepository.procGlJobRelOldValues(
+            return bankDebitVoucherCustomRepository.procGlJobRelOldValues(
                     UserContext.getGroupPoid(),
                     UserContext.getUserPoid(),
                     UserContext.getCompanyPoid(),
@@ -631,6 +689,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                     existingHeader.getTransactionPoid()
             );
         }
+        return null;
     }
 
     private void populateCreateAudit(GlBankDebitHdr entity) {
@@ -721,32 +780,32 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         response.setTransactionDate(entity.getTransactionDate());
         String docId = "400-111";
         response.setGroupPoid(entity.getGroupPoid());
-        if (entity.getGroupPoid() != null) {
-            response.setGroupDet(lovService.getDetailsByPoidAndLovName(entity.getGroupPoid(), "GROUP"));
-        }
+//        if (entity.getGroupPoid() != null) {
+//            response.setGroupDet(lovService.getDetailsByPoidAndLovName(entity.getGroupPoid(), "GROUP"));
+//        }
         response.setCompanyPoid(entity.getCompanyPoid());
-        if (entity.getCompanyPoid() != null) {
-            response.setCompanyDet(lovService.getDetailsByPoidAndLovName(entity.getCompanyPoid(), "COMPANY"));
-        }
+//        if (entity.getCompanyPoid() != null) {
+//            response.setCompanyDet(lovService.getDetailsByPoidAndLovName(entity.getCompanyPoid(), "COMPANY"));
+//        }
         response.setDocRef(entity.getDocRef());
         response.setPayGlPoid(entity.getPayGlPoid());
-        if (entity.getPayGlPoid() != null) {
-            response.setPayGlDet(lovService.getDetailsByPoidAndLovName(entity.getPayGlPoid(), "BDV_GL_MASTER_LEDGERS"));
-        }
+//        if (entity.getPayGlPoid() != null) {
+//            response.setPayGlDet(lovService.getDetailsByPoidAndLovName(entity.getPayGlPoid(), "BDV_GL_MASTER_LEDGERS"));
+//        }
         response.setPayingTo(entity.getPayingTo());
         response.setPayingType(entity.getPayingType());
         response.setBankPoid(entity.getBankPoid());
-        if (entity.getBankPoid() != null) {
-            response.setBankDet(lovService.getDetailsByPoidAndLovName(entity.getBankPoid(), "BDV_BANK_MASTER_COMPANY_WISE"));
-        }
+//        if (entity.getBankPoid() != null) {
+//            response.setBankDet(lovService.getDetailsByPoidAndLovName(entity.getBankPoid(), "BDV_BANK_MASTER_COMPANY_WISE"));
+//        }
         response.setAmount(entity.getAmount());
         response.setShortNarration(entity.getShortNarration());
         response.setLongNarration(entity.getLongNarration());
         response.setTtDate(entity.getTtDate());
         response.setCurrencyCode(entity.getCurrencyCode());
-        if (StringUtils.isNoneBlank(entity.getCurrencyCode())) {
-            response.setCurrencyDet(lovService.getDetailsByCodeAndLovName(entity.getCurrencyCode(), "CURRENCY"));
-        }
+//        if (StringUtils.isNoneBlank(entity.getCurrencyCode())) {
+//            response.setCurrencyDet(lovService.getDetailsByCodeAndLovName(entity.getCurrencyCode(), "CURRENCY"));
+//        }
         response.setCurrencyRate(entity.getCurrencyRate());
         response.setCurrencyAmt(entity.getCurrencyAmt());
         response.setRefType(entity.getRefType());
@@ -759,19 +818,19 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         response.setTtChargeType(entity.getTtChargeType());
         response.setBeneficiaryIban(entity.getBeneficiaryIban());
         response.setBeneficiaryBankPoid(entity.getBeneficiaryBankPoid());
-        if (entity.getBeneficiaryBankPoid() != null) {
-            response.setBeneficiaryBankDet(lovService.getDetailsByPoidAndLovName(entity.getBeneficiaryBankPoid(), "BANK_PURPOSE_CODE"));
-        }
+//        if (entity.getBeneficiaryBankPoid() != null) {
+//            response.setBeneficiaryBankDet(lovService.getDetailsByPoidAndLovName(entity.getBeneficiaryBankPoid(), "BANK_PURPOSE_CODE"));
+//        }
         response.setTaxAmount(entity.getTaxAmount());
         response.setTaxPoid(entity.getTaxPoid());
-        if (entity.getTaxPoid() != null) {
-            response.setTaxDet(lovService.getDetailsByPoidAndLovName(entity.getTaxPoid(), "BDV_INPUT_TAX_MASTER"));
-        }
+//        if (entity.getTaxPoid() != null) {
+//            response.setTaxDet(lovService.getDetailsByPoidAndLovName(entity.getTaxPoid(), "BDV_INPUT_TAX_MASTER"));
+//        }
         response.setTaxPercentage(entity.getTaxPercentage());
         response.setBankPurposePoid(entity.getBankPurposePoid());
-        if (entity.getBankPurposePoid() != null) {
-            response.setBankPurposeDet(lovService.getDetailsByPoidAndLovName(entity.getBankPurposePoid(), "BANK_PURPOSE_CODE"));
-        }
+//        if (entity.getBankPurposePoid() != null) {
+//            response.setBankPurposeDet(lovService.getDetailsByPoidAndLovName(entity.getBankPurposePoid(), "BANK_PURPOSE_CODE"));
+//        }
         response.setDeleted(entity.getDeleted());
         response.setGainLoss(entity.getGainLoss());
         response.setGainLossType(entity.getGainLossType());
@@ -878,20 +937,20 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         dto.setTransactionPoid(entity.getId().getTransactionPoid());
         dto.setType(entity.getType());
         dto.setCompanyPoid(entity.getCompanyPoid());
-        if (entity.getCompanyPoid() != null) {
-            dto.setCompanyDet(lovService.getDetailsByPoidAndLovName(entity.getCompanyPoid(), "COMPANY"));
-        }
+//        if (entity.getCompanyPoid() != null) {
+//            dto.setCompanyDet(lovService.getDetailsByPoidAndLovName(entity.getCompanyPoid(), "COMPANY"));
+//        }
         dto.setGlPoid(entity.getGlPoid());
-        if (entity.getGlPoid() != null) {
-            dto.setGlDet(lovService.getDetailsByPoidAndLovName(entity.getGlPoid(), "GL_MASTER_LEDGERS_BDV_DTL"));
-        }
+//        if (entity.getGlPoid() != null) {
+//            dto.setGlDet(lovService.getDetailsByPoidAndLovName(entity.getGlPoid(), "GL_MASTER_LEDGERS_BDV_DTL"));
+//        }
         dto.setDrAmt(entity.getDrAmt());
         dto.setCrAmt(entity.getCrAmt());
         dto.setRemarks(entity.getRemarks());
         dto.setTaxPoid(entity.getTaxPoid());
-        if (entity.getTaxPoid() != null) {
-            dto.setTaxDet(lovService.getDetailsByPoidAndLovName(entity.getTaxPoid(), "BDV_INPUT_TAX_MASTER"));
-        }
+//        if (entity.getTaxPoid() != null) {
+//            dto.setTaxDet(lovService.getDetailsByPoidAndLovName(entity.getTaxPoid(), "BDV_INPUT_TAX_MASTER"));
+//        }
         dto.setTaxPercentage(entity.getTaxPercentage());
         dto.setTaxAmount(entity.getTaxAmount());
         dto.setTotalAmount(entity.getTotalAmount());
@@ -905,9 +964,9 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         dto.setDetRowId(entity.getId().getDetRowId());
         dto.setTransactionPoid(entity.getId().getTransactionPoid());
         dto.setChargePoid(entity.getChargePoid());
-        if (entity.getChargePoid() != null) {
-            dto.setChargeDet(lovService.getDetailsByPoidAndLovName(entity.getChargePoid(), "CHARGE_MASTER_ALL"));
-        }
+//        if (entity.getChargePoid() != null) {
+//            dto.setChargeDet(lovService.getDetailsByPoidAndLovName(entity.getChargePoid(), "CHARGE_MASTER_ALL"));
+//        }
         dto.setChargeAmount(entity.getChargeAmount());
         dto.setDescription(entity.getDescription());
         dto.setRemarks(entity.getRemarks());
@@ -918,9 +977,9 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         dto.setPdaAmount(entity.getPdaAmount());
         dto.setFfAmount(entity.getFfAmount());
         dto.setTaxPoid(entity.getTaxPoid());
-        if (entity.getTaxPoid() != null) {
-            dto.setTaxDet(lovService.getDetailsByPoidAndLovName(entity.getTaxPoid(), "BDV_INPUT_TAX_MASTER"));
-        }
+//        if (entity.getTaxPoid() != null) {
+//            dto.setTaxDet(lovService.getDetailsByPoidAndLovName(entity.getTaxPoid(), "BDV_INPUT_TAX_MASTER"));
+//        }
         dto.setTaxPercentage(entity.getTaxPercentage());
         dto.setTaxAmount(entity.getTaxAmount());
         dto.setChargeBaseAmount(entity.getChargeBaseAmount());
@@ -1047,7 +1106,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                                                     ? (cc.getAmount())
                                                     : BigDecimal.ZERO
                                     );
-                                    if (cc.getCostPoid() != null && !cc.getCostPoid().isEmpty() && 
+                                    if (cc.getCostPoid() != null && !cc.getCostPoid().isEmpty() &&
                                         cc.getCostGroup() != null && !cc.getCostGroup().isEmpty()) {
                                         dto.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(
                                                 Long.valueOf(cc.getCostPoid()), cc.getCostGroup()));
@@ -1210,6 +1269,138 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         }
         params.put("BANK_DEBIT_VOUCHER_SUBREPORT_1", printService.load("Finance/BankPayments/BankDebitVoucher_subreport1.jrxml"));
         return printService.fillReportToPdf(mainReport, params, dataSource);
+    }
+
+    /**
+     * Post-save/post-update job cost updates (equivalent to BankDebitVoucherBean.DocumentAfterSave):
+     * - For RefType = FDA JOBS → PROC_AP_PI_FDA_UPDATE_COST
+     * - For RefType = FF JOBS  → PROC_AP_PI_FF_UPDATE_COST
+     * - For RefType = MTA RFQ  → PROC_BANK_MTA_UPDATE
+     */
+    private void publishJobCostUpdateEvent(BankDebitVoucherResponse response, String oldRefType, String oldRef) {
+        if (StringUtils.isBlank(response.getRefType()) && StringUtils.isBlank(oldRefType)) return;
+
+        String ref = null;
+        if ("FDA JOBS".equalsIgnoreCase(response.getRefType())) {
+            ref = response.getFdaRef() != null ? String.valueOf(response.getFdaRef()) : null;
+            bankPaymentVoucherSpRepository.updateFdaCost(response.getGroupPoid(),UserContext.getCompanyPoid(),UserContext.getUserPoid(),ref,response.getTransactionPoid());
+        } else if ("FF JOBS".equalsIgnoreCase(response.getRefType())) {
+            ref = response.getFfRef();
+            bankPaymentVoucherSpRepository.updateFfCost(response.getGroupPoid(),UserContext.getCompanyPoid(),UserContext.getUserPoid(),ref,response.getTransactionPoid());
+        }
+    }
+
+    /**
+     * Validates trigger rules before INSERT on GL_BANK_DEBIT_HDR (mirrors GL_BANK_DEBIT_HDR_GTTRG):
+     * - Financial year check for transaction date.
+     */
+    private void validateInputTaxVariance(BankDebitVoucherRequest request) {
+        String inputTaxLimitValue = globalParameterService.getParameterValue("INPUT_TAX_VARIANCE_LIMIT", "GROUP", "1", "0");
+        BigDecimal inputTaxLimit;
+        try {
+            inputTaxLimit = new BigDecimal(inputTaxLimitValue);
+        } catch (NumberFormatException ex) {
+            throw new ValidationException("INPUT_TAX_VARIANCE_LIMIT parameter is not configured correctly.");
+        }
+
+        BigDecimal hundred = BigDecimal.valueOf(100);
+
+        if (request.getPaymentGlDetails() != null) {
+            for (int i = 0; i < request.getPaymentGlDetails().size(); i++) {
+                PaymentGlDetails item = request.getPaymentGlDetails().get(i);
+                if (item.getTaxPercentage() == null) continue;
+
+                BigDecimal baseAmount = item.getTotalAmount() != null ? item.getTotalAmount()
+                        : item.getDrAmt() != null ? item.getDrAmt()
+                        : item.getCrAmt() != null ? item.getCrAmt() : BigDecimal.ZERO;
+                baseAmount = baseAmount.setScale(3, java.math.RoundingMode.HALF_UP);
+
+                BigDecimal enteredTax = item.getTaxAmount() != null
+                        ? item.getTaxAmount().setScale(3, java.math.RoundingMode.HALF_UP)
+                        : BigDecimal.ZERO.setScale(3, java.math.RoundingMode.HALF_UP);
+
+                if (baseAmount.compareTo(BigDecimal.ZERO) == 0 && enteredTax.compareTo(BigDecimal.ZERO) == 0) continue;
+
+                BigDecimal expectedTax = baseAmount.multiply(item.getTaxPercentage())
+                        .divide(hundred, 3, java.math.RoundingMode.HALF_UP);
+                BigDecimal difference = enteredTax.subtract(expectedTax).abs();
+
+                if (difference.compareTo(inputTaxLimit) > 0) {
+                    throw new ValidationException(String.format(
+                            "WARNING : Please check the payment GL row number %d, Maximum allowed VAT difference is %s. Current difference is %s+/-",
+                            i + 1,
+                            inputTaxLimit.stripTrailingZeros().toPlainString(),
+                            difference.stripTrailingZeros().toPlainString()
+                    ));
+                }
+            }
+        }
+
+        if (request.getChargeDetails() != null) {
+            for (int i = 0; i < request.getChargeDetails().size(); i++) {
+                ChargeDetailDto item = request.getChargeDetails().get(i);
+                if (item.getChargeBaseAmount() == null || item.getTaxPercentage() == null) continue;
+
+                BigDecimal baseAmount = item.getChargeBaseAmount().setScale(3, java.math.RoundingMode.HALF_UP);
+                BigDecimal enteredTax = item.getTaxAmount() != null
+                        ? item.getTaxAmount().setScale(3, java.math.RoundingMode.HALF_UP)
+                        : BigDecimal.ZERO.setScale(3, java.math.RoundingMode.HALF_UP);
+
+                if (baseAmount.compareTo(BigDecimal.ZERO) == 0 && enteredTax.compareTo(BigDecimal.ZERO) == 0) continue;
+
+                BigDecimal expectedTax = baseAmount.multiply(item.getTaxPercentage())
+                        .divide(hundred, 3, java.math.RoundingMode.HALF_UP);
+                BigDecimal difference = enteredTax.subtract(expectedTax).abs();
+
+                if (difference.compareTo(inputTaxLimit) > 0) {
+                    throw new ValidationException(String.format(
+                            "WARNING : Please check the charge detail row number %d, Maximum allowed VAT difference is %s. Current difference is %s+/-",
+                            i + 1,
+                            inputTaxLimit.stripTrailingZeros().toPlainString(),
+                            difference.stripTrailingZeros().toPlainString()
+                    ));
+                }
+            }
+        }
+    }
+
+    private void validateTriggerRulesForCreate(GlBankDebitHdr header) {
+        if (header.getCompanyPoid() == null || header.getTransactionDate() == null) {
+            return;
+        }
+        LocalDate txDate = header.getTransactionDate().toLocalDate();
+        if (!glChequeCashConvertRepository.isFinancialYearValid(header.getCompanyPoid(), txDate)) {
+            throw new ValidationException("Changes allowed only within current Financial Period. Please set transaction date within the open financial period.");
+        }
+    }
+
+    /**
+     * Validates trigger rules before UPDATE on GL_BANK_DEBIT_HDR (mirrors GL_BANK_DEBIT_HDR_GTTRG):
+     * - Financial year check for new transaction date.
+     * - If date is changing: transaction period check for new date.
+     * - Transaction period check for old transaction date (current period for edit).
+     */
+    private void validateTriggerRulesForUpdate(GlBankDebitHdr oldHeader, GlBankDebitHdr newHeader) {
+        if (newHeader.getCompanyPoid() == null) {
+            return;
+        }
+        Long companyPoid = newHeader.getCompanyPoid();
+        LocalDate oldDate = oldHeader.getTransactionDate() != null ? oldHeader.getTransactionDate().toLocalDate() : null;
+        LocalDate newDate = newHeader.getTransactionDate() != null ? newHeader.getTransactionDate().toLocalDate() : oldDate;
+
+        if (newDate != null && !glChequeCashConvertRepository.isFinancialYearValid(companyPoid, newDate)) {
+            throw new ValidationException("Changes allowed only within current Financial Period. Please set transaction date within the open financial period.");
+        }
+
+        if (oldDate != null && !oldDate.equals(newDate)) {
+            if (newDate != null && !glChequeCashConvertRepository.isTransactionYearValid(companyPoid, newDate)) {
+                throw new ValidationException("Transaction date cannot be updated. The new date is outside the current transaction period.");
+            }
+        }
+
+        if (oldDate != null && !glChequeCashConvertRepository.isTransactionYearValid(companyPoid, oldDate)) {
+            throw new ValidationException("Changes allowed only within current Transaction Period. This record's transaction date is outside the editable period.");
+        }
     }
 
 }

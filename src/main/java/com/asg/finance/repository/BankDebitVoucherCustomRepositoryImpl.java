@@ -93,22 +93,21 @@ public class BankDebitVoucherCustomRepositoryImpl implements BankDebitVoucherCus
     }
 
     @Override
-    public void procGlJobRelOldValues(Long groupPoid, Long userPoid, Long companyPoid,
-                                      String docId, Long docKeyPoid) {
-        jdbcTemplate.execute((CallableStatementCreator) con -> {
+    public String[] procGlJobRelOldValues(Long groupPoid, Long userPoid, Long companyPoid,
+                                          String docId, Long docKeyPoid) {
+        return jdbcTemplate.execute((CallableStatementCreator) con -> {
             CallableStatement cs = con.prepareCall("BEGIN PROC_GL_JOB_REL_OLD_VALUES(?,?,?,?,?,?,?); END;");
             cs.setObject(1, groupPoid);
             cs.setObject(2, userPoid);
             cs.setObject(3, companyPoid);
             cs.setObject(4, docId);
             cs.setObject(5, docKeyPoid);
-            cs.registerOutParameter(6, Types.VARCHAR);
-            cs.registerOutParameter(7, Types.VARCHAR);
+            cs.registerOutParameter(6, Types.VARCHAR); // OldRefType
+            cs.registerOutParameter(7, Types.VARCHAR); // OldRef
             return cs;
-        }, (CallableStatementCallback<Void>) cs -> {
+        }, (CallableStatementCallback<String[]>) cs -> {
             cs.execute();
-            // Old values are stored but not used in validation - just need to call it
-            return null;
+            return new String[]{ trimOrNull(cs.getString(6)), trimOrNull(cs.getString(7)) };
         });
     }
 

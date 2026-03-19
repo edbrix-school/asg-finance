@@ -32,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -1096,7 +1097,8 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         
         // Log renewal header message
         String msg1 = String.format("renewal logs are added to history table (from date: %s to date: %s)",
-                renewalLog.getFromDate(), renewalLog.getExpiryDate());
+                renewalLog.getFromDate().format(DateTimeFormatter.ofPattern("dd-MM-yyyy")), 
+                renewalLog.getExpiryDate().format(DateTimeFormatter.ofPattern("dd-MM-yyyy")));
         loggingService.createLogSummaryEntry(docId, docKeyPoid, msg1);
         
         // Log renewal log row creation

@@ -166,7 +166,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                 }
 
                 if (creditNoteDto.getChargeDetails() != null) {
-                    saveChargeDetails(transactionPoid, creditNoteDto.getChargeDetails(), reloadedHeader);
+                    saveChargeDetails(transactionPoid, creditNoteDto.getChargeDetails());
                     executeChargeTaxIfChanged(transactionPoid, creditNoteDto);
                 }
 
@@ -1544,7 +1544,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         return null;
     }
 
-    private void saveChargeDetails(Long transactionPoid, List<UniversalChargeDetailDto> chargeDetails, ArCreditNoteHdr creditNoteHdr) {
+    private void saveChargeDetails(Long transactionPoid, List<UniversalChargeDetailDto> chargeDetails) {
         long detRowId = 0L;
         for (UniversalChargeDetailDto dto : chargeDetails) {
             if (dto == null) continue;
@@ -1587,19 +1587,8 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     ? dto.getSelected().trim()
                     : "N");
             entity.setIssueInvoice(dto.getIssueInvoice());
-            if(creditNoteHdr.getShInvoicePoid() != null){
-                entity.setRefDocId("300-102");
-                entity.setRefDocPoid(creditNoteHdr.getShInvoicePoid());
-            } else if (creditNoteHdr.getDnInvoicePoid() != null){
-                entity.setRefDocId("300-110");
-                entity.setRefDocPoid(creditNoteHdr.getDnInvoicePoid());
-            } else if (creditNoteHdr.getFfInvoicePoid() != null) {
-                entity.setRefDocId("120-401");
-                entity.setRefDocPoid(creditNoteHdr.getFfInvoicePoid());
-            } else if (creditNoteHdr.getFdaRefPoid()!= null) {
-                entity.setRefDocId("110-161");
-                entity.setRefDocPoid(creditNoteHdr.getFdaRefPoid());
-            }
+            entity.setRefDocId(dto.getRefDocId());
+            entity.setRefDocPoid(dto.getRefDocPoid());
             entity.setFdaDetRowId(dto.getFdaDetRowId());
             entity.setCreatedBy(ASGHelperUtils.getCurrentUser());
             entity.setCreatedDate(LocalDateTime.now());
@@ -1864,7 +1853,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     newEntity.setCreatedDate(now);
                     newEntity.setLastModifiedBy(currentUser);
                     newEntity.setLastModifiedDate(now);
-                    mapChargeDtoToEntity(dto, newEntity, transactionPoid, creditNoteHdr);
+                    mapChargeDtoToEntity(dto, newEntity, transactionPoid);
                     toSave.add(newEntity);
                     newlyCreated.add(newEntity);
                     break;
@@ -1886,7 +1875,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                         newEntity.setCreatedDate(now);
                         newEntity.setLastModifiedBy(currentUser);
                         newEntity.setLastModifiedDate(now);
-                        mapChargeDtoToEntity(dto, newEntity, transactionPoid, creditNoteHdr);
+                        mapChargeDtoToEntity(dto, newEntity, transactionPoid);
                         toSave.add(newEntity);
                         newlyCreated.add(newEntity);
                         break;
@@ -1894,7 +1883,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
                     ArCreditNoteChargeDtl oldEntity = new ArCreditNoteChargeDtl();
                     BeanUtils.copyProperties(existing, oldEntity);
-                    mapChargeDtoToEntity(dto, existing, transactionPoid, creditNoteHdr);
+                    mapChargeDtoToEntity(dto, existing, transactionPoid);
                     existing.setLastModifiedBy(currentUser);
                     existing.setLastModifiedDate(now);
                     toSave.add(existing);
@@ -1963,7 +1952,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         entity.setTotalAmount(dto.getTotalAmount());
     }
 
-    private void mapChargeDtoToEntity(UniversalChargeDetailDto dto, ArCreditNoteChargeDtl entity, Long transactionPoid, CreditNoteHeaderDto creditNoteHdr) {
+    private void mapChargeDtoToEntity(UniversalChargeDetailDto dto, ArCreditNoteChargeDtl entity, Long transactionPoid) {
         entity.setTransactionPoid(transactionPoid);
         entity.setChargePoid(dto.getChargePoid());
         entity.setChargeAmount(dto.getChargeAmount());
@@ -1977,23 +1966,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         entity.setTaxAmount(dto.getTaxAmount());
         entity.setTotalAmount(dto.getTotalAmount());
         entity.setIssueInvoice(dto.getIssueInvoice());
-
-        if(creditNoteHdr.getShInvoicePoid() != null){
-            entity.setRefDocId("300-102");
-            entity.setRefDocPoid(creditNoteHdr.getShInvoicePoid());
-        } else if (creditNoteHdr.getDnInvoicePoid() != null){
-            entity.setRefDocId("300-110");
-            entity.setRefDocPoid(creditNoteHdr.getDnInvoicePoid());
-        } else if (creditNoteHdr.getFfInvoicePoid() != null) {
-            entity.setRefDocId("120-401");
-            entity.setRefDocPoid(creditNoteHdr.getFfInvoicePoid());
-        } else if (creditNoteHdr.getFdaRefPoid()!= null) {
-            entity.setRefDocId("110-161");
-            entity.setRefDocPoid(creditNoteHdr.getFdaRefPoid());
-        }
+        entity.setRefDocId(dto.getRefDocId());
+        entity.setRefDocPoid(dto.getRefDocPoid());
         entity.setFdaDetRowId(dto.getFdaDetRowId());
-
-//        entity.setRefDocId("300-111");
     }
 
     private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage) {

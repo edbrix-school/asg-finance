@@ -158,10 +158,12 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                 log.info("Starting to save GL details for transactionPoid: {}", transactionPoid);
                 String issueType = creditNoteDto.getIssueType() != null ? creditNoteDto.getIssueType() : "Y";
                 saveGLDetailsWithIssueType(transactionPoid, creditNoteDto.getGlDetails(), issueType);
+                entityManager.flush();
                 log.info("GL details saved successfully for transactionPoid: {}", transactionPoid);
             }
 
             try {
+                entityManager.flush();
                 if (creditNoteDto.getRefType() != null && !"GENERAL".equals(creditNoteDto.getRefType())) {
                     executeReferenceBasedSPs(transactionPoid, creditNoteDto.getRefType(), creditNoteDto);
                 }
@@ -272,7 +274,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             existing.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
             existing.setLastModifiedDate(LocalDateTime.now());
 
-            existing = creditNoteHdrRepository.save(existing);
+            existing = creditNoteHdrRepository.saveAndFlush(existing);
 
             List<GlobalLogSummary> detailSummaryLogs = new ArrayList<>();
             if (creditNoteDto.getGlDetails() != null) {
@@ -283,8 +285,10 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                 updateChargeDetailsWithLogging(transactionPoid, creditNoteDto.getChargeDetails(), detailSummaryLogs, creditNoteDto);                           
             }
 
+            entityManager.flush();
             saveBillwiseForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111", true);
             saveCostCenterForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111", true);
+            entityManager.flush();
 
             // Re-trigger manifest updates
             executePostSaveUpdates(transactionPoid, creditNoteDto);
@@ -653,8 +657,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
         // Call stored procedure validation
         String sql = "BEGIN PROC_AR_CN_BEFORE_SAVE_VAL(?, ?, ?, ?, ?, ?, ?, ?, ?); END;";
-        try (Connection conn = dataSource.getConnection();
-             CallableStatement cs = conn.prepareCall(sql)) {
+        Connection conn = null;
+        CallableStatement cs = null;
+        try {
+            conn = getTransactionalConnection();
+            cs = conn.prepareCall(sql);
             Long groupPoid = UserContext.getGroupPoid();
             Long companyPoid = UserContext.getCompanyPoid();
             Long userPoid = UserContext.getUserPoid();
@@ -678,6 +685,13 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             }
             if (result != null && result.contains("WARNING")) {
                 throw new ValidationException(result.substring(result.indexOf(":") + 1).trim());
+            }
+        } finally {
+            if (cs != null) {
+                try { cs.close(); } catch (SQLException ignore) {}
+            }
+            if (conn != null) {
+                releaseTransactionalConnection(conn);
             }
         }
     }
@@ -816,9 +830,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
     private DefaultCreditValuesDto executeSetDefaultCredit(Long partyPoid, String partyType) throws SQLException {
         String lovName = getLovNameForPartyType(partyType);
         String sql = "BEGIN PROC_PI_SET_DEFAULT_CREDIT(?, ?, ?, ?, ?, ?, ?, ?); END;";
-
-        try (Connection conn = dataSource.getConnection();
-             CallableStatement cs = conn.prepareCall(sql)) {
+        Connection conn = null;
+        CallableStatement cs = null;
+        try {
+            conn = getTransactionalConnection();
+            cs = conn.prepareCall(sql);
             Long groupPoid = UserContext.getGroupPoid();
             Long companyPoid = UserContext.getCompanyPoid();
             Long userPoid = UserContext.getUserPoid();
@@ -865,6 +881,13 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             }
 
             return builder.build();
+        } finally {
+            if (cs != null) {
+                try { cs.close(); } catch (SQLException ignore) {}
+            }
+            if (conn != null) {
+                releaseTransactionalConnection(conn);
+            }
         }
     }
 
@@ -894,8 +917,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
     private Long executeGetPartyGLPoid(Long partyPoid, String partyType) throws SQLException {
         String sql = "BEGIN PROC_GL_GET_DR_PARTY_GLPOID(?, ?, ?, ?, ?, ?, ?); END;";
-        try (Connection conn = dataSource.getConnection();
-             CallableStatement cs = conn.prepareCall(sql)) {
+        Connection conn = null;
+        CallableStatement cs = null;
+        try {
+            conn = getTransactionalConnection();
+            cs = conn.prepareCall(sql);
             Long groupPoid = UserContext.getGroupPoid();
             Long companyPoid = UserContext.getCompanyPoid();
             Long userPoid = UserContext.getUserPoid();
@@ -914,6 +940,13 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                 throw new ValidationException("Selected Party GL_CODE is not found.");
             }
             return partyGLPoid;
+        } finally {
+            if (cs != null) {
+                try { cs.close(); } catch (SQLException ignore) {}
+            }
+            if (conn != null) {
+                releaseTransactionalConnection(conn);
+            }
         }
     }
 
@@ -946,8 +979,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
     private void executeFFCreateSP(Long transactionPoid, Long ffInvoicePoid) throws SQLException {
         String sql = "BEGIN PROC_CR_NOTE_CREATE_FROM_FF(?, ?, ?, ?, ?, ?); END;";
-        try (Connection conn = dataSource.getConnection();
-             CallableStatement cs = conn.prepareCall(sql)) {
+        Connection conn = null;
+        CallableStatement cs = null;
+        try {
+            conn = getTransactionalConnection();
+            cs = conn.prepareCall(sql);
             Long groupPoid = UserContext.getGroupPoid();
             Long companyPoid = UserContext.getCompanyPoid();
             Long userPoid = UserContext.getUserPoid();
@@ -959,13 +995,23 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             cs.registerOutParameter(5, Types.VARCHAR); // P_RESULT OUT
             cs.registerOutParameter(6, OracleTypes.CURSOR); // OUTDATA OUT
             cs.execute();
+        } finally {
+            if (cs != null) {
+                try { cs.close(); } catch (SQLException ignore) {}
+            }
+            if (conn != null) {
+                releaseTransactionalConnection(conn);
+            }
         }
     }
 
     private void executeSHCreateSP(Long transactionPoid, Long shInvoicePoid, Long partyPoid) throws SQLException {
         String sql = "BEGIN PROC_AR_CREDIT_NT_FROM_SH_INV(?, ?, ?, ?, ?, ?, ?); END;";
-        try (Connection conn = dataSource.getConnection();
-             CallableStatement cs = conn.prepareCall(sql)) {
+        Connection conn = null;
+        CallableStatement cs = null;
+        try {
+            conn = getTransactionalConnection();
+            cs = conn.prepareCall(sql);
             Long groupPoid = UserContext.getGroupPoid();
             Long companyPoid = UserContext.getCompanyPoid();
             Long userPoid = UserContext.getUserPoid();
@@ -977,13 +1023,23 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             cs.registerOutParameter(6, Types.VARCHAR); // P_RESULT OUT
             cs.registerOutParameter(7, OracleTypes.CURSOR); // OUTDATA OUT
             cs.execute();
+        } finally {
+            if (cs != null) {
+                try { cs.close(); } catch (SQLException ignore) {}
+            }
+            if (conn != null) {
+                releaseTransactionalConnection(conn);
+            }
         }
     }
 
     private void executeDNCreateSP(Long transactionPoid, Long dnInvoicePoid, Long partyPoid) throws SQLException {
         String sql = "BEGIN PROC_AR_CN_CREATE_FROM_DN(?, ?, ?, ?, ?, ?, ?); END;";
-        try (Connection conn = dataSource.getConnection();
-             CallableStatement cs = conn.prepareCall(sql)) {
+        Connection conn = null;
+        CallableStatement cs = null;
+        try {
+            conn = getTransactionalConnection();
+            cs = conn.prepareCall(sql);
             Long groupPoid = UserContext.getGroupPoid();
             Long companyPoid = UserContext.getCompanyPoid();
             Long userPoid = UserContext.getUserPoid();
@@ -996,13 +1052,23 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             cs.registerOutParameter(6, Types.VARCHAR); // P_RESULT OUT
             cs.registerOutParameter(7, OracleTypes.CURSOR); // OUTDATA OUT
             cs.execute();
+        } finally {
+            if (cs != null) {
+                try { cs.close(); } catch (SQLException ignore) {}
+            }
+            if (conn != null) {
+                releaseTransactionalConnection(conn);
+            }
         }
     }
 
     private void executeFDACreateSP(Long transactionPoid, String fdaRef, Long partyPoid) throws SQLException {
         String sql = "BEGIN PROC_AR_CREDIT_CREATE_FROM_FDA(?, ?, ?, ?, ?, ?, ?); END;";
-        try (Connection conn = dataSource.getConnection();
-             CallableStatement cs = conn.prepareCall(sql)) {
+        Connection conn = null;
+        CallableStatement cs = null;
+        try {
+            conn = getTransactionalConnection();
+            cs = conn.prepareCall(sql);
             Long groupPoid = UserContext.getGroupPoid();
             Long companyPoid = UserContext.getCompanyPoid();
             Long userPoid = UserContext.getUserPoid();
@@ -1015,6 +1081,13 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             cs.registerOutParameter(6, Types.VARCHAR); // P_RESULT OUT
             cs.registerOutParameter(7, OracleTypes.CURSOR); // OUTDATA OUT
             cs.execute();
+        } finally {
+            if (cs != null) {
+                try { cs.close(); } catch (SQLException ignore) {}
+            }
+            if (conn != null) {
+                releaseTransactionalConnection(conn);
+            }
         }
     }
 
@@ -1034,8 +1107,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
     private void executeFFPrefillSP(Long transactionPoid) throws SQLException {
         String sql = "BEGIN PROC_AR_CREDIT_NT_FROM_FF_INV(?, ?, ?, ?, ?, ?, ?); END;";
-        try (Connection conn = dataSource.getConnection();
-             CallableStatement cs = conn.prepareCall(sql)) {
+        Connection conn = null;
+        CallableStatement cs = null;
+        try {
+            conn = getTransactionalConnection();
+            cs = conn.prepareCall(sql);
             cs.setLong(1, 1); // P_LOGIN_GROUP_POID
             cs.setLong(2, 1); // P_LOGIN_COMPANY_POID
             cs.setLong(3, 1); // P_LOGIN_USER_POID
@@ -1044,13 +1120,23 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             cs.registerOutParameter(6, Types.VARCHAR); // P_RESULT OUT
             cs.registerOutParameter(7, OracleTypes.CURSOR); // OUTDATA OUT
             cs.execute();
+        } finally {
+            if (cs != null) {
+                try { cs.close(); } catch (SQLException ignore) {}
+            }
+            if (conn != null) {
+                releaseTransactionalConnection(conn);
+            }
         }
     }
 
     private void executeSHPrefillSP(Long transactionPoid) throws SQLException {
         String sql = "BEGIN PROC_AR_CREDIT_NT_FROM_SH_INV(?, ?, ?, ?, ?, ?, ?); END;";
-        try (Connection conn = dataSource.getConnection();
-             CallableStatement cs = conn.prepareCall(sql)) {
+        Connection conn = null;
+        CallableStatement cs = null;
+        try {
+            conn = getTransactionalConnection();
+            cs = conn.prepareCall(sql);
             cs.setLong(1, 1); // P_LOGIN_GROUP_POID
             cs.setLong(2, 1); // P_LOGIN_COMPANY_POID
             cs.setLong(3, 1); // P_LOGIN_USER_POID
@@ -1059,13 +1145,23 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             cs.registerOutParameter(6, Types.VARCHAR); // P_RESULT OUT
             cs.registerOutParameter(7, OracleTypes.CURSOR); // OUTDATA OUT
             cs.execute();
+        } finally {
+            if (cs != null) {
+                try { cs.close(); } catch (SQLException ignore) {}
+            }
+            if (conn != null) {
+                releaseTransactionalConnection(conn);
+            }
         }
     }
 
     private void executeDNPrefillSP(Long transactionPoid) throws SQLException {
         String sql = "BEGIN PROC_AR_CN_CREATE_FROM_DN(?, ?, ?, ?, ?, ?, ?); END;";
-        try (Connection conn = dataSource.getConnection();
-             CallableStatement cs = conn.prepareCall(sql)) {
+        Connection conn = null;
+        CallableStatement cs = null;
+        try {
+            conn = getTransactionalConnection();
+            cs = conn.prepareCall(sql);
             cs.setLong(1, 1); // P_LOGIN_GROUP_POID
             cs.setLong(2, 1); // P_LOGIN_COMPANY_POID
             cs.setLong(3, 1); // P_LOGIN_USER_POID
@@ -1134,6 +1230,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             if (charge != null && charge.getChargeAmount() != null) {
                 log.info("Applying changes to tax");
                 applyChargeTaxFromSP(charge, partyType, partyPoid);
+                entityManager.flush();
             }
         }
     }
@@ -1192,8 +1289,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
      */
     private void applyChargeTaxFromSP(ArCreditNoteChargeDtl charge, String partyType, Long partyPoid) throws SQLException {
         String sql = "BEGIN PROC_GET_CHARGE_TAX_PER_V3(?, ?, ?, ?, ?, ?); END;";
-        try (Connection conn = dataSource.getConnection();
-             CallableStatement cs = conn.prepareCall(sql)) {
+        Connection conn = null;
+        CallableStatement cs = null;
+        try {
+            conn = getTransactionalConnection();
+            cs = conn.prepareCall(sql);
             cs.setLong(1, UserContext.getCompanyPoid());
             cs.setTimestamp(2, Timestamp.valueOf(LocalDateTime.now()));
             cs.setString(3, partyType != null ? partyType : "SUPPLIER");
@@ -1220,6 +1320,16 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     charge.setTotalAmount(charge.getChargeAmount());
                 }
                 creditNoteChargeDtlRepository.save(charge);
+            }
+        } finally {
+            if (cs != null) {
+                try {
+                    cs.close();
+                } catch (SQLException ignore) {
+                }
+            }
+            if (conn != null) {
+                releaseTransactionalConnection(conn);
             }
         }
     }
@@ -1282,13 +1392,17 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         } else if ("FDA".equals(refType)) {
             executeFDAAmountUpdate(transactionPoid, dto.getDnFdaReference());
         }
+        entityManager.flush(); // Ensure all updates are flushed before tax recalculation
         executeChargeTaxIfChanged(transactionPoid, dto);
     }
 
     private void executeGLVoucherValidation(CreditNoteHeaderDto dto) throws SQLException {
         String sql = "BEGIN PROC_GL_VOUCHERS_VALIDATIONS(?, ?, ?, ?, ?, ?, ?); END;";
-        try (Connection conn = dataSource.getConnection();
-             CallableStatement cs = conn.prepareCall(sql)) {
+        Connection conn = null;
+        CallableStatement cs = null;
+        try {
+            conn = getTransactionalConnection();
+            cs = conn.prepareCall(sql);
             Long groupPoid = UserContext.getGroupPoid();
             Long companyPoid = UserContext.getCompanyPoid();
             Long userPoid = UserContext.getUserPoid();
@@ -1309,6 +1423,13 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             if (result != null && !"SUCCESS".equalsIgnoreCase(result)) {
                 log.info("Reference document status: {}", result);
             }
+        } finally {
+            if (cs != null) {
+                try { cs.close(); } catch (SQLException ignore) {}
+            }
+            if (conn != null) {
+                releaseTransactionalConnection(conn);
+            }
         }
     }
 
@@ -1327,8 +1448,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
     private void executeDeleteValidation(ArCreditNoteHdr header, String refPoid) throws SQLException {
         String sql = "BEGIN PROC_GL_VOUCHERS_VALIDATIONS(?, ?, ?, ?, ?, ?, ?); END;";
-        try (Connection conn = dataSource.getConnection();
-             CallableStatement cs = conn.prepareCall(sql)) {
+        Connection conn = null;
+        CallableStatement cs = null;
+        try {
+            conn = getTransactionalConnection();
+            cs = conn.prepareCall(sql);
             cs.setLong(1, UserContext.getGroupPoid()); // P_LOGIN_GROUP_POID
             cs.setLong(2, UserContext.getUserPoid()); // P_LOGIN_USER_POID
             cs.setLong(3, UserContext.getCompanyPoid()); // P_LOGIN_COMPANY_POID
@@ -1337,6 +1461,13 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             cs.setString(6, refPoid); // P_REF_POID
             cs.registerOutParameter(7, Types.VARCHAR); // P_RESULT OUT
             cs.execute();
+        } finally {
+            if (cs != null) {
+                try { cs.close(); } catch (SQLException ignore) {}
+            }
+            if (conn != null) {
+                releaseTransactionalConnection(conn);
+            }
         }
     }
 
@@ -1364,8 +1495,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
     private void executeGLBillRefUpdate(Long transactionPoid, String refType) throws SQLException {
         String sql = "BEGIN PROC_DR_CR_BILL_REF_UPDATE(?, ?, ?, ?, ?, ?, ?, ?); END;";
-        try (Connection conn = dataSource.getConnection();
-             CallableStatement cs = conn.prepareCall(sql)) {
+        Connection conn = null;
+        CallableStatement cs = null;
+        try {
+            conn = getTransactionalConnection();
+            cs = conn.prepareCall(sql);
             Long groupPoid = UserContext.getGroupPoid();
             Long companyPoid = UserContext.getCompanyPoid();
             Long userPoid = UserContext.getUserPoid();
@@ -1389,6 +1523,13 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         } catch (SQLException e) {
             log.warn("GL bill reference update failed for transactionPoid {}: {}", transactionPoid, e.getMessage());
             // Don't fail the entire transaction for GL bill reference update
+        } finally {
+            if (cs != null) {
+                try { cs.close(); } catch (SQLException ignore) {}
+            }
+            if (conn != null) {
+                releaseTransactionalConnection(conn);
+            }
         }
     }
 
@@ -2536,9 +2677,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
     private FdaRefResponseDto executeFdaRefProcedure(String lovName, Long lovValue) throws SQLException {
         String sql = "BEGIN PROC_AR_CN_SET_FDAREF(?, ?, ?, ?, ?, ?, ?, ?); END;";
-
-        try (Connection conn = dataSource.getConnection();
-             CallableStatement cs = conn.prepareCall(sql)) {
+        Connection conn = null;
+        CallableStatement cs = null;
+        try {
+            conn = getTransactionalConnection();
+            cs = conn.prepareCall(sql);
 
             cs.setLong(1, UserContext.getGroupPoid());
             cs.setLong(2, UserContext.getCompanyPoid());
@@ -2562,6 +2705,13 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             }
 
             return FdaRefResponseDto.builder().build();
+        } finally {
+            if (cs != null) {
+                try { cs.close(); } catch (SQLException ignore) {}
+            }
+            if (conn != null) {
+                releaseTransactionalConnection(conn);
+            }
         }
     }
 
@@ -2772,8 +2922,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
     private ChargeTaxDataDto executeGetChargeTaxData(String partyType, Long partyPoid, Long chargePoid) throws SQLException {
         String sql = "BEGIN PROC_GET_CHARGE_TAX_PER_V3(?, ?, ?, ?, ?, ?); END;";
-        try (Connection conn = dataSource.getConnection();
-             CallableStatement cs = conn.prepareCall(sql)) {
+        Connection conn = null;
+        CallableStatement cs = null;
+        try {
+            conn = getTransactionalConnection();
+            cs = conn.prepareCall(sql);
             cs.setLong(1, UserContext.getCompanyPoid());
             cs.setTimestamp(2, Timestamp.valueOf(LocalDateTime.now()));
             cs.setString(3, partyType);
@@ -2798,6 +2951,13 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     .taxPoid(0L)
                     .percentage(BigDecimal.ZERO)
                     .build();
+        } finally {
+            if (cs != null) {
+                try { cs.close(); } catch (SQLException ignore) {}
+            }
+            if (conn != null) {
+                releaseTransactionalConnection(conn);
+            }
         }
     }
 

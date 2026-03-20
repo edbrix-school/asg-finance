@@ -1170,6 +1170,13 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             cs.registerOutParameter(6, Types.VARCHAR); // P_RESULT OUT
             cs.registerOutParameter(7, OracleTypes.CURSOR); // OUTDATA OUT
             cs.execute();
+        } finally {
+            if (cs != null) {
+                try { cs.close(); } catch (SQLException ignore) {}
+            }
+            if (conn != null) {
+                releaseTransactionalConnection(conn);
+            }
         }
     }
 

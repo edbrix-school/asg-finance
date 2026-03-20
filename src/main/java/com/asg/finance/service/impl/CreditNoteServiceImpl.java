@@ -39,6 +39,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Propagation;
@@ -279,12 +280,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             }
 
             if (creditNoteDto.getChargeDetails() != null) {
-                updateChargeDetailsWithLogging(transactionPoid, creditNoteDto.getChargeDetails(), detailSummaryLogs, creditNoteDto);
-                if ("FF_INVOICE".equals(creditNoteDto.getRefType())) {
-                    entityManager.flush();
-                    executeFFInvUpdate(transactionPoid, creditNoteDto.getFfInvoicePoid());
-                }
-                executeChargeTaxIfChanged(transactionPoid, creditNoteDto);
+                updateChargeDetailsWithLogging(transactionPoid, creditNoteDto.getChargeDetails(), detailSummaryLogs, creditNoteDto);                           
             }
 
             saveBillwiseForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111", true);
@@ -394,9 +390,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         String sql = "BEGIN PROC_AR_CREDIT_NT_FROM_FF_INV(?, ?, ?, ?, ?, ?, ?); END;";
         List<UniversalChargeDetailDto> charges = new ArrayList<>();
 
-        try (Connection conn = dataSource.getConnection();
-             CallableStatement cs = conn.prepareCall(sql)) {
-
+        Connection conn = null;
+        CallableStatement cs = null;
+        try {
+            conn = getTransactionalConnection();
+            cs = conn.prepareCall(sql);
             cs.setLong(1, UserContext.getGroupPoid());
             cs.setLong(2, UserContext.getCompanyPoid());
             cs.setLong(3, UserContext.getUserPoid());
@@ -430,6 +428,13 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     charges.add(dto);
                 }
             }
+        } finally {
+            if (cs != null) {
+                try { cs.close(); } catch (SQLException ignore) {}
+            }
+            if (conn != null) {
+                releaseTransactionalConnection(conn);
+            }
         }
         return charges;
     }
@@ -438,9 +443,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
         String sql = "BEGIN PROC_AR_CREDIT_NT_FROM_SH_INV(?, ?, ?, ?, ?, ?, ?); END;";
         List<UniversalChargeDetailDto> charges = new ArrayList<>();
-
-        try (Connection conn = dataSource.getConnection();
-             CallableStatement cs = conn.prepareCall(sql)) {
+        Connection conn = null;
+        CallableStatement cs = null;
+        try {
+            conn = getTransactionalConnection();
+            cs = conn.prepareCall(sql);
 
             cs.setLong(1, UserContext.getGroupPoid());
             cs.setLong(2, UserContext.getCompanyPoid());
@@ -480,6 +487,13 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     charges.add(dto);
                 }
             }
+        } finally {
+            if (cs != null) {
+                try { cs.close(); } catch (SQLException ignore) {}
+            }
+            if (conn != null) {
+                releaseTransactionalConnection(conn);
+            }
         }
         return charges;
     }
@@ -514,9 +528,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
         String sql = "BEGIN PROC_AR_CN_CREATE_FROM_DN(?, ?, ?, ?, ?, ?, ?); END;";
         List<UniversalChargeDetailDto> charges = new ArrayList<>();
-
-        try (Connection conn = dataSource.getConnection();
-             CallableStatement cs = conn.prepareCall(sql)) {
+        Connection conn = null;
+        CallableStatement cs = null;
+        try {
+            conn = getTransactionalConnection();
+            cs = conn.prepareCall(sql);
 
             cs.setLong(1, UserContext.getGroupPoid());
             cs.setLong(2, UserContext.getCompanyPoid());
@@ -551,6 +567,13 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     charges.add(dto);
                 }
             }
+        } finally {
+            if (cs != null) {
+                try { cs.close(); } catch (SQLException ignore) {}
+            }
+            if (conn != null) {
+                releaseTransactionalConnection(conn);
+            }
         }
         return charges;
     }
@@ -559,9 +582,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
         String sql = "BEGIN PROC_AR_CREDIT_CREATE_FROM_FDA(?, ?, ?, ?, ?, ?, ?); END;";
         List<UniversalChargeDetailDto> charges = new ArrayList<>();
-
-        try (Connection conn = dataSource.getConnection();
-             CallableStatement cs = conn.prepareCall(sql)) {
+        Connection conn = null;
+        CallableStatement cs = null;
+        try {
+            conn = getTransactionalConnection();
+            cs = conn.prepareCall(sql);
 
             cs.setLong(1, UserContext.getGroupPoid());
             cs.setLong(2, UserContext.getCompanyPoid());
@@ -592,6 +617,13 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     dto.setIssueInvoice("N");
                     charges.add(dto);
                 }
+            }
+        } finally {
+            if (cs != null) {
+                try { cs.close(); } catch (SQLException ignore) {}
+            }
+            if (conn != null) {
+                releaseTransactionalConnection(conn);
             }
         }
         return charges;
@@ -1202,8 +1234,23 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         return true; // Default to applicable if parameter not found
     }
 
+    private Connection getTransactionalConnection() throws SQLException {
+        return DataSourceUtils.getConnection(dataSource);
+    }
+
+    private void releaseTransactionalConnection(Connection connection) throws SQLException {
+        DataSourceUtils.releaseConnection(connection, dataSource);
+    }
+
     private void executePostSaveUpdates(Long transactionPoid, CreditNoteHeaderDto dto) throws SQLException {
         String refType = dto.getRefType();
+
+        // Flush pending JPA changes first so stored procedures can see current data within the same transaction
+        try {
+            entityManager.flush();
+        } catch (Exception e) {
+            log.warn("Unable to flush entity manager before post-save SP updates: {}", e.getMessage());
+        }
 
         // PROC_DR_CR_BILL_REF_UPDATE is only called for GENERAL type (matches PageBean DocumentAfterSave)
         if ("GENERAL".equals(refType)) {
@@ -1235,6 +1282,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         } else if ("FDA".equals(refType)) {
             executeFDAAmountUpdate(transactionPoid, dto.getDnFdaReference());
         }
+        executeChargeTaxIfChanged(transactionPoid, dto);
     }
 
     private void executeGLVoucherValidation(CreditNoteHeaderDto dto) throws SQLException {
@@ -1346,8 +1394,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
     private void executeFFInvUpdate(Long transactionPoid, Long ffInvoicePoid) throws SQLException {
         String sql = "BEGIN PROC_AR_UPDATE_FF_INV_DTLS(?, ?, ?, ?, ?, ?); END;";
-        try (Connection conn = dataSource.getConnection();
-             CallableStatement cs = conn.prepareCall(sql)) {
+        Connection conn = null;
+        CallableStatement cs = null;
+        try {
+            conn = getTransactionalConnection();
+            cs = conn.prepareCall(sql);
             cs.setLong(1, UserContext.getGroupPoid()); // P_LOGIN_GROUP_POID
             cs.setLong(2, UserContext.getCompanyPoid()); // P_LOGIN_COMPANY_POID
             cs.setLong(3, UserContext.getUserPoid()); // P_LOGIN_USER_POID
@@ -1355,13 +1406,23 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             cs.setLong(5, ffInvoicePoid != null ? ffInvoicePoid : 0); // P_FF_INV_POID
             cs.registerOutParameter(6, Types.VARCHAR); // P_RESULT OUT
             cs.execute();
+        } finally {
+            if (cs != null) {
+                try { cs.close(); } catch (SQLException ignore) {}
+            }
+            if (conn != null) {
+                releaseTransactionalConnection(conn);
+            }
         }
     }
 
     private void executeFFCostUpdate(Long transactionPoid, Long ffInvoicePoid) throws SQLException {
         String sql = "BEGIN PROC_CR_NOTE_UPDATE_FF_COST(?, ?, ?, ?, ?, ?); END;";
-        try (Connection conn = dataSource.getConnection();
-             CallableStatement cs = conn.prepareCall(sql)) {
+        Connection conn = null;
+        CallableStatement cs = null;
+        try {
+            conn = getTransactionalConnection();
+            cs = conn.prepareCall(sql);
             cs.setLong(1, UserContext.getGroupPoid()); // P_LOGIN_GROUP_POID
             cs.setLong(2, UserContext.getCompanyPoid()); // P_LOGIN_COMPANY_POID
             cs.setLong(3, UserContext.getUserPoid()); // P_LOGIN_USER_POID
@@ -1369,13 +1430,23 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             cs.setLong(5, transactionPoid); // P_CN_POID
             cs.registerOutParameter(6, Types.VARCHAR); // P_RESULT OUT
             cs.execute();
+        } finally {
+            if (cs != null) {
+                try { cs.close(); } catch (SQLException ignore) {}
+            }
+            if (conn != null) {
+                releaseTransactionalConnection(conn);
+            }
         }
     }
 
     private void executeSHInvUpdate(Long transactionPoid, Long shInvoicePoid) throws SQLException {
         String sql = "BEGIN PROC_AR_UPDATE_SH_INV_DTLS(?, ?, ?, ?, ?, ?); END;";
-        try (Connection conn = dataSource.getConnection();
-             CallableStatement cs = conn.prepareCall(sql)) {
+        Connection conn = null;
+        CallableStatement cs = null;
+        try {
+            conn = getTransactionalConnection();
+            cs = conn.prepareCall(sql);
             cs.setLong(1, UserContext.getGroupPoid()); // P_LOGIN_GROUP_POID
             cs.setLong(2, UserContext.getCompanyPoid()); // P_LOGIN_COMPANY_POID
             cs.setLong(3, UserContext.getUserPoid()); // P_LOGIN_USER_POID
@@ -1383,13 +1454,23 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             cs.setLong(5, shInvoicePoid != null ? shInvoicePoid : 0); // P_SH_INV_POID
             cs.registerOutParameter(6, Types.VARCHAR); // P_RESULT OUT
             cs.execute();
+        } finally {
+            if (cs != null) {
+                try { cs.close(); } catch (SQLException ignore) {}
+            }
+            if (conn != null) {
+                releaseTransactionalConnection(conn);
+            }
         }
     }
 
     private void executeDNInvUpdate(Long transactionPoid, Long dnInvoicePoid) throws SQLException {
         String sql = "BEGIN PROC_AR_UPDATE_DN_INV_DTLS(?, ?, ?, ?, ?, ?); END;";
-        try (Connection conn = dataSource.getConnection();
-             CallableStatement cs = conn.prepareCall(sql)) {
+        Connection conn = null;
+        CallableStatement cs = null;
+        try {
+            conn = getTransactionalConnection();
+            cs = conn.prepareCall(sql);
             cs.setLong(1, UserContext.getGroupPoid()); // P_LOGIN_GROUP_POID
             cs.setLong(2, UserContext.getCompanyPoid()); // P_LOGIN_COMPANY_POID
             cs.setLong(3, UserContext.getUserPoid()); // P_LOGIN_USER_POID
@@ -1397,6 +1478,13 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             cs.setLong(5, dnInvoicePoid != null ? dnInvoicePoid : 0); // P_DN_INV_POID
             cs.registerOutParameter(6, Types.VARCHAR); // P_RESULT OUT
             cs.execute();
+        } finally {
+            if (cs != null) {
+                try { cs.close(); } catch (SQLException ignore) {}
+            }
+            if (conn != null) {
+                releaseTransactionalConnection(conn);
+            }
         }
     }
 
@@ -1407,14 +1495,24 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             return;
         }
         String sql = "BEGIN PROC_AR_UPDATE_FDA_AMOUNT(?, ?, ?, ?, ?); END;";
-        try (Connection conn = dataSource.getConnection();
-             CallableStatement cs = conn.prepareCall(sql)) {
+        Connection conn = null;
+        CallableStatement cs = null;
+        try {
+            conn = getTransactionalConnection();
+            cs = conn.prepareCall(sql);
             cs.setLong(1, UserContext.getGroupPoid()); // P_LOGIN_GROUP_POID
             cs.setLong(2, UserContext.getCompanyPoid()); // P_LOGIN_COMPANY_POID
             cs.setLong(3, UserContext.getUserPoid()); // P_LOGIN_USER_POID
             cs.setString(4, fdaRef); // P_FDA_POID
             cs.registerOutParameter(5, Types.VARCHAR); // P_RESULT OUT
             cs.execute();
+        } finally {
+            if (cs != null) {
+                try { cs.close(); } catch (SQLException ignore) {}
+            }
+            if (conn != null) {
+                releaseTransactionalConnection(conn);
+            }
         }
     }
 

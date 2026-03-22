@@ -119,7 +119,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         result.setCreatedDate(savedEntity.getCreatedDate());
         result.setLastModifiedBy(savedEntity.getLastModifiedBy());
         result.setLastModifiedDate(savedEntity.getLastModifiedDate());
-        loadDetails(result, savedEntity.getTransactionPoid(), savedEntity.getRefType());
+        loadDetails(result, savedEntity.getTransactionPoid(), savedEntity);
 
         // Load breakups into response
         loadBreakups(result, savedEntity.getTransactionPoid());
@@ -201,7 +201,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         result.setCreatedDate(existingEntity.getCreatedDate());
         result.setLastModifiedBy(existingEntity.getLastModifiedBy());
         result.setLastModifiedDate(existingEntity.getLastModifiedDate());
-        loadDetails(result, transactionPoid, existingEntity.getRefType());
+        loadDetails(result, transactionPoid, existingEntity);
 
         // Load breakups into response
         // loadBreakups(result, transactionPoid);
@@ -234,7 +234,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
     }
 
     @Override
-    public DebitNoteHeaderDto getDebitNote(Long transactionPoid) {
+    public DebitNoteHeaderDto  getDebitNote(Long transactionPoid) {
         ArDebitNoteHdr entity = debitNoteHdrRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("DebitNote", "transactionPoid", transactionPoid));
 
@@ -243,7 +243,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         dto.setCreatedDate(entity.getCreatedDate());
         dto.setLastModifiedBy(entity.getLastModifiedBy());
         dto.setLastModifiedDate(entity.getLastModifiedDate());
-        loadDetails(dto, transactionPoid, entity.getRefType());
+        loadDetails(dto, transactionPoid, entity);
 
         // Load breakups into GL details
         loadBreakups(dto, transactionPoid);
@@ -520,14 +520,14 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         return normalizeDetailUpdateActionType(actionType);
     }
 
-    private void loadDetails(DebitNoteHeaderDto dto, Long transactionPoid, String refType) {
+    private void loadDetails(DebitNoteHeaderDto dto, Long transactionPoid, ArDebitNoteHdr header) {
         // always read GL details (if any)
         List<ArDebitNoteDtl> glDetails = debitNoteDtlRepository.findByTransactionPoid(transactionPoid);
-        dto.setGlDetails(glDetails.stream().map(entity -> mapGlDetailToDto(entity, refType)).collect(Collectors.toList()));
+        dto.setGlDetails(glDetails.stream().map(entity -> mapGlDetailToDto(entity, header.getRefType())).collect(Collectors.toList()));
 
         // read charge details as well
         List<ArDebitNoteChargeDtl> chargeDetails = debitNoteChargeDtlRepository.findByTransactionPoid(transactionPoid);
-        dto.setChargeDetails(chargeDetails.stream().map(entity -> mapChargeDetailToDto(entity, refType)).collect(Collectors.toList()));
+        dto.setChargeDetails(chargeDetails.stream().map(entity -> mapChargeDetailToDto(entity, header)).collect(Collectors.toList()));
     }
 
     private void saveGlDetails(List<DebitNoteGlDetailDto> glDetails, Long transactionPoid) {
@@ -809,7 +809,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         return dto;
     }
 
-    private DebitNoteChargeDetailDto mapChargeDetailToDto(ArDebitNoteChargeDtl entity, String refType) {
+    private DebitNoteChargeDetailDto mapChargeDetailToDto(ArDebitNoteChargeDtl entity, ArDebitNoteHdr header) {
         DebitNoteChargeDetailDto dto = new DebitNoteChargeDetailDto();
 
         dto.setTransactionPoid(entity.getTransactionPoid());
@@ -830,7 +830,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
 
         // Populate LOV details based on refType
         if (entity.getChargePoid() != null) {
-            String chargeLov = "OTHER_CHARGES".equalsIgnoreCase(refType)
+            String chargeLov = "OTHER_CHARGES".equalsIgnoreCase(header.getRefType())
                     ? "DEBIT_NOTE_OTHER_CHARGES"
                     : "CHARGE_MASTER_IN_DN_FOR_SH";
             dto.setChargeDetails(lovService.getDetailsByPoidAndLovName(entity.getChargePoid(), chargeLov));
@@ -850,7 +850,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         }
 
         if (entity.getCostPoid() != null) {
-            String customLov = getCustomLovList(entity.getCostPoid()).getOrDefault("lovName", "DN_GL_COST_CENTRE");
+            String customLov = getCustomLovList(header.getCostGroup()).getOrDefault("lovName", "DN_GL_COST_CENTRE");
             try {
                 LovGetListDto details = lovService.getDetailsByPoidAndLovName(Long.valueOf(entity.getCostPoid()), customLov);
                 if (details == null || details.getCode() == null) {

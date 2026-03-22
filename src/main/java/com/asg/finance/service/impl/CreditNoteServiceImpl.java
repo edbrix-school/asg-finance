@@ -43,6 +43,8 @@ import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import javax.sql.DataSource;
 import java.math.BigDecimal;
@@ -293,22 +295,8 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             // Re-trigger manifest updates
             executePostSaveUpdates(transactionPoid, creditNoteDto);
 
-            // When FDA ref changed, also update old FDA ref amounts (matches PageBean DocumentAfterSave)
-            if ("FDA".equals(creditNoteDto.getRefType())
-                    && oldFdaRef != null && !oldFdaRef.equals(creditNoteDto.getDnFdaReference())) {
-                executeFDAAmountUpdate(transactionPoid, oldFdaRef);
-            }
-
-            // When FF ref changed, also update old FF cost (matches PageBean DocumentAfterSave)
-            if ("FF".equals(creditNoteDto.getRefType())
-                    && oldFfRef != null && !oldFfRef.equals(existing.getFfRef())) {
-                try {
-                    Long oldFfPoid = Long.parseLong(oldFfRef);
-                    executeFFCostUpdate(transactionPoid, oldFfPoid);
-                } catch (NumberFormatException e) {
-                    log.warn("Could not parse old ffRef '{}' as Long for transactionPoid {}", oldFfRef, transactionPoid);
-                }
-            }
+            // Execute post-commit tax recalculation and reference updates
+            executePostCommitTaxUpdates(transactionPoid, creditNoteDto, oldFdaRef, oldFfRef, existing);
 
             CreditNoteHeaderDto result = mapToDto(existing);
             List<ArCreditNoteDtl> glDetails = creditNoteDtlRepository.findByTransactionPoidOrderByDetRowId(transactionPoid);
@@ -1400,7 +1388,48 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             executeFDAAmountUpdate(transactionPoid, dto.getDnFdaReference());
         }
         entityManager.flush(); // Ensure all updates are flushed before tax recalculation
-        executeChargeTaxIfChanged(transactionPoid, dto);
+        
+    }
+
+    private void executePostCommitTaxUpdates(Long transactionPoid, CreditNoteHeaderDto creditNoteDto, 
+                                              String oldFdaRef, String oldFfRef, ArCreditNoteHdr existing) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    executePostCommitTaxAndReferenceUpdates(transactionPoid, creditNoteDto, oldFdaRef, oldFfRef, existing);
+                }
+            });
+        } else {
+            // Fallback if no transaction synchronization is active
+            executePostCommitTaxAndReferenceUpdates(transactionPoid, creditNoteDto, oldFdaRef, oldFfRef, existing);
+        }
+    }
+
+    private void executePostCommitTaxAndReferenceUpdates(Long transactionPoid, CreditNoteHeaderDto creditNoteDto,
+                                                          String oldFdaRef, String oldFfRef, ArCreditNoteHdr existing) {
+        try {
+            log.info("Executing executeChargeTaxIfChanged post-commit for transactionPoid: {}", transactionPoid);
+            executeChargeTaxIfChanged(transactionPoid, creditNoteDto);
+
+            if ("FDA".equals(creditNoteDto.getRefType())
+                    && oldFdaRef != null && !oldFdaRef.equals(creditNoteDto.getDnFdaReference())) {
+                executeFDAAmountUpdate(transactionPoid, oldFdaRef);
+            }
+
+            // When FF ref changed, also update old FF cost (matches PageBean DocumentAfterSave)
+            if ("FF".equals(creditNoteDto.getRefType())
+                    && oldFfRef != null && !oldFfRef.equals(existing.getFfRef())) {
+                try {
+                    Long oldFfPoid = Long.parseLong(oldFfRef);
+                    executeFFCostUpdate(transactionPoid, oldFfPoid);
+                } catch (NumberFormatException e) {
+                    log.warn("Could not parse old ffRef '{}' as Long for transactionPoid {}", oldFfRef, transactionPoid);
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error executing post-commit tax and reference updates for transactionPoid {}: {}", transactionPoid, e);
+        }
     }
 
     private void executeGLVoucherValidation(CreditNoteHeaderDto dto) throws SQLException {

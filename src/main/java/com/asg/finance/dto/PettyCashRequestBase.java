@@ -1,7 +1,7 @@
 package com.asg.finance.dto;
 
 import java.math.BigDecimal;
-import java.util.Date;
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -9,7 +9,7 @@ import java.util.List;
  * Both create and update DTOs share the same fields structure.
  */
 public interface PettyCashRequestBase {
-    Date getTransactionDate();
+    LocalDate getTransactionDate();
     String getCurrencyCode();
     BigDecimal getCurrencyRate();
     Long getPettyCashGlPoid();
@@ -21,7 +21,7 @@ public interface PettyCashRequestBase {
     String getRefType();
     String getFdaRef();
     String getFfRef();
-    Date getSettledDate();
+    LocalDate getSettledDate();
     String getRemarks();
     BigDecimal getSettledTotal();
     String getStatus();

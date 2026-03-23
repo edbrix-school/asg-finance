@@ -19,9 +19,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -33,17 +33,12 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 
 @RestController
 @RequestMapping("/v1/property-cost-centers")
+@RequiredArgsConstructor
 public class PropertyCostCenterController {
 
     private final PropertyCostCenterService propertyCostCenterService;
     private final LoggingService loggingService;
     private static final Logger LOGGER = LoggerFactory.getLogger(PropertyCostCenterController.class);
-
-    @Autowired
-    public PropertyCostCenterController(PropertyCostCenterService propertyCostCenterService, LoggingService loggingService) {
-        this.propertyCostCenterService = propertyCostCenterService;
-        this.loggingService = loggingService;
-    }
 
     // ------------------- CREATE -------------------
     @Operation(summary = "Create Property Cost Center", description = "Adds a new property cost center record")

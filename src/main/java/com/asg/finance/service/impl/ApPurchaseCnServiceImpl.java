@@ -914,10 +914,11 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                         popup.setBillDetRowId(b.getBillDetRowId());
                         popup.setBillRefType(b.getBillRefType());
                         popup.setBillRef(b.getBillRef());
-                        popup.setBillDueDate(b.getBillDueDate() != null ? 
-                            b.getBillDueDate().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate() : null);
-                        popup.setType(b.getDrAmt().compareTo(BigDecimal.ZERO) > 0 ? "DR" : "CR");
-                        popup.setAmount(b.getDrAmt().compareTo(BigDecimal.ZERO) > 0 ? b.getDrAmt() : b.getCrAmt());
+                        popup.setBillDueDate(b.getBillDueDate());
+                        BigDecimal drAmt = b.getDrAmt() != null ? b.getDrAmt() : BigDecimal.ZERO;
+                        BigDecimal crAmt = b.getCrAmt() != null ? b.getCrAmt() : BigDecimal.ZERO;
+                        popup.setType(drAmt.compareTo(BigDecimal.ZERO) > 0 ? "DR" : "CR");
+                        popup.setAmount(drAmt.compareTo(BigDecimal.ZERO) > 0 ? drAmt : crAmt);
                         popup.setBillRemarks(b.getBillRemarks());
                         return popup;
                     })
@@ -944,7 +945,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                         popup.setCostDetRowId(c.getCostDetRowId());
                         popup.setCostGroup(c.getCostGroup());
                         popup.setCostPoid(c.getCostPoid());
-                        popup.setAmount(BigDecimal.valueOf(c.getAmount()));
+                        popup.setAmount(c.getAmount());
 
                         if (StringUtils.isNotEmpty(c.getCostPoid()) && StringUtils.isNotEmpty(c.getCostGroup())) {
                             popup.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(Long.valueOf(c.getCostPoid()), c.getCostGroup()));
@@ -1081,7 +1082,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                     dto.setCostDetRowId(cc.getCostDetRowId());
                     dto.setCostGroup(cc.getCostGroup());
                     dto.setCostPoid(cc.getCostPoid());
-                    dto.setAmount(BigDecimal.valueOf(cc.getAmount()));
+                    dto.setAmount(cc.getAmount());
                     return dto;
                 })
                 .collect(Collectors.toList());
@@ -1101,8 +1102,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                     dto.setBillDetRowId(bw.getBillDetRowId());
                     dto.setBillRefType(bw.getBillRefType());
                     dto.setBillRef(bw.getBillRef());
-                    dto.setBillDueDate(bw.getBillDueDate() != null ? 
-                        bw.getBillDueDate().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate() : null);
+                    dto.setBillDueDate(bw.getBillDueDate());
                     dto.setAmount(bw.getDrAmt() != null ? bw.getDrAmt() : bw.getCrAmt());
                     dto.setType(bw.getDrAmt() != null && bw.getDrAmt().compareTo(BigDecimal.ZERO) > 0 ? "Dr" : "Cr");
                     dto.setBillRemarks(bw.getBillRemarks());

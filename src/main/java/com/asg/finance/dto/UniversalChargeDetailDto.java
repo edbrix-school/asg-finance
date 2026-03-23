@@ -28,6 +28,9 @@ public class UniversalChargeDetailDto {
     private String remarks;
     private String issueInvoice;   // "Y" or "N"
     private String selected;
+    private String refDocId;
+    private Long refDocPoid;
+    private Long fdaDetRowId;
 
     private String actionType; 
 }

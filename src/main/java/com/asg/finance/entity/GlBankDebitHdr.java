@@ -1,8 +1,11 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.Generated;
+import org.hibernate.generator.EventType;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -11,7 +14,7 @@ import java.time.LocalDateTime;
 @Setter
 @Entity
 @Table(name = "GL_BANK_DEBIT_HDR")
-public class GlBankDebitHdr {
+public class GlBankDebitHdr extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -27,6 +30,7 @@ public class GlBankDebitHdr {
     @Column(name = "COMPANY_POID")
     private Long companyPoid;
 
+    @Generated(event = EventType.INSERT)
     @Column(name = "DOC_REF", nullable = false, length = 25)
     private String docRef;
 
@@ -62,18 +66,6 @@ public class GlBankDebitHdr {
 
     @Column(name = "MULTI_COMPANY", length = 1)
     private String multiCompany;
-
-    @Column(name = "CREATED_BY", length = 20)
-    private String createdBy;
-
-    @Column(name = "CREATED_DATE")
-    private LocalDateTime createdDate;
-
-    @Column(name = "LASTMODIFIED_BY", length = 20)
-    private String lastModifiedBy;
-
-    @Column(name = "LASTMODIFIED_DATE")
-    private LocalDateTime lastModifiedDate;
 
     @Column(name = "DELETED", length = 1)
     private String deleted;

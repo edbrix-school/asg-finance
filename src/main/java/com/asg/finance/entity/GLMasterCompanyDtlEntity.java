@@ -19,12 +19,6 @@ import java.time.LocalDateTime;
 public class GLMasterCompanyDtlEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "companyDtlSeq")
-    @SequenceGenerator(
-            name = "companyDtlSeq",
-            sequenceName = "SEQ_GL_MASTER_COMPANY_DTL",
-            allocationSize = 1
-    )
     @Column(name = "DET_ROW_ID", nullable = false)
     private Long id;
 

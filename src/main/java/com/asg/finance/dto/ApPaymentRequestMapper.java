@@ -4,8 +4,11 @@ import com.asg.finance.entity.ApPaymentRequestDtl;
 import com.asg.finance.entity.ApPaymentRequestDtlId;
 import com.asg.finance.entity.ApPaymentRequestHdr;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import static com.asg.finance.utility.DateTimeHandler.convertDate;
 
 public class ApPaymentRequestMapper {
 
@@ -18,7 +21,7 @@ public class ApPaymentRequestMapper {
                 .transactionPoid(transactionPoid)
                 .groupPoid(dto.getGroupPoid())
                 .companyPoid(dto.getCompanyPoid())
-                .transactionDate(dto.getTransactionDate())
+                .transactionDate(convertDate(LocalDateTime.from(dto.getTransactionDate())))
                 .docRef(dto.getDocRef())
                 .refType(dto.getRefType())
                 .docReferencePoid(dto.getDocReferencePoid())

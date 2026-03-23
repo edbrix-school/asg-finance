@@ -30,10 +30,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -175,9 +174,12 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                 }
             }
 
+            LocalDate txDate = request.getTransactionDate() != null ? request.getTransactionDate() : LocalDate.now();
+
             InsuranceMaster insuranceMaster = InsuranceMaster.builder()
-                    .groupPoid(1L)
-                    .companyPoid(1L)
+                    .groupPoid(UserContext.getGroupPoid())
+                    .companyPoid(UserContext.getCompanyPoid())
+                    .transactionDate(txDate)
                     .insuranceType(request.getInsuranceType())
                     .insuranceCategory(request.getCategory())
                     .policyNo(request.getPolicyNo())
@@ -189,14 +191,10 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                     .insuranceAmount(request.getInsuranceAmount())
                     .premiumAmount(request.getPremiumAmount())
                     .paymentFrequency(request.getPaymentFrequency())
-                    .oneTime("N")
+                    .oneTime(request.getOneTime())
                     .description(request.getDescription())
                     .faPoid(request.getFaPoid())
                     .deleted("N")
-                    .createdBy(getCurrentUser())
-                    .createdDate(LocalDateTime.now())
-                    .lastModifiedBy(getCurrentUser())
-                    .lastModifiedDate(LocalDateTime.now())
                     .build();
 
             InsuranceMaster saved = insuranceMasterRepository.save(insuranceMaster);
@@ -205,7 +203,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
             
             String docId = UserContext.getDocumentId();
             String docKeyPoid = finalSaved.getTransactionPoid().toString();
-            Timestamp now = new Timestamp(System.currentTimeMillis());
+            LocalDateTime now = LocalDateTime.now();
             
             // Log header creation
             loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, docKeyPoid);
@@ -341,11 +339,18 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         existing.setInsuranceProvider(request.getInsuranceProvider());
         existing.setFromDate(request.getFromDate());
         existing.setExpiryDate(request.getExpiryDate());
+        
+        if (request.getTransactionDate() != null) {
+            existing.setTransactionDate(request.getTransactionDate());
+        } else {
+            existing.setTransactionDate(LocalDate.now());
+        }
         existing.setCurrencyPoid(request.getCurrency());
         existing.setExchangeRate(request.getRate());
         existing.setInsuranceAmount(request.getInsuranceAmount());
         existing.setPremiumAmount(request.getPremiumAmount());
         existing.setPaymentFrequency(request.getPaymentFrequency());
+        existing.setOneTime(request.getOneTime());
         existing.setDescription(request.getDescription());
         existing.setFaPoid(request.getFaPoid());
         existing.setLastModifiedBy(getCurrentUser());
@@ -542,10 +547,6 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                     .employeePoid(dto.getEmployeePoid())
                     .amount(dto.getAmount())
                     .remarks(dto.getRemarks())
-                    .createdBy(getCurrentUser())
-                    .createdDate(LocalDateTime.now())
-                    .lastModifiedBy(getCurrentUser())
-                    .lastModifiedDate(LocalDateTime.now())
                     .build());
         }
         return result;
@@ -593,10 +594,6 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                     .propertyPoid(dto.getPropertyPoid())
                     .amount(dto.getAmount())
                     .remarks(dto.getRemarks())
-                    .createdBy(getCurrentUser())
-                    .createdDate(LocalDateTime.now())
-                    .lastModifiedBy(getCurrentUser())
-                    .lastModifiedDate(LocalDateTime.now())
                     .build());
         }
         return result;
@@ -646,10 +643,6 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                     .picPersonPoid(dto.getPicPersonPoid())
                     .fromDate(dto.getFromDate())
                     .toDate(dto.getToDate())
-                    .createdBy(getCurrentUser())
-                    .createdDate(LocalDateTime.now())
-                    .lastModifiedBy(getCurrentUser())
-                    .lastModifiedDate(LocalDateTime.now())
                     .build());
         }
         return result;
@@ -661,6 +654,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                 .docRef(entity.getDocRef())
                 .groupPoid(entity.getGroupPoid())
                 .companyPoid(entity.getCompanyPoid())
+                .transactionDate(entity.getTransactionDate())
                 .insuranceType(entity.getInsuranceType())
                 .insuranceCategory(entity.getInsuranceCategory())
                 .policyNo(entity.getPolicyNo())
@@ -843,10 +837,6 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                             .renewalDate(dto.getRenewalDate())
                             .fromDate(dto.getFromDate())
                             .expiryDate(dto.getExpiryDate())
-                            .createdBy(getCurrentUser())
-                            .createdDate(LocalDateTime.now())
-                            .lastModifiedBy(getCurrentUser())
-                            .lastModifiedDate(LocalDateTime.now())
                             .build();
                 })
                 .collect(Collectors.toList());
@@ -942,10 +932,10 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         }
     }
 
-    private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage, Timestamp logDateTime) {
+    private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage, LocalDateTime logDateTime) {
         GlobalLogSummary summary = new GlobalLogSummary();
         summary.setLogUserPoid(UserContext.getUserPoid());
-        summary.setLogDateTime(logDateTime != null ? logDateTime : new Timestamp(System.currentTimeMillis()));
+        summary.setLogDateTime(logDateTime != null ? logDateTime : LocalDateTime.now());
         summary.setLogDocId(docId);
         summary.setLogDocKeyPoid(docKeyPoid);
         summary.setLogDetails(customMessage);
@@ -1069,6 +1059,10 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
             throw new ValidationException("Details are already added to the renewal history");
         }
 
+        // Create copy of old entity for logging
+        InsuranceMaster oldEntity = new InsuranceMaster();
+        BeanUtils.copyProperties(existing, oldEntity);
+
         // User confirmed - proceed with renewal
         InsuranceRenewalLog renewalLog = InsuranceRenewalLog.builder()
                 .transactionPoid(existing.getTransactionPoid())
@@ -1078,10 +1072,6 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                 .expiryDate(existing.getExpiryDate())
                 .insuranceAmount(existing.getInsuranceAmount())
                 .premiumAmount(existing.getPremiumAmount())
-                .createdBy(getCurrentUser())
-                .createdDate(LocalDateTime.now())
-                .lastModifiedBy(getCurrentUser())
-                .lastModifiedDate(LocalDateTime.now())
                 .build();
 
         if (existing.getRenewalLogs() == null) {
@@ -1098,6 +1088,23 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
         existing.setLastModifiedDate(LocalDateTime.now());
 
         InsuranceMaster renewed = insuranceMasterRepository.save(existing);
+        
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = insuranceId.toString();
+        LocalDateTime now = LocalDateTime.now();
+        // Log header changes
+        loggingService.logChanges(oldEntity, renewed, InsuranceMaster.class, docId, docKeyPoid, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+        
+        // Log renewal header message
+        String msg1 = String.format("renewal logs are added to history table (from date: %s to date: %s)",
+                renewalLog.getFromDate().format(DateTimeFormatter.ofPattern("dd-MM-yyyy")), 
+                renewalLog.getExpiryDate().format(DateTimeFormatter.ofPattern("dd-MM-yyyy")));
+        loggingService.createLogSummaryEntry(docId, docKeyPoid, msg1);
+        
+        // Log renewal log row creation
+        String msg = String.format("Row Created on Insurance Renewal Log with DetRowId: %s", renewalLog.getDetRowId());
+        globalLogSummaryRepository.save(createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, msg, now));
+        
         return mapToResponseDto(renewed);
     }
 }

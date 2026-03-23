@@ -41,6 +41,9 @@ public class GeneralReceiptResponse {
     @Schema(description = "Receipt amount", example = "1000")
     private BigDecimal receiptAmount;
 
+    @Schema(description = "Invoice amount (foreign currency)", example = "1000")
+    private BigDecimal invoiceAmount;
+
     @Schema(description = "Currency code", example = "USD")
     private String currencyCode;
 

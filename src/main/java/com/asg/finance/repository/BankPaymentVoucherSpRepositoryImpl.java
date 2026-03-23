@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.sql.Date;
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -72,7 +73,7 @@ public class BankPaymentVoucherSpRepositoryImpl implements BankPaymentVoucherSpR
     @Override
     public Map<String, BigDecimal> getBankBalance(String docId,
                                                   Long docKeyPoid,
-                                                  Date docDate,
+                                                  LocalDate docDate,
                                                   Long bankPoid) {
 
         StoredProcedureQuery query = em.createStoredProcedureQuery("PROC_GL_GET_BANK_BALANCE");
@@ -294,11 +295,11 @@ public class BankPaymentVoucherSpRepositoryImpl implements BankPaymentVoucherSpR
     }
 
     @Override
-    public void unReleaseCheque(Long groupPoid, String loginUser, Long companyPoid, Long transactionPoid) {
+    public void unReleaseCheque(Long groupPoid, Long loginUser, Long companyPoid, Long transactionPoid) {
         StoredProcedureQuery query = em.createStoredProcedureQuery("PROC_GL_BANK_CHEQUE_UN_RELEASE");
         
         query.registerStoredProcedureParameter(1, Long.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(2, Long.class, ParameterMode.IN);
         query.registerStoredProcedureParameter(3, Long.class, ParameterMode.IN);
         query.registerStoredProcedureParameter(4, Long.class, ParameterMode.IN);
         query.registerStoredProcedureParameter(5, String.class, ParameterMode.OUT);

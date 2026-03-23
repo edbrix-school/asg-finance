@@ -48,6 +48,6 @@ public interface GlExpenseReallocationDtlRepository
 
 	void deleteByTransactionPoid(Long transactionPoid);
 
-	@Query("SELECT COALESCE(MAX(u.id.detRowId), 0) + 1 FROM GlExpenseReallocationDtl u WHERE u.id.transactionPoid = :transactionPoid")
+	@Query("SELECT COALESCE(MAX(u.detRowId), 0) FROM GlExpenseReallocationDtl u WHERE u.transactionPoid = :transactionPoid")
 	Long findMaxDetRowIdByTransactionPoid(Long transactionPoid);
 }

@@ -426,7 +426,7 @@ public class BankDebitVoucherValidator {
         LocalDate ttDate = req.getTtDate().toLocalDate();
         LocalDate systemDate = LocalDate.now();
         // documentDate (transaction date) is generated on backend; frontend may send documentDate optionally - doc clarified it's not used
-        LocalDate docDate = req.getDocumentDate() != null ? toLocalDate(req.getDocumentDate()) : systemDate;
+        LocalDate docDate = req.getDocumentDate() != null ? req.getDocumentDate() : systemDate;
 
         if ("1".equals(payingType)) { // TT
             if (isNew) {

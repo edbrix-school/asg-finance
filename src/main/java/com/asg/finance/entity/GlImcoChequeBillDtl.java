@@ -2,6 +2,7 @@ package com.asg.finance.entity;
 
 
 import com.asg.common.lib.annotation.AuditIgnore;
+import com.asg.common.lib.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,7 +20,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class GlImcoChequeBillDtl {
+public class GlImcoChequeBillDtl extends BaseEntity {
     
     @Id
     @AuditIgnore
@@ -39,22 +40,6 @@ public class GlImcoChequeBillDtl {
     
     @Column(name = "REMARKS")
     private String remarks;
-
-    @Column(name = "CREATED_BY")
-    @AuditIgnore
-    private String createdBy;
-
-    @Column(name = "CREATED_DATE")
-    @AuditIgnore
-    private LocalDateTime createdDate;
-
-    @Column(name = "LASTMODIFIED_BY")
-    @AuditIgnore
-    private String lastModifiedBy;
-
-    @Column(name = "LASTMODIFIED_DATE")
-    @AuditIgnore
-    private LocalDateTime lastModifiedDate;
 
     @Data
     @NoArgsConstructor

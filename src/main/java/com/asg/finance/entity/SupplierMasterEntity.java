@@ -1,6 +1,7 @@
 package com.asg.finance.entity;
 
 import com.asg.common.lib.annotation.AuditIgnore;
+import com.asg.common.lib.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -10,7 +11,7 @@ import java.time.LocalDate;
 @Entity
 @Table(name = "AP_SUPPLIER_MASTER")
 @Data
-public class SupplierMasterEntity {
+public class SupplierMasterEntity extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -61,22 +62,6 @@ public class SupplierMasterEntity {
 
     @Column(name = "SEQNO")
     private Long seqNo;
-
-    @Column(name = "CREATED_BY")
-    @AuditIgnore
-    private String createdBy;
-
-    @Column(name = "CREATED_DATE")
-    @AuditIgnore
-    private LocalDate createdDate;
-
-    @Column(name = "LASTMODIFIED_BY")
-    @AuditIgnore
-    private String lastModifiedBy;
-
-    @Column(name = "LASTMODIFIED_DATE")
-    @AuditIgnore
-    private LocalDate lastModifiedDate;
 
     @Column(name = "GENERAL_REMARKS")
     private String generalRemarks;

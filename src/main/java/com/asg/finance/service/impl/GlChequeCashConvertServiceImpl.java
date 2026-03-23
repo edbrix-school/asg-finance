@@ -7,12 +7,14 @@ import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
+import com.asg.finance.annotation.PerformGlPosting;
 import com.asg.finance.dto.GlChequeCashConvertHdrDto;
 import com.asg.finance.dto.GlChequeCashConvertInDtlDto;
 import com.asg.finance.dto.GlChequeCashConvertOutDtlDto;
@@ -26,14 +28,15 @@ import com.asg.finance.entity.key.GlChequeCashConvertOutDtlKey;
 import com.asg.finance.repository.GlChequeCashConvertHdrRepository;
 import com.asg.finance.repository.GlChequeCashConvertInDtlRepository;
 import com.asg.finance.repository.GlChequeCashConvertOutDtlRepository;
+import com.asg.finance.repository.ChequeCashConvertCustomRepository;
 import com.asg.finance.repository.GlChequeCashConvertRepository;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.GlChequeCashConvertService;
+import com.asg.finance.service.GlPostingService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import com.asg.common.lib.exception.ValidationException;
-import com.asg.common.lib.client.ParameterServiceClient;
+import com.asg.common.lib.service.GlobalParameterService;
 
 import net.sf.jasperreports.engine.JasperReport;
 import org.apache.commons.lang3.StringUtils;
@@ -42,7 +45,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-
+import org.springframework.context.ApplicationEventPublisher;
+import com.asg.finance.event.GlChequeCashConvertSaveEvent;
 
 import javax.sql.DataSource;
 import java.math.BigDecimal;
@@ -73,19 +77,23 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
     private final DataSource dataSource;
     private final DocumentDeleteService documentDeleteService;
     private final LoggingService loggingService;
-    private final ParameterServiceClient parameterServiceClient;
+    private final GlobalParameterService globalParameterService;
+    private final GlPostingService glPostingService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public GlChequeCashConvertValidateEditResponseDto validateForEdit(Long transactionPoid) {
         glChequeCashConvertHdrRepository.findById(transactionPoid)
-                .orElseThrow(() -> new ResourceNotFoundException("GlChequeCashConvert", "transactionPoid", transactionPoid));
+                .orElseThrow(
+                        () -> new ResourceNotFoundException("GlChequeCashConvert", "transactionPoid", transactionPoid));
         validateStatusForEdit(transactionPoid);
         return new GlChequeCashConvertValidateEditResponseDto(true, "Record is eligible for edit.");
     }
 
     @Override
     public GlChequeCashConvertHdrDto getGlChequeCashConvert(Long transactionPoid) {
-        GlChequeCashConvertHdrEntity glChequeCashConvertHdrEntity = glChequeCashConvertHdrRepository.findByTransactionPoid(transactionPoid);
+        GlChequeCashConvertHdrEntity glChequeCashConvertHdrEntity = glChequeCashConvertHdrRepository
+                .findByTransactionPoid(transactionPoid);
         if (glChequeCashConvertHdrEntity == null) {
 
             throw new ResourceNotFoundException("ChequeAndCashConvention", "transactionPoid", transactionPoid);
@@ -129,10 +137,6 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
             inDtlDto.setChqDate(inDtl.getChqDate());
             inDtlDto.setAmount(inDtl.getAmount());
             inDtlDto.setRemarks(inDtl.getRemarks());
-           /* inDtlDto.setCreatedBy(inDtl.getCreatedBy());
-            inDtlDto.setCreatedDate(inDtl.getCreatedDate());
-            inDtlDto.setLastModifiedBy(inDtl.getLastModifiedBy());
-            inDtlDto.setLastModifiedDate(inDtl.getLastModifiedDate());*/
             inDtlDto.setVoucherType(inDtl.getVoucherType());
             inDtlDto.setChequeCompanyPoid(inDtl.getChequeCompanyPoid());
             inDtlDto.setPaymentMainPoid(inDtl.getPaymentMainPoid());
@@ -144,9 +148,11 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
             inDtlDto.setCardType(inDtl.getCardType());
             inDtlDto.setCreditCardRef(inDtl.getCreditCardRef());
             inDtlDto.setBankDet(lovService.getDetailsByPoidAndLovName(inDtl.getBankPoid(), "CUSTOMER_BANK_MASTER"));
-            inDtlDto.setChequeCompanyDet(lovService.getDetailsByPoidAndLovName(inDtl.getChequeCompanyPoid(), "COMPANY"));
-            inDtlDto.setPaymentMainDet(lovService.getDetailsByPoidAndLovName(inDtl.getPaymentMainPoid(), "PAYMENT_MAIN"));
-            inDtlDto.setTtBankDet(lovService.getDetailsByPoidAndLovName(inDtl.getTtBankPoid(), "CUSTOMER_BANK_MASTER"));
+            inDtlDto.setChequeCompanyDet(
+                    lovService.getDetailsByPoidAndLovName(inDtl.getChequeCompanyPoid(), "COMPANY"));
+            inDtlDto.setPaymentMainDet(
+                    lovService.getDetailsByPoidAndLovName(inDtl.getPaymentMainPoid(), "PAYMENT_MAIN"));
+            inDtlDto.setTtBankDet(lovService.getDetailsByPoidAndLovName(inDtl.getTtBankPoid(), "CCC_BANK_MASTER_COMPANY_WISE"));
             inDtlDto.setCardDet(lovService.getDetailsByPoidAndLovName(inDtl.getCardPoid(), "CARD"));
 
             return inDtlDto;
@@ -175,7 +181,8 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
             outDtlDto.setVoucherType(outDtl.getVoucherType());
             outDtlDto.setLineType(outDtl.getLineType());
             outDtlDto.setBankDet(lovService.getDetailsByPoidAndLovName(outDtl.getBankPoid(), "CUSTOMER_BANK_MASTER"));
-            outDtlDto.setPaymentMainDet(lovService.getDetailsByPoidAndLovName(outDtl.getPaymentMainPoid(), "PAYMENT_MAIN"));
+            outDtlDto.setPaymentMainDet(
+                    lovService.getDetailsByPoidAndLovName(outDtl.getPaymentMainPoid(), "PAYMENT_MAIN"));
             return outDtlDto;
         }).collect(Collectors.toList());
     }
@@ -183,8 +190,9 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
     @Transactional
     @Override
     public void softDeleteByTransactionPoid(Long transactionPoid, DeleteReasonDto deleteReasonDto) {
-        glChequeCashConvertHdrRepository.findById(transactionPoid)
-                .orElseThrow(() -> new ResourceNotFoundException("ChequeAndCashConvert", "transactionPoid", transactionPoid));
+        GlChequeCashConvertHdrEntity existing = glChequeCashConvertHdrRepository.findById(transactionPoid)
+                .orElseThrow(() -> new ResourceNotFoundException("ChequeAndCashConvert", "transactionPoid",
+                        transactionPoid));
 
         // Use DocumentDeleteService for consistent soft delete handling
         documentDeleteService.deleteDocument(
@@ -192,15 +200,16 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
                 "GL_CHEQUE_CASH_CONVERT_HDR",
                 "TRANSACTION_POID",
                 deleteReasonDto,
-                null
-        );
+                existing.getTransactionDate());
     }
 
-    public Map<String, Object> listOfRecordsAndGenericSearch(String documentId, FilterRequestDto filters, LocalDate startDate, LocalDate endDate, Pageable pageable) {
+    public Map<String, Object> listOfRecordsAndGenericSearch(String documentId, FilterRequestDto filters,
+            LocalDate startDate, LocalDate endDate, Pageable pageable) {
 
         String operator = documentService.resolveOperator(filters);
         String isDeleted = documentService.resolveIsDeleted(filters);
-        List<FilterDto> filterList = documentService.resolveDateFilters(filters, "TRANSACTION_DATE", startDate, endDate);
+        List<FilterDto> filterList = documentService.resolveDateFilters(filters, "TRANSACTION_DATE", startDate,
+                endDate);
 
         RawSearchResult raw = documentService.search(documentId, filterList, operator, pageable, isDeleted,
                 "TRANSACTION_POID",
@@ -213,11 +222,13 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
 
     @Override
     @Transactional
+    @PerformGlPosting
     public GlChequeCashConvertHdrDto createGlChequeCashConvert(GlChequeCashConvertHdrDto dto) {
 
         GlChequeCashConvertHdrEntity hdrEntity = new GlChequeCashConvertHdrEntity();
 
-        // Validate transaction date and trigger rules at application level (mirrors GL_CHEQUE_CASH_CONVERT_HDR_GTTRG)
+        // Validate transaction date and trigger rules at application level (mirrors
+        // GL_CHEQUE_CASH_CONVERT_HDR_GTTRG)
         if (dto.getTransactionDate() == null) {
             throw new ValidationException("Transaction date is required and must be within the open financial period.");
         }
@@ -330,12 +341,23 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         String docId = UserContext.getDocumentId();
         String docKeyPoid = savedHdr.getTransactionPoid().toString();
         loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, docKeyPoid);
+        glChequeCashConvertInDtlRepository.flush();
+        glChequeCashConvertOutDtlRepository.flush();
+        eventPublisher.publishEvent(new GlChequeCashConvertSaveEvent(
+                this,
+                savedHdr,
+                UserContext.getGroupPoid(),
+                UserContext.getCompanyPoid(),
+                UserContext.getUserPoid(),
+                getCurrentUser()
+        ));
 
         return getGlChequeCashConvert(savedHdr.getTransactionPoid());
     }
 
     @Override
     @Transactional
+    @PerformGlPosting
     public GlChequeCashConvertHdrDto updateGlChequeCashConvert(Long transactionPoid, GlChequeCashConvertHdrDto dto) {
 
         validateStatusForEdit(transactionPoid);
@@ -385,6 +407,18 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         loggingService.createLogBatch(headerLogRequests);
 
         loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, docId, docKeyPoid);
+
+        glChequeCashConvertInDtlRepository.flush();
+        glChequeCashConvertOutDtlRepository.flush();
+
+        eventPublisher.publishEvent(new GlChequeCashConvertSaveEvent(
+                this,
+                savedHdr,
+                UserContext.getGroupPoid(),
+                UserContext.getCompanyPoid(),
+                UserContext.getUserPoid(),
+                getCurrentUser()
+        ));
 
         return getGlChequeCashConvert(savedHdr.getTransactionPoid());
     }
@@ -807,30 +841,29 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         }
 
         if (isCashToCheque) {
+
             if (dto.getInDtls() == null || dto.getInDtls().isEmpty()) {
                 throw new ValidationException("No Detail present in cheque conversion TO");
             }
-            for (GlChequeCashConvertInDtlDto in : dto.getInDtls()) {
-                String inVt = in.getVoucherType() == null ? null : in.getVoucherType().trim();
-                if (StringUtils.isBlank(inVt) || StringUtils.isBlank(outVoucherType)) {
-                    throw new ValidationException("Voucher Type should be same..");
-                }
-                if (!inVt.equalsIgnoreCase(outVoucherType)) {
-                    throw new ValidationException("Voucher Type should be same..");
-                }
-            }
-            BigDecimal inTotal = dto.getInDtls().stream()
+
+            BigDecimal chequeTotal = dto.getInDtls().stream()
                     .map(i -> Optional.ofNullable(i.getAmount()).orElse(BigDecimal.ZERO))
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
-            // Cash-to-cheque: out = cash (source), in = cheques (destination). Require outTotal = inTotal (with rounding tolerance).
-            if (outTotal.compareTo(inTotal) != 0) {
-                BigDecimal roundingLimit = getRoundingLimitParam();
-                BigDecimal difference = outTotal.subtract(inTotal).abs();
-                if (difference.compareTo(roundingLimit) > 0) {
-                    throw new ValidationException(
-                            "Cash Amount (" + outTotal + ") and Cheque Amount (" + inTotal + ") are not matching...");
-                }
+
+            BigDecimal cashReceived = Optional.ofNullable(dto.getCash()).orElse(BigDecimal.ZERO);
+
+            BigDecimal calculated = chequeTotal.add(cashReceived);
+
+            BigDecimal difference = outTotal.subtract(calculated).abs();
+
+            BigDecimal roundingLimit = getRoundingLimitParam();
+
+            if (difference.compareTo(roundingLimit) > 0) {
+                throw new ValidationException(
+                        "Cash Amount (" + outTotal + ") and Cheque Amount (" + chequeTotal + ") are not matching...");
             }
+
+            dto.setRoundingAmt(difference);
         }
 
         validateChequeDatesForInDetails(dto.getInDtls());
@@ -838,7 +871,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
     }
 
     private BigDecimal getRoundingLimitParam() {
-        String val = parameterServiceClient.findParameterValueByName("ROUNDING_LIMIT").orElse("0.099");
+        String val = globalParameterService.getParameterValue("ROUNDING_LIMIT", "GROUP", "1", "0.099");
         try {
             return new BigDecimal(val.trim());
         } catch (NumberFormatException e) {
@@ -864,7 +897,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         if (inDtls == null || inDtls.isEmpty()) {
             return;
         }
-        String validateDaysStr = parameterServiceClient.findParameterValueByName("CHEQUE_DATE_VALIDATION_DAYS").orElse("1");
+        String validateDaysStr = globalParameterService.getParameterValue("CHEQUE_DATE_VALIDATION_DAYS", "GROUP", "1", "1");
         BigDecimal validateDaysBd;
         try {
             validateDaysBd = new BigDecimal(validateDaysStr.trim());
@@ -878,7 +911,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
             }
             long daysDiff = java.time.temporal.ChronoUnit.DAYS.between(today, in.getChqDate());
             if (new BigDecimal(daysDiff).compareTo(validateDaysBd) < 0) {
-                throw new ValidationException("Cheque Date is less than " + validateDaysBd.abs() + " days...");
+                throw new ValidationException("Cheque Date should be less than " + validateDaysBd.abs() + " days...");
             }
         }
     }

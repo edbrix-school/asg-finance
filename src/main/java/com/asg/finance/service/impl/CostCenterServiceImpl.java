@@ -63,7 +63,6 @@ public class CostCenterServiceImpl implements CostCenterService {
 
         validateCostCenterType(dto);
 
-        String currentUser = getCurrentUser();
         CostCenter savedEntity = repository.save(CostCenter.builder()
                        .costCenterCode(dto.getCostCenterCode())
                        .costCenterDescription(dto.getCostCenterDescription())
@@ -74,11 +73,7 @@ public class CostCenterServiceImpl implements CostCenterService {
                        .seqNo(dto.getSeqNo())
                        .costCenterType(dto.getCostCenterType())
                        .parentCostCenterPoid(dto.getParentCostCenterPoid())
-                               .costCenterChild(Objects.equals(dto.getCostCenterType(), "MAIN_GROUP") ? "N" : "Y")
-                       .createdBy(currentUser)
-                       .createdDate(LocalDateTime.now())
-                       .lastModifiedBy(currentUser)
-                       .lastModifiedDate(LocalDateTime.now())
+                       .costCenterChild(Objects.equals(dto.getCostCenterType(), "MAIN_GROUP") ? "N" : "Y")
                        .deleted("N")
                        .build());
         
@@ -113,10 +108,6 @@ public class CostCenterServiceImpl implements CostCenterService {
         return repository.existsByParentCostCenterPoidAndDeleted(parentPoid, "N");
     }
 
-    private String getCurrentUser() {
-        return UserContext.getUserId() != null ? String.valueOf(UserContext.getUserId()) : "SYSTEM";
-    }
-
     @Transactional
     public Long updateCostCenter(Long poid, CostCenterRequestDTO dto) {
         CostCenter existing = repository.findById(poid)
@@ -139,7 +130,6 @@ public class CostCenterServiceImpl implements CostCenterService {
         }
 
         validateCostCenterType(dto);
-        String currentUser = getCurrentUser();
         existing.setCostCenterCode(dto.getCostCenterCode());
         existing.setCostCenterDescription(dto.getCostCenterDescription());
         existing.setCostCenterDescription2(dto.getCostCenterDescription2());
@@ -148,10 +138,8 @@ public class CostCenterServiceImpl implements CostCenterService {
         existing.setActive(dto.getActive());
         existing.setSeqNo(dto.getSeqNo());
         existing.setCostCenterType(dto.getCostCenterType());
-        existing.setParentCostCenterPoid(Objects.equals(dto.getCostCenterType(), "MAIN_GROUP") ? null :dto.getParentCostCenterPoid());
+        existing.setParentCostCenterPoid(Objects.equals(dto.getCostCenterType(), "MAIN_GROUP") ? null : dto.getParentCostCenterPoid());
         existing.setCostCenterChild(Objects.equals(dto.getCostCenterType(), "MAIN_GROUP") ? "N" : "Y");
-        existing.setLastModifiedBy(currentUser);
-        existing.setLastModifiedDate(LocalDateTime.now());
         CostCenter savedEntity = repository.save(existing);
         
         // Log the update
@@ -193,7 +181,6 @@ public class CostCenterServiceImpl implements CostCenterService {
         costCenterDto.setSeqNo(costCenter.getSeqNo());
         costCenterDto.setCreatedBy(costCenter.getCreatedBy());
         costCenterDto.setCreatedDate(costCenter.getCreatedDate());
-        
         Optional.ofNullable(costCenter.getParentCostCenterPoid())
         .map(repository::findByCostCenterPoid)
         .ifPresent(parent -> costCenterDto.setParentCostCenterPoidDtl(mapParent(parent)));
@@ -504,11 +491,11 @@ public class CostCenterServiceImpl implements CostCenterService {
             dto.setDeleted(entity.getDeleted());
             dto.setSeqNo(entity.getSeqNo());
             
-            // Audit fields
+            // Audit fields (from BaseEntity)
             dto.setCreatedBy(entity.getCreatedBy());
-            dto.setCreatedDate(entity.getCreatedDate() != null ? entity.getCreatedDate().toString() : null);
+            dto.setCreatedDate(entity.getCreatedDate());
             dto.setLastModifiedBy(entity.getLastModifiedBy());
-            dto.setLastModifiedDate(entity.getLastModifiedDate() != null ? entity.getLastModifiedDate().toString() : null);
+            dto.setLastModifiedDate(entity.getLastModifiedDate());
 
             return dto;
 

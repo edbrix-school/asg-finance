@@ -1,6 +1,7 @@
 package com.asg.finance.dto;
 
 
+import jakarta.validation.constraints.Size;
 import lombok.*;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
@@ -24,6 +25,7 @@ public class PurchaseOrderRequest {
     @NotNull(message = "Payment terms are mandatory")
     private String paymentTerms;
     private String modeOfTransport;
+    @Size(max = 100, message = "Delivery terms cannot exceed 100 characters")
     private String deliveryTerms;
     private String freightForwarder;
     private String shippingMark;

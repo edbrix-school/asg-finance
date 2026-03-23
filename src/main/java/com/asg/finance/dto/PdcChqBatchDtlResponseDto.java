@@ -2,7 +2,7 @@ package com.asg.finance.dto;
 
 import lombok.*;
 
-import java.sql.Date;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Getter
@@ -15,7 +15,7 @@ public class PdcChqBatchDtlResponseDto {
     private Long transactionPoid;
     private Long detRowId;
 
-    private Date pdcChqDate;
+    private LocalDate pdcChqDate;
     private String chqNumber;
     private Double chqAmount;
     private String remarks;
@@ -40,5 +40,5 @@ public class PdcChqBatchDtlResponseDto {
     private String createdBy;
     private LocalDateTime createdDate;
     private String lastModifiedBy;
-    private Date lastModifiedDate;
+    private LocalDateTime lastModifiedDate;
 }

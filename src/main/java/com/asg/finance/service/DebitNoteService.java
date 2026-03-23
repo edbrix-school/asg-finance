@@ -32,4 +32,8 @@ public interface DebitNoteService {
 
     byte[] print(Long transactionPoid) throws Exception;
 
+    Map<String, Object> validateEditRequest(Long transactionPoid);
+
+    Map<String, String> getCustomLovList(String costGroup);
+
 }

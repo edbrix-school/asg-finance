@@ -26,7 +26,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -47,16 +46,12 @@ public class PettyCashUserRoleServiceImpl implements PettyCashUserRoleService {
     public PettyCashUserroleResponseDto createPettyCashUserRole(PettyCashUserRoleRequestDto request) {
         PettyCashUserroleMaster entity = covertFromGlPettyDtoToGlPettyEntity(request);
         PettyCashUserroleMaster pettyCashUserroleMaster = repository.save(entity);
-        
+
         // Log the creation
         String key = pettyCashUserroleMaster.getRefTypePoid().toString();
         loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), key);
-        
-        return covertFromGlPettyEntityToGlPettyDto(pettyCashUserroleMaster);
-    }
 
-    private String getCurrentUser() {
-        return UserContext.getUserId() != null ? String.valueOf(UserContext.getUserId()) : "SYSTEM";
+        return covertFromGlPettyEntityToGlPettyDto(pettyCashUserroleMaster);
     }
 
     private PettyCashUserroleMaster covertFromGlPettyDtoToGlPettyEntity(PettyCashUserRoleRequestDto dto) {
@@ -150,8 +145,6 @@ public class PettyCashUserRoleServiceImpl implements PettyCashUserRoleService {
         existingEntity.setValidUntil(LocalDate.now());
         existingEntity.setActive(StringUtils.isBlank(requestDto.getActive()) ? "Y" : requestDto.getActive());
         existingEntity.setSeqNo(requestDto.getSeqno());
-        existingEntity.setLastModifiedBy(getCurrentUser());
-        existingEntity.setLastModifiedDate(LocalDateTime.now());
         PettyCashUserroleMaster updatedEntity = repository.save(existingEntity);
         
         // Log the update

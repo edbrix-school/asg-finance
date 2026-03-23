@@ -1,7 +1,8 @@
 package com.asg.finance.entity;
 
 import java.math.BigDecimal;
-import java.util.Date;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -34,7 +35,7 @@ public class BankReconciliation {
 	private Long transactionPoid;
 
 	@Column(name = "TRANSACTION_DATE")
-	private Date transactionDate;
+	private LocalDate transactionDate;
 
 	@Column(name = "DOC_REF")
 	private String docRef;
@@ -61,16 +62,16 @@ public class BankReconciliation {
 	private Long postedBy;
 
 	@Column(name = "POSTED_DATE")
-	private Date postedDate;
+	private LocalDateTime postedDate;
 
 	@Column(name = "CLEARANCE_DATE")
-	private Date clearanceDate;
+	private LocalDate clearanceDate;
 
 	@Column(name = "LAST_POSTED_BY")
 	private Long lastPostedBy;
 
 	@Column(name = "LAST_POSTED_DATE")
-	private Date lastPostedDate;
+	private LocalDateTime lastPostedDate;
 
 	@Column(name = "OLD_REF_NO")
 	private String oldRefNo;

@@ -6,6 +6,7 @@ import com.asg.finance.dto.ItemDetailDto;
 
 import java.math.BigDecimal;
 import java.sql.Date;
+import java.time.LocalDate;
 import java.util.List;
 
 public interface BankDebitVoucherCustomRepository {
@@ -13,7 +14,7 @@ public interface BankDebitVoucherCustomRepository {
 
     void procGlBankPayGlBenVal(Long groupPoid, Long userPoid, Long companyPoid, String docId, Long docKeyPoid, String payingType, String refType, Long payGlPoid, String beneficiaryId, Long bankPoid);
 
-    void procGlJobRelOldValues(Long groupPoid, Long userPoid, Long companyPoid, String docId, Long docKeyPoid);
+    String[] procGlJobRelOldValues(Long groupPoid, Long userPoid, Long companyPoid, String docId, Long docKeyPoid);
 
     List<ChargeFFDto> procLoadFFCharges(Long groupPoid, Long userPoid, Long companyPoid, Long ffRefPoid);
 
@@ -21,7 +22,7 @@ public interface BankDebitVoucherCustomRepository {
 
     List<ItemDetailDto> procLoadMTAItems(Long groupPoid, Long userPoid, Long companyPoid, Long mtaRefPoid);
 
-    BigDecimal procGetBankBalance(Long groupPoid, Long userPoid, Long companyPoid,String documentId, Date docDate, Long bankPoid);
+    BigDecimal procGetBankBalance(Long groupPoid, Long userPoid, Long companyPoid, String documentId, LocalDate docDate, Long bankPoid);
 
     String procGetBeneficiaryName(Long groupPoid,Long userPoid, Long companyPoid,String documentId, Long beneficiaryId);
 }

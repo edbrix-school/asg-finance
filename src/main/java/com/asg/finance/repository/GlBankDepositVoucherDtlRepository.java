@@ -7,5 +7,6 @@ import java.util.List;
 
 public interface GlBankDepositVoucherDtlRepository extends JpaRepository<GlBankDepositVoucherDtl, Long> {
     List<GlBankDepositVoucherDtl> findByTransactionPoid(Long transactionPoid);
+    List<GlBankDepositVoucherDtl> findByTransactionPoidOrderByChqSeqNumAsc(Long transactionPoid);
     void deleteByTransactionPoid(Long transactionPoid);
 }

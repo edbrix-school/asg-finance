@@ -13,7 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Date;
+
+import java.time.LocalDate;
 import java.util.List;
 
 @Slf4j
@@ -36,7 +37,7 @@ public class BillwiseBreakupServiceImpl implements BillwiseBreakupService {
     }
 
     @Override
-    public GlVoucherPendingBillwiseBreakupResponseDto showPendingBillwiseBreakup(Long groupPoid, Long companyPoid, Long glPoid, Date asOnDate) {
+    public GlVoucherPendingBillwiseBreakupResponseDto showPendingBillwiseBreakup(Long groupPoid, Long companyPoid, Long glPoid, LocalDate asOnDate) {
         return billwiseBreakupDtlRepository.showPendingBillwiseBreakup(
                 groupPoid,
                 companyPoid,
@@ -46,7 +47,7 @@ public class BillwiseBreakupServiceImpl implements BillwiseBreakupService {
     }
 
     @Override
-    public GlVoucherPendingBillwiseBreakupResponseDto showAllPendingBillwiseBreakup(Long groupPoid, Long companyPoid, Long glPoid, Date asOnDate) {
+    public GlVoucherPendingBillwiseBreakupResponseDto showAllPendingBillwiseBreakup(Long groupPoid, Long companyPoid, Long glPoid, LocalDate asOnDate) {
         return billwiseBreakupDtlRepository.showAllPendingBillwiseBreakup(
                 groupPoid,
                 companyPoid,
@@ -68,8 +69,8 @@ public class BillwiseBreakupServiceImpl implements BillwiseBreakupService {
         billwiseBreakupDtlRepository.insertBillwiseBreakup(breakupList);
 
         // Log the creation
-        String key = first.getTransactionPoid().toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, first.getDocId(), key);
+        //String key = first.getTransactionPoid().toString();
+       // loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, first.getDocId(), key);
     }
 
     @Override

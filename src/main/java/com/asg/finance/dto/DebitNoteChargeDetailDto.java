@@ -23,6 +23,8 @@ public class DebitNoteChargeDetailDto {
     
     private BigDecimal taxAmount;
     
+    private BigDecimal totalAmount;
+    
     private String remarks;
     
     private Integer seqNo;

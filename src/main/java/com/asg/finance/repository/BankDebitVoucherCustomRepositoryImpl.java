@@ -16,6 +16,7 @@ import org.springframework.jdbc.core.CallableStatementCreator;
 import org.springframework.jdbc.core.CallableStatementCallback;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -92,22 +93,21 @@ public class BankDebitVoucherCustomRepositoryImpl implements BankDebitVoucherCus
     }
 
     @Override
-    public void procGlJobRelOldValues(Long groupPoid, Long userPoid, Long companyPoid,
-                                      String docId, Long docKeyPoid) {
-        jdbcTemplate.execute((CallableStatementCreator) con -> {
+    public String[] procGlJobRelOldValues(Long groupPoid, Long userPoid, Long companyPoid,
+                                          String docId, Long docKeyPoid) {
+        return jdbcTemplate.execute((CallableStatementCreator) con -> {
             CallableStatement cs = con.prepareCall("BEGIN PROC_GL_JOB_REL_OLD_VALUES(?,?,?,?,?,?,?); END;");
             cs.setObject(1, groupPoid);
             cs.setObject(2, userPoid);
             cs.setObject(3, companyPoid);
             cs.setObject(4, docId);
             cs.setObject(5, docKeyPoid);
-            cs.registerOutParameter(6, Types.VARCHAR);
-            cs.registerOutParameter(7, Types.VARCHAR);
+            cs.registerOutParameter(6, Types.VARCHAR); // OldRefType
+            cs.registerOutParameter(7, Types.VARCHAR); // OldRef
             return cs;
-        }, (CallableStatementCallback<Void>) cs -> {
+        }, (CallableStatementCallback<String[]>) cs -> {
             cs.execute();
-            // Old values are stored but not used in validation - just need to call it
-            return null;
+            return new String[]{ trimOrNull(cs.getString(6)), trimOrNull(cs.getString(7)) };
         });
     }
 
@@ -195,7 +195,7 @@ public class BankDebitVoucherCustomRepositoryImpl implements BankDebitVoucherCus
     }
 
     @Override
-    public BigDecimal procGetBankBalance(Long groupPoid, Long userPoid, Long companyPoid,String documentId, Date docDate, Long bankPoid) {
+    public BigDecimal procGetBankBalance(Long groupPoid, Long userPoid, Long companyPoid, String documentId, LocalDate docDate, Long bankPoid) {
         return jdbcTemplate.execute((CallableStatementCreator) con -> {
 
             CallableStatement cs =
@@ -207,7 +207,7 @@ public class BankDebitVoucherCustomRepositoryImpl implements BankDebitVoucherCus
             cs.setLong(3, userPoid);              // P_LOGIN_USER_POID
             cs.setString(4, documentId);              // P_DOC_ID
             cs.setNull(5, Types.NUMERIC);              // P_DOC_KEY_POID
-            cs.setDate(6, docDate);                 // P_DOC_DATE
+            cs.setDate(6, Date.valueOf(docDate));                 // P_DOC_DATE
             cs.setObject(7, bankPoid);                 // P_BANK_POID
 
             // OUT params

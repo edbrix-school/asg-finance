@@ -15,6 +15,7 @@ import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.utility.PaginationUtil;
+import com.asg.finance.annotation.PerformGlPosting;
 import com.asg.finance.dto.BankDepositVoucherDtlDto;
 import com.asg.finance.dto.BankDepositVoucherRequestDto;
 import com.asg.finance.dto.BankDepositVoucherResponseDto;
@@ -33,14 +34,17 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import javax.sql.DataSource;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 @Service
@@ -55,19 +59,20 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
     private final DataSource dataSource;
     private final LovDataService lovService;
     private final LoggingService loggingService;
+    private final PlatformTransactionManager transactionManager;
 
     @PersistenceContext
     private EntityManager entityManager;
 
     @Override
+    @PerformGlPosting
+    @Transactional
     public BankDepositVoucherResponseDto createBankDepositVoucher(BankDepositVoucherRequestDto request) {
-        Long transactionPoid = createHeaderAndDetails(request);
-        callUpdatePaymentProcedure(transactionPoid, request.getGroupPoid(), request.getCompanyPoid(), request.getType());
-        
-        // Get the saved entity for logging
-        GlBankDepositVoucherHdr savedEntity = hdrRepository.findByTransactionPoid(transactionPoid)
-                .orElseThrow(() -> new ResourceNotFoundException("Bank Deposit Voucher", "transactionPoid", transactionPoid));
-        
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+        tx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        Long transactionPoid = tx.execute(status -> createHeaderAndDetails(request));
+        callUpdatePaymentProcedure(transactionPoid, request.getType());
+
         // Log the creation
         String key = transactionPoid.toString();
         loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), key);
@@ -75,14 +80,16 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
         return getBankDepositVoucherById(transactionPoid);
     }
 
-    @Transactional(Transactional.TxType.REQUIRES_NEW)
-    public Long createHeaderAndDetails(BankDepositVoucherRequestDto request) {
-        hdrRepository.callBeforeSaveValidation(request.getCompanyPoid(), request.getBankPoid());
+    private Long createHeaderAndDetails(BankDepositVoucherRequestDto request) {
+        Long companyPoid = UserContext.getCompanyPoid() != null ? UserContext.getCompanyPoid() : request.getCompanyPoid();
+        Long groupPoid = UserContext.getGroupPoid() != null ? UserContext.getGroupPoid() : request.getGroupPoid();
+
+        hdrRepository.callBeforeSaveValidation(companyPoid, request.getBankPoid());
 
         GlBankDepositVoucherHdr hdr = GlBankDepositVoucherHdr.builder()
                 .transactionDate(LocalDate.now())
-                .groupPoid(request.getGroupPoid())
-                .companyPoid(request.getCompanyPoid())
+                .groupPoid(groupPoid)
+                .companyPoid(companyPoid)
                 .bankPoid(request.getBankPoid())
                 .postingNarration(request.getPostingNarration())
                 .remarks(request.getRemarks())
@@ -90,10 +97,6 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
                 .refType(request.getType())
                 .bankFilter(request.getBankFilter())
                 .groupPosting(request.getGroupPosting() != null && request.getGroupPosting() ? "Y" : "N")
-                .createdBy(getCurrentUser())
-                .createdDate(LocalDateTime.now())
-                .lastModifiedBy(getCurrentUser())
-                .lastModifiedDate(LocalDateTime.now())
                 .deleted("N")
                 .build();
 
@@ -120,22 +123,30 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
         return savedHdr.getTransactionPoid();
     }
 
-    @Transactional(Transactional.TxType.REQUIRES_NEW)
-    public void callUpdatePaymentProcedure(Long transactionPoid, Long groupPoid, Long companyPoid, String paymentType) {
-        callMarkPaymentsCompleted(transactionPoid, groupPoid, companyPoid, paymentType);
-
+    private void callUpdatePaymentProcedure(Long transactionPoid, String paymentType) {
+        callMarkPaymentsCompleted(transactionPoid, paymentType);
     }
 
-    private void callMarkPaymentsCompleted(Long transactionPoid, Long groupPoid, Long companyPoid, String paymentType) {
-        List<GlBankDepositVoucherDtl> details = dtlRepository.findByTransactionPoid(transactionPoid);
-        hdrRepository.markPaymentsCompleted(transactionPoid, groupPoid, companyPoid, paymentType);
+    private void callMarkPaymentsCompleted(Long transactionPoid, String paymentType) {
+        String normalizedPaymentType = normalizePaymentType(paymentType);
+        hdrRepository.markPaymentsCompleted(transactionPoid, normalizedPaymentType);
     }
 
     @Override
+    @PerformGlPosting
     @Transactional
     public BankDepositVoucherResponseDto updateBankDepositVoucher(Long transactionPoid, BankDepositVoucherRequestDto request) {
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+        tx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        tx.executeWithoutResult(status -> updateHeaderAndDetails(transactionPoid, request));
+        callUpdatePaymentProcedure(transactionPoid, request.getType());
+        return getBankDepositVoucherById(transactionPoid);
+    }
+
+    private void updateHeaderAndDetails(Long transactionPoid, BankDepositVoucherRequestDto request) {
         GlBankDepositVoucherHdr hdr = hdrRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Bank Deposit Voucher", "transactionPoid", transactionPoid));
+        Long companyPoid = UserContext.getCompanyPoid() != null ? UserContext.getCompanyPoid() : request.getCompanyPoid();
 
         // Create a copy of the existing entity for logging
         GlBankDepositVoucherHdr oldEntity = new GlBankDepositVoucherHdr();
@@ -146,7 +157,7 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
             hdrRepository.callChequeStatusValidation(detail.getRefDocRef(), detail.getRefDocPoid());
         }
 
-        hdrRepository.callBeforeSaveValidation(request.getCompanyPoid(), request.getBankPoid());
+        hdrRepository.callBeforeSaveValidation(companyPoid, request.getBankPoid());
 
         hdr.setTransactionDate(LocalDate.now());
         hdr.setBankPoid(request.getBankPoid());
@@ -156,27 +167,24 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
         hdr.setRefType(request.getType());
         hdr.setBankFilter(request.getBankFilter());
         hdr.setGroupPosting(request.getGroupPosting() != null && request.getGroupPosting() ? "Y" : "N");
-        hdr.setLastModifiedBy(getCurrentUser());
-        hdr.setLastModifiedDate(LocalDateTime.now());
 
         hdrRepository.save(hdr);
-
 
         if (request.getDetails() != null) {
             List<GlBankDepositVoucherDtl> toSave = new ArrayList<>();
             List<GlBankDepositVoucherDtl> toUpdate = new ArrayList<>();
             List<Long> toDelete = new ArrayList<>();
             List<LogRequestDto<GlBankDepositVoucherDtl>> logRequests = new ArrayList<>();
-            
+
             List<GlBankDepositVoucherDtl> existingDetailsList = dtlRepository.findByTransactionPoid(transactionPoid);
             Map<Long, GlBankDepositVoucherDtl> existingDetailsMap = existingDetailsList.stream()
                 .collect(Collectors.toMap(GlBankDepositVoucherDtl::getDetRowId, d -> d));
-            
+
             Long maxDetRowId = existingDetailsList.stream()
                 .map(GlBankDepositVoucherDtl::getDetRowId)
                 .max(Long::compareTo)
                 .orElse(0L);
-            
+
             for (BankDepositVoucherDtlDto dto : request.getDetails()) {
                 String action = dto.getActionType() != null ? dto.getActionType().toUpperCase() : "ISCREATED";
                 switch (action) {
@@ -204,7 +212,7 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
                         break;
                 }
             }
-            
+
             if (!toSave.isEmpty()) {
                 List<GlBankDepositVoucherDtl> saved = dtlRepository.saveAll(toSave);
                 saved.forEach(detail -> {
@@ -224,13 +232,15 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
                     .forEach(dtlRepository::delete);
             }
         }
-        callMarkPaymentsCompleted(transactionPoid, hdr.getGroupPoid(), hdr.getCompanyPoid(), request.getType());
 
         // Log the update
         String key = transactionPoid.toString();
-        loggingService.logChanges(oldEntity, hdr, GlBankDepositVoucherHdr.class, 
+        loggingService.logChanges(oldEntity, hdr, GlBankDepositVoucherHdr.class,
                 UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
-        return getBankDepositVoucherById(transactionPoid);
+    }
+
+    private String normalizePaymentType(String paymentType) {
+        return paymentType == null ? null : paymentType.trim().toUpperCase(Locale.ROOT);
     }
 
     @Override
@@ -238,7 +248,7 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
         GlBankDepositVoucherHdr hdr = hdrRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Bank Deposit Voucher", "transactionPoid", transactionPoid));
 
-        List<GlBankDepositVoucherDtl> details = dtlRepository.findByTransactionPoid(transactionPoid);
+        List<GlBankDepositVoucherDtl> details = dtlRepository.findByTransactionPoidOrderByChqSeqNumAsc(transactionPoid);
 
         return BankDepositVoucherResponseDto.builder()
                 .transactionPoid(hdr.getTransactionPoid())
@@ -362,7 +372,7 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
 
     private LovGetListDto setBankDet(GlBankDepositVoucherDtl entity) {
         if (entity.getBankPoid() != null) {
-            return lovService.getDetailsByPoidAndLovName(entity.getBankPoid(),"BANK_MASTER_FOR_BDV");
+            return lovService.getDetailsByPoidAndLovName(entity.getBankPoid(),"CUSTOMER_BANK_MASTER");
         }
         return  null;
     }

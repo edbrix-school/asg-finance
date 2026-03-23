@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
 import java.util.Date;
 
 import static com.asg.common.lib.dto.response.ApiResponse.success;
@@ -70,7 +71,7 @@ public class BillwiseBreakupController {
             @Parameter(description = "GL POID", required = true, example = "12345")
             @RequestParam Long glPoid,
             @Parameter(description = "As on Date (format: yyyy-MM-dd)", required = true, example = "2025-11-11")
-            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") Date asOnDate
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate asOnDate
 
     ) {
 
@@ -115,7 +116,7 @@ public class BillwiseBreakupController {
             @Parameter(description = "GL POID", required = true, example = "12345")
             @RequestParam Long glPoid,
             @Parameter(description = "As on Date (format: yyyy-MM-dd)", required = true, example = "2025-11-11")
-            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") Date asOnDate
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate asOnDate
 
     ) {
 

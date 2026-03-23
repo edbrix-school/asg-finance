@@ -35,10 +35,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -715,6 +712,12 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                     }
                     GLMasterEntity chargeGL = chargeGLList.get(0);
 
+                    // Handle cost center - can be Long or String
+                    String costPoidValue = null;
+                    if (charge.getCostCenter() != null) {
+                        costPoidValue = charge.getCostCenter().toString();
+                    }
+
                     toSave.add(ArGenReceiptChargesDtl.builder()
                             .transactionPoid(transactionPoid)
                             .detRowId(charge.getDetRowId())
@@ -726,7 +729,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                             .taxPercentage(charge.getTaxPercent())
                             .taxAmount(charge.getTaxAmount())
                             .totalAmount(charge.getTotalAmount())
-                            .costPoid(charge.getCostCenter() != null ? charge.getCostCenter().toString() : null)
+                            .costPoid(costPoidValue)
                             .remarks(charge.getRemarks())
                             .build());
                     break;
@@ -747,6 +750,12 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                     }
                     GLMasterEntity updatedChargeGL = updatedChargeGLList.get(0);
 
+                    // Handle cost center - can be Long or String
+                    String updatedCostPoidValue = null;
+                    if (charge.getCostCenter() != null) {
+                        updatedCostPoidValue = charge.getCostCenter().toString();
+                    }
+
                     existingCharge.setChargeType(charge.getChargeType());
                     existingCharge.setGlPoid(updatedChargeGL.getGlPoid());
                     existingCharge.setAmount(charge.getAmount());
@@ -755,7 +764,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                     existingCharge.setTaxPercentage(charge.getTaxPercent());
                     existingCharge.setTaxAmount(charge.getTaxAmount());
                     existingCharge.setTotalAmount(charge.getTotalAmount());
-                    existingCharge.setCostPoid(charge.getCostCenter() != null ? charge.getCostCenter().toString() : null);
+                    existingCharge.setCostPoid(updatedCostPoidValue);
                     existingCharge.setRemarks(charge.getRemarks());
                     existingCharge.setLastModifiedBy(currentUser);
                     existingCharge.setLastModifiedDate(now);
@@ -1546,6 +1555,12 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
             // Calculate BHD equivalent (amount * currency rate)
             BigDecimal bhdEquivalent = charge.getAmount().multiply(header.getCurrencyRate());
 
+            // Handle cost center - can be Long or String
+            String costPoidValue = null;
+            if (charge.getCostCenter() != null) {
+                costPoidValue = charge.getCostCenter().toString();
+            }
+
             ArGenReceiptChargesDtl detail = ArGenReceiptChargesDtl.builder()
                     .transactionPoid(header.getTransactionPoid()) // Set parent transaction POID
                     .detRowId(detId)
@@ -1557,7 +1572,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                     .taxPercentage(charge.getTaxPercent())
                     .taxAmount(charge.getTaxAmount())
                     .totalAmount(charge.getTotalAmount())
-                    .costPoid(charge.getCostCenter() != null ? charge.getCostCenter().toString() : null)
+                    .costPoid(costPoidValue)
                     .remarks(charge.getRemarks())
                     .build();
 
@@ -1971,16 +1986,27 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                     dto.setTaxPercent(detail.getTaxPercentage());
                     dto.setTaxAmount(detail.getTaxAmount());
                     dto.setTotalAmount(detail.getTotalAmount());
-                    // Get cost center details from cost POID using LOV service
+                    // Handle cost center - COST_POID can be string or numeric
                     if (detail.getCostPoid() != null && !detail.getCostPoid().isBlank()) {
                         try {
-                            Long costPoid = Long.parseLong(detail.getCostPoid());
-                            LovGetListDto costCenterLov = lovService.getDetailsByPoidAndLovName(costPoid,
+                            // First try to parse as Long (for numeric cost center POIDs)
+                            String costPoid = detail.getCostPoid();
+                            LovGetListDto costCenterLov = lovService.getDetailsByCodeAndLovName(costPoid,
                                     "AR_GEN_REC_COST_CENTER");
                             if (costCenterLov != null) {
                                 dto.setCostCenter(costPoid);
                                 dto.setCostCenterDetails(costCenterLov);
                             }
+                        } catch (NumberFormatException e) {
+                            // If parsing fails, it's a string-based cost center code
+                            log.debug("Cost center is string-based: {}", detail.getCostPoid());
+                            // For string-based cost centers, we can't set costCenter as Long
+                            // but we can create a basic LovGetListDto with the string value
+                            LovGetListDto costCenterLov = new LovGetListDto();
+                            costCenterLov.setCode(detail.getCostPoid());
+                            costCenterLov.setDescription(detail.getCostPoid());
+                            dto.setCostCenterDetails(costCenterLov);
+                            // Note: dto.setCostCenter() expects Long, so we leave it null for string values
                         } catch (Exception e) {
                             log.warn("Failed to fetch cost center for costPoid {}: {}", detail.getCostPoid(),
                                     e.getMessage());

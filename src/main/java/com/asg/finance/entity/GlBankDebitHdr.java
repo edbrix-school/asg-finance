@@ -4,6 +4,8 @@ import com.asg.common.lib.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.Generated;
+import org.hibernate.generator.EventType;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -28,6 +30,7 @@ public class GlBankDebitHdr extends BaseEntity {
     @Column(name = "COMPANY_POID")
     private Long companyPoid;
 
+    @Generated(event = EventType.INSERT)
     @Column(name = "DOC_REF", nullable = false, length = 25)
     private String docRef;
 

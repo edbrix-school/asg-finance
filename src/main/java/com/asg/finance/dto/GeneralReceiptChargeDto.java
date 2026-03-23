@@ -52,7 +52,7 @@ public class GeneralReceiptChargeDto {
     private BigDecimal totalAmount;
 
     @Schema(description = "Cost center POID", example = "1001")
-    private Long costCenter;
+    private String costCenter;
 
     @Schema(description = "Cost center details (code, description, poid)")
     private LovGetListDto costCenterDetails;

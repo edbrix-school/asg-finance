@@ -514,9 +514,6 @@ public class DebitNoteServiceImpl implements DebitNoteService {
     }
 
     private String resolveDetailUpdateActionType(String actionType, Long detRowId) {
-        if (detRowId == null) {
-            return "ISCREATED";
-        }
         return normalizeDetailUpdateActionType(actionType);
     }
 

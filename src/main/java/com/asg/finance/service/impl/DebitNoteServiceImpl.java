@@ -365,11 +365,11 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                 }
                 case "ISDELETED": {
                     Long detRowId = dto.getDetRowId();
-                    if (detRowId == null) {
-                        throw new ValidationException("Debit Note GL Detail detRowId is required for delete");
+                    if (detRowId != null && detRowId > 0) {
+                        toDelete.add(detRowId);
+                        loggingService.logDelete(dto, docId, docKeyPoid);
                     }
-                    toDelete.add(detRowId);
-                    loggingService.logDelete(dto, docId, docKeyPoid);
+
                     break;
                 }
                 case "NOCHANGE":
@@ -466,11 +466,11 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                 }
                 case "ISDELETED": {
                     Long detRowId = dto.getDetRowId();
-                    if (detRowId == null) {
-                        throw new ValidationException("Debit Note Charge Detail detRowId is required for delete");
+                    if (detRowId != null && detRowId > 0) {
+                        toDelete.add(detRowId);
+                        loggingService.logDelete(dto, docId, docKeyPoid);
                     }
-                    toDelete.add(detRowId);
-                    loggingService.logDelete(dto, docId, docKeyPoid);
+
                     break;
                 }
                 case "NOCHANGE":

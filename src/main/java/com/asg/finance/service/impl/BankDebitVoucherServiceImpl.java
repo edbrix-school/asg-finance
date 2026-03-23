@@ -1049,8 +1049,15 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                                     );
                                     if (cc.getCostPoid() != null && !cc.getCostPoid().isEmpty() && 
                                         cc.getCostGroup() != null && !cc.getCostGroup().isEmpty()) {
-                                        dto.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(
-                                                Long.valueOf(cc.getCostPoid()), cc.getCostGroup()));
+
+                                        if (StringUtils.isNotEmpty(cc.getCostPoid()) && StringUtils.isNotEmpty(cc.getCostGroup())) {
+                                            try {
+                                                Long poid = Long.parseLong(cc.getCostPoid());
+                                                dto.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(poid, cc.getCostGroup()));
+                                            } catch (NumberFormatException e) {
+                                                dto.setCostCenterDetails(lovService.getDetailsByCodeAndLovName(cc.getCostPoid(), cc.getCostGroup()));
+                                            }
+                                        }
                                     }
                                     return dto;
                                 })

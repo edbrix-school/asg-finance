@@ -107,7 +107,7 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
 
         String afterSaveStatus = callAfterSaveProcedure(trnPoid, header.getDocRef());
         if (afterSaveStatus != null && afterSaveStatus.contains("ERROR")) {
-            throw new ValidationException(afterSaveStatus);
+            UserContext.setGlPostingError(afterSaveStatus);
         }
 
         if ("CLOSED".equalsIgnoreCase(header.getStatus())) {
@@ -154,7 +154,7 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
         // Handle procedures
         String afterSaveStatus = callAfterSaveProcedure(header.getTransactionPoid(), header.getDocRef());
         if (afterSaveStatus != null && afterSaveStatus.contains("ERROR")) {
-            throw new ValidationException(afterSaveStatus);
+            UserContext.setGlPostingError(afterSaveStatus);
         }
 
         if ("CLOSED".equalsIgnoreCase(header.getStatus())) {
@@ -162,15 +162,15 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
         }
 
         // Log the update
-        String logDetails = String.format("Cheque Return Updated - %s", header.getDocRef());
-        loggingService.createLogSummaryEntry(DOC_ID_CHEQUE_RETURN, header.getTransactionPoid().toString(), logDetails);
+        String logDetails = String.format(
+                "Cheque Return with DocRef %s has been closed. Details: %s",
+                header.getDocRef(),
+                header.getCloseDetail()
+        );        loggingService.createLogSummaryEntry(DOC_ID_CHEQUE_RETURN, header.getTransactionPoid().toString(), logDetails);
 
         return getChequeReturn(transactionPoid);
     }
 
-    // ============================================================
-    // UPDATE V2 (FULL UPDATE WITH PAYLOAD)
-    // ============================================================
     @Override
     @Transactional
     public ChequeReturnResponse updateChequeReturnV2(Long transactionPoid, ChequeReturnRequest request) {
@@ -227,7 +227,7 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
         // Handle procedures
         String afterSaveStatus = callAfterSaveProcedure(header.getTransactionPoid(), header.getDocRef());
         if (afterSaveStatus != null && afterSaveStatus.contains("ERROR")) {
-            throw new ValidationException(afterSaveStatus);
+            UserContext.setGlPostingError(afterSaveStatus);
         }
 
         if ("CLOSED".equalsIgnoreCase(header.getStatus())) {

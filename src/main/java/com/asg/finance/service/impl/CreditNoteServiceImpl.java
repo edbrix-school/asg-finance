@@ -296,7 +296,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                 TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                     @Override
                     public void afterCommit() {
-                        executePostSaveUpdates(transactionPoid, creditNoteDto);
+                        try {
+                            executePostSaveUpdates(transactionPoid, creditNoteDto);
+                        } catch (SQLException e) {
+                            throw new RuntimeException(e.getMessage());
+                        }
                     }
                 });
             } else {

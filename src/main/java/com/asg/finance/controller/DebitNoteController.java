@@ -8,6 +8,7 @@ import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.finance.dto.DebitNoteHeaderDto;
 import com.asg.common.lib.dto.FilterRequestDto;
+import com.asg.finance.service.CreditNoteService;
 import com.asg.finance.service.DebitNoteService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -42,6 +43,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 public class DebitNoteController {
 
     private final DebitNoteService debitNoteService;
+    private final CreditNoteService creditNoteService;;
     private final LoggingService loggingService;
     // -------------------------------------------------------
     // CREATE
@@ -389,6 +391,35 @@ public class DebitNoteController {
     ) {
         Map<String, String> result = debitNoteService.getCustomLovList(costGroup);
         return success("Custom LOV list retrieved successfully", result);
+    }
+
+    @Operation(
+            summary = "Get Party GL POID",
+            description = """
+                Fetches party GL POID for a selected party using: When Ref Type is General or Custom
+                PROC_GL_GET_DR_PARTY_GLPOID
+
+                ### Input:
+                - Party POID
+                - Party Type (CUSTOMER, SUPPLIER, PRINCIPAL)
+                
+
+                ### Output:
+                - Party GL POID
+                """
+    )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
+    @GetMapping("/party-gl/{partyPoid}")
+    public ResponseEntity<?> getPartyGLPoid(
+            @PathVariable Long partyPoid,
+            @RequestParam String partyType) {
+        try {
+            Long result = creditNoteService.getPartyGLPoid(partyPoid, partyType);
+            return success("Party GL POID fetched successfully", result);
+        } catch (Exception e) {
+            log.error("Error fetching party GL POID for partyPoid: {}, partyType: {}", partyPoid, partyType, e);
+            return internalServerError("Failed to fetch party GL POID: " + e.getMessage());
+        }
     }
 
 }

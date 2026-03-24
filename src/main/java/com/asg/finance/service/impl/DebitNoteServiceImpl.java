@@ -40,6 +40,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import javax.sql.DataSource;
 import java.math.BigDecimal;
 import java.sql.CallableStatement;
@@ -128,8 +130,6 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                 .orElseThrow(() -> new ResourceNotFoundException("DebitNote", "transactionPoid", savedEntity.getTransactionPoid()));
         // Log the creation
         loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), savedEntity.getTransactionPoid().toString());
-
-        glPostingService.performGlPosting(UserContext.getDocumentId(), savedEntity.getTransactionPoid(), refreshedEntity.getDocRef());
 
         // Call after-save procedures
         performAfterSaveProcessing(refreshedEntity, null, null);
@@ -365,11 +365,11 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                 }
                 case "ISDELETED": {
                     Long detRowId = dto.getDetRowId();
-                    if (detRowId == null) {
-                        throw new ValidationException("Debit Note GL Detail detRowId is required for delete");
+                    if (detRowId != null && detRowId > 0) {
+                        toDelete.add(detRowId);
+                        loggingService.logDelete(dto, docId, docKeyPoid);
                     }
-                    toDelete.add(detRowId);
-                    loggingService.logDelete(dto, docId, docKeyPoid);
+
                     break;
                 }
                 case "NOCHANGE":
@@ -466,11 +466,11 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                 }
                 case "ISDELETED": {
                     Long detRowId = dto.getDetRowId();
-                    if (detRowId == null) {
-                        throw new ValidationException("Debit Note Charge Detail detRowId is required for delete");
+                    if (detRowId != null && detRowId > 0) {
+                        toDelete.add(detRowId);
+                        loggingService.logDelete(dto, docId, docKeyPoid);
                     }
-                    toDelete.add(detRowId);
-                    loggingService.logDelete(dto, docId, docKeyPoid);
+
                     break;
                 }
                 case "NOCHANGE":
@@ -514,9 +514,6 @@ public class DebitNoteServiceImpl implements DebitNoteService {
     }
 
     private String resolveDetailUpdateActionType(String actionType, Long detRowId) {
-        if (detRowId == null) {
-            return "ISCREATED";
-        }
         return normalizeDetailUpdateActionType(actionType);
     }
 
@@ -964,9 +961,9 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         if (dto.getGlDetails() == null) return;
 
         List<BillwiseBreakupRequestDto> billwiseRequests = new ArrayList<>();
-
+        long intial = 1;
         for (DebitNoteGlDetailDto gl : dto.getGlDetails()) {
-            if (gl.getBreakupList() == null || gl.getBreakupList().isEmpty()) continue;
+            if (gl.getBreakupList() == null || gl.getBreakupList().isEmpty() || gl.getActionType().equalsIgnoreCase("isDeleted")) continue;
 
             for (BillwiseBreakupPopupRequestDto bw : gl.getBreakupList()) {
                 // Skip deleted and no-change entries
@@ -985,7 +982,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                 req.setTransactionPoid(transactionPoid);
                 req.setGlPoid(gl.getGlId());
                 req.setMainDetRowId(gl.getDetRowId());
-                req.setBillDetRowId(bw.getBillDetRowId());
+                req.setBillDetRowId(intial);
                 req.setBillRefType(bw.getBillRefType());
                 req.setBillRef(bw.getBillRef());
                 req.setBillDueDate(bw.getBillDueDate());
@@ -1000,11 +997,15 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                 req.setLoginUserPoid(UserContext.getUserPoid());
 
                 billwiseRequests.add(req);
+                intial++;
             }
         }
 
         if (!billwiseRequests.isEmpty()) {
             billwiseBreakupService.updateBillwiseBreakups(billwiseRequests, UserContext.getUserPoid());
+        } else {
+            // No billwise data in request — clean up any previously saved records
+            billwiseBreakupService.deleteBillwiseBreakup(groupPoid, companyPoid, debitNoteDocId, transactionPoid, UserContext.getUserPoid());
         }
     }
 
@@ -1014,8 +1015,8 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         List<CostCenterBreakupRequestDto> ccRequests = new ArrayList<>();
 
         for (DebitNoteGlDetailDto gl : dto.getGlDetails()) {
-            if (gl.getCostCenterList() == null || gl.getCostCenterList().isEmpty()) continue;
-
+            if (gl.getCostCenterList() == null || gl.getCostCenterList().isEmpty() || gl.getActionType().equalsIgnoreCase("isDeleted")) continue;
+            long intial = 1;
             for (CostCenterBreakupPopupRequestDto cb : gl.getCostCenterList()) {
                 // Skip deleted and no-change entries
                 String actionType = cb.getActionType();
@@ -1033,18 +1034,22 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                 req.setTransactionPoid(transactionPoid);
                 req.setGlPoid(gl.getGlId());
                 req.setMainDetRowId(gl.getDetRowId());
-                req.setCostDetRowId(cb.getCostDetRowId());
+                req.setCostDetRowId(intial);
                 req.setCostGroup(cb.getCostGroup());
                 req.setCostPoid(cb.getCostPoid());
                 req.setAmount(cb.getAmount());
                 req.setLoginUserPoid(UserContext.getUserPoid());
 
                 ccRequests.add(req);
+                intial++;
             }
         }
 
         if (!ccRequests.isEmpty()) {
             costCenterBreakupService.updateCostCenterBreakups(ccRequests, UserContext.getUserPoid());
+        } else {
+            // No cost center data in request — clean up any previously saved records
+            costCenterBreakupService.deleteCostCenterData(debitNoteDocId, transactionPoid, groupPoid, companyPoid, UserContext.getUserPoid());
         }
     }
 
@@ -1106,10 +1111,13 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                                     cb.setAmount(
                                             x.getAmount() != null ? (x.getAmount()) : BigDecimal.ZERO
                                     );
-//                                    cb.setGlDescription(x.getDescription());  // optional: SRS uses description as GL desc
-
                                     if (StringUtils.isNotEmpty(x.getCostPoid()) && StringUtils.isNotEmpty(x.getCostGroup())) {
-                                        cb.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(Long.valueOf(x.getCostPoid()), x.getCostGroup()));
+                                        try {
+                                            Long poid = Long.parseLong(x.getCostPoid());
+                                            cb.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(poid, x.getCostGroup()));
+                                        } catch (NumberFormatException e) {
+                                            cb.setCostCenterDetails(lovService.getDetailsByCodeAndLovName(x.getCostPoid(), x.getCostGroup()));
+                                        }
                                     }
 
                                     return cb;
@@ -1267,7 +1275,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                 balancingAmount = documentTotal;
             }
 
-            Long nextDetRowId = effectiveGlDetails.stream()
+            Long nextDetRowId = dto.getGlDetails().stream()
                     .map(DebitNoteGlDetailDto::getDetRowId)
                     .filter(Objects::nonNull)
                     .max(Long::compareTo)

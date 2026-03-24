@@ -60,8 +60,7 @@ public class GlPostingAspect {
                                     glPostingService.performGlPosting(finalDocId, finalTransactionPoid, finalDocRef);
                                 } catch (Exception e) {
                                     log.error("Error during GL Posting after commit: {}", e.getMessage(), e);
-                                    throw e instanceof RuntimeException ? (RuntimeException) e :
-                                            new RuntimeException("GL Posting failed after commit", e);
+                                    UserContext.setGlPostingError(e.getMessage());
                                 }
                             }
                         }
@@ -73,8 +72,7 @@ public class GlPostingAspect {
 
         } catch (Exception e) {
             log.error("Error in GlPostingAspect: {}", e.getMessage(), e);
-            throw e instanceof RuntimeException ? (RuntimeException) e :
-                    new RuntimeException("Unexpected error during automatic GL Posting", e);
+            UserContext.setGlPostingError(e.getMessage());
         }
     }
 

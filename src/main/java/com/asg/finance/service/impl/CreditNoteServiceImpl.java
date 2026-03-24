@@ -2494,6 +2494,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             }
 
             log.info("Saved {} billwise breakup entries for transactionPoid: {}", billwiseList.size(), transactionPoid);
+        } else if (isUpdate) {
+            // No billwise data in request — clean up any previously saved records
+            billwiseBreakupService.deleteBillwiseBreakup(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), docId, transactionPoid, userPoid);
         }
     }
 
@@ -2581,6 +2584,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                 costCenterBreakupService.saveCostCenterBreakups(costCenterList);
             }
             log.info("Saved {} cost center breakup entries for transactionPoid: {}", costCenterList.size(), transactionPoid);
+        } else if (isUpdate) {
+            // No cost center data in request — clean up any previously saved records
+            costCenterBreakupService.deleteCostCenterData(docId, transactionPoid, UserContext.getGroupPoid(), UserContext.getCompanyPoid(), userPoid);
         }
     }
 
@@ -2789,7 +2795,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     balancingAmount = documentTotal;
                 }
 
-                Long nextDetRowId = effectiveGlDetails.stream()
+                Long nextDetRowId = dto.getGlDetails().stream()
                         .map(CreditNoteGLDetailDto::getDetRowId)
                         .filter(Objects::nonNull)
                         .max(Long::compareTo)

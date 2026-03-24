@@ -52,8 +52,7 @@ public class GlPostingServiceImpl implements GlPostingService {
 
             if (result != null && result.contains("ERROR")) {
                 log.error("GL posting failed: {}", result);
-                throw new ValidationException("GL Posting failed: " + result);
-            }
+                throw new ValidationException("Record saved successfully, but GL posting failed: " + result);            }
 
             log.info("GL posting completed successfully: {}", result);
             return result;

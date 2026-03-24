@@ -292,20 +292,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             saveCostCenterForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111", true);
             entityManager.flush();
 
-            if (TransactionSynchronizationManager.isSynchronizationActive()) {
-                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                    @Override
-                    public void afterCommit() {
-                        try {
-                            executePostSaveUpdates(transactionPoid, creditNoteDto);
-                        } catch (SQLException e) {
-                            throw new RuntimeException(e.getMessage());
-                        }
-                    }
-                });
-            } else {
-                executePostSaveUpdates(transactionPoid, creditNoteDto);
-            }
+            executePostSaveUpdates(transactionPoid, creditNoteDto);
 
             // Execute post-commit tax recalculation and reference updates
             executePostCommitTaxUpdates(transactionPoid, creditNoteDto, oldFdaRef, oldFfRef, existing);

@@ -42,6 +42,7 @@ import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -1931,6 +1932,16 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                             .build();
                     if (cc.getCostPoid() != null && !cc.getCostPoid().isEmpty() && 
                         cc.getCostGroup() != null && !cc.getCostGroup().isEmpty()) {
+
+
+                        if (StringUtils.isNotEmpty(cc.getCostPoid()) && StringUtils.isNotEmpty(cc.getCostGroup())) {
+                            try {
+                                Long poid = Long.parseLong(cc.getCostPoid());
+                                dto.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(poid, cc.getCostGroup()));
+                            } catch (NumberFormatException e) {
+                                dto.setCostCenterDetails(lovService.getDetailsByCodeAndLovName(cc.getCostPoid(), cc.getCostGroup()));
+                            }
+                        }
                         dto.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(
                                 Long.valueOf(cc.getCostPoid()), cc.getCostGroup()));
                     }

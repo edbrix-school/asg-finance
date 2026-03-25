@@ -2475,7 +2475,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     }
                     req.setBillRemarks(popup.getBillRemarks());
                     req.setLoginUserPoid(userPoid);
-                    req.setMainDetRowId(inital);
+                    req.setMainDetRowId(glDto.getDetRowId());
                     req.setGlCompanyPoid(companyPoid);
                     req.setGlPoid(glDto.getGlPoid());
                     billwiseList.add(req);
@@ -2493,6 +2493,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             }
 
             log.info("Saved {} billwise breakup entries for transactionPoid: {}", billwiseList.size(), transactionPoid);
+        } else if (isUpdate) {
+            // No billwise data in request — clean up any previously saved records
+            billwiseBreakupService.deleteBillwiseBreakup(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), docId, transactionPoid, userPoid);
         }
     }
 
@@ -2580,6 +2583,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                 costCenterBreakupService.saveCostCenterBreakups(costCenterList);
             }
             log.info("Saved {} cost center breakup entries for transactionPoid: {}", costCenterList.size(), transactionPoid);
+        } else if (isUpdate) {
+            // No cost center data in request — clean up any previously saved records
+            costCenterBreakupService.deleteCostCenterData(docId, transactionPoid, UserContext.getGroupPoid(), UserContext.getCompanyPoid(), userPoid);
         }
     }
 
@@ -2639,7 +2645,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
                 if (billwiseResponse != null && billwiseResponse.getLoadBillwiseBreakupResponseDtoList() != null) {
                     List<BillwiseBreakupPopupRequestDto> billwiseList = billwiseResponse.getLoadBillwiseBreakupResponseDtoList().stream()
-                            .filter(item -> item.getMainDetRowId() != null && glDto.getType().equalsIgnoreCase("DR")?(item.getDrAmt() != null && item.getDrAmt().compareTo(BigDecimal.ZERO) > 0):(item.getCrAmt() != null && item.getCrAmt().compareTo(BigDecimal.ZERO) > 0))
+                            .filter(item -> item.getMainDetRowId() != null && item.getMainDetRowId().equals(glDto.getDetRowId()) && (glDto.getType().equalsIgnoreCase("DR")?(item.getDrAmt() != null && item.getDrAmt().compareTo(BigDecimal.ZERO) > 0):(item.getCrAmt() != null && item.getCrAmt().compareTo(BigDecimal.ZERO) > 0)))
                             .map(item -> {
                                 BillwiseBreakupPopupRequestDto popupDto = new BillwiseBreakupPopupRequestDto();
                                 popupDto.setBillDetRowId(item.getBillDetRowId());
@@ -2788,7 +2794,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     balancingAmount = documentTotal;
                 }
 
-                Long nextDetRowId = effectiveGlDetails.stream()
+                Long nextDetRowId = dto.getGlDetails().stream()
                         .map(CreditNoteGLDetailDto::getDetRowId)
                         .filter(Objects::nonNull)
                         .max(Long::compareTo)

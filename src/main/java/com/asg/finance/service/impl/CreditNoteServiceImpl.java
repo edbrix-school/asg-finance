@@ -2564,7 +2564,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     dto.setTransactionPoid(transactionPoid);
                     dto.setMainDetRowId(glDto.getDetRowId());
                     dto.setGlPoid(glDto.getGlPoid());
-                    dto.setCostDetRowId(inital);
+                    dto.setCostDetRowId(glDto.getDetRowId());
                     dto.setCostGroup(popup.getCostGroup());
                     dto.setCostPoid(popup.getCostPoid());
                     dto.setAmount(popup.getAmount());
@@ -2645,7 +2645,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
                 if (billwiseResponse != null && billwiseResponse.getLoadBillwiseBreakupResponseDtoList() != null) {
                     List<BillwiseBreakupPopupRequestDto> billwiseList = billwiseResponse.getLoadBillwiseBreakupResponseDtoList().stream()
-                            .filter(item -> item.getMainDetRowId() != null && item.getMainDetRowId().equals(glDto.getDetRowId()) && (glDto.getType().equalsIgnoreCase("DR")?(item.getDrAmt() != null && item.getDrAmt().compareTo(BigDecimal.ZERO) > 0):(item.getCrAmt() != null && item.getCrAmt().compareTo(BigDecimal.ZERO) > 0)))
+                            .filter(item -> item.getMainDetRowId() != null && item.getMainDetRowId().equals(glDto.getDetRowId()))
                             .map(item -> {
                                 BillwiseBreakupPopupRequestDto popupDto = new BillwiseBreakupPopupRequestDto();
                                 popupDto.setBillDetRowId(item.getBillDetRowId());

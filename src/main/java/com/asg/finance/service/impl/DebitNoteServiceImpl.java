@@ -39,6 +39,8 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -131,8 +133,8 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         // Log the creation
         loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), savedEntity.getTransactionPoid().toString());
 
-        // Call after-save procedures
-        performAfterSaveProcessing(refreshedEntity, null, null);
+        // Publish event for after-save processing (will run after transaction commit)
+        publishAfterSaveEvent(refreshedEntity, null, null);
 
         return getDebitNote(savedEntity.getTransactionPoid());
     }
@@ -211,10 +213,8 @@ public class DebitNoteServiceImpl implements DebitNoteService {
             globalLogSummaryRepository.saveAll(detailSummaryLogs);
         }
 
-
-        // Call after-save procedures for update
-        performAfterSaveProcessing(existingEntity, oldFdaRef, oldRefType);
-
+        // Publish event for after-save processing (will run after transaction commit)
+        publishAfterSaveEvent(existingEntity, oldFdaRef, oldRefType);
 
         return getDebitNote(transactionPoid);
     }
@@ -1419,8 +1419,18 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                 : Map.of("valid", false, "errors", errors);
     }
 
+    private void publishAfterSaveEvent(ArDebitNoteHdr entity, String oldFdaRef, String oldRefType) {
+        // Event will be handled by onAfterSaveCommit listener after transaction commit
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onAfterSaveCommit(DebitNoteAfterSaveEvent event) {
+        performAfterSaveProcessing(event.getEntity(), event.getOldFdaRef(), event.getOldRefType());
+    }
+
     /**
      * Performs after-save processing including bill reference updates and FDA amount updates
+     * This runs AFTER the main transaction has been committed
      */
     private void performAfterSaveProcessing(ArDebitNoteHdr entity, String oldFdaRef, String oldRefType) {
         try {
@@ -1471,6 +1481,33 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         } catch (Exception e) {
             log.error("Error in after-save processing for transaction {}: {}", entity.getTransactionPoid(), e.getMessage(), e);
             // Log error but don't throw to avoid breaking the main save process
+        }
+    }
+
+    /**
+     * Event class for after-save processing
+     */
+    private static class DebitNoteAfterSaveEvent {
+        private final ArDebitNoteHdr entity;
+        private final String oldFdaRef;
+        private final String oldRefType;
+
+        public DebitNoteAfterSaveEvent(ArDebitNoteHdr entity, String oldFdaRef, String oldRefType) {
+            this.entity = entity;
+            this.oldFdaRef = oldFdaRef;
+            this.oldRefType = oldRefType;
+        }
+
+        public ArDebitNoteHdr getEntity() {
+            return entity;
+        }
+
+        public String getOldFdaRef() {
+            return oldFdaRef;
+        }
+
+        public String getOldRefType() {
+            return oldRefType;
         }
     }
 

@@ -431,7 +431,6 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         switch (refType) {
 
             case "GENERAL":
-            case "CUSTOM":
             case "GENERAL PO":
                 saveGlDetails(transactionPoid, apPurchaseInvoiceHdrDto);
                 autoCreateBalancingGlRowWithBillwise(
@@ -439,6 +438,10 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                         apPurchaseInvoiceHdrDto
                 );
                 entityManager.flush();
+                break;
+
+            case "CUSTOM":
+                saveGlDetails(transactionPoid, apPurchaseInvoiceHdrDto);
                 break;
 
             case "FF JOBS":

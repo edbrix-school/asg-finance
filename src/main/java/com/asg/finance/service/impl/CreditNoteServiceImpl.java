@@ -2564,7 +2564,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     dto.setTransactionPoid(transactionPoid);
                     dto.setMainDetRowId(glDto.getDetRowId());
                     dto.setGlPoid(glDto.getGlPoid());
-                    dto.setCostDetRowId(glDto.getDetRowId());
+                    dto.setCostDetRowId(inital);
                     dto.setCostGroup(popup.getCostGroup());
                     dto.setCostPoid(popup.getCostPoid());
                     dto.setAmount(popup.getAmount());

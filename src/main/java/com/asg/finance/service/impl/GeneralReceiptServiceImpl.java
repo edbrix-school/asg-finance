@@ -1324,7 +1324,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         return ArGenReceiptHdr.builder()
                 .transactionDate(dto.getTransactionDate() != null ? dto.getTransactionDate() : LocalDate.now())
                 .groupPoid(DEFAULT_GROUP_POID)
-                .companyPoid(dto.getCompanyPoid())
+                .companyPoid(UserContext.getCompanyPoid())
                 .rcvdOthPoid(creditGlPoid)
                 .rcptAmount(receiptAmount)
                 .invoiceAmount(invoiceAmount)

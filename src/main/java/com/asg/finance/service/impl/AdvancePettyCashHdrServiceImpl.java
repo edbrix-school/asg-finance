@@ -101,6 +101,9 @@ public class AdvancePettyCashHdrServiceImpl implements AdvancePettyCashHdrServic
             BigDecimal currentBalance = existing.getBalanceAmount() != null ? existing.getBalanceAmount() : BigDecimal.ZERO;
             existing.setSettledAmount(currentSettled.add(currentBalance));
             existing.setBalanceAmount(BigDecimal.ZERO);
+        }  else {
+            existing.setSettledAmount(BigDecimal.ZERO);
+            existing.setBalanceAmount(request.getIouAmount() != null ? request.getIouAmount() : BigDecimal.ZERO);
         }
         
         try {
@@ -248,8 +251,9 @@ public class AdvancePettyCashHdrServiceImpl implements AdvancePettyCashHdrServic
     }
 
     private void validateClosedStatus(String status, String closedReason) {
-        if ("CLOSED".equals(status) && (closedReason == null || closedReason.trim().isEmpty())) {
-            throw new ValidationException("Closed reason is required when status is CLOSED");
+        if (("CLOSED".equals(status) || "REFUNDED".equals(status))
+                && (closedReason == null || closedReason.trim().isEmpty())) {
+            throw new ValidationException("Closed reason is required !!");
         }
     }
 

@@ -95,7 +95,16 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
                 });
             }
 
+            Long userId = UserContext.getUserPoid() != null ? UserContext.getUserPoid() : 1L;
             Long transactionPoid = savedHdr.getTransactionPoid();
+
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    processFileAsync(transactionPoid, userId);
+                }
+            });
+
             String key = savedHdr.getTransactionPoid().toString();
             String docId = UserContext.getDocumentId();
             loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, key);
@@ -133,6 +142,15 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
             String docId = UserContext.getDocumentId();
             loggingService.logChanges(oldHdr, hdr, GlBankFileHdr.class, 
                     docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+
+            Long userId = UserContext.getUserPoid() != null ? UserContext.getUserPoid() : 1L;
+
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    processFileAsync(transactionPoid, userId);
+                }
+            });
             
             return getTelexFileById(transactionPoid);
         } catch (Exception e) {
@@ -367,5 +385,14 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
             return "Changes allowed only within current Transaction Period";
         }
         return errorMessage != null ? errorMessage : "Database operation failed";
+    }
+
+    @Async
+    public void processFileAsync(Long transactionPoid, Long userId) {
+        try {
+            bankFileBatchService.createBankFileBatch(transactionPoid, userId);
+        } catch (Exception e) {
+            // Log error but don't throw - async method
+        }
     }
 }

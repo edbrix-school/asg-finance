@@ -239,6 +239,7 @@ public class AdvancePettyCashHdrServiceImpl implements AdvancePettyCashHdrServic
                 .transactionPoid(detail.getTransactionPoid())
                 .documentDate(detail.getPettyCashTrnDate())
                 .pettyCashReference(detail.getPettyCashRef())
+                .drilldownLinkInfo(detail.getDrilldownLinkInfo())
                 .amount(detail.getAmount())
                 .remarks(detail.getPettyCashRemarks())
                 .build();

@@ -18,6 +18,7 @@ public class AdvancePettyCashDtlResponseDTO {
     private Long transactionPoid;
     private LocalDate documentDate;
     private String pettyCashReference;
+    private String drilldownLinkInfo;
     private BigDecimal amount;
     private String remarks;
 }

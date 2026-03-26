@@ -101,12 +101,12 @@ public class DebitNoteServiceImpl implements DebitNoteService {
 
         // VALIDATION BEFORE SAVE
         validateDebitNoteInput(debitNoteDto);
-        DocumentBeforeSaveBillwiseCostGroups(debitNoteDto);
-
         applyBusinessLogic(debitNoteDto);
 
         ArDebitNoteHdr entity = mapToEntity(debitNoteDto);
         ArDebitNoteHdr savedEntity = debitNoteHdrRepository.saveAndFlush(entity);
+        debitNoteDto.setDocRef(savedEntity.getDocRef());
+        DocumentBeforeSaveBillwiseCostGroups(debitNoteDto);
 
         // Save details (GL + Charge) — GL will be saved if provided regardless of refType
         saveDetails(debitNoteDto, savedEntity.getTransactionPoid());

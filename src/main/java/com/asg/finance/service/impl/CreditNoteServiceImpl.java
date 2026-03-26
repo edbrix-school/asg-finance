@@ -126,7 +126,6 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         try {
             filterUnselectedCharges(creditNoteDto);
             executeBeforeSaveValidation(creditNoteDto);
-            DocumentBeforeSaveBillwiseCostGroups(creditNoteDto);
             calculateDueDateFromCreditPeriod(creditNoteDto);
             // Save header and flush immediately
             ArCreditNoteHdr header = mapToEntity(creditNoteDto);
@@ -144,6 +143,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             ArCreditNoteHdr savedHeader = creditNoteHdrRepository.saveAndFlush(header);
             entityManager.refresh(savedHeader);
             creditNoteDto.setDocRef(savedHeader.getDocRef());
+            DocumentBeforeSaveBillwiseCostGroups(creditNoteDto);
 
             ArCreditNoteHdr reloadedHeader = creditNoteHdrRepository.findById(savedHeader.getTransactionPoid())
                     .orElseThrow(() -> new ValidationException("Header not found after insert (trigger modified it)"));
@@ -2564,7 +2564,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     dto.setTransactionPoid(transactionPoid);
                     dto.setMainDetRowId(glDto.getDetRowId());
                     dto.setGlPoid(glDto.getGlPoid());
-                    dto.setCostDetRowId(glDto.getDetRowId());
+                    dto.setCostDetRowId(inital);
                     dto.setCostGroup(popup.getCostGroup());
                     dto.setCostPoid(popup.getCostPoid());
                     dto.setAmount(popup.getAmount());

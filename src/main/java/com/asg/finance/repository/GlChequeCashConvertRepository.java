@@ -131,7 +131,7 @@ public class GlChequeCashConvertRepository {
 
         String result = null;
 
-        String sql = "{call PRODUCTION.PROC_CHEQUE_CONVERT_STATUS_CHK(?,?,?,?,?,?,?)}";
+        String sql = "{call PROC_CHEQUE_CONVERT_STATUS_CHK(?,?,?,?,?,?,?)}";
 
         try (Connection connection = dataSource.getConnection();
              CallableStatement callableStatement = connection.prepareCall(sql)) {

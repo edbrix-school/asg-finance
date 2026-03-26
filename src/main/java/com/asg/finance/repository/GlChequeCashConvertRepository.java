@@ -155,7 +155,7 @@ public class GlChequeCashConvertRepository {
 
         } catch (SQLException e) {
             e.printStackTrace(); // Replace with proper logging
-            throw new RuntimeException("Error calling PROC_CHEQUE_CONVERT_STATUS_CHK", e);
+            throw new RuntimeException("Failed to check cheque convert status", e);
         }
 
         return result;

@@ -93,6 +93,9 @@ public class DebitNoteServiceImpl implements DebitNoteService {
     private final GlPostingService glPostingService;
     private final GLMasterRepository glMasterRepository;
 
+    @PersistenceContext
+    private EntityManager entityManager;
+
     @Value("${app.doc-id.debit-note:300-110}")
     private String debitNoteDocId;
 
@@ -107,6 +110,8 @@ public class DebitNoteServiceImpl implements DebitNoteService {
 
         ArDebitNoteHdr entity = mapToEntity(debitNoteDto);
         ArDebitNoteHdr savedEntity = debitNoteHdrRepository.saveAndFlush(entity);
+        // Refresh to pull back trigger-generated DOC_REF from the database
+        entityManager.refresh(savedEntity);
         debitNoteDto.setDocRef(savedEntity.getDocRef());
         DocumentBeforeSaveBillwiseCostGroups(debitNoteDto);
 

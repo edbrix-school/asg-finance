@@ -26,7 +26,11 @@ import com.asg.finance.entity.GLPettyCashItemDtl;
 import com.asg.finance.dto.GlPettyCashItemDtlRequestDto;
 import com.asg.finance.entity.GlPettyCashChargeDtl;
 import com.asg.finance.entity.GlPettyCashPaymentDtl;
+import com.asg.finance.entity.GlPettyCashPaymentGrnDtl;
 import com.asg.finance.entity.GlPettyCashPaymentHdr;
+import com.asg.finance.dto.GlPettyCashPaymentGrnDtlRequestDto;
+import com.asg.finance.dto.GlPettyCashPaymentGrnDtlResponseDto;
+import com.asg.finance.repository.GlPettyCashPaymentGrnDtlRepository;
 import com.asg.finance.entity.master.ShipChargeEntity;
 import com.asg.finance.repository.*;
 import com.asg.finance.repository.master.ShipChargeRepository;
@@ -69,6 +73,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
     private final GlPettyCashPaymentDtlRepository glPettyCashPaymentDtlRepository;
     private final GLPettyCashItemDtlRepository glPettyCashItemDtlRepository;
     private final GlPettyCashChargeDtlRepository glPettyCashChargeDtlRepository;
+    private final GlPettyCashPaymentGrnDtlRepository glPettyCashPaymentGrnDtlRepository;
 
     private final GLMasterRepository glMasterRepository;
     private final StockMasterRepository stockMasterRepository;
@@ -105,22 +110,45 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             applyNewDocumentDefaults(header);
             validateTransactionDate(requestDto.getTransactionDate());
 
-            pettyCashPaymentVoucherCustomRepository.validateGlVouchers(
-                    UserContext.getGroupPoid(), UserContext.getUserPoid(), UserContext.getCompanyPoid(),
-                    requestDto.getDocId(), requestDto.getRefType(),
-                    requestDto.getFdaRef(), result
-            );
-            logResult("PROC_GL_VOUCHERS_VALIDATIONS", result);
+            // Ref-type aware voucher validation — skip when the relevant ref is blank
+            String voucherRef = resolveVoucherRefByType(requestDto.getRefType(), requestDto);
+            if (hasText(voucherRef)) {
+                pettyCashPaymentVoucherCustomRepository.validateGlVouchers(
+                        UserContext.getGroupPoid(), UserContext.getUserPoid(), UserContext.getCompanyPoid(),
+                        requestDto.getDocId(), requestDto.getRefType(),
+                        voucherRef, result
+                );
+                logResult("PROC_GL_VOUCHERS_VALIDATIONS", result);
+            }
 
-            StringBuilder glPoidString = new StringBuilder();
-
+            // Job validation for ref-based types (mirrors update-path ordering)
+            String jobRefPoid = resolveRefPoidByType(requestDto, requestDto.getRefType());
+            if (hasText(jobRefPoid)) {
+                StringBuilder jobValidationResult = new StringBuilder();
+                pettyCashPaymentVoucherCustomRepository.validateJobBeforeSave(
+                        UserContext.getGroupPoid(), UserContext.getUserPoid(), UserContext.getCompanyPoid(),
+                        requestDto.getDocId(), requestDto.getRefType(),
+                        jobRefPoid, jobValidationResult
+                );
+                if (jobValidationResult.toString().startsWith("ERROR") ||
+                        jobValidationResult.toString().startsWith("WARNING")) {
+                    throw new RuntimeException("Job validation failed: " + jobValidationResult);
+                }
+                logResult("PROC_GL_JOB_VALIDATION", jobValidationResult);
+            }
 
             StringBuilder taxInputGlPoid = new StringBuilder();
+            String glPoidStringWithoutTax = "";
+            String glPoidStringAll = "";
+            if (isPaymentDtlRefType(requestDto.getRefType())) {
+                glPoidStringWithoutTax = buildGlPoidStringWithoutTax(requestDto.getGlPettyCashPaymentDtlRequestDtos());
+                glPoidStringAll = buildGlPoidStringAll(requestDto.getGlPettyCashPaymentDtlRequestDtos());
+            }
             pettyCashPaymentVoucherCustomRepository.validateBeforeSave(
                     UserContext.getGroupPoid(), UserContext.getUserPoid(), UserContext.getCompanyPoid(),
                     requestDto.getDocId(), requestDto.getRefType(),
-                    glPoidString.toString(), glPoidString.toString(),
-                    "", requestDto.getRefType(),
+                    glPoidStringWithoutTax, glPoidStringAll,
+                    "", safeStatus(requestDto.getStatus()),
                     requestDto.getPettyCashGlPoid(), taxInputGlPoid, result
             );
             logResult("PROC_GL_DTL_BEFORE_SAVE_VAL_V2", result);
@@ -148,11 +176,16 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             List<GlPettyCashPaymentDtlResponseDto> paymentDtls = new ArrayList<>();
             List<GlPettyCashChargeDtlResponseDto> chargeDtls = new ArrayList<>();
             List<GLPettyCashItemDtlResponseDto> itemDtls = new ArrayList<>();
+            List<GlPettyCashPaymentGrnDtlResponseDto> grnDtls = new ArrayList<>();
 
 
             String refType = requestDto.getRefType();
             switch (refType.toUpperCase()) {
                 case "GENERAL" -> {
+                    List<GlPettyCashPaymentDtlRequestDto> activePmt = getActivePaymentDtls(requestDto.getGlPettyCashPaymentDtlRequestDtos());
+                    if (activePmt.isEmpty()) {
+                        throw new ValidationException("At least one payment detail row is required.");
+                    }
                     List<GlPettyCashPaymentDtlRequestDto> effectiveDtls = ensurePettyCashGlAndValidateTally(requestDto);
                     var savedPaymentDtls = glPettyCashPaymentDtlRepository.saveAll(
                             mapPaymentDtlsFromList(effectiveDtls, hdrPoid));
@@ -230,6 +263,9 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                 }
                 case "CUSTOM" -> {
                     // CUSTOM: payment dtls — no auto-CR, no billwise/cost center breakup
+                    if (getActivePaymentDtls(requestDto.getGlPettyCashPaymentDtlRequestDtos()).isEmpty()) {
+                        throw new ValidationException("At least one payment detail row is required.");
+                    }
                     var savedPaymentDtls = glPettyCashPaymentDtlRepository.saveAll(
                             mapPaymentDtlsFromList(requestDto.getGlPettyCashPaymentDtlRequestDtos(), hdrPoid));
                     paymentDtls = mapPaymentResponse(savedPaymentDtls);
@@ -239,6 +275,9 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     });
                 }
                 case "SUPPLIER" -> {
+                    if (getActivePaymentDtls(requestDto.getGlPettyCashPaymentDtlRequestDtos()).isEmpty()) {
+                        throw new ValidationException("At least one payment detail row is required.");
+                    }
                     validateSupplierCustomerGlMatch(requestDto, "SUPPLIER");
                     var savedPaymentDtls = glPettyCashPaymentDtlRepository.saveAll(
                             mapPaymentDtlsFromList(requestDto.getGlPettyCashPaymentDtlRequestDtos(), hdrPoid));
@@ -249,6 +288,9 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     });
                 }
                 case "CUSTOMER" -> {
+                    if (getActivePaymentDtls(requestDto.getGlPettyCashPaymentDtlRequestDtos()).isEmpty()) {
+                        throw new ValidationException("At least one payment detail row is required.");
+                    }
                     validateSupplierCustomerGlMatch(requestDto, "CUSTOMER");
                     var savedPaymentDtls = glPettyCashPaymentDtlRepository.saveAll(
                             mapPaymentDtlsFromList(requestDto.getGlPettyCashPaymentDtlRequestDtos(), hdrPoid));
@@ -277,8 +319,17 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     });
                 }
                 case "GRN_JOBS" -> {
-                    // TODO: GRN_JOBS detail saving pending — GlPettyCashPaymentGrnDtl entity not yet created
-                    log.warn("GRN_JOBS petty cash detail saving is not yet implemented.");
+                    validateAmountVsGrnTotal(requestDto);
+                    List<GlPettyCashPaymentGrnDtlRequestDto> activeGrnDtls = filterGrnCheckAll(requestDto.getGlPettyCashGrnDtlRequestDtos());
+                    if (activeGrnDtls.isEmpty()) {
+                        throw new ValidationException("At least one GRN detail row is required.");
+                    }
+                    var savedGrnDtls = glPettyCashPaymentGrnDtlRepository.saveAll(mapGrnDtls(activeGrnDtls, hdrPoid));
+                    grnDtls = mapGrnResponse(savedGrnDtls);
+                    savedGrnDtls.forEach(dtl -> {
+                        String logDetail = String.format("Row Created on GRN Detail with detRowId: %s", dtl.getDetRowId());
+                        loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
+                    });
                 }
                 default -> throw new IllegalArgumentException("Invalid RefType: " + refType);
             }
@@ -319,7 +370,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
             // Ensure detail rows are flushed before @PerformGlPosting JDBC call executes.
             entityManager.flush();
-            return mapToResponseDto(savedHeader, paymentDtls, chargeDtls, itemDtls);
+            return mapToResponseDto(savedHeader, paymentDtls, chargeDtls, itemDtls, grnDtls);
 
         } catch (Exception e) {
             throw new RuntimeException("Error during petty cash creation: " + e.getMessage(), e);
@@ -431,6 +482,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     // Only process "ISCREATED", skip "NOCHANGES" and "ISDELETED" in CREATE
                     return "ISCREATED".equals(actionType);
                 })
+                .filter(dtl -> !"N".equalsIgnoreCase(dtl.getCheckAll()))
                 .collect(Collectors.toList());
         
         final long[] detRowIdCounter = {1};
@@ -486,6 +538,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     // Only process "ISCREATED", skip "NOCHANGES" and "ISDELETED" in CREATE
                     return "ISCREATED".equals(actionType);
                 })
+                .filter(dtl -> !"N".equalsIgnoreCase(dtl.getCheckAll()))
                 .collect(Collectors.toList());
         
         final long[] detRowIdCounter = {1};
@@ -513,7 +566,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                         .checkAll(dtl.getCheckAll())
                         .pdaAmount(dtl.getPdaAmount())
                         .ffAmount(dtl.getFfAmount())
-                        .chargeFrom(dtl.getChargeFrom())
+                        .chargeFrom(resolveChargeFrom(dtl.getChargeFrom(), requestDto.getRefType()))
                         .vatPartyName(dtl.getVatPartyName())
                         .partyInvNumber(dtl.getPartyInvNumber())
                         .partyInvDate(dtl.getPartyInvDate())
@@ -527,7 +580,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             GlPettyCashPaymentHdr savedHeader,
             List<GlPettyCashPaymentDtlResponseDto> paymentDtls,
             List<GlPettyCashChargeDtlResponseDto> chargeDtls,
-            List<GLPettyCashItemDtlResponseDto> itemDtls) {
+            List<GLPettyCashItemDtlResponseDto> itemDtls,
+            List<GlPettyCashPaymentGrnDtlResponseDto> grnDtls) {
 
         PettyCashResponseDto.PettyCashResponseDtoBuilder builder = PettyCashResponseDto.builder()
                 .transactionPoid(savedHeader.getTransactionPoid())
@@ -572,7 +626,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                 .companyDivPoid(savedHeader.getCompanyDivPoid())
                 .paymentDtls(paymentDtls)
                 .chargeDtls(chargeDtls)
-                .itemDtls(itemDtls);
+                .itemDtls(itemDtls)
+                .grnDtls(grnDtls);
 
         if (savedHeader.getPettyCashGlPoid() != null) {
             Optional<GLMaster> pettyCashGlPoidOp =
@@ -874,14 +929,31 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                 throw new RuntimeException("Job validation failed: " + validationResult);
             }
 
-            StringBuilder glPoidString = new StringBuilder();
+            // Ref-type aware voucher validation
+            StringBuilder voucherResult = new StringBuilder();
+            String updateVoucherRef = resolveVoucherRefByType(requestDto.getRefType(), requestDto);
+            if (hasText(updateVoucherRef)) {
+                pettyCashPaymentVoucherCustomRepository.validateGlVouchers(
+                        userGroupPoid, userPoid, userCompanyPoid,
+                        requestDto.getDocId(), requestDto.getRefType(),
+                        updateVoucherRef, voucherResult
+                );
+                logResult("PROC_GL_VOUCHERS_VALIDATIONS", voucherResult);
+            }
+
             StringBuilder taxInputGlPoid = new StringBuilder();
             StringBuilder beforeSaveResult = new StringBuilder();
+            String updGlPoidStringWithoutTax = "";
+            String updGlPoidStringAll = "";
+            if (isPaymentDtlRefType(requestDto.getRefType())) {
+                updGlPoidStringWithoutTax = buildGlPoidStringWithoutTax(requestDto.getGlPettyCashPaymentDtlRequestDtos());
+                updGlPoidStringAll = buildGlPoidStringAll(requestDto.getGlPettyCashPaymentDtlRequestDtos());
+            }
             pettyCashPaymentVoucherCustomRepository.validateBeforeSave(
                     userGroupPoid, userPoid, userCompanyPoid,
                     requestDto.getDocId(), requestDto.getRefType(),
-                    glPoidString.toString(), glPoidString.toString(),
-                    "", requestDto.getRefType(),
+                    updGlPoidStringWithoutTax, updGlPoidStringAll,
+                    "", safeStatus(requestDto.getStatus()),
                     requestDto.getPettyCashGlPoid(), taxInputGlPoid, beforeSaveResult
             );
             logResult("PROC_GL_DTL_BEFORE_SAVE_VAL_V2", beforeSaveResult);
@@ -899,9 +971,13 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             List<GlPettyCashPaymentDtlResponseDto> paymentDtls = new ArrayList<>();
             List<GlPettyCashChargeDtlResponseDto> chargeDtls = new ArrayList<>();
             List<GLPettyCashItemDtlResponseDto> itemDtls = new ArrayList<>();
+            List<GlPettyCashPaymentGrnDtlResponseDto> grnDtls = new ArrayList<>();
 
             switch (refType) {
                 case "GENERAL" -> {
+                    if (getActivePaymentDtls(requestDto.getGlPettyCashPaymentDtlRequestDtos()).isEmpty()) {
+                        throw new ValidationException("At least one payment detail row is required.");
+                    }
                     List<GlPettyCashPaymentDtlRequestDto> effectiveDtls = ensurePettyCashGlAndValidateTally(requestDto);
                     var existingDtls = glPettyCashPaymentDtlRepository.findByTransactionPoid(transactionPoid);
                     var merged = mergePaymentDtls(existingDtls, effectiveDtls, transactionPoid);
@@ -977,12 +1053,18 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     }
                 }
                 case "CUSTOM" -> {
+                    if (getActivePaymentDtls(requestDto.getGlPettyCashPaymentDtlRequestDtos()).isEmpty()) {
+                        throw new ValidationException("At least one payment detail row is required.");
+                    }
                     var existingDtls = glPettyCashPaymentDtlRepository.findByTransactionPoid(transactionPoid);
                     var merged = mergePaymentDtls(existingDtls, requestDto.getGlPettyCashPaymentDtlRequestDtos(), transactionPoid);
                     glPettyCashPaymentDtlRepository.saveAll(merged);
                     paymentDtls = mapPaymentResponse(merged);
                 }
                 case "SUPPLIER" -> {
+                    if (getActivePaymentDtls(requestDto.getGlPettyCashPaymentDtlRequestDtos()).isEmpty()) {
+                        throw new ValidationException("At least one payment detail row is required.");
+                    }
                     validateSupplierCustomerGlMatch(requestDto, "SUPPLIER");
                     var existingDtls = glPettyCashPaymentDtlRepository.findByTransactionPoid(transactionPoid);
                     var merged = mergePaymentDtls(existingDtls, requestDto.getGlPettyCashPaymentDtlRequestDtos(), transactionPoid);
@@ -990,6 +1072,9 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     paymentDtls = mapPaymentResponse(merged);
                 }
                 case "CUSTOMER" -> {
+                    if (getActivePaymentDtls(requestDto.getGlPettyCashPaymentDtlRequestDtos()).isEmpty()) {
+                        throw new ValidationException("At least one payment detail row is required.");
+                    }
                     validateSupplierCustomerGlMatch(requestDto, "CUSTOMER");
                     var existingDtls = glPettyCashPaymentDtlRepository.findByTransactionPoid(transactionPoid);
                     var merged = mergePaymentDtls(existingDtls, requestDto.getGlPettyCashPaymentDtlRequestDtos(), transactionPoid);
@@ -1011,8 +1096,11 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     itemDtls = mapItemResponse(merged);
                 }
                 case "GRN_JOBS" -> {
-                    // TODO: GRN_JOBS detail saving pending — GlPettyCashPaymentGrnDtl entity not yet created
-                    log.warn("GRN_JOBS petty cash detail saving is not yet implemented.");
+                    validateAmountVsGrnTotal(requestDto);
+                    var existingGrnDtls = glPettyCashPaymentGrnDtlRepository.findByTransactionPoid(transactionPoid);
+                    var mergedGrn = mergeGrnDtls(existingGrnDtls, requestDto, transactionPoid);
+                    glPettyCashPaymentGrnDtlRepository.saveAll(mergedGrn);
+                    grnDtls = mapGrnResponse(mergedGrn);
                 }
                 default -> throw new IllegalArgumentException("Invalid RefType: " + refType);
             }
@@ -1056,7 +1144,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
             // Ensure detail updates/deletes are flushed before @PerformGlPosting JDBC call executes.
             entityManager.flush();
-            return mapToResponseDto(updatedHdr, paymentDtls, chargeDtls, itemDtls);
+            return mapToResponseDto(updatedHdr, paymentDtls, chargeDtls, itemDtls, grnDtls);
 
         } catch (Exception e) {
             throw new RuntimeException("Error during petty cash update: " + e.getMessage(), e);
@@ -1275,10 +1363,11 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
             switch (actionType) {
                 case "ISCREATED":
+                    if ("N".equalsIgnoreCase(dto.getCheckAll())) break;
                     // Create new record
                     GlPettyCashChargeDtl newEntity = new GlPettyCashChargeDtl();
                     newEntity.setTransactionPoid(hdrPoid);
-                    
+
                     // Auto-generate detRowId if not provided
                     Long detRowId = dto.getDetRowId();
                     if (detRowId == null) {
@@ -1300,7 +1389,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     newEntity.setCheckAll(dto.getCheckAll());
                     newEntity.setPdaAmount(dto.getPdaAmount());
                     newEntity.setFfAmount(dto.getFfAmount());
-                    newEntity.setChargeFrom(dto.getChargeFrom());
+                    newEntity.setChargeFrom(resolveChargeFrom(dto.getChargeFrom(), requestDto.getRefType()));
                     newEntity.setVatPartyName(dto.getVatPartyName());
                     newEntity.setPartyInvNumber(dto.getPartyInvNumber());
                     newEntity.setPartyInvDate(dto.getPartyInvDate());
@@ -1336,7 +1425,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     existingEntity.setCheckAll(dto.getCheckAll());
                     existingEntity.setPdaAmount(dto.getPdaAmount());
                     existingEntity.setFfAmount(dto.getFfAmount());
-                    existingEntity.setChargeFrom(dto.getChargeFrom());
+                    existingEntity.setChargeFrom(resolveChargeFrom(dto.getChargeFrom(), requestDto.getRefType()));
                     existingEntity.setVatPartyName(dto.getVatPartyName());
                     existingEntity.setPartyInvNumber(dto.getPartyInvNumber());
                     existingEntity.setPartyInvDate(dto.getPartyInvDate());
@@ -1428,6 +1517,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
             switch (actionType) {
                 case "ISCREATED":
+                    if ("N".equalsIgnoreCase(dto.getCheckAll())) break;
                     // Create new record
                     GLPettyCashItemDtl newEntity = new GLPettyCashItemDtl();
                     newEntity.setTransactionPoid(hdrPoid);
@@ -1656,8 +1746,15 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             case "FDA JOBS" -> requestDto.getFdaRef();
             case "MTA RFQ" -> requestDto.getSalesQtnRef();
             case "GENERAL PO" -> requestDto.getPoRef();
+            case "GRN_JOBS" -> hasText(requestDto.getPoRef()) ? requestDto.getPoRef()
+                    : (requestDto.getGrnSupplierPoid() != null
+                    ? String.valueOf(requestDto.getGrnSupplierPoid()) : null);
             default -> null;
         };
+    }
+
+    private String safeStatus(String status) {
+        return status == null ? "" : status;
     }
 
     private String normalizeRefType(String value) {
@@ -2151,10 +2248,16 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
     private void validateAmountVsChargeTotal(PettyCashRequestBase requestDto) {
         BigDecimal amount = safe(requestDto.getAmount());
         BigDecimal rounding = safe(requestDto.getRoundingAmount());
-        BigDecimal chargeTotal = Optional.ofNullable(requestDto.getGlPettyCashChargeDtlRequestDtos())
+        List<GlPettyCashChargeDtlRequestDto> activeRows = Optional.ofNullable(requestDto.getGlPettyCashChargeDtlRequestDtos())
                 .orElse(Collections.emptyList())
                 .stream()
                 .filter(d -> !"ISDELETED".equalsIgnoreCase(d.getActionType()))
+                .filter(d -> !"N".equalsIgnoreCase(d.getCheckAll()))
+                .collect(Collectors.toList());
+        if (activeRows.isEmpty()) {
+            throw new ValidationException("At least one charge detail row is required.");
+        }
+        BigDecimal chargeTotal = activeRows.stream()
                 .map(d -> safe(d.getChargeAmount()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         if (amount.compareTo(chargeTotal.add(rounding)) != 0) {
@@ -2171,10 +2274,16 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
     private void validateAmountVsItemTotal(PettyCashRequestBase requestDto) {
         BigDecimal amount = safe(requestDto.getAmount());
         BigDecimal rounding = safe(requestDto.getRoundingAmount());
-        BigDecimal itemTotal = Optional.ofNullable(requestDto.getGlPettyCashItemDtlRequestDtos())
+        List<GlPettyCashItemDtlRequestDto> activeRows = Optional.ofNullable(requestDto.getGlPettyCashItemDtlRequestDtos())
                 .orElse(Collections.emptyList())
                 .stream()
                 .filter(d -> !"ISDELETED".equalsIgnoreCase(d.getActionType()))
+                .filter(d -> !"N".equalsIgnoreCase(d.getCheckAll()))
+                .collect(Collectors.toList());
+        if (activeRows.isEmpty()) {
+            throw new ValidationException("At least one item detail row is required.");
+        }
+        BigDecimal itemTotal = activeRows.stream()
                 .map(d -> safe(d.getTotal()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         if (amount.compareTo(itemTotal.add(rounding)) != 0) {
@@ -2269,8 +2378,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
         BigDecimal diff = drTotal.subtract(crTotal).subtract(rounding).abs();
         if (diff.compareTo(new BigDecimal("0.005")) > 0) {
             throw new ValidationException(
-                    "Debit total (" + drTotal.toPlainString()
-                            + ") must equal Credit total (" + crTotal.toPlainString()
+                    "Total Debits (" + drTotal.toPlainString()
+                            + ") not tallying with Total Credits (" + crTotal.toPlainString()
                             + ") adjusted by rounding (" + rounding.toPlainString() + ").");
         }
 
@@ -2320,6 +2429,196 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                             .remarks(dtl.getRemarks())
                             .build();
                 })
+                .collect(Collectors.toList());
+    }
+
+    // -----------------------------------------------------------------------
+    // Helper: resolveVoucherRefByType
+    // -----------------------------------------------------------------------
+
+    private String resolveVoucherRefByType(String refType, PettyCashRequestBase requestDto) {
+        return switch (normalizeRefType(refType)) {
+            case "FDA JOBS" -> requestDto.getFdaRef();
+            case "FF JOBS" -> requestDto.getFfRef();
+            case "MTA RFQ" -> requestDto.getSalesQtnRef();
+            case "GENERAL PO" -> requestDto.getPoRef();
+            case "GRN_JOBS" -> hasText(requestDto.getPoRef()) ? requestDto.getPoRef()
+                    : (requestDto.getGrnSupplierPoid() != null
+                    ? String.valueOf(requestDto.getGrnSupplierPoid()) : null);
+            default -> null;
+        };
+    }
+
+    // -----------------------------------------------------------------------
+    // Helper: GL poid string builders and related helpers
+    // -----------------------------------------------------------------------
+
+    private boolean isPaymentDtlRefType(String refType) {
+        String n = normalizeRefType(refType);
+        return "GENERAL".equals(n) || "CUSTOM".equals(n) || "SUPPLIER".equals(n) || "CUSTOMER".equals(n);
+    }
+
+    private String buildGlPoidStringWithoutTax(List<GlPettyCashPaymentDtlRequestDto> dtls) {
+        return Optional.ofNullable(dtls).orElse(Collections.emptyList()).stream()
+                .filter(d -> !"ISDELETED".equalsIgnoreCase(d.getActionType()))
+                .filter(d -> d.getTaxPoid() == null)
+                .filter(d -> d.getGlPoid() != null)
+                .map(d -> String.valueOf(d.getGlPoid()))
+                .collect(Collectors.joining(","));
+    }
+
+    private String buildGlPoidStringAll(List<GlPettyCashPaymentDtlRequestDto> dtls) {
+        return Optional.ofNullable(dtls).orElse(Collections.emptyList()).stream()
+                .filter(d -> !"ISDELETED".equalsIgnoreCase(d.getActionType()))
+                .filter(d -> d.getGlPoid() != null)
+                .map(d -> String.valueOf(d.getGlPoid()))
+                .collect(Collectors.joining(","));
+    }
+
+    private String resolveChargeFrom(String existing, String refType) {
+        if (hasText(existing)) return existing;
+        return switch (normalizeRefType(refType)) {
+            case "FF JOBS" -> "FF";
+            case "FDA JOBS" -> "FDA";
+            default -> null;
+        };
+    }
+
+    private List<GlPettyCashPaymentDtlRequestDto> getActivePaymentDtls(List<GlPettyCashPaymentDtlRequestDto> dtls) {
+        return Optional.ofNullable(dtls).orElse(Collections.emptyList()).stream()
+                .filter(d -> !"ISDELETED".equalsIgnoreCase(d.getActionType()))
+                .collect(Collectors.toList());
+    }
+
+    // -----------------------------------------------------------------------
+    // Helper: GRN-specific methods
+    // -----------------------------------------------------------------------
+
+    private void validateAmountVsGrnTotal(PettyCashRequestBase requestDto) {
+        BigDecimal amount = safe(requestDto.getAmount());
+        BigDecimal rounding = safe(requestDto.getRoundingAmount());
+        List<GlPettyCashPaymentGrnDtlRequestDto> activeRows = filterGrnCheckAll(requestDto.getGlPettyCashGrnDtlRequestDtos())
+                .stream()
+                .filter(d -> !"ISDELETED".equalsIgnoreCase(d.getActionType()))
+                .collect(Collectors.toList());
+        if (activeRows.isEmpty()) {
+            throw new ValidationException("At least one GRN detail row is required.");
+        }
+        BigDecimal grnTotal = activeRows.stream()
+                .map(d -> safe(d.getAmount()))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (amount.subtract(grnTotal).subtract(rounding).abs().compareTo(new BigDecimal("0.005")) > 0) {
+            throw new ValidationException(
+                    "Paid amount (" + amount.toPlainString() + ") must equal GRN total ("
+                            + grnTotal.toPlainString() + ") plus rounding ("
+                            + rounding.toPlainString() + ").");
+        }
+    }
+
+    private List<GlPettyCashPaymentGrnDtlRequestDto> filterGrnCheckAll(List<GlPettyCashPaymentGrnDtlRequestDto> dtls) {
+        return Optional.ofNullable(dtls).orElse(Collections.emptyList()).stream()
+                .filter(d -> !"N".equalsIgnoreCase(d.getCheckAll()))
+                .collect(Collectors.toList());
+    }
+
+    private List<GlPettyCashPaymentGrnDtl> mapGrnDtls(List<GlPettyCashPaymentGrnDtlRequestDto> dtlList, Long hdrPoid) {
+        final long[] counter = {1};
+        return dtlList.stream()
+                .filter(dtl -> {
+                    String at = dtl.getActionType();
+                    return at == null || at.trim().isEmpty() || "ISCREATED".equals(at.toUpperCase());
+                })
+                .map(dtl -> {
+                    Long detRowId = dtl.getDetRowId();
+                    if (detRowId == null) detRowId = counter[0]++;
+                    return GlPettyCashPaymentGrnDtl.builder()
+                            .transactionPoid(hdrPoid)
+                            .detRowId(detRowId)
+                            .grnPoid(dtl.getGrnPoid())
+                            .checkAll(dtl.getCheckAll())
+                            .amount(dtl.getAmount())
+                            .remarks(dtl.getRemarks())
+                            .refDocId(dtl.getRefDocId())
+                            .refDocPoid(dtl.getRefDocPoid())
+                            .refDetRowId(dtl.getRefDetRowId())
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
+
+    private List<GlPettyCashPaymentGrnDtl> mergeGrnDtls(List<GlPettyCashPaymentGrnDtl> existing,
+                                                         PettyCashRequestBase requestDto,
+                                                         Long hdrPoid) {
+        Map<Long, GlPettyCashPaymentGrnDtl> existingMap = existing.stream()
+                .collect(Collectors.toMap(GlPettyCashPaymentGrnDtl::getDetRowId, d -> d));
+        List<GlPettyCashPaymentGrnDtl> toSave = new ArrayList<>();
+        List<GlPettyCashPaymentGrnDtl> toDelete = new ArrayList<>();
+
+        for (var dto : filterGrnCheckAll(requestDto.getGlPettyCashGrnDtlRequestDtos())) {
+            String actionTypeStr = dto.getActionType();
+            if (actionTypeStr == null || actionTypeStr.trim().isEmpty()) actionTypeStr = "noChanges";
+            String actionType = actionTypeStr.toUpperCase();
+
+            switch (actionType) {
+                case "ISCREATED" -> {
+                    Long detRowId = dto.getDetRowId();
+                    if (detRowId == null) {
+                        detRowId = existing.stream().map(GlPettyCashPaymentGrnDtl::getDetRowId)
+                                .filter(Objects::nonNull).max(Long::compareTo).orElse(0L) + 1;
+                    }
+                    GlPettyCashPaymentGrnDtl newEntity = GlPettyCashPaymentGrnDtl.builder()
+                            .transactionPoid(hdrPoid).detRowId(detRowId)
+                            .grnPoid(dto.getGrnPoid()).checkAll(dto.getCheckAll())
+                            .amount(dto.getAmount()).remarks(dto.getRemarks())
+                            .refDocId(dto.getRefDocId()).refDocPoid(dto.getRefDocPoid())
+                            .refDetRowId(dto.getRefDetRowId())
+                            .build();
+                    toSave.add(newEntity);
+                }
+                case "ISUPDATED" -> {
+                    GlPettyCashPaymentGrnDtl e = existingMap.get(dto.getDetRowId());
+                    if (e == null) throw new RuntimeException("GRN detail not found with detRowId: " + dto.getDetRowId());
+                    e.setGrnPoid(dto.getGrnPoid());
+                    e.setCheckAll(dto.getCheckAll());
+                    e.setAmount(dto.getAmount());
+                    e.setRemarks(dto.getRemarks());
+                    e.setRefDocId(dto.getRefDocId());
+                    e.setRefDocPoid(dto.getRefDocPoid());
+                    e.setRefDetRowId(dto.getRefDetRowId());
+                    toSave.add(e);
+                }
+                case "ISDELETED" -> {
+                    GlPettyCashPaymentGrnDtl e = existingMap.get(dto.getDetRowId());
+                    if (e != null) toDelete.add(e);
+                }
+                default -> {
+                    GlPettyCashPaymentGrnDtl e = existingMap.get(dto.getDetRowId());
+                    if (e != null) toSave.add(e);
+                }
+            }
+        }
+
+        if (!toDelete.isEmpty()) glPettyCashPaymentGrnDtlRepository.deleteAll(toDelete);
+        return glPettyCashPaymentGrnDtlRepository.saveAll(toSave);
+    }
+
+    private List<GlPettyCashPaymentGrnDtlResponseDto> mapGrnResponse(List<GlPettyCashPaymentGrnDtl> savedDtls) {
+        return savedDtls.stream()
+                .map(dtl -> GlPettyCashPaymentGrnDtlResponseDto.builder()
+                        .transactionPoid(dtl.getTransactionPoid())
+                        .detRowId(dtl.getDetRowId())
+                        .grnPoid(dtl.getGrnPoid())
+                        .checkAll(dtl.getCheckAll())
+                        .amount(dtl.getAmount())
+                        .remarks(dtl.getRemarks())
+                        .refDocId(dtl.getRefDocId())
+                        .refDocPoid(dtl.getRefDocPoid())
+                        .refDetRowId(dtl.getRefDetRowId())
+                        .createdBy(dtl.getCreatedBy())
+                        .createdDate(dtl.getCreatedDate())
+                        .lastModifiedBy(dtl.getLastModifiedBy())
+                        .lastModifiedDate(dtl.getLastModifiedDate())
+                        .build())
                 .collect(Collectors.toList());
     }
 

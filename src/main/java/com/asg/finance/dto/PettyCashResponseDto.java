@@ -62,4 +62,5 @@ public class PettyCashResponseDto {
     private List<GlPettyCashPaymentDtlResponseDto> paymentDtls;
     private List<GlPettyCashChargeDtlResponseDto> chargeDtls;
     private List<GLPettyCashItemDtlResponseDto> itemDtls;
+    private List<GlPettyCashPaymentGrnDtlResponseDto> grnDtls;
 }

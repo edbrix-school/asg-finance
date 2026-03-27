@@ -7,7 +7,7 @@ import java.util.Map;
 
 public interface BankPaymentVoucherSpRepository {
     
-    void validateBeforeSave(Long transactionPoid, Long groupPoid, Long companyPoid, String userCode);
+    void validateBeforeSave(Long transactionPoid, Long groupPoid, Long companyPoid, String userCode, String suppressBalanceCheck);
     
     String validateJob(Long groupPoid, Long userPoid, Long companyPoid, String docId, String refType, String refPoid);
 

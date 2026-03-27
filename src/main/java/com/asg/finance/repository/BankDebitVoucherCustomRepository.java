@@ -25,4 +25,8 @@ public interface BankDebitVoucherCustomRepository {
     BigDecimal procGetBankBalance(Long groupPoid, Long userPoid, Long companyPoid, String documentId, LocalDate docDate, Long bankPoid);
 
     String procGetBeneficiaryName(Long groupPoid,Long userPoid, Long companyPoid,String documentId, Long beneficiaryId);
+
+    Long getBankGlPoid(Long bankPoid);
+
+    String procSetMtaRef(Long groupPoid, Long userPoid, Long companyPoid, Long salesQtnRefPoid);
 }

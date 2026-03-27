@@ -386,4 +386,36 @@ public class BankDebitVoucherCustomRepositoryImpl implements BankDebitVoucherCus
         }
         return list;
     }
+
+    @Override
+    public Long getBankGlPoid(Long bankPoid) {
+        return jdbcTemplate.execute((CallableStatementCreator) con -> {
+            // Calls Oracle function GET_BANK_GL_POID(bankPoid) — mirrors legacy getbankglPoid()
+            CallableStatement cs = con.prepareCall("BEGIN ? := GET_BANK_GL_POID(?); END;");
+            cs.registerOutParameter(1, Types.NUMERIC);
+            cs.setObject(2, bankPoid);
+            return cs;
+        }, (CallableStatementCallback<Long>) cs -> {
+            cs.execute();
+            long result = cs.getLong(1);
+            return cs.wasNull() ? null : result;
+        });
+    }
+
+    @Override
+    public String procSetMtaRef(Long groupPoid, Long userPoid, Long companyPoid, Long salesQtnRefPoid) {
+        return jdbcTemplate.execute((CallableStatementCreator) con -> {
+            // PROC_GL_PETTY_SET_MTAREF: after SalesQtnRef LOV selection, derives the display MtaRef value
+            CallableStatement cs = con.prepareCall("BEGIN PROC_GL_PETTY_SET_MTAREF(?,?,?,?,?); END;");
+            cs.setObject(1, groupPoid);
+            cs.setObject(2, companyPoid);
+            cs.setObject(3, userPoid);
+            cs.setObject(4, salesQtnRefPoid);
+            cs.registerOutParameter(5, Types.VARCHAR);
+            return cs;
+        }, (CallableStatementCallback<String>) cs -> {
+            cs.execute();
+            return trimOrNull(cs.getString(5));
+        });
+    }
 }

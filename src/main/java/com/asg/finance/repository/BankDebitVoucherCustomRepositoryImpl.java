@@ -18,7 +18,9 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Slf4j
 @Repository
@@ -351,36 +353,64 @@ public class BankDebitVoucherCustomRepositoryImpl implements BankDebitVoucherCus
     private List<ItemDetailDto> mapFromResultSetToItemDetailDto(ResultSet rs) throws SQLException {
         List<ItemDetailDto> list = new ArrayList<>();
 
+        Set<String> cols = getColumns(rs);
         while (rs.next()) {
             ItemDetailDto dto = new ItemDetailDto();
 
-            dto.setTransactionPoid(rs.getLong("TRANSACTION_POID"));
-            if (rs.wasNull()) dto.setTransactionPoid(null);
+            if (cols.contains("TRANSACTION_POID")) {
+                dto.setTransactionPoid(rs.getLong("TRANSACTION_POID"));
+                if (rs.wasNull()) dto.setTransactionPoid(null);
+            }
 
-            dto.setDetRowId(rs.getLong("DET_ROW_ID"));
-            if (rs.wasNull()) dto.setDetRowId(null);
+            if (cols.contains("DET_ROW_ID")) {
+                dto.setDetRowId(rs.getLong("DET_ROW_ID"));
+                if (rs.wasNull()) dto.setDetRowId(null);
+            }
 
-            dto.setStockPoid(rs.getLong("STOCK_POID"));
-            if (rs.wasNull()) dto.setStockPoid(null);
+            if (cols.contains("STOCK_POID")) {
+                dto.setStockPoid(rs.getLong("STOCK_POID"));
+                if (rs.wasNull()) dto.setStockPoid(null);
+            }
 
-            dto.setStockUnitPoid(rs.getLong("STOCK_UNIT_POID"));
-            if (rs.wasNull()) dto.setStockUnitPoid(null);
+            if (cols.contains("STOCK_UNIT_POID")) {
+                dto.setStockUnitPoid(rs.getLong("STOCK_UNIT_POID"));
+                if (rs.wasNull()) dto.setStockUnitPoid(null);
+            }
 
-            dto.setPoQty(rs.getBigDecimal("PO_QTY"));
-            dto.setDnQty(rs.getBigDecimal("DN_QTY"));
-            dto.setQtyReceived(rs.getBigDecimal("QTY_RECEIVED"));
-            dto.setPrice(rs.getBigDecimal("PRICE"));
-            dto.setDiscount(rs.getBigDecimal("DISCOUNT"));
-            dto.setTotal(rs.getBigDecimal("TOTAL"));
+            if (cols.contains("PO_QTY")) {
+                dto.setPoQty(rs.getBigDecimal("PO_QTY"));
+            }
 
-            dto.setRemarks(rs.getString("REMARKS"));
-            dto.setRefDocId(rs.getString("REF_DOC_ID"));
 
-            dto.setRefDocPoid(rs.getLong("REF_DOC_POID"));
-            if (rs.wasNull()) dto.setRefDocPoid(null);
+            dto.setDnQty(cols.contains("DN_QTY") ? rs.getBigDecimal("DN_QTY") : BigDecimal.ZERO);
+            dto.setQtyReceived(cols.contains("QTY_RECEIVED") ? rs.getBigDecimal("QTY_RECEIVED") : BigDecimal.ZERO);
+            dto.setDiscount(cols.contains("DISCOUNT") ? rs.getBigDecimal("DISCOUNT") : BigDecimal.ZERO);
 
-            dto.setRefDetRowId(rs.getLong("REF_DET_ROW_ID"));
-            if (rs.wasNull()) dto.setRefDetRowId(null);
+            if (cols.contains("PRICE")) {
+                dto.setPrice(rs.getBigDecimal("PRICE"));
+            }
+
+            if (cols.contains("TOTAL")) {
+                dto.setTotal(rs.getBigDecimal("TOTAL"));
+            }
+
+            if (cols.contains("REMARKS")) {
+                dto.setRemarks(rs.getString("REMARKS"));
+            }
+
+            if (cols.contains("REF_DOC_ID")) {
+                dto.setRefDocId(rs.getString("REF_DOC_ID"));
+            }
+
+            if (cols.contains("REF_DOC_POID")) {
+                dto.setRefDocPoid(rs.getLong("REF_DOC_POID"));
+                if (rs.wasNull()) dto.setRefDocPoid(null);
+            }
+
+            if (cols.contains("REF_DET_ROW_ID")) {
+                dto.setRefDetRowId(rs.getLong("REF_DET_ROW_ID"));
+                if (rs.wasNull()) dto.setRefDetRowId(null);
+            }
 
             list.add(dto);
         }
@@ -405,17 +435,36 @@ public class BankDebitVoucherCustomRepositoryImpl implements BankDebitVoucherCus
     @Override
     public String procSetMtaRef(Long groupPoid, Long userPoid, Long companyPoid, Long salesQtnRefPoid) {
         return jdbcTemplate.execute((CallableStatementCreator) con -> {
-            // PROC_GL_PETTY_SET_MTAREF: after SalesQtnRef LOV selection, derives the display MtaRef value
-            CallableStatement cs = con.prepareCall("BEGIN PROC_GL_PETTY_SET_MTAREF(?,?,?,?,?); END;");
+
+            CallableStatement cs = con.prepareCall("BEGIN PROC_GL_PETTY_SET_MTAREF(?,?,?,?,?,?,?,?); END;");
             cs.setObject(1, groupPoid);
             cs.setObject(2, companyPoid);
             cs.setObject(3, userPoid);
-            cs.setObject(4, salesQtnRefPoid);
-            cs.registerOutParameter(5, Types.VARCHAR);
+            cs.setString(4, "400-111");
+            cs.setObject(5, null);      // P_DOC_KEY_POID (not used)
+            cs.setString(6, "BANK_MTA_BASED_RFQ"); // P_LOV_NAME
+            cs.setObject(7, salesQtnRefPoid);      // P_LOV_VALUE
+            cs.registerOutParameter(8, OracleTypes.CURSOR);
             return cs;
         }, (CallableStatementCallback<String>) cs -> {
             cs.execute();
-            return trimOrNull(cs.getString(5));
+            ResultSet rs = (ResultSet) cs.getObject(8);
+
+            if (rs != null && rs.next()) {
+                return trimOrNull(rs.getString("MTA_REF"));
+            }
+
+            return null;
         });
+    }
+
+    private Set<String> getColumns(ResultSet rs) throws SQLException {
+        Set<String> columns = new HashSet<>();
+        ResultSetMetaData rsmd = rs.getMetaData();
+
+        for (int i = 1; i <= rsmd.getColumnCount(); i++) {
+            columns.add(rsmd.getColumnLabel(i).toUpperCase());
+        }
+        return columns;
     }
 }

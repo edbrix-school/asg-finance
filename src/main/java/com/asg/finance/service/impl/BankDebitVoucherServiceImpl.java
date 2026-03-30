@@ -504,6 +504,8 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                             dto.setDocId(documentId);
                             dto.setMainDetRowId(detRowId);
                             dto.setTransactionPoid(transactionPoid);
+                            dto.setGlPoid(dtl.getGlPoid());
+                            dto.setGlCompanyPoid(dtl.getCompanyPoid() != null ? dtl.getCompanyPoid() : UserContext.getCompanyPoid());
                             dto.setBillDetRowId(p.getBillDetRowId());
                             dto.setBillRefType(p.getBillRefType());
                             dto.setBillRef(p.getBillRef());
@@ -568,6 +570,8 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                             dto.setDocId(documentId);
                             dto.setTransactionPoid(transactionPoid);
                             dto.setMainDetRowId(dtl.getDetRowId());
+                            dto.setGlPoid(dtl.getGlPoid());
+                            dto.setGlCompanyPoid(dtl.getCompanyPoid() != null ? dtl.getCompanyPoid() : UserContext.getCompanyPoid());
                             dto.setBillDetRowId(p.getBillDetRowId());
                             dto.setBillRefType(p.getBillRefType());
                             dto.setBillRef(p.getBillRef());

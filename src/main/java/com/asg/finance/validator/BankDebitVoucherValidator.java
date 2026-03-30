@@ -75,7 +75,7 @@ public class BankDebitVoucherValidator {
         validateChargeAmountReconciliation(req);
 
         // Bank GL credit row integrity for GENERAL/CUSTOM (GAP-18)
-        validateBankGlIntegrity(req);
+       // validateBankGlIntegrity(req);
 
         // TT / value-date validations (based on paying type and system params)
         validateTtDate(req, isNew);

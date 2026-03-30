@@ -103,6 +103,10 @@ public class BankDebitVoucherRequest {
 
     private Long fdaRef;
 
+    private Long salesQtnRef;
+
+    private String multiCompany;
+
     private String payingToName;
 
     private String remarks;
@@ -114,6 +118,8 @@ public class BankDebitVoucherRequest {
     private List<PaymentGlDetails> paymentGlDetails;
 
     private List<ChargeDetailDto> chargeDetails;
+
+    private List<ItemDetailDto> itemDetails;
 
     private List<TermsAndConditionDto> termsAndConditionDtoList;
 

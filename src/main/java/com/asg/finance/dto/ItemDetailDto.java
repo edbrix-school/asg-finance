@@ -25,4 +25,5 @@ public class ItemDetailDto {
     private String refDocId;
     private Long refDocPoid;
     private Long refDetRowId;
+    private String actionType;
 }

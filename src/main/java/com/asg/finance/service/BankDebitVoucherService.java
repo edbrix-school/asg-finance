@@ -23,9 +23,15 @@ public interface BankDebitVoucherService {
 
     Map<String, Object> listBankDebitVouchers(String documentId, FilterRequestDto filters, LocalDate startDateValue, LocalDate endDateValue, Pageable pageable);
 
+    List<PaymentGlDetails> generateDefaultGlRows(BankDebitVoucherRequest request);
+
     List<ChargeFFDto> loadFFCharges(Long ffRefPoid);
 
     List<ChargeFDADto> loadFDACharges(Long fdaRefPoid);
+
+    List<ItemDetailDto> loadMTAItems(Long salesQtnRefPoid);
+
+    String getMtaRef(Long salesQtnRefPoid);
 
     // Utilities
     BigDecimal getBankBalance(Long bankPoid,String documentId, LocalDate docDate);

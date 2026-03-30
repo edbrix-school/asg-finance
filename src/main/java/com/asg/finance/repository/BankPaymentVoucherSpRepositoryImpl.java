@@ -20,9 +20,9 @@ public class BankPaymentVoucherSpRepositoryImpl implements BankPaymentVoucherSpR
     private EntityManager em;
 
     @Override
-    public void validateBeforeSave(Long transactionPoid, Long groupPoid, Long companyPoid, String userCode) {
+    public void validateBeforeSave(Long transactionPoid, Long groupPoid, Long companyPoid, String userCode, String suppressBalanceCheck) {
         StoredProcedureQuery query = em.createStoredProcedureQuery("PROC_GL_BANK_PAY_BEF_SAVE_VAL");
-        
+
         query.registerStoredProcedureParameter(1, Long.class, ParameterMode.IN);
         query.registerStoredProcedureParameter(2, Long.class, ParameterMode.IN);
         query.registerStoredProcedureParameter(3, Long.class, ParameterMode.IN);
@@ -30,16 +30,16 @@ public class BankPaymentVoucherSpRepositoryImpl implements BankPaymentVoucherSpR
         query.registerStoredProcedureParameter(5, Long.class, ParameterMode.IN);
         query.registerStoredProcedureParameter(6, Long.class, ParameterMode.IN);
         query.registerStoredProcedureParameter(7, String.class, ParameterMode.OUT);
-        
+
         query.setParameter(1, groupPoid);
         query.setParameter(2, companyPoid);
         query.setParameter(3, transactionPoid);
-        query.setParameter(4, "N");
+        query.setParameter(4, suppressBalanceCheck != null ? suppressBalanceCheck : "N");
         query.setParameter(5, null);
         query.setParameter(6, transactionPoid);
-        
+
         query.execute();
-        
+
         String result = (String) query.getOutputParameterValue(7);
         if (result != null && !result.equals("SUCESS")) {
             throw new RuntimeException(result);

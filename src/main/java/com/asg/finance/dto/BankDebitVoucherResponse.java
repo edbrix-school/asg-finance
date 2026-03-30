@@ -56,6 +56,7 @@ public class BankDebitVoucherResponse {
 
     private List<PaymentGlDetails> paymentGlDetails;
     private List<ChargeDetailDto> chargeDetails;
+    private List<ItemDetailDto> itemDetails;
     private List<TermsAndConditionDto> termsAndConditionDtoList;
 
 
@@ -81,4 +82,6 @@ public class BankDebitVoucherResponse {
     private LocalDateTime lastModifiedDate;
 
     private ReconcileResultDto reconcileInfo;
+    private String reconciledDateDisplay;
+    private Boolean jobRefReadOnly;
 }

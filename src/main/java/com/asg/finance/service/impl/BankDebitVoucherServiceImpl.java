@@ -27,6 +27,7 @@ import com.asg.finance.entity.*;
 import com.asg.finance.repository.*;
 import com.asg.finance.entity.key.GlBankDebitDtlGlId;
 import com.asg.finance.entity.key.GlBankDebitChargeDtlId;
+import com.asg.finance.entity.key.GlBankDebitItemDtlId;
 import com.asg.finance.repository.master.ShipChargeRepository;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
@@ -161,7 +162,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
             throw new ResourceAlreadyExistsException("Doc Ref", request.getDocRef());
         }
 
-        runPreSaveProcedures(null);
+        runPreSaveProcedures(null, request.isSuppressBalanceCheck() ? "Y" : "N");
 
         GlBankDebitHdr header = new GlBankDebitHdr();
         mapRequestToEntity(request, header);
@@ -192,6 +193,27 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
     }
 
     private void completeGlPostingForUpdate(String documentId, BankDebitVoucherResponse savedHeader, String oldRefType, String oldRef) {
+        // Release old job cost association when the reference has changed (mirrors legacy OldRef handling)
+        String newRef = null;
+        if ("FDA JOBS".equalsIgnoreCase(savedHeader.getRefType())) {
+            newRef = savedHeader.getFdaRef() != null ? String.valueOf(savedHeader.getFdaRef()) : null;
+        } else if ("FF JOBS".equalsIgnoreCase(savedHeader.getRefType())) {
+            newRef = savedHeader.getFfRef();
+        } else if ("MTA RFQ".equalsIgnoreCase(savedHeader.getRefType())) {
+            newRef = savedHeader.getSalesQtnRef() != null ? String.valueOf(savedHeader.getSalesQtnRef()) : null;
+        }
+
+        boolean refChanged = oldRef != null && !oldRef.equals(newRef);
+        if (refChanged) {
+            bankPaymentVoucherSpRepository.releaseOldJobValues(
+                    savedHeader.getGroupPoid(),
+                    UserContext.getUserPoid(),
+                    UserContext.getCompanyPoid(),
+                    documentId,
+                    String.valueOf(savedHeader.getTransactionPoid())
+            );
+        }
+
         publishJobCostUpdateEvent(savedHeader, oldRefType, oldRef);
         handleApprovalOrGlPosting(documentId, savedHeader);
     }
@@ -238,6 +260,17 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         }
 
         response.setReconcileInfo(reconDto);
+
+        // Set formatted reconciliation date display (mirrors legacy reconciledDate getter)
+        if (reconDto != null && reconDto.getReconcileDate() != null) {
+            response.setReconciledDateDisplay("Clearing Date - " + reconDto.getReconcileDate());
+        }
+
+        // Set jobRefReadOnly flag: true when no job reference is linked (mirrors legacy DocumentBeforeEdit ReadOnlyJob logic)
+        boolean jobRefReadOnly = (header.getFdaRef() == null)
+                && StringUtils.isBlank(header.getFfRef())
+                && (header.getSalesQtnRef() == null);
+        response.setJobRefReadOnly(jobRefReadOnly);
 
         return response;
     }
@@ -294,21 +327,22 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
             throw new ResourceNotFoundException("Bank Purpose Code", "bankPurposePoid", request.getBankPurposePoid());
         }
 
-//        if (headerRepository.existsByDocRefIgnoreCaseAndTransactionPoidNot(request.getDocRef(), transactionPoid)) {
-//            throw new ResourceAlreadyExistsException("Doc Ref", request.getDocRef());
-//        }
+        if (request.getDocRef() != null && headerRepository.existsByDocRefIgnoreCaseAndTransactionPoidNot(request.getDocRef(), transactionPoid)) {
+            throw new ResourceAlreadyExistsException("Doc Ref", request.getDocRef());
+        }
 
         String approvalStatus = approvalService.getApprovalStatus(documentId, transactionPoid);
         if ("APPROVED".equalsIgnoreCase(approvalStatus)) {
             throw new ValidationException("Cannot update a Bank Debit Voucher that has been approved");
         }
 
-        runPreSaveProcedures(header);
+        runPreSaveProcedures(header, request.isSuppressBalanceCheck() ? "Y" : "N");
 
         // Capture old ref values before overwriting (mirrors legacy OldRefType/OldRef from PROC_GL_JOB_REL_OLD_VALUES)
         String oldRefType = header.getRefType();
         String oldRef = "FDA JOBS".equalsIgnoreCase(oldRefType) ? (header.getFdaRef() != null ? String.valueOf(header.getFdaRef()) : null)
                 : "FF JOBS".equalsIgnoreCase(oldRefType) ? header.getFfRef()
+                : "MTA RFQ".equalsIgnoreCase(oldRefType) ? (header.getSalesQtnRef() != null ? String.valueOf(header.getSalesQtnRef()) : null)
                 : null;
 
         mapRequestToEntity(request, header);
@@ -370,6 +404,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
         upsertPaymentGlDetails(transactionPoid, request.getPaymentGlDetails(), documentId);
         upsertChargeDetails(transactionPoid, request.getChargeDetails());
+        upsertItemDetails(transactionPoid, request.getItemDetails());
 
         if (!newVoucher) {
             cleanupRemovedRows(transactionPoid, request);
@@ -469,6 +504,8 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                             dto.setDocId(documentId);
                             dto.setMainDetRowId(detRowId);
                             dto.setTransactionPoid(transactionPoid);
+                            dto.setGlPoid(dtl.getGlPoid());
+                            dto.setGlCompanyPoid(dtl.getCompanyPoid() != null ? dtl.getCompanyPoid() : UserContext.getCompanyPoid());
                             dto.setBillDetRowId(p.getBillDetRowId());
                             dto.setBillRefType(p.getBillRefType());
                             dto.setBillRef(p.getBillRef());
@@ -533,6 +570,8 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                             dto.setDocId(documentId);
                             dto.setTransactionPoid(transactionPoid);
                             dto.setMainDetRowId(dtl.getDetRowId());
+                            dto.setGlPoid(dtl.getGlPoid());
+                            dto.setGlCompanyPoid(dtl.getCompanyPoid() != null ? dtl.getCompanyPoid() : UserContext.getCompanyPoid());
                             dto.setBillDetRowId(p.getBillDetRowId());
                             dto.setBillRefType(p.getBillRefType());
                             dto.setBillRef(p.getBillRef());
@@ -585,6 +624,11 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
     private void upsertChargeDetails(Long transactionPoid, List<ChargeDetailDto> details) {
 
         if (details == null || details.isEmpty()) return;
+
+        // Filter out rows where checkAll='N' — legacy drops these before save (GAP-17)
+        details = details.stream()
+                .filter(d -> !"N".equalsIgnoreCase(d.getCheckAll()))
+                .collect(Collectors.toList());
 
         String docId = UserContext.getDocumentId();
         String key = transactionPoid.toString();
@@ -662,9 +706,72 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         }
     }
 
+    private void upsertItemDetails(Long transactionPoid, List<ItemDetailDto> details) {
+        if (details == null || details.isEmpty()) return;
+
+        String docId = UserContext.getDocumentId();
+        String key = transactionPoid.toString();
+        List<LogRequestDto<GlBankDebitItemDtl>> logRequests = new ArrayList<>();
+
+        for (ItemDetailDto dto : details) {
+            String rawAction = dto.getActionType();
+            String action = (rawAction == null || rawAction.trim().isEmpty()) ? "ISCREATED" : rawAction.trim().toUpperCase();
+
+            action = switch (action) {
+                case "ISCREATED", "CREATED", "NEW" -> "ISCREATED";
+                case "ISUPDATED", "UPDATED" -> "ISUPDATED";
+                case "ISDELETED", "DELETED" -> "ISDELETED";
+                default -> "NOCHANGES";
+            };
+
+            switch (action) {
+                case "NOCHANGES" -> {
+                }
+                case "ISDELETED" -> {
+                    if (dto.getDetRowId() != null) {
+                        GlBankDebitItemDtl toDelete = itemDetailRepository.findById(new GlBankDebitItemDtlId(transactionPoid, dto.getDetRowId()))
+                                .orElse(null);
+                        if (toDelete != null) {
+                            loggingService.logDelete(toDelete, docId, key);
+                        }
+                        itemDetailRepository.deleteById(new GlBankDebitItemDtlId(transactionPoid, dto.getDetRowId()));
+                    }
+                }
+                case "ISCREATED" -> {
+                    GlBankDebitItemDtl entity = new GlBankDebitItemDtl();
+                    Long detRowId = dto.getDetRowId() != null ? dto.getDetRowId() : getNextDetRowIdForItem(transactionPoid);
+                    entity.setId(new GlBankDebitItemDtlId(transactionPoid, detRowId));
+                    mapToItemEntity(dto, entity);
+                    itemDetailRepository.save(entity);
+
+                    String logDetail = String.format("Row Created on Item Detail with detRowId: %s", detRowId);
+                    loggingService.createLogSummaryEntry(docId, key, logDetail);
+                }
+                case "ISUPDATED" -> {
+                    GlBankDebitItemDtl entity = itemDetailRepository.findById(new GlBankDebitItemDtlId(transactionPoid, dto.getDetRowId()))
+                            .orElseThrow(() -> new ResourceNotFoundException("Item Detail", "detRowId", dto.getDetRowId()));
+
+                    GlBankDebitItemDtl oldEntity = new GlBankDebitItemDtl();
+                    BeanUtils.copyProperties(entity, oldEntity);
+
+                    mapToItemEntity(dto, entity);
+                    itemDetailRepository.save(entity);
+
+                    String logDetail = String.format("KeyId = TRANSACTION_POID:%s DET_ROW_ID:%s", transactionPoid, dto.getDetRowId());
+                    logRequests.add(new LogRequestDto<>(oldEntity, entity, GlBankDebitItemDtl.class, docId, key, logDetail));
+                }
+            }
+        }
+
+        if (!logRequests.isEmpty()) {
+            loggingService.createLogBatch(logRequests);
+        }
+    }
+
     private void cleanupRemovedRows(Long transactionPoid, BankDebitVoucherRequest request) {
         Set<Long> paymentIds = ids(request.getPaymentGlDetails());
         Set<Long> chargeIds = ids(request.getChargeDetails());
+        Set<Long> itemIds = ids(request.getItemDetails());
 
         if (paymentIds != null) {
             paymentGlRepository.deleteByTransactionPoidAndDetRowIdNotIn(transactionPoid, paymentIds);
@@ -672,9 +779,21 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         if (chargeIds != null) {
             chargeDetailRepository.deleteByTransactionPoidAndDetRowIdNotIn(transactionPoid, chargeIds);
         }
+        if (itemIds != null) {
+            itemDetailRepository.deleteByTransactionPoidAndDetRowIdNotIn(transactionPoid, itemIds);
+        }
     }
 
-    private String[] runPreSaveProcedures(GlBankDebitHdr existingHeader) {
+    private String[] runPreSaveProcedures(GlBankDebitHdr existingHeader, String suppressBalanceCheck) {
+        // Always call validateBeforeSave (mirrors legacy DocumentBeforeSave DB-side validation)
+        bankPaymentVoucherSpRepository.validateBeforeSave(
+                existingHeader != null ? existingHeader.getTransactionPoid() : null,
+                UserContext.getGroupPoid(),
+                UserContext.getCompanyPoid(),
+                getCurrentUser(),
+                suppressBalanceCheck
+        );
+
         if (existingHeader != null) {
             return bankDebitVoucherCustomRepository.procGlJobRelOldValues(
                     UserContext.getGroupPoid(),
@@ -743,6 +862,8 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         entity.setRefType(request.getRefType());
         entity.setFfRef(request.getFfRef());
         entity.setFdaRef(request.getFdaRef());
+        entity.setSalesQtnRef(request.getSalesQtnRef());
+        entity.setMultiCompany(request.getMultiCompany());
         entity.setPayingToName(request.getPayingToName());
         entity.setTtChargeType(request.getTtChargeType());
         entity.setBeneficiaryIban(request.getBeneficiaryIban());
@@ -852,6 +973,8 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                 .stream().map(this::mapPaymentGlEntityToDto).toList());
         response.setChargeDetails(chargeDetailRepository.findByIdTransactionPoid(entity.getTransactionPoid())
                 .stream().map(this::mapChargeEntityToDto).toList());
+        response.setItemDetails(itemDetailRepository.findByIdTransactionPoid(entity.getTransactionPoid())
+                .stream().map(this::mapItemEntityToDto).toList());
         response.setTermsAndConditionDtoList(
                 globalTermsCustomChangesRepository
                         .findByIdDocIdAndIdDocKeyPoid(docId, entity.getTransactionPoid())
@@ -865,7 +988,8 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
     private void mapToPaymentGlEntity(PaymentGlDetails dto, GlBankDebitDtlGl entity) {
         entity.setType(dto.getType());
-        entity.setCompanyPoid(UserContext.getCompanyPoid());
+        // Use row-level companyPoid when provided (multi-company mode); fall back to session company (GAP-09)
+        entity.setCompanyPoid(dto.getCompanyPoid() != null ? dto.getCompanyPoid() : UserContext.getCompanyPoid());
         entity.setGlPoid(dto.getGlPoid());
         entity.setDrAmt(dto.getDrAmt());
         entity.setCrAmt(dto.getCrAmt());
@@ -1157,6 +1281,142 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         );
     }
 
+    @Override
+    public List<ItemDetailDto> loadMTAItems(Long salesQtnRefPoid) {
+        return bankDebitVoucherCustomRepository.procLoadMTAItems(
+                UserContext.getGroupPoid(),
+                UserContext.getUserPoid(),
+                UserContext.getCompanyPoid(),
+                salesQtnRefPoid
+        );
+    }
+
+    @Override
+    public String getMtaRef(Long salesQtnRefPoid) {
+        // Calls PROC_GL_PETTY_SET_MTAREF — returns the derived MtaRef display value after LOV selection (GAP-10)
+        return bankDebitVoucherCustomRepository.procSetMtaRef(
+                UserContext.getGroupPoid(),
+                UserContext.getUserPoid(),
+                UserContext.getCompanyPoid(),
+                salesQtnRefPoid
+        );
+    }
+
+    /**
+     * Generates default GL journal entry rows based on header fields.
+     * Mirrors legacy BankDebitVoucherBean.ArrayTableStartDefaultRows() (GAP-05).
+     *
+     * GENERAL + PayingType != 4:
+     *   Dr(PayGL, Amount ± GainLoss), Cr(BankGL, Amount)
+     *   Dr(BankChargesGL, BankCharges + Tax), Cr(BankGL, BankCharges + Tax)  — if BankCharges > 0
+     *   Dr or Cr(GainLossGL, GainLoss)                                       — if GainLoss > 0
+     * CUSTOM + PayingType != 4:
+     *   Cr(BankGL, Amount) only
+     * PayingType = 4:
+     *   Dr(BankChargesGL, Amount), Cr(BankGL, Amount)
+     */
+    @Override
+    public List<PaymentGlDetails> generateDefaultGlRows(BankDebitVoucherRequest request) {
+        List<PaymentGlDetails> rows = new ArrayList<>();
+        if (request.getBankPoid() == null) return rows;
+
+        Long bankGlPoid = bankDebitVoucherCustomRepository.getBankGlPoid(request.getBankPoid());
+        if (bankGlPoid == null) return rows;
+
+        String refType = request.getRefType() != null ? request.getRefType().trim() : "GENERAL";
+        String payingType = request.getPayingType() != null ? request.getPayingType().trim() : "";
+        BigDecimal amount = request.getAmount() != null ? request.getAmount() : BigDecimal.ZERO;
+        BigDecimal bankCharges = request.getBankCharges() != null ? request.getBankCharges() : BigDecimal.ZERO;
+        BigDecimal taxAmount = request.getTaxAmount() != null ? request.getTaxAmount() : BigDecimal.ZERO;
+        BigDecimal gainLoss = request.getGainLoss() != null ? request.getGainLoss() : BigDecimal.ZERO;
+        String gainLossType = request.getGainLossType();
+
+        long detRowId = 1;
+
+        if ("4".equals(payingType)) {
+            // PayingType = 4 (Bank Charges only): Dr(BankChargesGL)/Cr(BankGL)
+            String bankChargesGlPoidStr = globalParameterService.getParameterValue("BANK INTEREST CHARGES SHIPPING", "GROUP", "1", null);
+            if (bankChargesGlPoidStr != null) {
+                Long bankChargesGlPoid = parseLong(bankChargesGlPoidStr);
+                rows.add(buildGlRow(detRowId++, "DR", bankChargesGlPoid, amount, null));
+                rows.add(buildGlRow(detRowId++, "CR", bankGlPoid, amount, null));
+            }
+            return rows;
+        }
+
+        if ("GENERAL".equalsIgnoreCase(refType) && request.getPayGlPoid() != null) {
+            // Dr(PayGL, Amount ± GainLoss) / Cr(BankGL, Amount)
+            BigDecimal payGlAmt = amount;
+            if (gainLoss.compareTo(BigDecimal.ZERO) > 0) {
+                payGlAmt = "CR".equalsIgnoreCase(gainLossType)
+                        ? amount.add(gainLoss)
+                        : amount.subtract(gainLoss);
+            }
+            rows.add(buildGlRow(detRowId++, "DR", request.getPayGlPoid(), payGlAmt, null));
+            rows.add(buildGlRow(detRowId++, "CR", bankGlPoid, amount, null));
+
+            // Bank charges rows
+            if (bankCharges.compareTo(BigDecimal.ZERO) > 0) {
+                String bankChargesGlPoidStr = globalParameterService.getParameterValue("BANK INTEREST CHARGES SHIPPING", "GROUP", "1", null);
+                if (bankChargesGlPoidStr != null) {
+                    Long bankChargesGlPoid = parseLong(bankChargesGlPoidStr);
+                    BigDecimal chargePlusTax = bankCharges.add(taxAmount);
+                    rows.add(buildGlRow(detRowId++, "DR", bankChargesGlPoid, bankCharges, request.getTaxPoid(), request.getTaxPercentage(), taxAmount));
+                    rows.add(buildGlRow(detRowId++, "CR", bankGlPoid, chargePlusTax, null));
+                }
+            }
+
+            // FX Gain/Loss row
+            if (gainLoss.compareTo(BigDecimal.ZERO) > 0) {
+                String gainLossGlPoidStr = globalParameterService.getParameterValue("EXCHANGE GAIN LOSS ACCT", "GROUP", "1", null);
+                if (gainLossGlPoidStr != null) {
+                    Long gainLossGlPoid = parseLong(gainLossGlPoidStr);
+                    String gainLossRowType = "CR".equalsIgnoreCase(gainLossType) ? "DR" : "CR";
+                    rows.add(buildGlRow(detRowId++, gainLossRowType, gainLossGlPoid, gainLoss, null));
+                }
+            }
+        } else if ("CUSTOM".equalsIgnoreCase(refType)) {
+            // CUSTOM + PayingType != 4: Cr(BankGL, Amount) only
+            rows.add(buildGlRow(detRowId++, "CR", bankGlPoid, amount, null));
+        }
+
+        return rows;
+    }
+
+    private PaymentGlDetails buildGlRow(long detRowId, String type, Long glPoid, BigDecimal amount, Long taxPoid) {
+        return buildGlRow(detRowId, type, glPoid, amount, taxPoid, null, null);
+    }
+
+    private PaymentGlDetails buildGlRow(long detRowId, String type, Long glPoid, BigDecimal amount, Long taxPoid, BigDecimal taxPercentage, BigDecimal taxAmount) {
+        PaymentGlDetails row = new PaymentGlDetails();
+        row.setDetRowId(detRowId);
+        row.setType(type);
+        row.setGlPoid(glPoid);
+        if ("DR".equals(type)) {
+            row.setDrAmt(amount);
+            row.setCrAmt(BigDecimal.ZERO);
+        } else {
+            row.setCrAmt(amount);
+            row.setDrAmt(BigDecimal.ZERO);
+        }
+        row.setTaxPoid(taxPoid);
+        row.setTaxPercentage(taxPercentage);
+        row.setTaxAmount(taxAmount);
+        BigDecimal total = amount != null ? amount : BigDecimal.ZERO;
+        if (taxAmount != null) total = total.add(taxAmount);
+        row.setTotalAmount(total);
+        row.setActionType("ISCREATED");
+        return row;
+    }
+
+    private Long parseLong(String value) {
+        try {
+            return Long.parseLong(value.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
     // ---------- utilities ----------
     @Override
     public BigDecimal getBankBalance(Long bankPoid, String documentId, LocalDate docDate) {
@@ -1288,6 +1548,9 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         } else if ("FF JOBS".equalsIgnoreCase(response.getRefType())) {
             ref = response.getFfRef();
             bankPaymentVoucherSpRepository.updateFfCost(response.getGroupPoid(), UserContext.getCompanyPoid(), UserContext.getUserPoid(), ref, response.getTransactionPoid());
+        } else if ("MTA RFQ".equalsIgnoreCase(response.getRefType())) {
+            ref = response.getSalesQtnRef() != null ? String.valueOf(response.getSalesQtnRef()) : null;
+            bankPaymentVoucherSpRepository.updateMtaCost(response.getGroupPoid(), UserContext.getCompanyPoid(), UserContext.getUserPoid(), response.getTransactionPoid(), ref);
         }
     }
 

@@ -247,7 +247,7 @@ public class AdvancePettyCashHdrServiceImpl implements AdvancePettyCashHdrServic
     }
 
     private void validateTransactionDate(LocalDate transactionDate) {
-        if (transactionDate != null) {
+        if (transactionDate == null) {
             throw new ValidationException("Transaction date cannot be Null");
         }
     }

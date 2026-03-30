@@ -17,6 +17,6 @@ public class PettyCashFromFfDto {
     private BigDecimal ffAmount;
     private Long taxPoid;
     private String refDocId;
-    private String refDocPoid;
+    private Long refDocPoid;
     private Long fdaDetRowId;
 }

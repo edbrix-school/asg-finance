@@ -1,0 +1,24 @@
+package com.asg.finance.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.math.BigDecimal;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class PettyCashFromGenrlPoDto {
+    private Long stockPoid;
+    private Long stockUnitPoid;
+    private BigDecimal poQty;
+    private BigDecimal price;
+    private BigDecimal discount;
+    private BigDecimal total;
+    private String remarks;
+    private String refDocId;
+    private String refDocPoid;
+}

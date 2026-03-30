@@ -59,6 +59,27 @@ public interface PettyCashVoucherService {
             Long lovValue
     );
 
+    List<PettyCashFromGrnDto> loadPettyCashFromGrn(
+            Long loginGroupPoid,
+            Long loginCompanyPoid,
+            Long loginUserPoid,
+            String transactionDate,
+            String grnSupplierPoid,
+            StringBuilder result
+    );
+
+    List<PettyCashFromGenrlPoDto> loadPettyCashFromCompletedPo(
+            Long loginGroupPoid,
+            Long loginCompanyPoid,
+            Long loginUserPoid,
+            String poPoid,
+            StringBuilder result
+    );
+
+    List<String> getAllowedRefTypes(Long userPoid);
+
+    PettyCashGlobalParamsDto getPettyCashGlobalParams(Long pettyCashGlPoid);
+
     byte[] print(Long transactionPoid) throws Exception;
 
 }

@@ -1,6 +1,7 @@
 package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.DetailsDto;
+import com.asg.common.lib.dto.LovGetListDto;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
@@ -17,7 +18,9 @@ import com.asg.common.lib.service.PrintService;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.GlobalParameterService;
 import com.asg.finance.annotation.PerformGlPosting;
+import com.asg.finance.entity.AdvancePettyCashHdr;
 import com.asg.finance.entity.GLMaster;
+import com.asg.finance.entity.SupplierMasterEntity;
 import com.asg.finance.repository.GLMasterRepository;
 import com.asg.finance.repository.TaxMasterRepository;
 import com.asg.common.lib.service.DocumentSearchService;
@@ -57,6 +60,7 @@ import org.springframework.transaction.annotation.Transactional;
 import javax.sql.DataSource;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Arrays;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -90,6 +94,9 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
     private final PettyCashLoadByRefTypeRepository pettyCashLoadByRefTypeRepository;
     private final PettyCashPaymentVoucherCustomRepository pettyCashPaymentVoucherCustomRepository;
+    private final SupplierMasterRepository supplierMasterRepository;
+    private final AdvancePettyCashHdrRepository advancePettyCashHdrRepository;
+    private final AssetLocationMasterRepository assetLocationMasterRepository;
 
     private final PrintService printService;
     private final DataSource dataSource;
@@ -168,6 +175,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                 logResult("PROC_GL_PETTY_ADVANCE_DTLLOAD", result);
             }
 
+            validateCashBalance(requestDto, documentId);
 
             GlPettyCashPaymentHdr savedHeader = glPettyCashPaymentHdrRepository.save(header);
             Long hdrPoid = savedHeader.getTransactionPoid();
@@ -367,6 +375,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
             // Logging for create operation
             loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), savedHeader.getTransactionPoid().toString());
+
+            triggerPostSaveWorkflow(savedHeader.getTransactionPoid(), documentId);
 
             // Ensure detail rows are flushed before @PerformGlPosting JDBC call executes.
             entityManager.flush();
@@ -648,6 +658,80 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             }
         }
 
+        if (savedHeader.getGrnSupplierPoid() != null) {
+            SupplierMasterEntity supplier = supplierMasterRepository.findBySupplierPoid(savedHeader.getGrnSupplierPoid());
+            if (supplier != null) {
+                builder.grnSupplierPoidDtl(new DetailsDto(
+                        supplier.getSupplierPoid(),
+                        supplier.getSupplierCode(),
+                        supplier.getSupplierName(),
+                        supplier.getGroupPoid(),
+                        supplier.getSupplierName2(),
+                        supplier.getSeqNo() != null ? supplier.getSeqNo().intValue() : null
+                ));
+            }
+        }
+
+        if (savedHeader.getSupplierGlPoid() != null) {
+            glMasterRepository.findByGlPoid(savedHeader.getSupplierGlPoid()).ifPresent(gl ->
+                    builder.supplierGlPoidDtl(new DetailsDto(
+                            gl.getGlPoid(), gl.getGlCode(), gl.getGlDescription(),
+                            gl.getGroupPoid(), gl.getGlDescription2(), gl.getSeqno()
+                    ))
+            );
+        }
+
+        if (savedHeader.getCustomerGlPoid() != null) {
+            glMasterRepository.findByGlPoid(savedHeader.getCustomerGlPoid()).ifPresent(gl ->
+                    builder.customerGlPoidDtl(new DetailsDto(
+                            gl.getGlPoid(), gl.getGlCode(), gl.getGlDescription(),
+                            gl.getGroupPoid(), gl.getGlDescription2(), gl.getSeqno()
+                    ))
+            );
+        }
+
+        if (savedHeader.getAdvancePettyCashPoid() != null) {
+            advancePettyCashHdrRepository.findByTransactionPoid(savedHeader.getAdvancePettyCashPoid())
+                    .ifPresent(adv -> builder.advancePettyCashPoidDtl(new DetailsDto(
+                            adv.getTransactionPoid(),
+                            adv.getDocRef(),
+                            adv.getDocRef(),
+                            adv.getGroupPoid(),
+                            null,
+                            null
+                    )));
+        }
+
+        if (savedHeader.getFfRef() != null && !savedHeader.getFfRef().isBlank()) {
+            try {
+                Long ffPoid = Long.parseLong(savedHeader.getFfRef().trim());
+                LovGetListDto lov = lovService.getDetailsByPoidAndLovName(ffPoid, "FF_JOBS_FOR_COST_BOOKING");
+                if (lov != null && lov.getPoid() != null) {
+                    builder.ffRefDtl(new DetailsDto(
+                            lov.getPoid(), lov.getCode(), lov.getLabel(),
+                            lov.getValue(), lov.getDescription(), lov.getSeqNo()
+                    ));
+                }
+            } catch (NumberFormatException ignored) {
+                // ffRef is not a numeric POID — skip enrichment
+            }
+        }
+
+        if (savedHeader.getFdaRef() != null && !savedHeader.getFdaRef().isBlank()) {
+            try {
+                Long fdaPoid = Long.parseLong(savedHeader.getFdaRef().trim());
+                LovGetListDto lov = lovService.getDetailsByPoidAndLovName(fdaPoid, "PROCESS_FDA_IN_PI");
+                if (lov != null && lov.getPoid() != null) {
+                    builder.fdaRefDtl(new DetailsDto(
+                            lov.getPoid(), lov.getCode(), lov.getLabel(),
+                            lov.getValue(), lov.getDescription(), lov.getSeqNo()
+                    ));
+                }
+            } catch (NumberFormatException ignored) {
+                // fdaRef is not a numeric POID — skip enrichment
+            }
+        }
+
         return builder.build();
     }
 
@@ -726,6 +810,30 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                                 });
                     }
 
+                    if (dtl.getVatSupplier() != null) {
+                        SupplierMasterEntity supplier = supplierMasterRepository.findBySupplierPoid(dtl.getVatSupplier());
+                        if (supplier != null) {
+                            responseDto.setVatSupplierDtl(new DetailsDto(
+                                    supplier.getSupplierPoid(),
+                                    supplier.getSupplierCode(),
+                                    supplier.getSupplierName(),
+                                    supplier.getGroupPoid(),
+                                    supplier.getSupplierName2(),
+                                    supplier.getSeqNo() != null ? supplier.getSeqNo().intValue() : null
+                            ));
+                        }
+                    }
+
+                    if (dtl.getCompanyPoid() != null) {
+                        LovGetListDto companyLov = lovService.getDetailsByPoidAndLovName(dtl.getCompanyPoid(), "COMPANY");
+                        if (companyLov != null && companyLov.getPoid() != null) {
+                            responseDto.setCompanyPoidDtl(new DetailsDto(
+                                    companyLov.getPoid(), companyLov.getCode(), companyLov.getLabel(),
+                                    companyLov.getValue(), companyLov.getDescription(), companyLov.getSeqNo()
+                            ));
+                        }
+                    }
+
                     return responseDto;
                 })
                 .toList();
@@ -790,6 +898,17 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                                     );
                                     responseDto.setTaxPoidDtl(taxDetails);
                                 });
+                    }
+
+                    // Enrich refDocPoidDtl for FF charges only (LOV: FF_JOBNO)
+                    if ("FF".equalsIgnoreCase(dtl.getChargeFrom()) && dtl.getRefDocPoid() != null) {
+                        LovGetListDto ffJobLov = lovService.getDetailsByPoidAndLovName(dtl.getRefDocPoid(), "FF_JOBNO");
+                        if (ffJobLov != null && ffJobLov.getPoid() != null) {
+                            responseDto.setRefDocPoidDtl(new DetailsDto(
+                                    ffJobLov.getPoid(), ffJobLov.getCode(), ffJobLov.getLabel(),
+                                    ffJobLov.getValue(), ffJobLov.getDescription(), ffJobLov.getSeqNo()
+                            ));
+                        }
                     }
 
                     return responseDto;
@@ -962,6 +1081,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             validateRoundingAmount(requestDto.getRoundingAmount());
 
             // Step 4: Update parent (header) fields
+            validateCashBalance(requestDto, documentId);
             updateHeaderFields(existingHdr, requestDto, userPoid);
             GlPettyCashPaymentHdr updatedHdr = glPettyCashPaymentHdrRepository.save(existingHdr);
 
@@ -1141,6 +1261,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             
             // Logging for update operation
             loggingService.logChanges(oldEntity, updatedHdr, GlPettyCashPaymentHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+
+            triggerPostSaveWorkflow(updatedHdr.getTransactionPoid(), documentId);
 
             // Ensure detail updates/deletes are flushed before @PerformGlPosting JDBC call executes.
             entityManager.flush();
@@ -1948,6 +2070,114 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
         );
     }
 
+    @Override
+    public List<PettyCashFromGrnDto> loadPettyCashFromGrn(
+            Long loginGroupPoid,
+            Long loginCompanyPoid,
+            Long loginUserPoid,
+            String transactionDate,
+            String grnSupplierPoid,
+            StringBuilder result
+    ) {
+        log.info("Loading Petty Cash From GRN. Supplier POID: {}", grnSupplierPoid);
+        return pettyCashLoadByRefTypeRepository.loadPettyCashFromGrn(
+                loginGroupPoid,
+                loginCompanyPoid,
+                loginUserPoid,
+                transactionDate,
+                grnSupplierPoid,
+                result
+        );
+    }
+
+    @Override
+    public List<PettyCashFromGenrlPoDto> loadPettyCashFromCompletedPo(
+            Long loginGroupPoid,
+            Long loginCompanyPoid,
+            Long loginUserPoid,
+            String poPoid,
+            StringBuilder result
+    ) {
+        log.info("Loading Petty Cash From Completed PO. PO POID: {}", poPoid);
+        return pettyCashLoadByRefTypeRepository.loadPettyCashFromCompletedPo(
+                loginGroupPoid,
+                loginCompanyPoid,
+                loginUserPoid,
+                poPoid,
+                result
+        );
+    }
+
+    @Override
+    public List<String> getAllowedRefTypes(Long userPoid) {
+        log.info("Getting allowed ref types for userPoid: {}", userPoid);
+        String whereClause = pettyCashPaymentVoucherCustomRepository.getRefTypeWhereClause(userPoid);
+        if (whereClause == null || whereClause.isBlank()) {
+            return Collections.emptyList();
+        }
+        // The procedure returns a SQL IN-clause string e.g. "'GENERAL','FF JOBS','FDA JOBS'"
+        // Parse it into a clean list of values
+        return Arrays.stream(whereClause.split(","))
+                .map(s -> s.trim().replace("'", ""))
+                .filter(s -> !s.isBlank())
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public PettyCashGlobalParamsDto getPettyCashGlobalParams(Long pettyCashGlPoid) {
+        // Ledger-specific params use the petty cash GL POID as the key; fall back to "1" when not provided
+        String ledgerKey = pettyCashGlPoid != null ? pettyCashGlPoid.toString() : "1";
+
+        return PettyCashGlobalParamsDto.builder()
+                .defaultPayingTo(globalParameterService.getParameterValue(
+                        "PETTY_CASH_DEFAULT_PAYING_TO", "GROUP", "1", ""))
+                .defaultRefType(globalParameterService.getParameterValue(
+                        "DEFAULT_PETTY_CASH_REF_TYPE", "GROUP", "1", "GENERAL"))
+                .vatRelatedFieldsVisible("TRUE".equalsIgnoreCase(globalParameterService.getParameterValue(
+                        "PETTY_CASH_GL_VAT_RELATED_FIELDS", "GROUP", "1", "FALSE")))
+                .roundingLimit(getConfiguredDecimal("ROUNDING_LIMIT", BigDecimal.ZERO))
+                .vatAmountLimit(getConfiguredDecimal("PETTY_CASH_VAT_AMOUNT_LIMIT", BigDecimal.ZERO))
+                .inputTaxVarianceLimit(getConfiguredDecimal("INPUT_TAX_VARIANCE_LIMIT", BigDecimal.ZERO))
+                .mtaPettyCashGlCode(globalParameterService.getParameterValue(
+                        "MTA_PETTY_CASH_GL_CODE", "GROUP", "1", ""))
+                .advanceLedgerGlPoid(parseLongOrNull(globalParameterService.getParameterValue(
+                        "PETTY_CASH_ADVANCE_LEDGER", "GROUP", ledgerKey, "0")))
+                .pettyCashLedgerGlPoid(parseLongOrNull(globalParameterService.getParameterValue(
+                        "PETTY_CASH_LEDGER", "GROUP", ledgerKey, "0")))
+                .advRefundAutoApproval("Y".equalsIgnoreCase(globalParameterService.getParameterValue(
+                        "PETTY_CASH_ADV_REFND_APPR_SUBMN", "GROUP", "1", "N")))
+                .build();
+    }
+
+    private void validateCashBalance(PettyCashRequestBase requestDto, String documentId) {
+        if (requestDto.getPettyCashGlPoid() == null || requestDto.getAmount() == null) {
+            return;
+        }
+        List<PettyGlBalanceDto> balanceList = pettyCashLoadByRefTypeRepository.getPettyGlBalance(
+                UserContext.getGroupPoid(),
+                UserContext.getCompanyPoid(),
+                UserContext.getUserPoid(),
+                documentId,
+                requestDto.getPettyCashGlPoid(),
+                null,
+                0L
+        );
+        if (balanceList == null || balanceList.isEmpty()) {
+            return;
+        }
+        BigDecimal balance = balanceList.get(0).getBalance();
+        if (balance != null && requestDto.getAmount().compareTo(balance) > 0) {
+            throw new ValidationException(
+                    "Paid amount (" + requestDto.getAmount().toPlainString()
+                    + ") exceeds available petty cash balance (" + balance.toPlainString() + ").");
+        }
+    }
+
+    private void triggerPostSaveWorkflow(Long transactionPoid, String docId) {
+        // TODO: Publish PettyCashVoucherSavedEvent or call approval/GL posting service
+        log.info("Post-save workflow triggered for transactionPoid={}, docId={}", transactionPoid, docId);
+    }
+
     private List<BillwiseBreakupPopupRequestDto> mapToPopupDto(List<LoadBillwiseBreakupResponseDto> list) {
 
         if (list == null) return Collections.emptyList();
@@ -2604,21 +2834,37 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
     private List<GlPettyCashPaymentGrnDtlResponseDto> mapGrnResponse(List<GlPettyCashPaymentGrnDtl> savedDtls) {
         return savedDtls.stream()
-                .map(dtl -> GlPettyCashPaymentGrnDtlResponseDto.builder()
-                        .transactionPoid(dtl.getTransactionPoid())
-                        .detRowId(dtl.getDetRowId())
-                        .grnPoid(dtl.getGrnPoid())
-                        .checkAll(dtl.getCheckAll())
-                        .amount(dtl.getAmount())
-                        .remarks(dtl.getRemarks())
-                        .refDocId(dtl.getRefDocId())
-                        .refDocPoid(dtl.getRefDocPoid())
-                        .refDetRowId(dtl.getRefDetRowId())
-                        .createdBy(dtl.getCreatedBy())
-                        .createdDate(dtl.getCreatedDate())
-                        .lastModifiedBy(dtl.getLastModifiedBy())
-                        .lastModifiedDate(dtl.getLastModifiedDate())
-                        .build())
+                .map(dtl -> {
+                    GlPettyCashPaymentGrnDtlResponseDto responseDto = GlPettyCashPaymentGrnDtlResponseDto.builder()
+                            .transactionPoid(dtl.getTransactionPoid())
+                            .detRowId(dtl.getDetRowId())
+                            .grnPoid(dtl.getGrnPoid())
+                            .checkAll(dtl.getCheckAll())
+                            .amount(dtl.getAmount())
+                            .remarks(dtl.getRemarks())
+                            .refDocId(dtl.getRefDocId())
+                            .refDocPoid(dtl.getRefDocPoid())
+                            .refDetRowId(dtl.getRefDetRowId())
+                            .createdBy(dtl.getCreatedBy())
+                            .createdDate(dtl.getCreatedDate())
+                            .lastModifiedBy(dtl.getLastModifiedBy())
+                            .lastModifiedDate(dtl.getLastModifiedDate())
+                            .build();
+                    // Enrich grnPoidDtl (LOV: GRN_JOBS_FOR_PETTY_CASH)
+                    if (dtl.getGrnPoid() != null) {
+                        LovGetListDto grnLov = lovService.getDetailsByPoidAndLovName(dtl.getGrnPoid(), "GRN_JOBS_FOR_PETTY_CASH");
+                        if (grnLov != null && grnLov.getPoid() != null) {
+                            responseDto.setGrnPoidDtl(new DetailsDto(
+                                    grnLov.getPoid(), grnLov.getCode(), grnLov.getLabel(),
+                                    grnLov.getValue(), grnLov.getDescription(), grnLov.getSeqNo()
+                            ));
+                        }
+                    }
+                    // TODO: Enrich locationPoidDtl (LOV: LOCATION) — locationPoid is not stored
+                    //       in GL_PETTY_CASH_PAYMENT_GRN_DTL. Derive from GRN source document
+                    //       once a GRN header repository is available in this module.
+                    return responseDto;
+                })
                 .collect(Collectors.toList());
     }
 

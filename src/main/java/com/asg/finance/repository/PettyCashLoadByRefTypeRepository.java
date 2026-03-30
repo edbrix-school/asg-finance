@@ -2,6 +2,8 @@ package com.asg.finance.repository;
 
 import com.asg.finance.dto.PettyCashFromFdaDto;
 import com.asg.finance.dto.PettyCashFromFfDto;
+import com.asg.finance.dto.PettyCashFromGenrlPoDto;
+import com.asg.finance.dto.PettyCashFromGrnDto;
 import com.asg.finance.dto.PettyCashFromPoDto;
 import com.asg.finance.dto.PettyGlBalanceDto;
 
@@ -40,6 +42,23 @@ public interface PettyCashLoadByRefTypeRepository {
             Long docKeyPoid,
             String lovName,
             Long lovValue
+    );
+
+    List<PettyCashFromGrnDto> loadPettyCashFromGrn(
+            Long loginGroupPoid,
+            Long loginCompanyPoid,
+            Long loginUserPoid,
+            String transactionDate,
+            String grnSupplierPoid,
+            StringBuilder result
+    );
+
+    List<PettyCashFromGenrlPoDto> loadPettyCashFromCompletedPo(
+            Long loginGroupPoid,
+            Long loginCompanyPoid,
+            Long loginUserPoid,
+            String poPoid,
+            StringBuilder result
     );
 
 }

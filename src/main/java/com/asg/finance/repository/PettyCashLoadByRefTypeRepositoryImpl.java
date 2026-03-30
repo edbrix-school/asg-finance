@@ -2,6 +2,8 @@ package com.asg.finance.repository;
 
 import com.asg.finance.dto.PettyCashFromFdaDto;
 import com.asg.finance.dto.PettyCashFromFfDto;
+import com.asg.finance.dto.PettyCashFromGenrlPoDto;
+import com.asg.finance.dto.PettyCashFromGrnDto;
 import com.asg.finance.dto.PettyCashFromPoDto;
 import com.asg.finance.dto.PettyGlBalanceDto;
 import jakarta.persistence.EntityManager;
@@ -144,6 +146,7 @@ public class PettyCashLoadByRefTypeRepositoryImpl implements PettyCashLoadByRefT
 
     private List<PettyCashFromFfDto> mapToFFDto(ResultSet rs) {
         List<PettyCashFromFfDto> list = new ArrayList<>();
+        if (rs == null) return list;
         try {
             while (rs.next()) {
                 PettyCashFromFfDto dto = PettyCashFromFfDto.builder()
@@ -152,7 +155,7 @@ public class PettyCashLoadByRefTypeRepositoryImpl implements PettyCashLoadByRefT
                         .ffAmount(rs.getBigDecimal("FF_AMOUNT"))
                         .taxPoid(rs.getLong("TAX_POID"))
                         .refDocId(rs.getString("REF_DOC_ID"))
-                        .refDocPoid(rs.getString("REF_DOC_POID"))
+                        .refDocPoid(rs.getLong("REF_DOC_POID"))
                         .fdaDetRowId(rs.getLong("FDA_DET_ROW_ID"))
                         .build();
                 list.add(dto);
@@ -300,6 +303,141 @@ public class PettyCashLoadByRefTypeRepositoryImpl implements PettyCashLoadByRefT
             throw new RuntimeException("Error mapping OUTDATA to PettyGlBalanceDto: " + e.getMessage(), e);
         }
 
+        return list;
+    }
+
+    @Override
+    public List<PettyCashFromGrnDto> loadPettyCashFromGrn(
+            Long loginGroupPoid,
+            Long loginCompanyPoid,
+            Long loginUserPoid,
+            String transactionDate,
+            String grnSupplierPoid,
+            StringBuilder result
+    ) {
+        List<PettyCashFromGrnDto> responseList = new ArrayList<>();
+
+        try {
+            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("PROC_GL_PETTY_INSERT_GRN_JOBS");
+
+            query.registerStoredProcedureParameter("P_LOGIN_GROUP_POID", Long.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("P_LOGIN_COMPANY_POID", Long.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("P_LOGIN_USER_POID", Long.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("P_TRANSACTION_DATE", String.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("P_GRN_SUPPLIER_POID", String.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("P_RESULT", String.class, ParameterMode.OUT);
+            query.registerStoredProcedureParameter("OUTDATA", ResultSet.class, ParameterMode.REF_CURSOR);
+
+            query.setParameter("P_LOGIN_GROUP_POID", loginGroupPoid);
+            query.setParameter("P_LOGIN_COMPANY_POID", loginCompanyPoid);
+            query.setParameter("P_LOGIN_USER_POID", loginUserPoid);
+            query.setParameter("P_TRANSACTION_DATE", transactionDate);
+            query.setParameter("P_GRN_SUPPLIER_POID", grnSupplierPoid);
+
+            query.execute();
+
+            String resultValue = (String) query.getOutputParameterValue("P_RESULT");
+            if (result != null) result.append(resultValue);
+
+            ResultSet rs = (ResultSet) query.getOutputParameterValue("OUTDATA");
+            responseList = mapToGrnDto(rs);
+
+            log.info("PROC_GL_PETTY_INSERT_GRN_JOBS executed successfully. Message: {}", resultValue);
+
+        } catch (Exception e) {
+            log.error("Error executing PROC_GL_PETTY_INSERT_GRN_JOBS: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to load petty cash from GRN: " + e.getMessage(), e);
+        }
+
+        return responseList;
+    }
+
+    private List<PettyCashFromGrnDto> mapToGrnDto(ResultSet rs) {
+        List<PettyCashFromGrnDto> list = new ArrayList<>();
+        try {
+            while (rs.next()) {
+                PettyCashFromGrnDto dto = PettyCashFromGrnDto.builder()
+                        .transactionPoid(rs.getLong("TRANSACTION_POID"))
+                        .transactionDate(rs.getString("TRANSACTION_DATE"))
+                        .docRef(rs.getString("DOC_REF"))
+                        .companyPoid(rs.getLong("COMPANY_POID"))
+                        .supplierPoid(rs.getLong("SUPPLIER_POID"))
+                        .locationPoid(rs.getLong("LOCATION_POID"))
+                        .remarks(rs.getString("REMARKS"))
+                        .grandTotal(rs.getBigDecimal("GRAND_TOTAL"))
+                        .drilldownLinkInfo(rs.getString("DRILLDOWN_LINK_INFO"))
+                        .build();
+                list.add(dto);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error mapping OUTDATA to PettyCashFromGrnDto: " + e.getMessage(), e);
+        }
+        return list;
+    }
+
+    @Override
+    public List<PettyCashFromGenrlPoDto> loadPettyCashFromCompletedPo(
+            Long loginGroupPoid,
+            Long loginCompanyPoid,
+            Long loginUserPoid,
+            String poPoid,
+            StringBuilder result
+    ) {
+        List<PettyCashFromGenrlPoDto> responseList = new ArrayList<>();
+
+        try {
+            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("PROC_GL_PETTY_CREATE_GENRL_PO");
+
+            query.registerStoredProcedureParameter("P_LOGIN_GROUP_POID", Long.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("P_LOGIN_COMPANY_POID", Long.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("P_LOGIN_USER_POID", Long.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("P_PO_POID", String.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("P_RESULT", String.class, ParameterMode.OUT);
+            query.registerStoredProcedureParameter("OUTDATA", ResultSet.class, ParameterMode.REF_CURSOR);
+
+            query.setParameter("P_LOGIN_GROUP_POID", loginGroupPoid);
+            query.setParameter("P_LOGIN_COMPANY_POID", loginCompanyPoid);
+            query.setParameter("P_LOGIN_USER_POID", loginUserPoid);
+            query.setParameter("P_PO_POID", poPoid);
+
+            query.execute();
+
+            String resultValue = (String) query.getOutputParameterValue("P_RESULT");
+            if (result != null) result.append(resultValue);
+
+            ResultSet rs = (ResultSet) query.getOutputParameterValue("OUTDATA");
+            responseList = mapToGenrlPoDto(rs);
+
+            log.info("PROC_GL_PETTY_CREATE_GENRL_PO executed successfully. Message: {}", resultValue);
+
+        } catch (Exception e) {
+            log.error("Error executing PROC_GL_PETTY_CREATE_GENRL_PO: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to load petty cash from completed PO: " + e.getMessage(), e);
+        }
+
+        return responseList;
+    }
+
+    private List<PettyCashFromGenrlPoDto> mapToGenrlPoDto(ResultSet rs) {
+        List<PettyCashFromGenrlPoDto> list = new ArrayList<>();
+        try {
+            while (rs.next()) {
+                PettyCashFromGenrlPoDto dto = PettyCashFromGenrlPoDto.builder()
+                        .stockPoid(rs.getLong("STOCK_POID"))
+                        .stockUnitPoid(rs.getLong("STOCK_UNIT_POID"))
+                        .poQty(rs.getBigDecimal("PO_QTY"))
+                        .price(rs.getBigDecimal("PRICE"))
+                        .discount(rs.getBigDecimal("DISCOUNT"))
+                        .total(rs.getBigDecimal("TOTAL"))
+                        .remarks(rs.getString("REMARKS"))
+                        .refDocId(rs.getString("REF_DOC_ID"))
+                        .refDocPoid(rs.getString("REF_DOC_POID"))
+                        .build();
+                list.add(dto);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error mapping OUTDATA to PettyCashFromGenrlPoDto: " + e.getMessage(), e);
+        }
         return list;
     }
 

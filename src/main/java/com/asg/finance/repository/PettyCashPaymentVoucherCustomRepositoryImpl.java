@@ -534,4 +534,26 @@ public class PettyCashPaymentVoucherCustomRepositoryImpl implements PettyCashPay
             }
         }
     }
+
+    @Override
+    public String getRefTypeWhereClause(Long loginUserPoid) {
+        try {
+            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("PROC_GL_PETTY_REF_WHERE_CLAUSE");
+
+            query.registerStoredProcedureParameter("P_LOGIN_USER_POID", Long.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("P_RESULT", String.class, ParameterMode.OUT);
+
+            query.setParameter("P_LOGIN_USER_POID", loginUserPoid);
+
+            query.execute();
+
+            String result = (String) query.getOutputParameterValue("P_RESULT");
+            log.info("PROC_GL_PETTY_REF_WHERE_CLAUSE executed successfully. Result: {}", result);
+            return result != null ? result : "";
+
+        } catch (Exception e) {
+            log.error("Error executing PROC_GL_PETTY_REF_WHERE_CLAUSE: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to get ref type where clause: " + e.getMessage(), e);
+        }
+    }
 }

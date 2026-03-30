@@ -49,6 +49,7 @@ public class PettyCashResponseDto {
     private String multiCompany;
     private String poRef;
     private String salesQtnRef;
+    private DetailsDto salesQtnRefDtl;
     private BigDecimal crTotal;
     private BigDecimal drTotal;
     private BigDecimal roundingAmount;
@@ -68,5 +69,4 @@ public class PettyCashResponseDto {
     private List<GlPettyCashPaymentDtlResponseDto> paymentDtls;
     private List<GlPettyCashChargeDtlResponseDto> chargeDtls;
     private List<GLPettyCashItemDtlResponseDto> itemDtls;
-    private List<GlPettyCashPaymentGrnDtlResponseDto> grnDtls;
 }

@@ -278,10 +278,10 @@ WHERE TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 							</textField>
 						</jr:detailCell>
 					</jr:column>
-					<jr:column width="69" uuid="8c6c6072-467f-4eb2-a59e-08c4acf0b121">
+					<jr:column width="76" uuid="8c6c6072-467f-4eb2-a59e-08c4acf0b121">
 						<jr:columnHeader height="30" rowSpan="1">
 							<staticText>
-								<reportElement style="OutTable" x="0" y="0" width="69" height="30" uuid="d68732f2-5efb-4800-be80-0d3fd9d8156a"/>
+								<reportElement style="OutTable" x="0" y="0" width="76" height="30" uuid="d68732f2-5efb-4800-be80-0d3fd9d8156a"/>
 								<textElement>
 									<font isBold="true" pdfFontName="Helvetica-Bold"/>
 								</textElement>
@@ -290,7 +290,7 @@ WHERE TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 						</jr:columnHeader>
 						<jr:detailCell height="20" rowSpan="1">
 							<textField pattern="dd-MMM-yyyy" isBlankWhenNull="true">
-								<reportElement style="OutDtl" x="0" y="0" width="69" height="20" uuid="e4ea7b5e-aa4b-4bc8-ae06-83851082760c"/>
+								<reportElement style="OutDtl" x="0" y="0" width="76" height="20" uuid="e4ea7b5e-aa4b-4bc8-ae06-83851082760c"/>
 								<textFieldExpression><![CDATA[$F{CHQ_DATE}]]></textFieldExpression>
 							</textField>
 						</jr:detailCell>
@@ -456,10 +456,10 @@ WHERE TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 							</textField>
 						</jr:detailCell>
 					</jr:column>
-					<jr:column width="69" uuid="dab3f747-2531-43c3-9d3a-c4780f2421a3">
+					<jr:column width="76" uuid="dab3f747-2531-43c3-9d3a-c4780f2421a3">
 						<jr:tableHeader height="19" rowSpan="1">
 							<staticText>
-								<reportElement style="OutTable" x="0" y="0" width="69" height="19" uuid="48e26095-1efc-4f8e-adbb-96acb53510a9"/>
+								<reportElement style="OutTable" x="0" y="0" width="76" height="19" uuid="48e26095-1efc-4f8e-adbb-96acb53510a9"/>
 								<textElement>
 									<font isBold="true" pdfFontName="Helvetica-Bold"/>
 								</textElement>
@@ -468,7 +468,7 @@ WHERE TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 						</jr:tableHeader>
 						<jr:detailCell height="20" rowSpan="1">
 							<textField pattern="dd-MMM-yyyy" isBlankWhenNull="true">
-								<reportElement style="OutDtl" x="0" y="0" width="69" height="20" uuid="77529674-0029-43c6-9497-8dd61343c278"/>
+								<reportElement style="OutDtl" x="0" y="0" width="76" height="20" uuid="77529674-0029-43c6-9497-8dd61343c278"/>
 								<textFieldExpression><![CDATA[$F{CHQ_DATE}]]></textFieldExpression>
 							</textField>
 						</jr:detailCell>

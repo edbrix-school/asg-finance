@@ -1,5 +1,6 @@
 package com.asg.finance.entity;
 
+import com.asg.common.lib.entity.BaseEntity;
 import com.asg.finance.entity.key.GlBankDepositVoucherDtlKey;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -17,7 +18,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class GlBankDepositVoucherDtl {
+public class GlBankDepositVoucherDtl extends BaseEntity {
     @Id
     @Column(name = "TRANSACTION_POID")
     private Long transactionPoid;

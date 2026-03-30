@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Data
@@ -31,6 +32,8 @@ public class BankDepositVoucherRequestDto {
     private Long groupPoid;
 
     private String remarks;
+
+    private LocalDate transactionDate;
 
     @Valid
     private List<BankDepositVoucherDtlDto> details;

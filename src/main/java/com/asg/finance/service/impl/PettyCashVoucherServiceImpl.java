@@ -1333,6 +1333,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             response.setChargeDtls(chargeDtls);
             response.setItemDtls(itemDtls);
 
+            loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, documentId, transactionPoid.toString());
+
             return response;
 
         } catch (Exception e) {
@@ -1353,7 +1355,9 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
         pettyCashPaymentVoucherCustomRepository.validateVoucherBeforeDelete(
                 userGroupPoid, userPoid, userCompanyPoid, docId, refType, refType);
-        
+
+        loggingService.logDelete(header, docId, transactionPoid.toString());
+
         documentDeleteService.deleteDocument(
                 transactionPoid,
                 "GL_PETTY_CASH_PAYMENT_HDR",
@@ -1471,6 +1475,100 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
         );
         enrichCompletedPoLoadResponse(response.getResponseList());
         return response;
+    }
+
+    // -----------------------------------------------------------------------
+    // Enrich helpers: populate *Dtl LOV fields on load responses
+    // -----------------------------------------------------------------------
+
+    private void enrichPoLoadResponse(List<PettyCashFromPoDto> rows) {
+        if (rows == null) return;
+        rows.forEach(row -> {
+            if (row.getStockPoid() != null) {
+                stockMasterRepository.findByStockPoid(row.getStockPoid()).ifPresent(s ->
+                        row.setStockPoidDtl(new DetailsDto(s.getStockPoid(), s.getStockCode(),
+                                s.getStockName(), s.getGroupPoid(), s.getStockDescription(), s.getSeqNo())));
+            }
+            if (row.getStockUnitPoid() != null) {
+                unitMasterRepository.findByUnitPoid(row.getStockUnitPoid()).ifPresent(u ->
+                        row.setStockUnitPoidDtl(new DetailsDto(u.getUnitPoid(), u.getUnitCode(),
+                                u.getUnitName(), u.getGroupPoid(), u.getUnitName2(), u.getSeqNo())));
+            }
+            if (row.getTaxPoid() != null) {
+                taxMasterRepository.findByTaxPoid(row.getTaxPoid()).ifPresent(t ->
+                        row.setTaxPoidDtl(new DetailsDto(t.getTaxPoid(), t.getTaxCode(),
+                                t.getTaxName(), t.getGroupPoid(), t.getTaxName2(), t.getSeqNo())));
+            }
+        });
+    }
+
+    private void enrichFfLoadResponse(List<PettyCashFromFfDto> rows) {
+        if (rows == null) return;
+        rows.forEach(row -> {
+            if (row.getChargePoid() != null) {
+                shipChargeRepository.findByChargePoid(row.getChargePoid()).ifPresent(c ->
+                        row.setChargePoidDtl(new DetailsDto(c.getChargePoid(), c.getChargeCode(),
+                                c.getChargeName(), c.getGroupPoid(), c.getChargeName2(), c.getSeqNo())));
+            }
+            if (row.getTaxPoid() != null) {
+                taxMasterRepository.findByTaxPoid(row.getTaxPoid()).ifPresent(t ->
+                        row.setTaxPoidDtl(new DetailsDto(t.getTaxPoid(), t.getTaxCode(),
+                                t.getTaxName(), t.getGroupPoid(), t.getTaxName2(), t.getSeqNo())));
+            }
+        });
+    }
+
+    private void enrichFdaLoadResponse(List<PettyCashFromFdaDto> rows) {
+        if (rows == null) return;
+        rows.forEach(row -> {
+            if (row.getChargePoid() != null) {
+                shipChargeRepository.findByChargePoid(row.getChargePoid()).ifPresent(c ->
+                        row.setChargePoidDtl(new DetailsDto(c.getChargePoid(), c.getChargeCode(),
+                                c.getChargeName(), c.getGroupPoid(), c.getChargeName2(), c.getSeqNo())));
+            }
+            if (row.getTaxPoid() != null) {
+                taxMasterRepository.findByTaxPoid(row.getTaxPoid()).ifPresent(t ->
+                        row.setTaxPoidDtl(new DetailsDto(t.getTaxPoid(), t.getTaxCode(),
+                                t.getTaxName(), t.getGroupPoid(), t.getTaxName2(), t.getSeqNo())));
+            }
+        });
+    }
+
+    private void enrichGrnLoadResponse(List<PettyCashFromGrnDto> rows) {
+        if (rows == null) return;
+        rows.forEach(row -> {
+            if (row.getSupplierPoid() != null) {
+                SupplierMasterEntity supplier = supplierMasterRepository.findBySupplierPoid(row.getSupplierPoid());
+                if (supplier != null) {
+                    row.setSupplierPoidDtl(new DetailsDto(supplier.getSupplierPoid(), supplier.getSupplierCode(),
+                            supplier.getSupplierName(), supplier.getGroupPoid(), supplier.getSupplierName2(),
+                            supplier.getSeqNo() != null ? supplier.getSeqNo().intValue() : null));
+                }
+            }
+            if (row.getLocationPoid() != null) {
+                LovGetListDto loc = lovService.getDetailsByPoidAndLovName(row.getLocationPoid(), "LOCATION");
+                if (loc != null && loc.getPoid() != null) {
+                    row.setLocationPoidDtl(new DetailsDto(loc.getPoid(), loc.getCode(), loc.getLabel(),
+                            loc.getValue(), loc.getDescription(), loc.getSeqNo()));
+                }
+            }
+        });
+    }
+
+    private void enrichCompletedPoLoadResponse(List<PettyCashFromGenrlPoDto> rows) {
+        if (rows == null) return;
+        rows.forEach(row -> {
+            if (row.getStockPoid() != null) {
+                stockMasterRepository.findByStockPoid(row.getStockPoid()).ifPresent(s ->
+                        row.setStockPoidDtl(new DetailsDto(s.getStockPoid(), s.getStockCode(),
+                                s.getStockName(), s.getGroupPoid(), s.getStockDescription(), s.getSeqNo())));
+            }
+            if (row.getStockUnitPoid() != null) {
+                unitMasterRepository.findByUnitPoid(row.getStockUnitPoid()).ifPresent(u ->
+                        row.setStockUnitPoidDtl(new DetailsDto(u.getUnitPoid(), u.getUnitCode(),
+                                u.getUnitName(), u.getGroupPoid(), u.getUnitName2(), u.getSeqNo())));
+            }
+        });
     }
 
     @Override
@@ -2160,6 +2258,9 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                 .collect(Collectors.toMap(GlPettyCashPaymentGrnDtl::getDetRowId, d -> d));
         List<GlPettyCashPaymentGrnDtl> toSave = new ArrayList<>();
         List<GlPettyCashPaymentGrnDtl> toDelete = new ArrayList<>();
+        List<LogRequestDto<GlPettyCashPaymentGrnDtl>> logRequests = new ArrayList<>();
+        List<Long> newDetRowIds = new ArrayList<>();
+        String documentId = UserContext.getDocumentId();
 
         for (var dto : filterGrnCheckAll(requestDto.getGlPettyCashGrnDtlRequestDtos())) {
             String actionTypeStr = dto.getActionType();
@@ -2181,10 +2282,13 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                             .refDetRowId(dto.getRefDetRowId())
                             .build();
                     toSave.add(newEntity);
+                    newDetRowIds.add(detRowId);
                 }
                 case "ISUPDATED" -> {
                     GlPettyCashPaymentGrnDtl e = existingMap.get(dto.getDetRowId());
                     if (e == null) throw new ValidationException("GRN detail not found with detRowId: " + dto.getDetRowId());
+                    GlPettyCashPaymentGrnDtl oldEntity = new GlPettyCashPaymentGrnDtl();
+                    BeanUtils.copyProperties(e, oldEntity);
                     e.setGrnPoid(dto.getGrnPoid());
                     e.setCheckAll(dto.getCheckAll());
                     e.setAmount(dto.getAmount());
@@ -2193,10 +2297,15 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     e.setRefDocPoid(dto.getRefDocPoid());
                     e.setRefDetRowId(dto.getRefDetRowId());
                     toSave.add(e);
+                    String logDetail = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", hdrPoid, dto.getDetRowId());
+                    logRequests.add(new LogRequestDto<>(oldEntity, e, GlPettyCashPaymentGrnDtl.class, documentId, hdrPoid.toString(), logDetail));
                 }
                 case "ISDELETED" -> {
                     GlPettyCashPaymentGrnDtl e = existingMap.get(dto.getDetRowId());
-                    if (e != null) toDelete.add(e);
+                    if (e != null) {
+                        toDelete.add(e);
+                        loggingService.logDelete(e, documentId, hdrPoid.toString());
+                    }
                 }
                 default -> {
                     GlPettyCashPaymentGrnDtl e = existingMap.get(dto.getDetRowId());
@@ -2206,7 +2315,20 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
         }
 
         if (!toDelete.isEmpty()) glPettyCashPaymentGrnDtlRepository.deleteAll(toDelete);
-        return glPettyCashPaymentGrnDtlRepository.saveAll(toSave);
+        List<GlPettyCashPaymentGrnDtl> savedEntities = glPettyCashPaymentGrnDtlRepository.saveAll(toSave);
+
+        if (!logRequests.isEmpty()) {
+            loggingService.createLogBatch(logRequests);
+        }
+
+        savedEntities.stream()
+                .filter(entity -> newDetRowIds.contains(entity.getDetRowId()))
+                .forEach(entity -> {
+                    String logDetail = String.format("Row Created on GRN Detail with detRowId: %s", entity.getDetRowId());
+                    loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
+                });
+
+        return savedEntities;
     }
 
     private List<GlPettyCashPaymentGrnDtlResponseDto> mapGrnResponse(List<GlPettyCashPaymentGrnDtl> savedDtls) {

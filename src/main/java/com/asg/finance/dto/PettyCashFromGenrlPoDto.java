@@ -12,14 +12,16 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class PettyCashFromFdaDto {
-    private Long chargePoid;
-    private DetailsDto chargePoidDtl;
-    private BigDecimal pdaAmount;
-    private Long taxPoid;
-    private DetailsDto taxPoidDtl;
+public class PettyCashFromGenrlPoDto {
+    private Long stockPoid;
+    private DetailsDto stockPoidDtl;
+    private Long stockUnitPoid;
+    private DetailsDto stockUnitPoidDtl;
+    private BigDecimal poQty;
+    private BigDecimal price;
+    private BigDecimal discount;
+    private BigDecimal total;
     private String remarks;
     private String refDocId;
     private String refDocPoid;
-    private Long fdaDetRowId;
 }

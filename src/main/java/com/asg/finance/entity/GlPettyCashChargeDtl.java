@@ -1,14 +1,12 @@
 package com.asg.finance.entity;
 
 import com.asg.common.lib.entity.BaseEntity;
-import com.asg.finance.entity.master.ShipChargeEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 
 @Entity
@@ -28,10 +26,8 @@ public class GlPettyCashChargeDtl extends BaseEntity {
     @Column(name = "DET_ROW_ID", nullable = false)
     private Long detRowId;
 
-    // Column: CHARGE_POID (Foreign Key)
-    @ManyToOne
-    @JoinColumn(name = "CHARGE_POID", referencedColumnName = "CHARGE_POID", insertable = false, updatable = false)
-    private ShipChargeEntity shipChargeMaster;
+    @Column(name = "CHARGE_POID")
+    private Long chargePoid;
 
     // Other columns
     @Column(name = "CHARGE_AMOUNT")

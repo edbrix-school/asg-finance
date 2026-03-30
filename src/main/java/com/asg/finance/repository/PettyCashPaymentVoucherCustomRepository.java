@@ -108,4 +108,6 @@ public interface PettyCashPaymentVoucherCustomRepository {
             StringBuilder resultOut
     );
 
+    String getRefTypeWhereClause(Long loginUserPoid);
+
 }

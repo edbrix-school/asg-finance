@@ -6,6 +6,7 @@ import com.asg.finance.dto.PettyCashFromGenrlPoDto;
 import com.asg.finance.dto.PettyCashFromGrnDto;
 import com.asg.finance.dto.PettyCashFromPoDto;
 import com.asg.finance.dto.PettyGlBalanceDto;
+import com.asg.finance.dto.PettyRefTypeResponse;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.ParameterMode;
 import jakarta.persistence.PersistenceContext;
@@ -27,19 +28,15 @@ public class PettyCashLoadByRefTypeRepositoryImpl implements PettyCashLoadByRefT
     private EntityManager entityManager;
 
     @Override
-    public List<PettyCashFromPoDto> loadPettyCashFromPo(
+    public PettyRefTypeResponse<PettyCashFromPoDto> loadPettyCashFromPo(
             Long loginGroupPoid,
             Long loginCompanyPoid,
             Long loginUserPoid,
-            String rfqPoid,
-            StringBuilder result
+            String rfqPoid
     ) {
-        List<PettyCashFromPoDto> responseList = new ArrayList<>();
-
         try {
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("PROC_GL_PETTY_CREATE_FROM_PO");
 
-            // Register procedure parameters
             query.registerStoredProcedureParameter("P_LOGIN_GROUP_POID", Long.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("P_LOGIN_COMPANY_POID", Long.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("P_LOGIN_USER_POID", Long.class, ParameterMode.IN);
@@ -47,37 +44,33 @@ public class PettyCashLoadByRefTypeRepositoryImpl implements PettyCashLoadByRefT
             query.registerStoredProcedureParameter("P_RESULT", String.class, ParameterMode.OUT);
             query.registerStoredProcedureParameter("OUTDATA", ResultSet.class, ParameterMode.REF_CURSOR);
 
-            // Set input values
             query.setParameter("P_LOGIN_GROUP_POID", loginGroupPoid);
             query.setParameter("P_LOGIN_COMPANY_POID", loginCompanyPoid);
             query.setParameter("P_LOGIN_USER_POID", loginUserPoid);
             query.setParameter("P_RFQ_POID", rfqPoid);
 
-            // Execute the stored procedure
             query.execute();
 
-            // Capture output message
             String resultValue = (String) query.getOutputParameterValue("P_RESULT");
-            if (result != null) result.append(resultValue);
-
-            // Process result set
             ResultSet rs = (ResultSet) query.getOutputParameterValue("OUTDATA");
-            responseList = mapToPODto(rs);
 
             log.info("PROC_GL_PETTY_CREATE_FROM_PO executed successfully. Message: {}", resultValue);
+
+            return PettyRefTypeResponse.<PettyCashFromPoDto>builder()
+                    .message(resultValue)
+                    .responseList(mapToPODto(rs))
+                    .build();
 
         } catch (Exception e) {
             log.error("Error executing PROC_GL_PETTY_CREATE_FROM_PO: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to load petty cash data from PO: " + e.getMessage(), e);
         }
-
-        return responseList;
     }
 
     private List<PettyCashFromPoDto> mapToPODto(ResultSet rs) {
         List<PettyCashFromPoDto> list = new ArrayList<>();
         try {
-            while (rs.next()) {
+            while (rs != null && rs.next()) {
                 PettyCashFromPoDto dto = PettyCashFromPoDto.builder()
                         .stockPoid(rs.getLong("STOCK_POID"))
                         .stockUnitPoid(rs.getLong("STOCK_UNIT_POID"))
@@ -98,18 +91,14 @@ public class PettyCashLoadByRefTypeRepositoryImpl implements PettyCashLoadByRefT
     }
 
     @Override
-    public List<PettyCashFromFfDto> loadPettyCashFromFf(
+    public PettyRefTypeResponse<PettyCashFromFfDto> loadPettyCashFromFf(
             Long loginGroupPoid,
             Long loginCompanyPoid,
             Long loginUserPoid,
-            String ffPoid,
-            StringBuilder result
+            String ffPoid
     ) {
-        List<PettyCashFromFfDto> responseList = new ArrayList<>();
-
         try {
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("PROC_GL_PETTY_CREATE_FROM_FF");
-
 
             query.registerStoredProcedureParameter("P_LOGIN_GROUP_POID", Long.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("P_LOGIN_COMPANY_POID", Long.class, ParameterMode.IN);
@@ -118,37 +107,34 @@ public class PettyCashLoadByRefTypeRepositoryImpl implements PettyCashLoadByRefT
             query.registerStoredProcedureParameter("P_RESULT", String.class, ParameterMode.OUT);
             query.registerStoredProcedureParameter("OUTDATA", ResultSet.class, ParameterMode.REF_CURSOR);
 
-
             query.setParameter("P_LOGIN_GROUP_POID", loginGroupPoid);
             query.setParameter("P_LOGIN_COMPANY_POID", loginCompanyPoid);
             query.setParameter("P_LOGIN_USER_POID", loginUserPoid);
             query.setParameter("P_FF_POID", ffPoid);
 
-
             query.execute();
 
             String resultValue = (String) query.getOutputParameterValue("P_RESULT");
-            if (result != null) result.append(resultValue);
-
-
             ResultSet rs = (ResultSet) query.getOutputParameterValue("OUTDATA");
-            responseList = mapToFFDto(rs);
 
             log.info("PROC_GL_PETTY_CREATE_FROM_FF executed successfully, message: {}", resultValue);
+
+            return PettyRefTypeResponse.<PettyCashFromFfDto>builder()
+                    .message(resultValue)
+                    .responseList(mapToFFDto(rs))
+                    .build();
 
         } catch (Exception e) {
             log.error("Error executing PROC_GL_PETTY_CREATE_FROM_FF: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to load petty cash from FF: " + e.getMessage(), e);
         }
-
-        return responseList;
     }
 
     private List<PettyCashFromFfDto> mapToFFDto(ResultSet rs) {
         List<PettyCashFromFfDto> list = new ArrayList<>();
         if (rs == null) return list;
         try {
-            while (rs.next()) {
+            while (rs != null && rs.next()) {
                 PettyCashFromFfDto dto = PettyCashFromFfDto.builder()
                         .chargePoid(rs.getLong("CHARGE_POID"))
                         .chargeAmount(rs.getBigDecimal("CHARGE_AMOUNT"))
@@ -167,19 +153,15 @@ public class PettyCashLoadByRefTypeRepositoryImpl implements PettyCashLoadByRefT
     }
 
     @Override
-    public List<PettyCashFromFdaDto> loadPettyCashFromFda(
+    public PettyRefTypeResponse<PettyCashFromFdaDto> loadPettyCashFromFda(
             Long loginGroupPoid,
             Long loginCompanyPoid,
             Long loginUserPoid,
-            String fdaPoid,
-            StringBuilder result
+            String fdaPoid
     ) {
-        List<PettyCashFromFdaDto> responseList = new ArrayList<>();
-
         try {
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("PROC_GL_PETTY_CREATE_FROM_FDA");
 
-            // Register parameters
             query.registerStoredProcedureParameter("P_LOGIN_GROUP_POID", Long.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("P_LOGIN_COMPANY_POID", Long.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("P_LOGIN_USER_POID", Long.class, ParameterMode.IN);
@@ -187,37 +169,33 @@ public class PettyCashLoadByRefTypeRepositoryImpl implements PettyCashLoadByRefT
             query.registerStoredProcedureParameter("P_RESULT", String.class, ParameterMode.OUT);
             query.registerStoredProcedureParameter("OUTDATA", ResultSet.class, ParameterMode.REF_CURSOR);
 
-            // Set inputs
             query.setParameter("P_LOGIN_GROUP_POID", loginGroupPoid);
             query.setParameter("P_LOGIN_COMPANY_POID", loginCompanyPoid);
             query.setParameter("P_LOGIN_USER_POID", loginUserPoid);
             query.setParameter("P_FDA_POID", fdaPoid);
 
-            // Execute
             query.execute();
 
-            // Capture result message
             String resultValue = (String) query.getOutputParameterValue("P_RESULT");
-            if (result != null) result.append(resultValue);
-
-            // Process cursor
             ResultSet rs = (ResultSet) query.getOutputParameterValue("OUTDATA");
-            responseList = mapToFDADto(rs);
 
             log.info("PROC_GL_PETTY_CREATE_FROM_FDA executed successfully. Message: {}", resultValue);
+
+            return PettyRefTypeResponse.<PettyCashFromFdaDto>builder()
+                    .message(resultValue)
+                    .responseList(mapToFDADto(rs))
+                    .build();
 
         } catch (Exception e) {
             log.error("Error executing PROC_GL_PETTY_CREATE_FROM_FDA: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to load petty cash from FDA: " + e.getMessage(), e);
         }
-
-        return responseList;
     }
 
     private List<PettyCashFromFdaDto> mapToFDADto(ResultSet rs) {
         List<PettyCashFromFdaDto> list = new ArrayList<>();
         try {
-            while (rs.next()) {
+            while (rs != null && rs.next()) {
                 PettyCashFromFdaDto dto = PettyCashFromFdaDto.builder()
                         .chargePoid(rs.getLong("CHARGE_POID"))
                         .pdaAmount(rs.getBigDecimal("PDA_AMOUNT"))
@@ -236,7 +214,7 @@ public class PettyCashLoadByRefTypeRepositoryImpl implements PettyCashLoadByRefT
     }
 
     @Override
-    public List<PettyGlBalanceDto> getPettyGlBalance(
+    public PettyRefTypeResponse<PettyGlBalanceDto> getPettyGlBalance(
             Long loginGroupPoid,
             Long loginCompanyPoid,
             Long loginUserPoid,
@@ -245,13 +223,10 @@ public class PettyCashLoadByRefTypeRepositoryImpl implements PettyCashLoadByRefT
             String lovName,
             Long lovValue
     ) {
-        List<PettyGlBalanceDto> responseList = new ArrayList<>();
-
         try {
             StoredProcedureQuery query =
                     entityManager.createStoredProcedureQuery("PROC_PETTY_GL_DEFAULT_BALANCE");
 
-            // Register IN parameters
             query.registerStoredProcedureParameter("P_LOGIN_GROUP_POID", Long.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("P_LOGIN_COMPANY_POID", Long.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("P_LOGIN_USER_POID", Long.class, ParameterMode.IN);
@@ -259,11 +234,8 @@ public class PettyCashLoadByRefTypeRepositoryImpl implements PettyCashLoadByRefT
             query.registerStoredProcedureParameter("P_DOC_KEY_POID", Long.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("P_LOV_NAME", String.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("P_LOV_VALUE", Long.class, ParameterMode.IN);
-
-            // Register OUT parameter
             query.registerStoredProcedureParameter("OUTDATA", ResultSet.class, ParameterMode.REF_CURSOR);
 
-            // Set parameter values
             query.setParameter("P_LOGIN_GROUP_POID", loginGroupPoid);
             query.setParameter("P_LOGIN_COMPANY_POID", loginCompanyPoid);
             query.setParameter("P_LOGIN_USER_POID", loginUserPoid);
@@ -272,28 +244,27 @@ public class PettyCashLoadByRefTypeRepositoryImpl implements PettyCashLoadByRefT
             query.setParameter("P_LOV_NAME", lovName);
             query.setParameter("P_LOV_VALUE", lovValue);
 
-            // Execute procedure
             query.execute();
 
-            // Read REF_CURSOR output
             ResultSet rs = (ResultSet) query.getOutputParameterValue("OUTDATA");
-            responseList = mapToBalanceDto(rs);
 
             log.info("PROC_PETTY_GL_DEFAULT_BALANCE executed successfully");
+
+            return PettyRefTypeResponse.<PettyGlBalanceDto>builder()
+                    .responseList(mapToBalanceDto(rs))
+                    .build();
 
         } catch (Exception e) {
             log.error("Error executing PROC_PETTY_GL_DEFAULT_BALANCE: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to fetch petty GL balance: " + e.getMessage(), e);
         }
-
-        return responseList;
     }
 
     private List<PettyGlBalanceDto> mapToBalanceDto(ResultSet rs) {
         List<PettyGlBalanceDto> list = new ArrayList<>();
 
         try {
-            while (rs.next()) {
+            while (rs != null && rs.next()) {
                 PettyGlBalanceDto dto = PettyGlBalanceDto.builder()
                         .balance(rs.getBigDecimal("BALANCE"))
                         .build();
@@ -307,16 +278,13 @@ public class PettyCashLoadByRefTypeRepositoryImpl implements PettyCashLoadByRefT
     }
 
     @Override
-    public List<PettyCashFromGrnDto> loadPettyCashFromGrn(
+    public PettyRefTypeResponse<PettyCashFromGrnDto> loadPettyCashFromGrn(
             Long loginGroupPoid,
             Long loginCompanyPoid,
             Long loginUserPoid,
             String transactionDate,
-            String grnSupplierPoid,
-            StringBuilder result
+            String grnSupplierPoid
     ) {
-        List<PettyCashFromGrnDto> responseList = new ArrayList<>();
-
         try {
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("PROC_GL_PETTY_INSERT_GRN_JOBS");
 
@@ -337,25 +305,25 @@ public class PettyCashLoadByRefTypeRepositoryImpl implements PettyCashLoadByRefT
             query.execute();
 
             String resultValue = (String) query.getOutputParameterValue("P_RESULT");
-            if (result != null) result.append(resultValue);
-
             ResultSet rs = (ResultSet) query.getOutputParameterValue("OUTDATA");
-            responseList = mapToGrnDto(rs);
 
             log.info("PROC_GL_PETTY_INSERT_GRN_JOBS executed successfully. Message: {}", resultValue);
+
+            return PettyRefTypeResponse.<PettyCashFromGrnDto>builder()
+                    .message(resultValue)
+                    .responseList(mapToGrnDto(rs))
+                    .build();
 
         } catch (Exception e) {
             log.error("Error executing PROC_GL_PETTY_INSERT_GRN_JOBS: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to load petty cash from GRN: " + e.getMessage(), e);
         }
-
-        return responseList;
     }
 
     private List<PettyCashFromGrnDto> mapToGrnDto(ResultSet rs) {
         List<PettyCashFromGrnDto> list = new ArrayList<>();
         try {
-            while (rs.next()) {
+            while (rs != null && rs.next()) {
                 PettyCashFromGrnDto dto = PettyCashFromGrnDto.builder()
                         .transactionPoid(rs.getLong("TRANSACTION_POID"))
                         .transactionDate(rs.getString("TRANSACTION_DATE"))
@@ -376,15 +344,12 @@ public class PettyCashLoadByRefTypeRepositoryImpl implements PettyCashLoadByRefT
     }
 
     @Override
-    public List<PettyCashFromGenrlPoDto> loadPettyCashFromCompletedPo(
+    public PettyRefTypeResponse<PettyCashFromGenrlPoDto> loadPettyCashFromCompletedPo(
             Long loginGroupPoid,
             Long loginCompanyPoid,
             Long loginUserPoid,
-            String poPoid,
-            StringBuilder result
+            String poPoid
     ) {
-        List<PettyCashFromGenrlPoDto> responseList = new ArrayList<>();
-
         try {
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("PROC_GL_PETTY_CREATE_GENRL_PO");
 
@@ -403,25 +368,25 @@ public class PettyCashLoadByRefTypeRepositoryImpl implements PettyCashLoadByRefT
             query.execute();
 
             String resultValue = (String) query.getOutputParameterValue("P_RESULT");
-            if (result != null) result.append(resultValue);
-
             ResultSet rs = (ResultSet) query.getOutputParameterValue("OUTDATA");
-            responseList = mapToGenrlPoDto(rs);
 
             log.info("PROC_GL_PETTY_CREATE_GENRL_PO executed successfully. Message: {}", resultValue);
+
+            return PettyRefTypeResponse.<PettyCashFromGenrlPoDto>builder()
+                    .message(resultValue)
+                    .responseList(mapToGenrlPoDto(rs))
+                    .build();
 
         } catch (Exception e) {
             log.error("Error executing PROC_GL_PETTY_CREATE_GENRL_PO: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to load petty cash from completed PO: " + e.getMessage(), e);
         }
-
-        return responseList;
     }
 
     private List<PettyCashFromGenrlPoDto> mapToGenrlPoDto(ResultSet rs) {
         List<PettyCashFromGenrlPoDto> list = new ArrayList<>();
         try {
-            while (rs.next()) {
+            while (rs != null && rs.next()) {
                 PettyCashFromGenrlPoDto dto = PettyCashFromGenrlPoDto.builder()
                         .stockPoid(rs.getLong("STOCK_POID"))
                         .stockUnitPoid(rs.getLong("STOCK_UNIT_POID"))

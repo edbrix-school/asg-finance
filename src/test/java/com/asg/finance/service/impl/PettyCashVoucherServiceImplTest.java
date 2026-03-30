@@ -729,7 +729,9 @@ class PettyCashVoucherServiceImplTest {
                     .build();
             when(pettyCashLoadByRefTypeRepository.getPettyGlBalance(
                     any(), any(), any(), any(), eq(10L), isNull(), eq(0L)))
-                    .thenReturn(List.of(PettyGlBalanceDto.builder().balance(new BigDecimal("100")).build()));
+                    .thenReturn(PettyRefTypeResponse.<PettyGlBalanceDto>builder()
+                            .responseList(List.of(PettyGlBalanceDto.builder().balance(new BigDecimal("100")).build()))
+                            .build());
 
             assertThrows(ValidationException.class,
                     () -> ReflectionTestUtils.invokeMethod(service, "validateCashBalance", dto, "DOC-001"));
@@ -744,7 +746,9 @@ class PettyCashVoucherServiceImplTest {
                     .build();
             when(pettyCashLoadByRefTypeRepository.getPettyGlBalance(
                     any(), any(), any(), any(), eq(10L), isNull(), eq(0L)))
-                    .thenReturn(List.of(PettyGlBalanceDto.builder().balance(new BigDecimal("100")).build()));
+                    .thenReturn(PettyRefTypeResponse.<PettyGlBalanceDto>builder()
+                            .responseList(List.of(PettyGlBalanceDto.builder().balance(new BigDecimal("100")).build()))
+                            .build());
 
             assertDoesNotThrow(
                     () -> ReflectionTestUtils.invokeMethod(service, "validateCashBalance", dto, "DOC-001"));
@@ -759,7 +763,9 @@ class PettyCashVoucherServiceImplTest {
                     .build();
             when(pettyCashLoadByRefTypeRepository.getPettyGlBalance(
                     any(), any(), any(), any(), eq(10L), isNull(), eq(0L)))
-                    .thenReturn(List.of(PettyGlBalanceDto.builder().balance(null).build()));
+                    .thenReturn(PettyRefTypeResponse.<PettyGlBalanceDto>builder()
+                            .responseList(List.of(PettyGlBalanceDto.builder().balance(null).build()))
+                            .build());
 
             assertDoesNotThrow(
                     () -> ReflectionTestUtils.invokeMethod(service, "validateCashBalance", dto, "DOC-001"));
@@ -809,37 +815,36 @@ class PettyCashVoucherServiceImplTest {
             List<PettyCashFromGrnDto> expected = List.of(
                     PettyCashFromGrnDto.builder().transactionPoid(1L).grandTotal(new BigDecimal("200")).build()
             );
-            StringBuilder sb = new StringBuilder();
-            when(pettyCashLoadByRefTypeRepository.loadPettyCashFromGrn(1L, 2L, 3L, "2024-01-01", "123", sb))
-                    .thenReturn(expected);
+            when(pettyCashLoadByRefTypeRepository.loadPettyCashFromGrn(1L, 2L, 3L, "2024-01-01", "123"))
+                    .thenReturn(PettyRefTypeResponse.<PettyCashFromGrnDto>builder()
+                            .responseList(expected).build());
 
-            List<PettyCashFromGrnDto> result = service.loadPettyCashFromGrn(1L, 2L, 3L, "2024-01-01", "123", sb);
+            PettyRefTypeResponse<PettyCashFromGrnDto> result = service.loadPettyCashFromGrn(1L, 2L, 3L, "2024-01-01", "123");
 
-            assertEquals(1, result.size());
-            assertEquals(new BigDecimal("200"), result.get(0).getGrandTotal());
+            assertEquals(1, result.getResponseList().size());
+            assertEquals(new BigDecimal("200"), result.getResponseList().get(0).getGrandTotal());
         }
 
         @Test
         @DisplayName("emptyResult_returnsEmptyList")
         void emptyResult_returnsEmptyList() {
-            StringBuilder sb = new StringBuilder();
-            when(pettyCashLoadByRefTypeRepository.loadPettyCashFromGrn(1L, 2L, 3L, "2024-01-01", "999", sb))
-                    .thenReturn(Collections.emptyList());
+            when(pettyCashLoadByRefTypeRepository.loadPettyCashFromGrn(1L, 2L, 3L, "2024-01-01", "999"))
+                    .thenReturn(PettyRefTypeResponse.<PettyCashFromGrnDto>builder()
+                            .responseList(Collections.emptyList()).build());
 
-            List<PettyCashFromGrnDto> result = service.loadPettyCashFromGrn(1L, 2L, 3L, "2024-01-01", "999", sb);
+            PettyRefTypeResponse<PettyCashFromGrnDto> result = service.loadPettyCashFromGrn(1L, 2L, 3L, "2024-01-01", "999");
 
-            assertTrue(result.isEmpty());
+            assertTrue(result.getResponseList().isEmpty());
         }
 
         @Test
         @DisplayName("errorStatus_throwsException")
         void errorStatus_throwsException() {
-            StringBuilder sb = new StringBuilder();
-            when(pettyCashLoadByRefTypeRepository.loadPettyCashFromGrn(1L, 2L, 3L, "2024-01-01", "bad", sb))
+            when(pettyCashLoadByRefTypeRepository.loadPettyCashFromGrn(1L, 2L, 3L, "2024-01-01", "bad"))
                     .thenThrow(new RuntimeException("DB error"));
 
             assertThrows(RuntimeException.class,
-                    () -> service.loadPettyCashFromGrn(1L, 2L, 3L, "2024-01-01", "bad", sb));
+                    () -> service.loadPettyCashFromGrn(1L, 2L, 3L, "2024-01-01", "bad"));
         }
     }
 
@@ -856,37 +861,36 @@ class PettyCashVoucherServiceImplTest {
             List<PettyCashFromGenrlPoDto> expected = List.of(
                     PettyCashFromGenrlPoDto.builder().stockPoid(10L).total(new BigDecimal("500")).build()
             );
-            StringBuilder sb = new StringBuilder();
-            when(pettyCashLoadByRefTypeRepository.loadPettyCashFromCompletedPo(1L, 2L, 3L, "PO-456", sb))
-                    .thenReturn(expected);
+            when(pettyCashLoadByRefTypeRepository.loadPettyCashFromCompletedPo(1L, 2L, 3L, "PO-456"))
+                    .thenReturn(PettyRefTypeResponse.<PettyCashFromGenrlPoDto>builder()
+                            .responseList(expected).build());
 
-            List<PettyCashFromGenrlPoDto> result = service.loadPettyCashFromCompletedPo(1L, 2L, 3L, "PO-456", sb);
+            PettyRefTypeResponse<PettyCashFromGenrlPoDto> result = service.loadPettyCashFromCompletedPo(1L, 2L, 3L, "PO-456");
 
-            assertEquals(1, result.size());
-            assertEquals(new BigDecimal("500"), result.get(0).getTotal());
+            assertEquals(1, result.getResponseList().size());
+            assertEquals(new BigDecimal("500"), result.getResponseList().get(0).getTotal());
         }
 
         @Test
         @DisplayName("emptyResult_returnsEmptyList")
         void emptyResult_returnsEmptyList() {
-            StringBuilder sb = new StringBuilder();
-            when(pettyCashLoadByRefTypeRepository.loadPettyCashFromCompletedPo(1L, 2L, 3L, "PO-000", sb))
-                    .thenReturn(Collections.emptyList());
+            when(pettyCashLoadByRefTypeRepository.loadPettyCashFromCompletedPo(1L, 2L, 3L, "PO-000"))
+                    .thenReturn(PettyRefTypeResponse.<PettyCashFromGenrlPoDto>builder()
+                            .responseList(Collections.emptyList()).build());
 
-            List<PettyCashFromGenrlPoDto> result = service.loadPettyCashFromCompletedPo(1L, 2L, 3L, "PO-000", sb);
+            PettyRefTypeResponse<PettyCashFromGenrlPoDto> result = service.loadPettyCashFromCompletedPo(1L, 2L, 3L, "PO-000");
 
-            assertTrue(result.isEmpty());
+            assertTrue(result.getResponseList().isEmpty());
         }
 
         @Test
         @DisplayName("errorStatus_throwsException")
         void errorStatus_throwsException() {
-            StringBuilder sb = new StringBuilder();
-            when(pettyCashLoadByRefTypeRepository.loadPettyCashFromCompletedPo(1L, 2L, 3L, "BAD", sb))
+            when(pettyCashLoadByRefTypeRepository.loadPettyCashFromCompletedPo(1L, 2L, 3L, "BAD"))
                     .thenThrow(new RuntimeException("Proc failed"));
 
             assertThrows(RuntimeException.class,
-                    () -> service.loadPettyCashFromCompletedPo(1L, 2L, 3L, "BAD", sb));
+                    () -> service.loadPettyCashFromCompletedPo(1L, 2L, 3L, "BAD"));
         }
     }
 

@@ -371,12 +371,11 @@ public class PettyCashVoucherController {
             @RequestParam String rfqPoid
     ) {
 
-        StringBuilder result = new StringBuilder();
+        PettyRefTypeResponse<PettyCashFromPoDto> response =
+                pettyCashVoucherService.loadPettyCashFromPo(groupPoid, companyPoid, userPoid, rfqPoid);
 
-        List<PettyCashFromPoDto> response =
-                pettyCashVoucherService.loadPettyCashFromPo(groupPoid, companyPoid, userPoid, rfqPoid, result);
-
-        return success("Petty Cash from PO fetched successfully", response);
+        String message = response.getMessage() != null ? response.getMessage() : "Petty Cash from PO fetched successfully";
+        return success(message, response.getResponseList());
     }
 
 
@@ -408,13 +407,11 @@ public class PettyCashVoucherController {
             @RequestParam String ffPoid
     ) {
 
-        StringBuilder result = new StringBuilder();
+        PettyRefTypeResponse<PettyCashFromFfDto> response =
+                pettyCashVoucherService.loadPettyCashFromFf(groupPoid, companyPoid, userPoid, ffPoid);
 
-        List<PettyCashFromFfDto> response =
-                pettyCashVoucherService.loadPettyCashFromFf(groupPoid, companyPoid, userPoid, ffPoid, result);
-
-        String message = result.length() > 0 ? result.toString() : "Petty Cash from FF fetched successfully";
-        return success(message, response);
+        String message = response.getMessage() != null ? response.getMessage() : "Petty Cash from FF fetched successfully";
+        return success(message, response.getResponseList());
     }
 
 
@@ -446,12 +443,11 @@ public class PettyCashVoucherController {
             @RequestParam String fdaPoid
     ) {
 
-        StringBuilder result = new StringBuilder();
+        PettyRefTypeResponse<PettyCashFromFdaDto> response =
+                pettyCashVoucherService.loadPettyCashFromFda(groupPoid, companyPoid, userPoid, fdaPoid);
 
-        List<PettyCashFromFdaDto> response =
-                pettyCashVoucherService.loadPettyCashFromFda(groupPoid, companyPoid, userPoid, fdaPoid, result);
-
-        return success("Petty Cash from FDA fetched successfully", response);
+        String message = response.getMessage() != null ? response.getMessage() : "Petty Cash from FDA fetched successfully";
+        return success(message, response.getResponseList());
     }
 
     @Operation(
@@ -479,7 +475,7 @@ public class PettyCashVoucherController {
             @RequestParam Long lovValue
     ) {
 
-        List<PettyGlBalanceDto> response = pettyCashVoucherService.loadPettyGlBalance(
+        PettyRefTypeResponse<PettyGlBalanceDto> response = pettyCashVoucherService.loadPettyGlBalance(
                 UserContext.getGroupPoid(),
                 UserContext.getCompanyPoid(),
                 UserContext.getUserPoid(),
@@ -489,7 +485,8 @@ public class PettyCashVoucherController {
                 lovValue
         );
 
-        return success("Balance fetched successfully", response);
+        String message = response.getMessage() != null ? response.getMessage() : "Balance fetched successfully";
+        return success(message, response.getResponseList());
     }
 
     @Operation(
@@ -512,10 +509,10 @@ public class PettyCashVoucherController {
             @Parameter(description = "Transaction date", example = "2024-01-01") @RequestParam String transactionDate,
             @Parameter(description = "GRN Supplier POID", example = "123") @RequestParam String grnSupplierPoid
     ) {
-        StringBuilder result = new StringBuilder();
-        List<PettyCashFromGrnDto> response =
-                pettyCashVoucherService.loadPettyCashFromGrn(groupPoid, companyPoid, userPoid, transactionDate, grnSupplierPoid, result);
-        return success("Petty Cash from GRN fetched successfully", response);
+        PettyRefTypeResponse<PettyCashFromGrnDto> response =
+                pettyCashVoucherService.loadPettyCashFromGrn(groupPoid, companyPoid, userPoid, transactionDate, grnSupplierPoid);
+        String message = response.getMessage() != null ? response.getMessage() : "Petty Cash from GRN fetched successfully";
+        return success(message, response.getResponseList());
     }
 
     @Operation(
@@ -537,10 +534,10 @@ public class PettyCashVoucherController {
             @Parameter(description = "User POID", example = "3001") @RequestParam Long userPoid,
             @Parameter(description = "PO POID", example = "456") @RequestParam String poPoid
     ) {
-        StringBuilder result = new StringBuilder();
-        List<PettyCashFromGenrlPoDto> response =
-                pettyCashVoucherService.loadPettyCashFromCompletedPo(groupPoid, companyPoid, userPoid, poPoid, result);
-        return success("Petty Cash from completed PO fetched successfully", response);
+        PettyRefTypeResponse<PettyCashFromGenrlPoDto> response =
+                pettyCashVoucherService.loadPettyCashFromCompletedPo(groupPoid, companyPoid, userPoid, poPoid);
+        String message = response.getMessage() != null ? response.getMessage() : "Petty Cash from completed PO fetched successfully";
+        return success(message, response.getResponseList());
     }
 
     @Operation(

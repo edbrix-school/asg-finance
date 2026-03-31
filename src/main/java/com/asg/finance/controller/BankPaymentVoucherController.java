@@ -518,7 +518,7 @@ public class BankPaymentVoucherController {
             @Parameter(description = "Transaction POID", example = "21")
             @PathVariable Long transactionPoid) {
         try {
-            byte[] pdf = service.chequePrint(transactionPoid);
+            byte[] pdf = service.printchequeLeaf(transactionPoid);
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION,
                             "attachment; filename=bank-payment-voucher-" + transactionPoid + ".pdf")

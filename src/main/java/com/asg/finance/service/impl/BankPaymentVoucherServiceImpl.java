@@ -1594,25 +1594,17 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         }
         return printService.fillReportToPdf(mainReport, params, dataSource);
     }
-
     @Override
-    public byte[] chequePrint(Long transactionPoid) throws Exception {
+    public byte[] printchequeLeaf(Long transactionPoid) throws Exception {
         GLPaymentVoucherHDREntity header = paymentVoucherRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ValidationException("Voucher not found with ID: " + transactionPoid));
-
+    
         Map<String, Object> params = printService.buildBaseParams(transactionPoid, UserContext.getDocumentId());
-        if (header.getRefType() != null && header.getRefType().contains("CUSTOM")) {
-            params.put("P_PRINT_WITHOUT_BILL", "Y");
-        } else {
-            params.put("P_PRINT_WITHOUT_BILL", "N");
-        }
-
+        params.put("BANK_POID", header.getBankPoid());
+        params.put("ACCOUNT_PAYEE_IMG", "jasper/Finance/BankPayments/AccountsPayeeOnly.png");
         JasperReport mainReport = null;
         if (null != header.getPrePrinted() && header.getPrePrinted().contains("Y")) {
-            params.put("SUB_DETAIL", printService.load("Finance/BankPayments/BankPaymentVoucher_ManualCheque1_subreport1.jrxml"));
             mainReport = printService.load("Finance/BankPayments/BankPaymentVoucherChequeLeaf.jrxml");
-        } else {
-            mainReport = printService.load("Finance/BankPayments/BankPaymentVoucher_WithOutCheque.jrxml");
         }
         return printService.fillReportToPdf(mainReport, params, dataSource);
     }

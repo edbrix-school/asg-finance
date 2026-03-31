@@ -47,6 +47,6 @@ public interface BankPaymentVoucherService {
 
     byte[] print(Long transactionPoid) throws Exception;
     
-    byte[] chequePrint(Long transactionPoid) throws Exception;
+    byte[] printchequeLeaf(Long transactionPoid) throws Exception;
 
 }

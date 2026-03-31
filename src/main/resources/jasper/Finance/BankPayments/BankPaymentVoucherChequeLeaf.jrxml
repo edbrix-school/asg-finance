@@ -17,6 +17,7 @@
 		<defaultValueExpression><![CDATA[3826]]></defaultValueExpression>
 	</parameter>
 	<parameter name="BANK_POID" class="java.lang.String"/>
+	<parameter name="ACCOUNT_PAYEE_IMG" class="java.lang.String"/>
 	<parameter name="SUBREPORT_DIR" class="java.lang.String" isForPrompting="false">
 		<defaultValueExpression><![CDATA["//10.100.100.159//ERP_Reports//CROWN_Reports//"]]></defaultValueExpression>
 	</parameter>
@@ -79,7 +80,7 @@ FROM(
 				<reportElement x="350" y="21" width="456" height="50" uuid="2348379c-49a3-45e6-adba-793f2af0814a">
 					<printWhenExpression><![CDATA[$F{ACCOUNT_PAYEE}.equals( "Y" ) && $V{PAGE_NUMBER} == 1]]></printWhenExpression>
 				</reportElement>
-				<imageExpression><![CDATA[$P{SUBREPORT_DIR} + "BankPayments//AccountsPayeeOnly (002).png"]]></imageExpression>
+				<imageExpression><![CDATA[$P{ACCOUNT_PAYEE_IMG}]]></imageExpression>
 			</image>
 			<textField isBlankWhenNull="true">
 				<reportElement x="763" y="25" width="15" height="20" uuid="1eb691ed-6f25-4793-a1b8-e2aea274497a">
@@ -171,7 +172,7 @@ FROM(
 				</textElement>
 				<textFieldExpression><![CDATA[$F{CURRENCY_AMOUNT}]]></textFieldExpression>
 			</textField>
-			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
 				<reportElement x="418" y="83" width="221" height="75" isPrintWhenDetailOverflows="true" uuid="515c3191-b1be-4cc8-8854-56a1e3a5ddde">
 					<printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
 				</reportElement>

@@ -10,6 +10,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 
 @Repository
 @RequiredArgsConstructor
@@ -72,6 +74,14 @@ public class PdcBatchCreationRepositoryImpl implements PdcBatchCreationRepositor
         Long loginUserPoid = UserContext.getUserPoid();
         String loginUser = String.valueOf(loginUserPoid);
 
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MMM-yyyy", Locale.ENGLISH);
+
+        String formattedDate = request.getStartDate()
+                .format(formatter)
+                .toUpperCase();
+
+
+
         // Register IN parameters
         query.registerStoredProcedureParameter("P_COMPANY_POID", Long.class, ParameterMode.IN);
         query.registerStoredProcedureParameter("P_TRANSACTION_POID", Long.class, ParameterMode.IN);
@@ -93,7 +103,7 @@ public class PdcBatchCreationRepositoryImpl implements PdcBatchCreationRepositor
         query.setParameter("P_NO_OF_CHQ", request.getNoOfCheques());
         query.setParameter("P_CHQ_AMT", request.getChequeAmount());
         query.setParameter("P_START_CHQ_NO", request.getStartChequeNo());
-        query.setParameter("P_START_DATE", request.getStartDate());
+        query.setParameter("P_START_DATE", formattedDate);
         query.setParameter("P_PRE_PRINTED", request.getPrePrinted());
         query.setParameter("P_LOGIN_USER", loginUser);
         query.setParameter("P_NARRATION", request.getNarration());

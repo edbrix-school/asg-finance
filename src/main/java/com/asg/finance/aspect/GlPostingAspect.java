@@ -59,7 +59,7 @@ public class GlPostingAspect {
                             @Override
                             public void afterCommit() {
                                 try {
-                                    String approvalStatus = approvalService.getApprovalStatus(documentId, savedHeader.getTransactionPoid());
+                                    String approvalStatus = approvalService.getApprovalStatus(finalDocId, finalTransactionPoid);
                                     if ("APPROVAL_NOT_APPLICABLE".equalsIgnoreCase(approvalStatus)) {
                                         glPostingService.performGlPosting(finalDocId, finalTransactionPoid, finalDocRef);
                                     }
@@ -72,7 +72,7 @@ public class GlPostingAspect {
                 );
             } else {
                 // fallback if no transaction
-                String approvalStatus = approvalService.getApprovalStatus(documentId, savedHeader.getTransactionPoid());
+                String approvalStatus = approvalService.getApprovalStatus(docId, transactionPoid);
                 if ("APPROVAL_NOT_APPLICABLE".equalsIgnoreCase(approvalStatus)) {
                         glPostingService.performGlPosting(docId, transactionPoid, docRef);
                 }

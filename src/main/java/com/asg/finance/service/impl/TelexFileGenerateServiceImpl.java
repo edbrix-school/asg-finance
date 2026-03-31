@@ -181,7 +181,7 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
         GlBankFileHdr hdr = hdrRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Telex File", "transactionPoid", transactionPoid));
 
-        List<GlBankFileDtl> details = dtlRepository.findByTransactionPoidAndDeleted(transactionPoid, "N");
+        List<GlBankFileDtl> details = dtlRepository.findByTransactionPoid(transactionPoid);
 
         return convertToResponseDto(hdr, details);
     }

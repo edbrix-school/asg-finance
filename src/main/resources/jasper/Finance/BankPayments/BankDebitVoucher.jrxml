@@ -41,6 +41,8 @@ WHERE  dtl.TERMS_POID = $P{TT_REMARKS}]]>
 	<parameter name="SUBREPORT_DIR" class="java.lang.String" isForPrompting="false">
         <defaultValueExpression><![CDATA[""]]></defaultValueExpression>
 	</parameter>
+    <parameter name="SUB_FOOTER" class="net.sf.jasperreports.engine.JasperReport"/>
+    <parameter name="BANK_DEBIT_VOUCHER_SUBREPORT_1" class="net.sf.jasperreports.engine.JasperReport"/>
 	<queryString>
 		<![CDATA[SELECT TO_CHAR(HDR.TRANSACTION_DATE,'DD-MON-YYYY') TRANSACTION_DATE, DECODE(PAYING_TYPE,'1','Telex Transfer','2','Direct Transfer','3','Credit card')
       SUB, DOC_REF,

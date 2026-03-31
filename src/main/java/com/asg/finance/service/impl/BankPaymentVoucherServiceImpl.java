@@ -1596,6 +1596,29 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     }
 
     @Override
+    public byte[] chequePrint(Long transactionPoid) throws Exception {
+        GLPaymentVoucherHDREntity header = paymentVoucherRepository.findById(transactionPoid)
+                .orElseThrow(() -> new ValidationException("Voucher not found with ID: " + transactionPoid));
+
+        Map<String, Object> params = printService.buildBaseParams(transactionPoid, UserContext.getDocumentId());
+        if (header.getRefType() != null && header.getRefType().contains("CUSTOM")) {
+            params.put("P_PRINT_WITHOUT_BILL", "Y");
+        } else {
+            params.put("P_PRINT_WITHOUT_BILL", "N");
+        }
+
+        JasperReport mainReport = null;
+        if (null != header.getPrePrinted() && header.getPrePrinted().contains("Y")) {
+            params.put("SUB_DETAIL", printService.load("Finance/BankPayments/BankPaymentVoucher_ManualCheque1_subreport1.jrxml"));
+            mainReport = printService.load("Finance/BankPayments/BankPaymentVoucherChequeLeaf.jrxml");
+        } else {
+            mainReport = printService.load("Finance/BankPayments/BankPaymentVoucher_WithOutCheque.jrxml");
+        }
+        return printService.fillReportToPdf(mainReport, params, dataSource);
+    }
+
+
+    @Override
     public ReconcileResultDto getReconciledDate(String documentId, Long transactionPoid) {
         StoredProcedureQuery query = entityManager
                 .createStoredProcedureQuery("PROC_DEBIT_PAYMENT_RECON_DATE");

@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="BankPaymentVoucherChequeLeaf" language="groovy" pageWidth="842" pageHeight="252" orientation="Landscape" columnWidth="842" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="d37a73f8-4982-437f-89fe-a4f0ce1408c1">
+	<property name="ireport.zoom" value="1.3636363636363826"/>
+	<property name="ireport.x" value="0"/>
+	<property name="ireport.y" value="0"/>
+	<parameter name="LOGIN_GROUP_POID" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA[1]]></defaultValueExpression>
+	</parameter>
+	<parameter name="LOGIN_COMP_POID" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA[1]]></defaultValueExpression>
+	</parameter>
+	<parameter name="LOGIN_USER_POID" class="java.lang.String"/>
+	<parameter name="DOC_ID" class="java.lang.String">
+		<defaultValueExpression><![CDATA["000-000"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="DOC_KEY_POID" class="java.lang.String">
+		<defaultValueExpression><![CDATA[3826]]></defaultValueExpression>
+	</parameter>
+	<parameter name="BANK_POID" class="java.lang.String"/>
+	<parameter name="SUBREPORT_DIR" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA["//10.100.100.159//ERP_Reports//CROWN_Reports//"]]></defaultValueExpression>
+	</parameter>
+	<queryString>
+		<![CDATA[SELECT TRANSACTION_POID, PAYING_TO , DOC_REF, TRANSACTION_DATE, CHQ_DATE, CURRENCY_AMOUNT, CHQ_DATE_FRT, DATESTRING, AMOUNT_IN_WORD,  REF_TYPE, LONG_NARRATION, CREATED_BY, ACCOUNT_PAYEE
+FROM(
+    SELECT DISTINCT TRANSACTION_POID, PAYING_TO, DOC_REF,
+    TO_CHAR(TRANSACTION_DATE,'DD-MON-YYYY') TRANSACTION_DATE, TO_CHAR(CHQ_DATE,'DD-MON-YYYY')CHQ_DATE,
+    CURRENCY_AMOUNT, REGEXP_REPLACE(TO_CHAR(CHQ_DATE,'DDMMYYYY'), '(.)', '\1    ' )CHQ_DATE_FRT,
+    TO_CHAR(CHQ_DATE,'DDMMYYYY') DATESTRING,
+    FN_AMOUNT_IN_WORDS_COMMON(CURRENCY_AMOUNT,'BHD')||'.' AMOUNT_IN_WORD, REF_TYPE, LONG_NARRATION, HDR.CREATED_BY,
+    DECODE(UPPER(TRIM(PAYING_TO)),'CASH','N',ACCOUNT_PAYEE) ACCOUNT_PAYEE
+    FROM GL_BANK_PAYMENT_HDR HDR
+    WHERE TRANSACTION_POID =$P{DOC_KEY_POID}
+    )]]>
+	</queryString>
+	<field name="TRANSACTION_POID" class="java.math.BigDecimal"/>
+	<field name="PAYING_TO" class="java.lang.String"/>
+	<field name="DOC_REF" class="java.lang.String"/>
+	<field name="TRANSACTION_DATE" class="java.lang.String"/>
+	<field name="CHQ_DATE" class="java.lang.String"/>
+	<field name="CURRENCY_AMOUNT" class="java.math.BigDecimal"/>
+	<field name="CHQ_DATE_FRT" class="java.lang.String"/>
+	<field name="DATESTRING" class="java.lang.String"/>
+	<field name="AMOUNT_IN_WORD" class="java.lang.String"/>
+	<field name="REF_TYPE" class="java.lang.String"/>
+	<field name="LONG_NARRATION" class="java.lang.String"/>
+	<field name="CREATED_BY" class="java.lang.String"/>
+	<field name="ACCOUNT_PAYEE" class="java.lang.String"/>
+	<variable name="DateD1" class="java.lang.String">
+		<variableExpression><![CDATA[$F{DATESTRING}.substring(0, 1)]]></variableExpression>
+	</variable>
+	<variable name="DateD2" class="java.lang.String">
+		<variableExpression><![CDATA[$F{DATESTRING}.substring(1, 2)]]></variableExpression>
+	</variable>
+	<variable name="DateM1" class="java.lang.String">
+		<variableExpression><![CDATA[$F{DATESTRING}.substring(2, 3)]]></variableExpression>
+	</variable>
+	<variable name="DateM2" class="java.lang.String">
+		<variableExpression><![CDATA[$F{DATESTRING}.substring(3, 4)]]></variableExpression>
+	</variable>
+	<variable name="DateY1" class="java.lang.String">
+		<variableExpression><![CDATA[$F{DATESTRING}.substring(4, 5)]]></variableExpression>
+	</variable>
+	<variable name="DateY2" class="java.lang.String">
+		<variableExpression><![CDATA[$F{DATESTRING}.substring(5, 6)]]></variableExpression>
+	</variable>
+	<variable name="DateY3" class="java.lang.String">
+		<variableExpression><![CDATA[$F{DATESTRING}.substring(6, 7)]]></variableExpression>
+	</variable>
+	<variable name="DateY4" class="java.lang.String">
+		<variableExpression><![CDATA[$F{DATESTRING}.substring(7, 8)]]></variableExpression>
+	</variable>
+	<variable name="ac_pay" class="java.math.BigDecimal">
+		<initialValueExpression><![CDATA[1]]></initialValueExpression>
+	</variable>
+	<detail>
+		<band height="242" splitType="Stretch">
+			<image>
+				<reportElement x="350" y="21" width="456" height="50" uuid="2348379c-49a3-45e6-adba-793f2af0814a">
+					<printWhenExpression><![CDATA[$F{ACCOUNT_PAYEE}.equals( "Y" ) && $V{PAGE_NUMBER} == 1]]></printWhenExpression>
+				</reportElement>
+				<imageExpression><![CDATA[$P{SUBREPORT_DIR} + "BankPayments//AccountsPayeeOnly (002).png"]]></imageExpression>
+			</image>
+			<textField isBlankWhenNull="true">
+				<reportElement x="763" y="25" width="15" height="20" uuid="1eb691ed-6f25-4793-a1b8-e2aea274497a">
+					<printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Center">
+					<font size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{DateY3}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="653" y="25" width="15" height="20" uuid="a0bab92e-9306-4a06-adb1-bdb2fb6e182f">
+					<printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Center">
+					<font size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{DateD1}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="725" y="25" width="15" height="20" uuid="afe8cbfa-55a7-4735-900b-35ba9f6c288d">
+					<printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Center">
+					<font size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{DateY1}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="671" y="25" width="15" height="20" uuid="dae802c7-8549-427b-9e23-c9b18cd30602">
+					<printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Center">
+					<font size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{DateD2}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="689" y="25" width="15" height="20" uuid="b5ab8d57-01b1-42c9-be1f-727839188b6f">
+					<printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Center">
+					<font size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{DateM1}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="706" y="25" width="15" height="20" uuid="f1d0fd68-afa4-49ea-a72c-62b472f702a9">
+					<printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Center">
+					<font size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{DateM2}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="785" y="25" width="15" height="20" uuid="3d4e520c-c819-44ef-b8b4-e92a88c9748d">
+					<printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Center">
+					<font size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{DateY4}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="744" y="25" width="15" height="20" uuid="034e634f-b868-49b3-a445-10453b0fe949">
+					<printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Center">
+					<font size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{DateY2}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="437" y="55" width="315" height="16" uuid="4fe0f41a-1040-4756-af5c-8daf66876a9f">
+					<printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
+				</reportElement>
+				<textElement>
+					<font isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{PAYING_TO}]]></textFieldExpression>
+			</textField>
+			<textField pattern="***#,##,##0.000" isBlankWhenNull="true">
+				<reportElement x="640" y="109" width="134" height="18" uuid="e9c12e06-98ba-4550-b144-a288b5e4df9f">
+					<printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{CURRENCY_AMOUNT}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement x="418" y="83" width="221" height="75" isPrintWhenDetailOverflows="true" uuid="515c3191-b1be-4cc8-8854-56a1e3a5ddde">
+					<printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
+				</reportElement>
+				<textElement>
+					<font isBold="true"/>
+					<paragraph lineSpacing="Proportional" lineSpacingSize="2.8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{AMOUNT_IN_WORD}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+</jasperReport>

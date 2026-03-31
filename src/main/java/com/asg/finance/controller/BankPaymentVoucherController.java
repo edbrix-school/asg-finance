@@ -513,6 +513,22 @@ public class BankPaymentVoucherController {
             return error("Failed to generate PDF: " + e.getMessage(), 500);
         }
     }
+    @GetMapping("/cheque-print/{transactionPoid}")
+    public ResponseEntity<?> chequePrint(
+            @Parameter(description = "Transaction POID", example = "21")
+            @PathVariable Long transactionPoid) {
+        try {
+            byte[] pdf = service.chequePrint(transactionPoid);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=bank-payment-voucher-" + transactionPoid + ".pdf")
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .body(pdf);
+        } catch (Exception e) {
+            log.error("Failed to generate PDF for Bank Payment Voucher: {}", transactionPoid, e);
+            return error("Failed to generate PDF: " + e.getMessage(), 500);
+        }
+    }
 
 
 }

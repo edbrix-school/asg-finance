@@ -234,8 +234,15 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
                 .orElseThrow(() -> new ResourceNotFoundException("Telex File", "transactionPoid", debitVoucherPoid));
 
         Long userId = UserContext.getUserPoid() != null ? UserContext.getUserPoid() : 1L;
-        return procRepository.regenerateTelexFile(UserContext.getGroupPoid(), UserContext.getCompanyPoid(),
+        String result = procRepository.regenerateTelexFile(UserContext.getGroupPoid(), UserContext.getCompanyPoid(),
                 userId, debitVoucherPoid);
+
+        // Create log summary entry for regenerate action
+        String docId = UserContext.getDocumentId();
+        String key = debitVoucherPoid.toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, docId, key);
+
+        return result;
     }
 
     @Override

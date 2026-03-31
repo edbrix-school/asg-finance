@@ -33,7 +33,6 @@ import com.asg.finance.entity.GlPettyCashPaymentGrnDtl;
 import com.asg.finance.entity.GlPettyCashPaymentHdr;
 import com.asg.finance.dto.GlPettyCashPaymentGrnDtlRequestDto;
 import com.asg.finance.repository.GlPettyCashPaymentGrnDtlRepository;
-import com.asg.finance.entity.master.ShipChargeEntity;
 import com.asg.finance.repository.*;
 import com.asg.finance.repository.master.ShipChargeRepository;
 import com.asg.common.lib.security.util.UserContext;
@@ -748,10 +747,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     newEntity.setLastModifiedBy(getCurrentUser());
                     newEntity.setLastModifiedDate(LocalDateTime.now());
 
-                    if (dto.getGlPoid() != null)
-                        newEntity.setGlMaster(GLMaster.builder().glPoid(dto.getGlPoid()).build());
-                    if (dto.getChargePoid() != null)
-                        newEntity.setChargeMaster(ShipChargeEntity.builder().chargePoid(dto.getChargePoid()).build());
+                    newEntity.setGlPoid(dto.getGlPoid());
+                    newEntity.setChargePoid(dto.getChargePoid());
 
                     toSave.add(newEntity);
                     break;
@@ -783,10 +780,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     existingEntity.setLastModifiedBy(getCurrentUser());
                     existingEntity.setLastModifiedDate(LocalDateTime.now());
 
-                    if (dto.getGlPoid() != null)
-                        existingEntity.setGlMaster(GLMaster.builder().glPoid(dto.getGlPoid()).build());
-                    if (dto.getChargePoid() != null)
-                        existingEntity.setChargeMaster(ShipChargeEntity.builder().chargePoid(dto.getChargePoid()).build());
+                    existingEntity.setGlPoid(dto.getGlPoid());
+                    existingEntity.setChargePoid(dto.getChargePoid());
 
                     toSave.add(existingEntity);
                     
@@ -1316,8 +1311,6 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
             List<GlPettyCashChargeDtlResponseDto> chargeDtls = mapChargeResponse(chargeEntities);
             List<GLPettyCashItemDtlResponseDto> itemDtls = mapItemResponse(itemEntities);
-
-            loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, documentId, transactionPoid.toString());
 
             return mapToResponseDto(header, paymentDtls, chargeDtls, itemDtls);
 
@@ -2106,10 +2099,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                             .detRowId(detRowId)
                             .type(dtl.getType())
                             .companyPoid(dtl.getCompanyPoid())
-                            .glMaster(dtl.getGlPoid() != null
-                                    ? GLMaster.builder().glPoid(dtl.getGlPoid()).build() : null)
-                            .chargeMaster(dtl.getChargePoid() != null
-                                    ? ShipChargeEntity.builder().chargePoid(dtl.getChargePoid()).build() : null)
+                            .glPoid(dtl.getGlPoid())
+                            .chargePoid(dtl.getChargePoid())
                             .drAmt(dtl.getDrAmt())
                             .crAmt(dtl.getCrAmt())
                             .vatAmount(dtl.getVatAmount())
@@ -2388,12 +2379,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                             .detRowId(detRowId)  // Use auto-generated or provided detRowId
                             .type(dtl.getType())
                             .companyPoid(dtl.getCompanyPoid())
-                            .glMaster(dtl.getGlPoid() != null ? GLMaster.builder()
-                                    .glPoid(dtl.getGlPoid())
-                                    .build() : null)
-                            .chargeMaster(dtl.getChargePoid() != null ? ShipChargeEntity.builder()
-                                    .chargePoid(dtl.getChargePoid())
-                                    .build() : null)
+                            .glPoid(dtl.getGlPoid())
+                            .chargePoid(dtl.getChargePoid())
                             .drAmt(dtl.getDrAmt())
                             .crAmt(dtl.getCrAmt())
                             .vatAmount(dtl.getVatAmount())
@@ -2436,9 +2423,11 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                         detRowId = detRowIdCounter[0]++;
                     }
 
-                    GLPettyCashItemDtl.GLPettyCashItemDtlBuilder builder = GLPettyCashItemDtl.builder()
+                    return GLPettyCashItemDtl.builder()
                             .transactionPoid(hdrPoid)
                             .detRowId(detRowId)
+                            .stockPoid(dtl.getStockPoid())
+                            .stockUnitPoid(dtl.getStockUnitPoid())
                             .poQty(dtl.getPoQty())
                             .dnQty(dtl.getDnQty())
                             .qtyReceived(dtl.getQtyReceived())
@@ -2453,15 +2442,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                             .vatPartyName(dtl.getVatPartyName())
                             .partyInvNumber(dtl.getPartyInvNumber())
                             .partyInvDate(dtl.getPartyInvDate())
-                            .taxPoid(dtl.getTaxPoid());
-
-                    GLPettyCashItemDtl entity = builder.build();
-
-                    // Set stockPoid and stockUnitPoid directly on the entity
-                    entity.setStockPoid(dtl.getStockPoid());
-                    entity.setStockUnitPoid(dtl.getStockUnitPoid());
-
-                    return entity;
+                            .taxPoid(dtl.getTaxPoid())
+                            .build();
                 })
                 .collect(Collectors.toList());
     }
@@ -2686,8 +2668,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                                     .detRowId(dtl.getDetRowId())
                                     .type(dtl.getType())
                                     .companyPoid(dtl.getCompanyPoid())
-                                    .glPoid(dtl.getGlMaster() != null ? dtl.getGlMaster().getGlPoid() : null)
-                                    .chargePoid(dtl.getChargeMaster() != null ? dtl.getChargeMaster().getChargePoid() : null)
+                                    .glPoid(dtl.getGlPoid())
+                                    .chargePoid(dtl.getChargePoid())
                                     .drAmt(scale3(dtl.getDrAmt()))
                                     .crAmt(scale3(dtl.getCrAmt()))
                                     .remarks(dtl.getRemarks())
@@ -2704,8 +2686,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                                     .taxPercentage(scale3(dtl.getTaxPercentage()))
                                     .vatPartyName(dtl.getVatPartyName());
 
-                    if (dtl.getGlMaster() != null && dtl.getGlMaster().getGlPoid() != null) {
-                        glMasterRepository.findByGlPoid(dtl.getGlMaster().getGlPoid())
+                    if (dtl.getGlPoid() != null) {
+                        glMasterRepository.findByGlPoid(dtl.getGlPoid())
                                 .ifPresent(glMaster -> {
                                     DetailsDto glDetails = new DetailsDto(
                                             glMaster.getGlPoid(),
@@ -2719,8 +2701,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                                 });
                     }
 
-                    if (dtl.getChargeMaster() != null && dtl.getChargeMaster().getChargePoid() != null) {
-                        shipChargeRepository.findByChargePoid(dtl.getChargeMaster().getChargePoid())
+                    if (dtl.getChargePoid() != null) {
+                        shipChargeRepository.findByChargePoid(dtl.getChargePoid())
                                 .ifPresent(charge -> {
                                     DetailsDto chargeDetails = new DetailsDto(
                                             charge.getChargePoid(),

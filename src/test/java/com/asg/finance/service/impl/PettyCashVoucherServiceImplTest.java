@@ -8,6 +8,11 @@ import com.asg.common.lib.service.GlobalParameterService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.finance.dto.*;
+import com.asg.finance.entity.GLMaster;
+import com.asg.finance.entity.GLPettyCashItemDtl;
+import com.asg.finance.entity.GlPettyCashChargeDtl;
+import com.asg.finance.entity.GlPettyCashPaymentDtl;
+import com.asg.finance.entity.GlPettyCashPaymentGrnDtl;
 import com.asg.finance.repository.*;
 import com.asg.finance.repository.master.ShipChargeRepository;
 import com.asg.finance.service.BillwiseBreakupService;
@@ -24,6 +29,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import javax.sql.DataSource;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -31,7 +37,9 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -1004,7 +1012,7 @@ class PettyCashVoucherServiceImplTest {
     // FF / FDA Ref LOV Enrichment Tests
     // =========================================================================
     @Nested
-    @DisplayName("FfRef and FdaRef LOV enrichment in mapToResponseDto")
+    @DisplayName("Header LOV enrichment in mapToResponseDto")
     class RefLovEnrichmentTests {
 
         private LovGetListDto ffLov() {
@@ -1029,18 +1037,37 @@ class PettyCashVoucherServiceImplTest {
             return lov;
         }
 
-        @Test
-        @DisplayName("ffRef numeric poid populates ffRefDtl via FF_JOBS_FOR_COST_BOOKING")
-        void ffRefNumericPoid_populatesDetails() {
+        private LovGetListDto mtaLov() {
+            LovGetListDto lov = new LovGetListDto();
+            lov.setPoid(9001L);
+            lov.setCode("RFQ-2024-00111");
+            lov.setLabel("MTA RFQ — Port Klang");
+            lov.setValue(9001L);
+            lov.setDescription("Port Klang");
+            lov.setSeqNo(3);
+            return lov;
+        }
+
+        private com.asg.finance.entity.GlPettyCashPaymentHdr emptyHdr() {
             com.asg.finance.entity.GlPettyCashPaymentHdr hdr =
                     mock(com.asg.finance.entity.GlPettyCashPaymentHdr.class);
-            when(hdr.getFfRef()).thenReturn("7001");
+            when(hdr.getFfRef()).thenReturn(null);
             when(hdr.getFdaRef()).thenReturn(null);
+            when(hdr.getSalesQtnRef()).thenReturn(null);
+            when(hdr.getMtaRef()).thenReturn(null);
             when(hdr.getPettyCashGlPoid()).thenReturn(null);
             when(hdr.getGrnSupplierPoid()).thenReturn(null);
             when(hdr.getSupplierGlPoid()).thenReturn(null);
             when(hdr.getCustomerGlPoid()).thenReturn(null);
             when(hdr.getAdvancePettyCashPoid()).thenReturn(null);
+            return hdr;
+        }
+
+        @Test
+        @DisplayName("ffRef numeric poid populates ffRefDtl via FF_JOBS_FOR_COST_BOOKING")
+        void ffRefNumericPoid_populatesDetails() {
+            com.asg.finance.entity.GlPettyCashPaymentHdr hdr = emptyHdr();
+            when(hdr.getFfRef()).thenReturn("7001");
 
             when(lovService.getDetailsByPoidAndLovName(7001L, "FF_JOBS_FOR_COST_BOOKING"))
                     .thenReturn(ffLov());
@@ -1048,7 +1075,7 @@ class PettyCashVoucherServiceImplTest {
             PettyCashResponseDto result = (PettyCashResponseDto) ReflectionTestUtils.invokeMethod(
                     service, "mapToResponseDto", hdr,
                     Collections.emptyList(), Collections.emptyList(),
-                    Collections.emptyList(), Collections.emptyList());
+                    Collections.emptyList());
 
             assertNotNull(result.getFfRefDtl());
             assertEquals(7001L, result.getFfRefDtl().poid());
@@ -1059,15 +1086,8 @@ class PettyCashVoucherServiceImplTest {
         @Test
         @DisplayName("fdaRef numeric poid populates fdaRefDtl via PROCESS_FDA_IN_PI")
         void fdaRefNumericPoid_populatesDetails() {
-            com.asg.finance.entity.GlPettyCashPaymentHdr hdr =
-                    mock(com.asg.finance.entity.GlPettyCashPaymentHdr.class);
-            when(hdr.getFfRef()).thenReturn(null);
+            com.asg.finance.entity.GlPettyCashPaymentHdr hdr = emptyHdr();
             when(hdr.getFdaRef()).thenReturn("8001");
-            when(hdr.getPettyCashGlPoid()).thenReturn(null);
-            when(hdr.getGrnSupplierPoid()).thenReturn(null);
-            when(hdr.getSupplierGlPoid()).thenReturn(null);
-            when(hdr.getCustomerGlPoid()).thenReturn(null);
-            when(hdr.getAdvancePettyCashPoid()).thenReturn(null);
 
             when(lovService.getDetailsByPoidAndLovName(8001L, "PROCESS_FDA_IN_PI"))
                     .thenReturn(fdaLov());
@@ -1075,7 +1095,7 @@ class PettyCashVoucherServiceImplTest {
             PettyCashResponseDto result = (PettyCashResponseDto) ReflectionTestUtils.invokeMethod(
                     service, "mapToResponseDto", hdr,
                     Collections.emptyList(), Collections.emptyList(),
-                    Collections.emptyList(), Collections.emptyList());
+                    Collections.emptyList());
 
             assertNotNull(result.getFdaRefDtl());
             assertEquals(8001L, result.getFdaRefDtl().poid());
@@ -1084,46 +1104,52 @@ class PettyCashVoucherServiceImplTest {
         }
 
         @Test
-        @DisplayName("non-numeric ffRef skips enrichment — no exception thrown")
-        void ffRefNonNumeric_skipsEnrichment() {
-            com.asg.finance.entity.GlPettyCashPaymentHdr hdr =
-                    mock(com.asg.finance.entity.GlPettyCashPaymentHdr.class);
-            when(hdr.getFfRef()).thenReturn("FF-DOC-STRING");
-            when(hdr.getFdaRef()).thenReturn(null);
-            when(hdr.getPettyCashGlPoid()).thenReturn(null);
-            when(hdr.getGrnSupplierPoid()).thenReturn(null);
-            when(hdr.getSupplierGlPoid()).thenReturn(null);
-            when(hdr.getCustomerGlPoid()).thenReturn(null);
-            when(hdr.getAdvancePettyCashPoid()).thenReturn(null);
+        @DisplayName("salesQtnRef numeric poid populates salesQtnRefDtl via PETTY_MTA_BASED_RFQ")
+        void salesQtnRefNumericPoid_populatesDetails() {
+            com.asg.finance.entity.GlPettyCashPaymentHdr hdr = emptyHdr();
+            when(hdr.getSalesQtnRef()).thenReturn("9001");
+
+            when(lovService.getDetailsByPoidAndLovName(9001L, "PETTY_MTA_BASED_RFQ"))
+                    .thenReturn(mtaLov());
 
             PettyCashResponseDto result = (PettyCashResponseDto) ReflectionTestUtils.invokeMethod(
                     service, "mapToResponseDto", hdr,
                     Collections.emptyList(), Collections.emptyList(),
-                    Collections.emptyList(), Collections.emptyList());
+                    Collections.emptyList());
+
+            assertNotNull(result.getSalesQtnRefDtl());
+            assertEquals(9001L, result.getSalesQtnRefDtl().poid());
+            assertEquals("RFQ-2024-00111", result.getSalesQtnRefDtl().code());
+            assertEquals("MTA RFQ — Port Klang", result.getSalesQtnRefDtl().label());
+        }
+
+        @Test
+        @DisplayName("non-numeric ffRef skips enrichment — no exception thrown")
+        void ffRefNonNumeric_skipsEnrichment() {
+            com.asg.finance.entity.GlPettyCashPaymentHdr hdr = emptyHdr();
+            when(hdr.getFfRef()).thenReturn("FF-DOC-STRING");
+
+            PettyCashResponseDto result = (PettyCashResponseDto) ReflectionTestUtils.invokeMethod(
+                    service, "mapToResponseDto", hdr,
+                    Collections.emptyList(), Collections.emptyList(),
+                    Collections.emptyList());
 
             assertNull(result.getFfRefDtl());
         }
 
         @Test
-        @DisplayName("null ffRef and null fdaRef — both details remain null")
+        @DisplayName("null refs — all details remain null")
         void nullRefs_noEnrichment() {
-            com.asg.finance.entity.GlPettyCashPaymentHdr hdr =
-                    mock(com.asg.finance.entity.GlPettyCashPaymentHdr.class);
-            when(hdr.getFfRef()).thenReturn(null);
-            when(hdr.getFdaRef()).thenReturn(null);
-            when(hdr.getPettyCashGlPoid()).thenReturn(null);
-            when(hdr.getGrnSupplierPoid()).thenReturn(null);
-            when(hdr.getSupplierGlPoid()).thenReturn(null);
-            when(hdr.getCustomerGlPoid()).thenReturn(null);
-            when(hdr.getAdvancePettyCashPoid()).thenReturn(null);
+            com.asg.finance.entity.GlPettyCashPaymentHdr hdr = emptyHdr();
 
             PettyCashResponseDto result = (PettyCashResponseDto) ReflectionTestUtils.invokeMethod(
                     service, "mapToResponseDto", hdr,
                     Collections.emptyList(), Collections.emptyList(),
-                    Collections.emptyList(), Collections.emptyList());
+                    Collections.emptyList());
 
             assertNull(result.getFfRefDtl());
             assertNull(result.getFdaRefDtl());
+            assertNull(result.getSalesQtnRefDtl());
         }
     }
 
@@ -1196,7 +1222,7 @@ class PettyCashVoucherServiceImplTest {
                     mock(com.asg.finance.entity.GlPettyCashChargeDtl.class);
             when(dtl.getChargeFrom()).thenReturn("FF");
             when(dtl.getRefDocPoid()).thenReturn(9001L);
-            when(dtl.getShipChargeMaster()).thenReturn(null);
+            when(dtl.getChargePoid()).thenReturn(null);
             when(dtl.getTaxPoid()).thenReturn(null);
 
             when(lovService.getDetailsByPoidAndLovName(9001L, "FF_JOBNO"))
@@ -1220,7 +1246,7 @@ class PettyCashVoucherServiceImplTest {
                     mock(com.asg.finance.entity.GlPettyCashChargeDtl.class);
             when(dtl.getChargeFrom()).thenReturn("FDA");
             when(dtl.getRefDocPoid()).thenReturn(9002L);
-            when(dtl.getShipChargeMaster()).thenReturn(null);
+            when(dtl.getChargePoid()).thenReturn(null);
             when(dtl.getTaxPoid()).thenReturn(null);
 
             List<GlPettyCashChargeDtlResponseDto> result =
@@ -1237,7 +1263,7 @@ class PettyCashVoucherServiceImplTest {
                     mock(com.asg.finance.entity.GlPettyCashChargeDtl.class);
             when(dtl.getChargeFrom()).thenReturn("FF");
             when(dtl.getRefDocPoid()).thenReturn(null);
-            when(dtl.getShipChargeMaster()).thenReturn(null);
+            when(dtl.getChargePoid()).thenReturn(null);
             when(dtl.getTaxPoid()).thenReturn(null);
 
             List<GlPettyCashChargeDtlResponseDto> result =
@@ -1247,41 +1273,635 @@ class PettyCashVoucherServiceImplTest {
             assertNull(result.get(0).getRefDocPoidDtl());
         }
 
-        // ── Gap 3: grnPoidDtl in GRN Detail ─────────────────────────────────
+    }
 
-        @Test
-        @DisplayName("mapGrnResponse: grnPoid populates grnPoidDtl via GRN_JOBS_FOR_PETTY_CASH")
-        void grnDtl_grnPoid_populatesDetails() {
-            com.asg.finance.entity.GlPettyCashPaymentGrnDtl dtl =
-                    mock(com.asg.finance.entity.GlPettyCashPaymentGrnDtl.class);
-            when(dtl.getGrnPoid()).thenReturn(11001L);
+    // =========================================================================
+    // Merge helpers and broader response mapping coverage
+    // =========================================================================
+    @Nested
+    @DisplayName("Merge helpers and response mapping coverage")
+    class MergeAndMappingCoverageTests {
 
-            when(lovService.getDetailsByPoidAndLovName(11001L, "GRN_JOBS_FOR_PETTY_CASH"))
-                    .thenReturn(lov(11001L, "GRN-2024-00111", "GRN Singapore Port"));
+        private LovGetListDto lov(Long poid, String code, String label) {
+            LovGetListDto lov = new LovGetListDto();
+            lov.setPoid(poid);
+            lov.setCode(code);
+            lov.setLabel(label);
+            lov.setValue(poid);
+            lov.setDescription(label);
+            lov.setSeqNo(1);
+            return lov;
+        }
 
-            List<GlPettyCashPaymentGrnDtlResponseDto> result =
-                    (List<GlPettyCashPaymentGrnDtlResponseDto>) ReflectionTestUtils.invokeMethod(
-                            service, "mapGrnResponse", List.of(dtl));
+        private GlPettyCashPaymentDtl paymentEntity(long detRowId, String remarks) {
+            return GlPettyCashPaymentDtl.builder()
+                    .transactionPoid(100L)
+                    .detRowId(detRowId)
+                    .remarks(remarks)
+                    .build();
+        }
 
-            DetailsDto grnDtl = result.get(0).getGrnPoidDtl();
-            assertNotNull(grnDtl);
-            assertEquals(11001L, grnDtl.poid());
-            assertEquals("GRN-2024-00111", grnDtl.code());
-            assertEquals("GRN Singapore Port", grnDtl.label());
+        private GlPettyCashChargeDtl chargeEntity(long detRowId, String remarks) {
+            return GlPettyCashChargeDtl.builder()
+                    .transactionPoid(200L)
+                    .detRowId(detRowId)
+                    .remarks(remarks)
+                    .build();
+        }
+
+        private GLPettyCashItemDtl itemEntity(long detRowId, String remarks) {
+            return GLPettyCashItemDtl.builder()
+                    .transactionPoid(300L)
+                    .detRowId(detRowId)
+                    .remarks(remarks)
+                    .build();
+        }
+
+        private GlPettyCashPaymentGrnDtl grnEntity(long detRowId, BigDecimal amount) {
+            return GlPettyCashPaymentGrnDtl.builder()
+                    .transactionPoid(400L)
+                    .detRowId(detRowId)
+                    .amount(amount)
+                    .build();
         }
 
         @Test
-        @DisplayName("mapGrnResponse: null grnPoid leaves grnPoidDtl null")
-        void grnDtl_nullGrnPoid_noEnrichment() {
-            com.asg.finance.entity.GlPettyCashPaymentGrnDtl dtl =
-                    mock(com.asg.finance.entity.GlPettyCashPaymentGrnDtl.class);
-            when(dtl.getGrnPoid()).thenReturn(null);
+        @DisplayName("filterGrnCheckAll excludes rows flagged with checkAll=N")
+        void filterGrnCheckAll_excludesNRows() {
+            List<GlPettyCashPaymentGrnDtlRequestDto> request = List.of(
+                    GlPettyCashPaymentGrnDtlRequestDto.builder().detRowId(1L).checkAll("Y").build(),
+                    GlPettyCashPaymentGrnDtlRequestDto.builder().detRowId(2L).checkAll("N").build(),
+                    GlPettyCashPaymentGrnDtlRequestDto.builder().detRowId(3L).checkAll(null).build()
+            );
 
-            List<GlPettyCashPaymentGrnDtlResponseDto> result =
-                    (List<GlPettyCashPaymentGrnDtlResponseDto>) ReflectionTestUtils.invokeMethod(
-                            service, "mapGrnResponse", List.of(dtl));
+            @SuppressWarnings("unchecked")
+            List<GlPettyCashPaymentGrnDtlRequestDto> filtered =
+                    (List<GlPettyCashPaymentGrnDtlRequestDto>) ReflectionTestUtils.invokeMethod(
+                            service, "filterGrnCheckAll", request);
 
-            assertNull(result.get(0).getGrnPoidDtl());
+            assertEquals(2, filtered.size());
+            assertEquals(1L, filtered.get(0).getDetRowId());
+            assertEquals(3L, filtered.get(1).getDetRowId());
+        }
+
+        @Test
+        @DisplayName("mapGrnDtls skips deleted rows and auto-generates missing detRowId values")
+        void mapGrnDtls_autoGeneratesRowIds() {
+            List<GlPettyCashPaymentGrnDtlRequestDto> request = List.of(
+                    GlPettyCashPaymentGrnDtlRequestDto.builder()
+                            .detRowId(null)
+                            .grnPoid(9001L)
+                            .amount(new BigDecimal("10"))
+                            .actionType("isCreated")
+                            .build(),
+                    GlPettyCashPaymentGrnDtlRequestDto.builder()
+                            .detRowId(7L)
+                            .grnPoid(9002L)
+                            .amount(new BigDecimal("11"))
+                            .actionType("isDeleted")
+                            .build()
+            );
+
+            @SuppressWarnings("unchecked")
+            List<GlPettyCashPaymentGrnDtl> result =
+                    (List<GlPettyCashPaymentGrnDtl>) ReflectionTestUtils.invokeMethod(
+                            service, "mapGrnDtls", request, 77L);
+
+            assertEquals(1, result.size());
+            assertEquals(77L, result.get(0).getTransactionPoid());
+            assertEquals(1L, result.get(0).getDetRowId());
+            assertEquals(9001L, result.get(0).getGrnPoid());
+        }
+
+        @Test
+        @DisplayName("mergePaymentDtls handles create, update, delete and noChanges rows")
+        void mergePaymentDtls_handlesAllActions() {
+            List<GlPettyCashPaymentDtl> existing = List.of(
+                    paymentEntity(1L, "old-1"),
+                    paymentEntity(2L, "old-2"),
+                    paymentEntity(3L, "old-3")
+            );
+
+            List<GlPettyCashPaymentDtlRequestDto> request = List.of(
+                    GlPettyCashPaymentDtlRequestDto.builder()
+                            .actionType("isCreated")
+                            .glPoid(101L)
+                            .chargePoid(201L)
+                            .type("NEW")
+                            .remarks("created")
+                            .build(),
+                    GlPettyCashPaymentDtlRequestDto.builder()
+                            .actionType("isUpdated")
+                            .detRowId(1L)
+                            .type("UPDATED")
+                            .remarks("updated")
+                            .build(),
+                    GlPettyCashPaymentDtlRequestDto.builder()
+                            .actionType("isDeleted")
+                            .detRowId(2L)
+                            .build(),
+                    GlPettyCashPaymentDtlRequestDto.builder()
+                            .actionType(null)
+                            .detRowId(3L)
+                            .build()
+            );
+
+            when(glPettyCashPaymentDtlRepository.saveAll(anyList()))
+                    .thenAnswer(invocation -> invocation.getArgument(0));
+
+            @SuppressWarnings("unchecked")
+            List<GlPettyCashPaymentDtl> result =
+                    (List<GlPettyCashPaymentDtl>) ReflectionTestUtils.invokeMethod(
+                            service, "mergePaymentDtls", existing, request, 500L);
+
+            assertEquals(3, result.size());
+            assertEquals("UPDATED", result.stream()
+                    .filter(row -> Long.valueOf(1L).equals(row.getDetRowId()))
+                    .findFirst().orElseThrow().getType());
+            GlPettyCashPaymentDtl created = result.stream()
+                    .filter(row -> Long.valueOf(4L).equals(row.getDetRowId()))
+                    .findFirst().orElseThrow();
+            assertEquals("NEW", created.getType());
+            assertNotNull(created.getGlMaster());
+            assertNotNull(created.getChargeMaster());
+
+            verify(glPettyCashPaymentDtlRepository).deleteAll(anyList());
+            verify(loggingService).logDelete(any(), any(), any());
+            verify(loggingService).createLogBatch(any());
+            verify(loggingService).createLogSummaryEntry(
+                    org.mockito.ArgumentMatchers.<String>any(),
+                    org.mockito.ArgumentMatchers.<String>any(),
+                    org.mockito.ArgumentMatchers.<String>any());
+        }
+
+        @Test
+        @DisplayName("mergeChargeDtls handles create, update, delete and noChanges rows")
+        void mergeChargeDtls_handlesAllActions() {
+            List<GlPettyCashChargeDtl> existing = List.of(
+                    chargeEntity(1L, "old-1"),
+                    chargeEntity(2L, "old-2"),
+                    chargeEntity(3L, "old-3")
+            );
+
+            PettyCashCreateRequestDto request = PettyCashCreateRequestDto.builder()
+                    .refType("FF JOBS")
+                    .glPettyCashChargeDtlRequestDtos(List.of(
+                            GlPettyCashChargeDtlRequestDto.builder()
+                                    .actionType("isCreated")
+                                    .chargeAmount(new BigDecimal("10"))
+                                    .remarks("created")
+                                    .build(),
+                            GlPettyCashChargeDtlRequestDto.builder()
+                                    .actionType("isUpdated")
+                                    .detRowId(1L)
+                                    .chargeAmount(new BigDecimal("20"))
+                                    .remarks("updated")
+                                    .build(),
+                            GlPettyCashChargeDtlRequestDto.builder()
+                                    .actionType("isDeleted")
+                                    .detRowId(2L)
+                                    .build(),
+                            GlPettyCashChargeDtlRequestDto.builder()
+                                    .actionType(null)
+                                    .detRowId(3L)
+                                    .build()
+                    ))
+                    .build();
+
+            when(glPettyCashChargeDtlRepository.saveAll(anyList()))
+                    .thenAnswer(invocation -> invocation.getArgument(0));
+
+            @SuppressWarnings("unchecked")
+            List<GlPettyCashChargeDtl> result =
+                    (List<GlPettyCashChargeDtl>) ReflectionTestUtils.invokeMethod(
+                            service, "mergeChargeDtls", existing, request, 600L);
+
+            assertEquals(3, result.size());
+            assertEquals(new BigDecimal("20"), result.stream()
+                    .filter(row -> Long.valueOf(1L).equals(row.getDetRowId()))
+                    .findFirst().orElseThrow().getChargeAmount());
+            GlPettyCashChargeDtl created = result.stream()
+                    .filter(row -> Long.valueOf(4L).equals(row.getDetRowId()))
+                    .findFirst().orElseThrow();
+            assertEquals("FF", created.getChargeFrom());
+            assertEquals("created", created.getRemarks());
+
+            verify(glPettyCashChargeDtlRepository).deleteAll(anyList());
+            verify(loggingService).logDelete(any(), any(), any());
+            verify(loggingService).createLogBatch(any());
+            verify(loggingService).createLogSummaryEntry(
+                    org.mockito.ArgumentMatchers.<String>any(),
+                    org.mockito.ArgumentMatchers.<String>any(),
+                    org.mockito.ArgumentMatchers.<String>any());
+        }
+
+        @Test
+        @DisplayName("mergeItemDtls handles create, update, delete and noChanges rows")
+        void mergeItemDtls_handlesAllActions() {
+            List<GLPettyCashItemDtl> existing = List.of(
+                    itemEntity(1L, "old-1"),
+                    itemEntity(2L, "old-2"),
+                    itemEntity(3L, "old-3")
+            );
+
+            PettyCashCreateRequestDto request = PettyCashCreateRequestDto.builder()
+                    .refType("GENERAL PO")
+                    .glPettyCashItemDtlRequestDtos(List.of(
+                            GlPettyCashItemDtlRequestDto.builder()
+                                    .actionType("isCreated")
+                                    .stockPoid(501L)
+                                    .stockUnitPoid(601L)
+                                    .total(new BigDecimal("10"))
+                                    .remarks("created")
+                                    .build(),
+                            GlPettyCashItemDtlRequestDto.builder()
+                                    .actionType("isUpdated")
+                                    .detRowId(1L)
+                                    .total(new BigDecimal("20"))
+                                    .remarks("updated")
+                                    .build(),
+                            GlPettyCashItemDtlRequestDto.builder()
+                                    .actionType("isDeleted")
+                                    .detRowId(2L)
+                                    .build(),
+                            GlPettyCashItemDtlRequestDto.builder()
+                                    .actionType(null)
+                                    .detRowId(3L)
+                                    .build()
+                    ))
+                    .build();
+
+            when(glPettyCashItemDtlRepository.saveAll(anyList()))
+                    .thenAnswer(invocation -> invocation.getArgument(0));
+
+            @SuppressWarnings("unchecked")
+            List<GLPettyCashItemDtl> result =
+                    (List<GLPettyCashItemDtl>) ReflectionTestUtils.invokeMethod(
+                            service, "mergeItemDtls", existing, request, 700L);
+
+            assertEquals(3, result.size());
+            assertEquals(new BigDecimal("20"), result.stream()
+                    .filter(row -> Long.valueOf(1L).equals(row.getDetRowId()))
+                    .findFirst().orElseThrow().getTotal());
+            GLPettyCashItemDtl created = result.stream()
+                    .filter(row -> Long.valueOf(4L).equals(row.getDetRowId()))
+                    .findFirst().orElseThrow();
+            assertEquals(501L, created.getStockPoid());
+            assertEquals(601L, created.getStockUnitPoid());
+
+            verify(glPettyCashItemDtlRepository).deleteAll(anyList());
+            verify(loggingService).logDelete(any(), any(), any());
+            verify(loggingService).createLogBatch(any());
+            verify(loggingService).createLogSummaryEntry(
+                    org.mockito.ArgumentMatchers.<String>any(),
+                    org.mockito.ArgumentMatchers.<String>any(),
+                    org.mockito.ArgumentMatchers.<String>any());
+        }
+
+        @Test
+        @DisplayName("mergeGrnDtls handles create, update, delete and noChanges rows")
+        void mergeGrnDtls_handlesAllActions() {
+            List<GlPettyCashPaymentGrnDtl> existing = List.of(
+                    grnEntity(1L, new BigDecimal("1")),
+                    grnEntity(2L, new BigDecimal("2")),
+                    grnEntity(3L, new BigDecimal("3"))
+            );
+
+            PettyCashCreateRequestDto request = PettyCashCreateRequestDto.builder()
+                    .refType("GRN_JOBS")
+                    .glPettyCashGrnDtlRequestDtos(List.of(
+                            GlPettyCashPaymentGrnDtlRequestDto.builder()
+                                    .actionType("isCreated")
+                                    .grnPoid(801L)
+                                    .amount(new BigDecimal("10"))
+                                    .build(),
+                            GlPettyCashPaymentGrnDtlRequestDto.builder()
+                                    .actionType("isUpdated")
+                                    .detRowId(1L)
+                                    .grnPoid(802L)
+                                    .amount(new BigDecimal("20"))
+                                    .build(),
+                            GlPettyCashPaymentGrnDtlRequestDto.builder()
+                                    .actionType("isDeleted")
+                                    .detRowId(2L)
+                                    .build(),
+                            GlPettyCashPaymentGrnDtlRequestDto.builder()
+                                    .actionType(null)
+                                    .detRowId(3L)
+                                    .build()
+                    ))
+                    .build();
+
+            when(glPettyCashPaymentGrnDtlRepository.saveAll(anyList()))
+                    .thenAnswer(invocation -> invocation.getArgument(0));
+
+            @SuppressWarnings("unchecked")
+            List<GlPettyCashPaymentGrnDtl> result =
+                    (List<GlPettyCashPaymentGrnDtl>) ReflectionTestUtils.invokeMethod(
+                            service, "mergeGrnDtls", existing, request, 800L);
+
+            assertEquals(3, result.size());
+            assertEquals(new BigDecimal("20"), result.stream()
+                    .filter(row -> Long.valueOf(1L).equals(row.getDetRowId()))
+                    .findFirst().orElseThrow().getAmount());
+            GlPettyCashPaymentGrnDtl created = result.stream()
+                    .filter(row -> Long.valueOf(4L).equals(row.getDetRowId()))
+                    .findFirst().orElseThrow();
+            assertEquals(801L, created.getGrnPoid());
+            assertEquals(new BigDecimal("10"), created.getAmount());
+
+            verify(glPettyCashPaymentGrnDtlRepository).deleteAll(anyList());
+            verify(loggingService).logDelete(any(), any(), any());
+            verify(loggingService).createLogBatch(any());
+            verify(loggingService).createLogSummaryEntry(
+                    org.mockito.ArgumentMatchers.<String>any(),
+                    org.mockito.ArgumentMatchers.<String>any(),
+                    org.mockito.ArgumentMatchers.<String>any());
+        }
+
+        @Test
+        @DisplayName("mapToResponseDto populates header-level linked details")
+        void mapToResponseDto_populatesHeaderLinkedDetails() {
+            com.asg.finance.entity.GlPettyCashPaymentHdr hdr =
+                    mock(com.asg.finance.entity.GlPettyCashPaymentHdr.class);
+            when(hdr.getTransactionPoid()).thenReturn(900L);
+            when(hdr.getDocRef()).thenReturn("DOC-900");
+            when(hdr.getTransactionDate()).thenReturn(LocalDate.of(2025, 1, 15));
+            when(hdr.getGroupPoid()).thenReturn(10L);
+            when(hdr.getCompanyPoid()).thenReturn(20L);
+            when(hdr.getCurrencyCode()).thenReturn("AED");
+            when(hdr.getCurrencyRate()).thenReturn(new BigDecimal("3.672"));
+            when(hdr.getPettyCashGlPoid()).thenReturn(101L);
+            when(hdr.getGrnSupplierPoid()).thenReturn(202L);
+            when(hdr.getSupplierGlPoid()).thenReturn(303L);
+            when(hdr.getCustomerGlPoid()).thenReturn(404L);
+            when(hdr.getAdvancePettyCashPoid()).thenReturn(505L);
+            when(hdr.getFfRef()).thenReturn(null);
+            when(hdr.getFdaRef()).thenReturn(null);
+            when(hdr.getSalesQtnRef()).thenReturn(null);
+
+            GLMaster pettyCashGl = GLMaster.builder()
+                    .glPoid(101L)
+                    .glCode("GL-101")
+                    .glDescription("Petty cash ledger")
+                    .groupPoid(10L)
+                    .glDescription2("PC")
+                    .seqno(1)
+                    .build();
+            GLMaster supplierGl = GLMaster.builder()
+                    .glPoid(303L)
+                    .glCode("GL-303")
+                    .glDescription("Supplier ledger")
+                    .groupPoid(10L)
+                    .glDescription2("SUP")
+                    .seqno(2)
+                    .build();
+            GLMaster customerGl = GLMaster.builder()
+                    .glPoid(404L)
+                    .glCode("GL-404")
+                    .glDescription("Customer ledger")
+                    .groupPoid(10L)
+                    .glDescription2("CUS")
+                    .seqno(3)
+                    .build();
+
+            com.asg.finance.entity.SupplierMasterEntity supplier =
+                    mock(com.asg.finance.entity.SupplierMasterEntity.class);
+            when(supplier.getSupplierPoid()).thenReturn(202L);
+            when(supplier.getSupplierCode()).thenReturn("SUP-202");
+            when(supplier.getSupplierName()).thenReturn("Supplier");
+            when(supplier.getGroupPoid()).thenReturn(10L);
+            when(supplier.getSupplierName2()).thenReturn("S-2");
+            when(supplier.getSeqNo()).thenReturn(6L);
+
+            com.asg.finance.entity.AdvancePettyCashHdr advance =
+                    mock(com.asg.finance.entity.AdvancePettyCashHdr.class);
+            when(advance.getTransactionPoid()).thenReturn(505L);
+            when(advance.getDocRef()).thenReturn("ADV-505");
+            when(advance.getGroupPoid()).thenReturn(10L);
+
+            when(glMasterRepository.findByGlPoid(101L)).thenReturn(java.util.Optional.of(pettyCashGl));
+            when(glMasterRepository.findByGlPoid(303L)).thenReturn(java.util.Optional.of(supplierGl));
+            when(glMasterRepository.findByGlPoid(404L)).thenReturn(java.util.Optional.of(customerGl));
+            when(supplierMasterRepository.findBySupplierPoid(202L)).thenReturn(supplier);
+            when(advancePettyCashHdrRepository.findByTransactionPoid(505L))
+                    .thenReturn(java.util.Optional.of(advance));
+
+            PettyCashResponseDto response = (PettyCashResponseDto) ReflectionTestUtils.invokeMethod(
+                    service, "mapToResponseDto", hdr,
+                    Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
+
+            assertEquals("GL-101", response.getPettyCashGlPoidDtl().code());
+            assertEquals("SUP-202", response.getGrnSupplierPoidDtl().code());
+            assertEquals("GL-303", response.getSupplierGlPoidDtl().code());
+            assertEquals("GL-404", response.getCustomerGlPoidDtl().code());
+            assertEquals("ADV-505", response.getAdvancePettyCashPoidDtl().code());
+        }
+
+        @Test
+        @DisplayName("mapPaymentResponse populates GL, charge, tax, VAT supplier and company lookups")
+        void mapPaymentResponse_populatesAllLookups() {
+            GlPettyCashPaymentDtl dtl = GlPettyCashPaymentDtl.builder()
+                    .transactionPoid(111L)
+                    .detRowId(1L)
+                    .companyPoid(88L)
+                    .drAmt(new BigDecimal("10"))
+                    .crAmt(BigDecimal.ZERO)
+                    .vatAmount(new BigDecimal("1.500"))
+                    .totalAmount(new BigDecimal("11.500"))
+                    .vatSupplier(66L)
+                    .inputVatNumber("VAT-1")
+                    .supplierInvDate(LocalDate.of(2025, 1, 10))
+                    .taxPoid(55L)
+                    .taxPercentage(new BigDecimal("15"))
+                    .vatPartyName("Party")
+                    .build();
+            dtl.setGlMaster(GLMaster.builder().glPoid(101L).build());
+            dtl.setChargeMaster(com.asg.finance.entity.master.ShipChargeEntity.builder().chargePoid(201L).build());
+
+            GLMaster gl = GLMaster.builder()
+                    .glPoid(101L)
+                    .glCode("GL-101")
+                    .glDescription("GL")
+                    .groupPoid(10L)
+                    .glDescription2("L1")
+                    .seqno(1)
+                    .build();
+            com.asg.finance.entity.master.ShipChargeEntity charge =
+                    com.asg.finance.entity.master.ShipChargeEntity.builder()
+                            .chargePoid(201L)
+                            .chargeCode("CH-201")
+                            .chargeName("Charge")
+                            .groupPoid(10L)
+                            .chargeName2("C1")
+                            .seqNo(2)
+                            .build();
+            com.asg.finance.entity.TaxMaster tax = mock(com.asg.finance.entity.TaxMaster.class);
+            when(tax.getTaxPoid()).thenReturn(55L);
+            when(tax.getTaxCode()).thenReturn("TAX-55");
+            when(tax.getTaxName()).thenReturn("VAT");
+            when(tax.getGroupPoid()).thenReturn(10L);
+            when(tax.getTaxName2()).thenReturn("VAT-2");
+            when(tax.getSeqNo()).thenReturn(3);
+
+            com.asg.finance.entity.SupplierMasterEntity supplier =
+                    mock(com.asg.finance.entity.SupplierMasterEntity.class);
+            when(supplier.getSupplierPoid()).thenReturn(66L);
+            when(supplier.getSupplierCode()).thenReturn("SUP-66");
+            when(supplier.getSupplierName()).thenReturn("Supplier");
+            when(supplier.getGroupPoid()).thenReturn(10L);
+            when(supplier.getSupplierName2()).thenReturn("S-2");
+            when(supplier.getSeqNo()).thenReturn(4L);
+
+            when(glMasterRepository.findByGlPoid(101L)).thenReturn(java.util.Optional.of(gl));
+            when(shipChargeRepository.findByChargePoid(201L)).thenReturn(java.util.Optional.of(charge));
+            when(taxMasterRepository.findByTaxPoid(55L)).thenReturn(java.util.Optional.of(tax));
+            when(supplierMasterRepository.findBySupplierPoid(66L)).thenReturn(supplier);
+            when(lovService.getDetailsByPoidAndLovName(88L, "COMPANY"))
+                    .thenReturn(lov(88L, "COMP-88", "Company 88"));
+
+            List<GlPettyCashPaymentDtlResponseDto> result =
+                    (List<GlPettyCashPaymentDtlResponseDto>) ReflectionTestUtils.invokeMethod(
+                            service, "mapPaymentResponse", List.of(dtl));
+
+            assertEquals("GL-101", result.get(0).getGlPoidDtl().code());
+            assertEquals("CH-201", result.get(0).getChargePoidDtl().code());
+            assertEquals("TAX-55", result.get(0).getTaxPoidDtl().code());
+            assertEquals("SUP-66", result.get(0).getVatSupplierDtl().code());
+            assertEquals("COMP-88", result.get(0).getCompanyPoidDtl().code());
+        }
+
+        @Test
+        @DisplayName("mapChargeResponse populates charge, tax and FF job lookups")
+        void mapChargeResponse_populatesAllLookups() {
+            GlPettyCashChargeDtl dtl = GlPettyCashChargeDtl.builder()
+                    .transactionPoid(222L)
+                    .detRowId(1L)
+                    .chargePoid(201L)
+                    .chargeAmount(new BigDecimal("10"))
+                    .description("Charge")
+                    .refDocPoid(301L)
+                    .chargeFrom("FF")
+                    .taxPoid(55L)
+                    .build();
+
+            com.asg.finance.entity.master.ShipChargeEntity charge =
+                    com.asg.finance.entity.master.ShipChargeEntity.builder()
+                            .chargePoid(201L)
+                            .chargeCode("CH-201")
+                            .chargeName("Charge")
+                            .groupPoid(10L)
+                            .chargeName2("C1")
+                            .seqNo(2)
+                            .build();
+            com.asg.finance.entity.TaxMaster tax = mock(com.asg.finance.entity.TaxMaster.class);
+            when(tax.getTaxPoid()).thenReturn(55L);
+            when(tax.getTaxCode()).thenReturn("TAX-55");
+            when(tax.getTaxName()).thenReturn("VAT");
+            when(tax.getGroupPoid()).thenReturn(10L);
+            when(tax.getTaxName2()).thenReturn("VAT-2");
+            when(tax.getSeqNo()).thenReturn(3);
+
+            when(shipChargeRepository.findByChargePoid(201L)).thenReturn(java.util.Optional.of(charge));
+            when(taxMasterRepository.findByTaxPoid(55L)).thenReturn(java.util.Optional.of(tax));
+            when(lovService.getDetailsByPoidAndLovName(301L, "FF_JOBNO"))
+                    .thenReturn(lov(301L, "FF-301", "FF Job 301"));
+
+            List<GlPettyCashChargeDtlResponseDto> result =
+                    (List<GlPettyCashChargeDtlResponseDto>) ReflectionTestUtils.invokeMethod(
+                            service, "mapChargeResponse", List.of(dtl));
+
+            assertEquals("CH-201", result.get(0).getChargePoidDtl().code());
+            assertEquals("TAX-55", result.get(0).getTaxPoidDtl().code());
+            assertEquals("FF-301", result.get(0).getRefDocPoidDtl().code());
+        }
+
+        @Test
+        @DisplayName("mapItemResponse populates stock, stock unit and tax lookups")
+        void mapItemResponse_populatesAllLookups() {
+            GLPettyCashItemDtl dtl = GLPettyCashItemDtl.builder()
+                    .transactionPoid(333L)
+                    .detRowId(1L)
+                    .stockPoid(401L)
+                    .stockUnitPoid(402L)
+                    .poQty(new BigDecimal("1"))
+                    .dnQty(new BigDecimal("2"))
+                    .qtyReceived(new BigDecimal("3"))
+                    .price(new BigDecimal("4"))
+                    .discount(new BigDecimal("5"))
+                    .total(new BigDecimal("6"))
+                    .refDocPoid(7L)
+                    .checkAll("Y")
+                    .refDetRowId(8L)
+                    .taxPoid(55L)
+                    .build();
+
+            com.asg.finance.entity.StockMasterEntity stock =
+                    mock(com.asg.finance.entity.StockMasterEntity.class);
+            when(stock.getStockPoid()).thenReturn(401L);
+            when(stock.getStockCode()).thenReturn("STK-401");
+            when(stock.getStockName()).thenReturn("Stock");
+            when(stock.getGroupPoid()).thenReturn(10L);
+            when(stock.getStockDescription()).thenReturn("Stock Desc");
+            when(stock.getSeqNo()).thenReturn(1);
+
+            com.asg.finance.entity.master.UnitMaster unit =
+                    mock(com.asg.finance.entity.master.UnitMaster.class);
+            when(unit.getUnitPoid()).thenReturn(402L);
+            when(unit.getUnitCode()).thenReturn("UNT-402");
+            when(unit.getUnitName()).thenReturn("Unit");
+            when(unit.getGroupPoid()).thenReturn(10L);
+            when(unit.getUnitName2()).thenReturn("Unit 2");
+            when(unit.getSeqNo()).thenReturn(2);
+
+            com.asg.finance.entity.TaxMaster tax = mock(com.asg.finance.entity.TaxMaster.class);
+            when(tax.getTaxPoid()).thenReturn(55L);
+            when(tax.getTaxCode()).thenReturn("TAX-55");
+            when(tax.getTaxName()).thenReturn("VAT");
+            when(tax.getGroupPoid()).thenReturn(10L);
+            when(tax.getTaxName2()).thenReturn("VAT-2");
+            when(tax.getSeqNo()).thenReturn(3);
+
+            when(stockMasterRepository.findByStockPoid(401L)).thenReturn(java.util.Optional.of(stock));
+            when(unitMasterRepository.findByUnitPoid(402L)).thenReturn(java.util.Optional.of(unit));
+            when(taxMasterRepository.findByTaxPoid(55L)).thenReturn(java.util.Optional.of(tax));
+
+            List<GLPettyCashItemDtlResponseDto> result =
+                    (List<GLPettyCashItemDtlResponseDto>) ReflectionTestUtils.invokeMethod(
+                            service, "mapItemResponse", List.of(dtl));
+
+            assertEquals("STK-401", result.get(0).getStockPoidDtl().code());
+            assertEquals("UNT-402", result.get(0).getStockUnitPoidDtl().code());
+            assertEquals("TAX-55", result.get(0).getTaxPoidDtl().code());
+        }
+
+        @Test
+        @DisplayName("validateTaxAndVatRules rejects VAT rows missing supplier details")
+        void validateTaxAndVatRules_rejectsMissingVatSupplier() {
+            when(globalParameterService.getParameterValue(
+                    eq("PETTY_CASH_VAT_AMOUNT_LIMIT"), anyString(), anyString(), anyString()))
+                    .thenReturn("100");
+            when(globalParameterService.getParameterValue(
+                    eq("INPUT_TAX_VARIANCE_LIMIT"), anyString(), anyString(), anyString()))
+                    .thenReturn("0");
+
+            PettyCashCreateRequestDto request = PettyCashCreateRequestDto.builder()
+                    .refType("GENERAL")
+                    .glPettyCashPaymentDtlRequestDtos(List.of(
+                            GlPettyCashPaymentDtlRequestDto.builder()
+                                    .actionType("isCreated")
+                                    .drAmt(new BigDecimal("10"))
+                                    .vatAmount(new BigDecimal("1"))
+                                    .build()
+                    ))
+                    .build();
+
+            ValidationException ex = assertThrows(ValidationException.class,
+                    () -> ReflectionTestUtils.invokeMethod(
+                            service, "validateTaxAndVatRules", request, "123"));
+
+            assertTrue(ex.getMessage().contains("VAT supplier not found"));
         }
     }
+
 }

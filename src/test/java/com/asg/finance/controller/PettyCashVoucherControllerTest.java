@@ -1,5 +1,7 @@
 package com.asg.finance.controller;
 
+import com.asg.common.lib.service.LoggingService;
+import com.asg.finance.dto.PettyRefTypeResponse;
 import com.asg.finance.dto.PettyCashFromGenrlPoDto;
 import com.asg.finance.dto.PettyCashFromGrnDto;
 import com.asg.finance.service.PettyCashVoucherService;
@@ -31,6 +33,9 @@ class PettyCashVoucherControllerTest {
     @Mock
     private PettyCashVoucherService pettyCashVoucherService;
 
+    @Mock
+    private LoggingService loggingService;
+
     @InjectMocks
     private PettyCashVoucherController controller;
 
@@ -55,8 +60,9 @@ class PettyCashVoucherControllerTest {
                     PettyCashFromGrnDto.builder().transactionPoid(1L).grandTotal(new BigDecimal("300")).build()
             );
             when(pettyCashVoucherService.loadPettyCashFromGrn(
-                    eq(1L), eq(2L), eq(3L), eq("2024-01-01"), eq("123"), any()))
-                    .thenReturn(data);
+                    eq(1L), eq(2L), eq(3L), eq("2024-01-01"), eq("123")))
+                    .thenReturn(PettyRefTypeResponse.<PettyCashFromGrnDto>builder()
+                            .responseList(data).build());
 
             mockMvc.perform(get("/v1/petty-cash-voucher/load-from-grn")
                             .param("groupPoid", "1")
@@ -71,8 +77,9 @@ class PettyCashVoucherControllerTest {
         @DisplayName("returns 200 with empty list when no GRN rows found")
         void noRows_returns200WithEmptyList() throws Exception {
             when(pettyCashVoucherService.loadPettyCashFromGrn(
-                    any(), any(), any(), any(), any(), any()))
-                    .thenReturn(Collections.emptyList());
+                    any(), any(), any(), any(), any()))
+                    .thenReturn(PettyRefTypeResponse.<PettyCashFromGrnDto>builder()
+                            .responseList(Collections.emptyList()).build());
 
             mockMvc.perform(get("/v1/petty-cash-voucher/load-from-grn")
                             .param("groupPoid", "1")
@@ -98,8 +105,9 @@ class PettyCashVoucherControllerTest {
                     PettyCashFromGenrlPoDto.builder().stockPoid(10L).total(new BigDecimal("500")).build()
             );
             when(pettyCashVoucherService.loadPettyCashFromCompletedPo(
-                    eq(1L), eq(2L), eq(3L), eq("PO-456"), any()))
-                    .thenReturn(data);
+                    eq(1L), eq(2L), eq(3L), eq("PO-456")))
+                    .thenReturn(PettyRefTypeResponse.<PettyCashFromGenrlPoDto>builder()
+                            .responseList(data).build());
 
             mockMvc.perform(get("/v1/petty-cash-voucher/load-from-completed-po")
                             .param("groupPoid", "1")
@@ -113,8 +121,9 @@ class PettyCashVoucherControllerTest {
         @DisplayName("returns 200 with empty list when no PO rows found")
         void noRows_returns200WithEmptyList() throws Exception {
             when(pettyCashVoucherService.loadPettyCashFromCompletedPo(
-                    any(), any(), any(), any(), any()))
-                    .thenReturn(Collections.emptyList());
+                    any(), any(), any(), any()))
+                    .thenReturn(PettyRefTypeResponse.<PettyCashFromGenrlPoDto>builder()
+                            .responseList(Collections.emptyList()).build());
 
             mockMvc.perform(get("/v1/petty-cash-voucher/load-from-completed-po")
                             .param("groupPoid", "1")

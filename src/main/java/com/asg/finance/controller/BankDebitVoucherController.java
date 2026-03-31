@@ -323,7 +323,7 @@ public class BankDebitVoucherController {
             @PathVariable @NotNull @Min(1) Long transactionPoid,
             @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto) {
         bankDebitVoucherService.softDeleteBankDebitVoucher(transactionPoid, deleteReasonDto);
-        return success("Bank Debit Voucher soft deleted successfully", transactionPoid);
+        return success("Bank Debit Voucher  deleted successfully", transactionPoid);
     }
 
     @Operation(summary = "Get MTA RFQ Item Details", description = "Loads item detail rows for a given MTA RFQ reference (PROC_BANK_DEB_CREATE_FROM_MTA)")

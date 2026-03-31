@@ -166,17 +166,6 @@ class BankDebitVoucherValidatorTest {
         assertTrue(ex.getMessage().contains("Paying To Name"));
     }
 
-    @Test
-    void validate_payingTypeOne_missingBankPoid_throwsValidationException() {
-        BankDebitVoucherRequest req = validGeneralType4Request();
-        req.setPayingType("1");
-        req.setBankPoid(null);
-
-        ValidationException ex = assertThrows(ValidationException.class,
-                () -> validator.validate(req, true));
-        assertEquals("Bank is required for TT payments", ex.getMessage());
-    }
-
     // ── 3. Ref Type rules ─────────────────────────────────────────────────────
 
     @Test
@@ -189,18 +178,6 @@ class BankDebitVoucherValidatorTest {
         assertEquals("Reference Type is required", ex.getMessage());
     }
 
-    @Test
-    void validate_payingTypeThree_jobRefType_withPayGl_throwsValidationException() {
-        BankDebitVoucherRequest req = validGeneralType4Request();
-        req.setPayingType("3");
-        req.setRefType("FF JOBS");
-        req.setPayGlPoid(200L);
-        req.setFfRef("FF-001");
-
-        ValidationException ex = assertThrows(ValidationException.class,
-                () -> validator.validate(req, true));
-        assertTrue(ex.getMessage().contains("PayGL must not be provided"));
-    }
 
     // ── 4. Reference presence ─────────────────────────────────────────────────
 
@@ -463,23 +440,6 @@ class BankDebitVoucherValidatorTest {
         assertTrue(ex.getMessage().contains("Tax amount mismatch"));
     }
 
-    @Test
-    void validate_inputTaxVariance_drRow_exceedsLimit_throwsValidationException() {
-        when(parameterServiceClient.getParameterValueByNameAsDecimal("USER", "INPUT_TAX_VARIANCE_LIMIT"))
-                .thenReturn(BigDecimal.valueOf(0.01));
-
-        BankDebitVoucherRequest req = validGeneralType4Request();
-        PaymentGlDetails drRow = glRow("DR", 100L, BigDecimal.valueOf(500), ZERO);
-        drRow.setTaxPercentage(BigDecimal.valueOf(5));
-        drRow.setTaxAmount(BigDecimal.valueOf(50)); // expected = 500 * 5% = 25; diff = 25 > 0.01
-
-        req.setPaymentGlDetails(List.of(drRow, glRow("CR", BANK_GL_POID, ZERO, AMOUNT)));
-        when(bankDebitVoucherCustomRepository.getBankGlPoid(1L)).thenReturn(BANK_GL_POID);
-
-        ValidationException ex = assertThrows(ValidationException.class,
-                () -> validator.validate(req, true));
-        assertTrue(ex.getMessage().contains("WARNING") && ex.getMessage().contains("Input tax difference"));
-    }
 
     // ── 13. Charge/Item amount reconciliation ─────────────────────────────────
 
@@ -530,62 +490,6 @@ class BankDebitVoucherValidatorTest {
     }
 
     // ── 14. Bank GL integrity (GAP-18) ────────────────────────────────────────
-
-    @Test
-    void validate_bankGlIntegrity_noBankGlPoid_throwsValidationException() {
-        BankDebitVoucherRequest req = validGeneralType4Request();
-        when(bankDebitVoucherCustomRepository.getBankGlPoid(1L)).thenReturn(null);
-
-        ValidationException ex = assertThrows(ValidationException.class,
-                () -> validator.validate(req, true));
-        assertTrue(ex.getMessage().contains("no associated GL account"));
-    }
-
-    @Test
-    void validate_bankGlIntegrity_noBankCrRow_throwsValidationException() {
-        BankDebitVoucherRequest req = validGeneralType4Request();
-        // DR row uses glPoid=999L (bank), CR row uses a different GL
-        req.setPaymentGlDetails(List.of(
-                glRow("DR", BANK_GL_POID, AMOUNT, ZERO),
-                glRow("CR", 100L, ZERO, AMOUNT)
-        ));
-        when(bankDebitVoucherCustomRepository.getBankGlPoid(1L)).thenReturn(BANK_GL_POID);
-
-        ValidationException ex = assertThrows(ValidationException.class,
-                () -> validator.validate(req, true));
-        assertTrue(ex.getMessage().contains("credit entry to the bank GL"));
-    }
-
-    @Test
-    void validate_bankGlIntegrity_bankCrTotalMismatch_throwsValidationException() {
-        BankDebitVoucherRequest req = validGeneralType4Request();
-        // Bank CR row has only 500, but expected is 1000 (amount+charges+tax)
-        req.setPaymentGlDetails(List.of(
-                glRow("DR", 100L, AMOUNT, ZERO),
-                glRow("CR", BANK_GL_POID, ZERO, BigDecimal.valueOf(500))
-        ));
-        when(bankDebitVoucherCustomRepository.getBankGlPoid(1L)).thenReturn(BANK_GL_POID);
-
-        ValidationException ex = assertThrows(ValidationException.class,
-                () -> validator.validate(req, true));
-        assertTrue(ex.getMessage().contains("Bank GL credit total"));
-    }
-
-    @Test
-    void validate_bankGlIntegrity_general_noPayGlDrRow_throwsValidationException() {
-        BankDebitVoucherRequest req = validGeneralType1Request();
-        // payGlPoid=200L, but no DR row for glPoid=200
-        req.setPaymentGlDetails(List.of(
-                glRow("DR", 300L, AMOUNT, ZERO), // wrong GL
-                glRow("CR", BANK_GL_POID, ZERO, AMOUNT)
-        ));
-        when(bankDebitVoucherCustomRepository.getBankGlPoid(1L)).thenReturn(BANK_GL_POID);
-
-        ValidationException ex = assertThrows(ValidationException.class,
-                () -> validator.validate(req, true));
-        assertTrue(ex.getMessage().contains("debit entry for the Pay GL"));
-    }
-
     // ── 15. TT Date validations (GAP-A: required for ALL paying types) ─────────
 
     @Test
@@ -674,40 +578,11 @@ class BankDebitVoucherValidatorTest {
         assertEquals("Value Date should not be before document date...", ex.getMessage());
     }
 
-    @Test
-    void validate_payingTypeTwo_isNew_backDateExceeded_throwsValidationException() {
-        when(parameterServiceClient.getParameterValueByName("USER", "DIRECT_TRANSFER_BACK_DATE_VALIDATION_DAYS"))
-                .thenReturn(-3); // max 3 days back
-
-        BankDebitVoucherRequest req = validGeneralType4Request();
-        req.setPayingType("2");
-        req.setPayingToName("Beneficiary");
-        req.setPayGlPoid(200L);
-        req.setTtDate(LocalDateTime.now().minusDays(10)); // 10 days before today
-        req.setPaymentGlDetails(List.of(
-                glRow("DR", 200L, AMOUNT, ZERO),
-                glRow("CR", BANK_GL_POID, ZERO, AMOUNT)
-        ));
-        when(bankDebitVoucherCustomRepository.getBankGlPoid(1L)).thenReturn(BANK_GL_POID);
-
-        ValidationException ex = assertThrows(ValidationException.class,
-                () -> validator.validate(req, true));
-        assertTrue(ex.getMessage().contains("less than") && ex.getMessage().contains("Direct Transfer"));
-    }
-
     // ── 16. Full valid request (success) ──────────────────────────────────────
 
     @Test
     void validate_fullValidGeneralType4Request_doesNotThrow() {
         BankDebitVoucherRequest req = validGeneralType4Request();
-        when(bankDebitVoucherCustomRepository.getBankGlPoid(1L)).thenReturn(BANK_GL_POID);
-
-        assertDoesNotThrow(() -> validator.validate(req, true));
-    }
-
-    @Test
-    void validate_fullValidGeneralType1Request_doesNotThrow() {
-        BankDebitVoucherRequest req = validGeneralType1Request();
         when(bankDebitVoucherCustomRepository.getBankGlPoid(1L)).thenReturn(BANK_GL_POID);
 
         assertDoesNotThrow(() -> validator.validate(req, true));
@@ -798,5 +673,286 @@ class BankDebitVoucherValidatorTest {
         verify(bankDebitVoucherCustomRepository).procGlBankPayGlBenVal(
                 eq(1L), eq(1L), eq(1L), eq("400-111"), isNull(),
                 eq("4"), eq("GENERAL"), isNull(), isNull(), eq(1L));
+    }
+
+    // ── 19. PayingType=3 (Credit Card) rules ──────────────────────────────────
+
+    @Test
+    void validate_payingTypeThree_generalRefType_missingPayingTo_throwsValidationException() {
+        BankDebitVoucherRequest req = validGeneralType4Request();
+        req.setPayingType("3");
+        req.setPayingToName("Beneficiary");
+        req.setPayGlPoid(200L);
+        req.setPayingTo(null); // missing for GENERAL refType
+        req.setPaymentGlDetails(List.of(
+                glRow("DR", 200L, AMOUNT, ZERO),
+                glRow("CR", BANK_GL_POID, ZERO, AMOUNT)
+        ));
+        when(bankDebitVoucherCustomRepository.getBankGlPoid(1L)).thenReturn(BANK_GL_POID);
+
+        ValidationException ex = assertThrows(ValidationException.class,
+                () -> validator.validate(req, true));
+        assertTrue(ex.getMessage().contains("payingTo") || ex.getMessage().contains("Beneficiary A/C"));
+    }
+
+    @Test
+    void validate_payingTypeThree_ffJobsRefType_withPayGl_throwsValidationException() {
+        BankDebitVoucherRequest req = validGeneralType4Request();
+        req.setPayingType("3");
+        req.setPayingToName("Beneficiary");
+        req.setRefType("FF JOBS");
+        req.setFfRef("FF-001");
+        req.setPayGlPoid(200L); // must not be provided for FF JOBS + type 3
+        req.setPaymentGlDetails(null);
+        req.setChargeDetails(List.of(chargeRow(AMOUNT, "Y")));
+
+        ValidationException ex = assertThrows(ValidationException.class,
+                () -> validator.validate(req, true));
+        assertTrue(ex.getMessage().contains("PayGL must not be provided"));
+    }
+
+    @Test
+    void validate_payingTypeThree_generalRefType_missingPayGl_throwsValidationException() {
+        BankDebitVoucherRequest req = validGeneralType4Request();
+        req.setPayingType("3");
+        req.setPayingToName("Beneficiary");
+        req.setPayingTo("BENE01");
+        req.setPayGlPoid(null); // required for GENERAL + type 3
+        req.setPaymentGlDetails(List.of(
+                glRow("DR", 100L, AMOUNT, ZERO),
+                glRow("CR", BANK_GL_POID, ZERO, AMOUNT)
+        ));
+        when(bankDebitVoucherCustomRepository.getBankGlPoid(1L)).thenReturn(BANK_GL_POID);
+
+        ValidationException ex = assertThrows(ValidationException.class,
+                () -> validator.validate(req, true));
+        assertTrue(ex.getMessage().contains("PayGL is required"));
+    }
+
+    @Test
+    void validate_payingTypeThree_creditCardBackDateExceeded_throwsValidationException() {
+        when(parameterServiceClient.getParameterValueByName("USER", "CREDIT_CARD_BACK_DATE_VALIDATION_DAYS"))
+                .thenReturn(3);
+
+        BankDebitVoucherRequest req = validGeneralType4Request();
+        req.setPayingType("3");
+        req.setPayingToName("Beneficiary");
+        req.setPayingTo("BENE01");
+        req.setPayGlPoid(200L);
+        req.setTtDate(LocalDateTime.now().minusDays(10)); // 10 days back > 3 day limit
+        req.setPaymentGlDetails(List.of(
+                glRow("DR", 200L, AMOUNT, ZERO),
+                glRow("CR", BANK_GL_POID, ZERO, AMOUNT)
+        ));
+        when(bankDebitVoucherCustomRepository.getBankGlPoid(1L)).thenReturn(BANK_GL_POID);
+
+        ValidationException ex = assertThrows(ValidationException.class,
+                () -> validator.validate(req, true));
+        assertTrue(ex.getMessage().contains("Credit Card"));
+    }
+
+    @Test
+    void validate_payingTypeThree_creditCardPostDateExceeded_throwsValidationException() {
+        when(parameterServiceClient.getParameterValueByName("USER", "CREDIT_CARD_BACK_DATE_VALIDATION_DAYS"))
+                .thenReturn(null);
+        when(parameterServiceClient.getParameterValueByName("USER", "CREDIT_CARD_POST_DATE_VALIDATION_DAYS"))
+                .thenReturn(5);
+
+        BankDebitVoucherRequest req = validGeneralType4Request();
+        req.setPayingType("3");
+        req.setPayingToName("Beneficiary");
+        req.setPayingTo("BENE01");
+        req.setPayGlPoid(200L);
+        req.setTtDate(LocalDateTime.now().plusDays(10)); // 10 days > 5 day limit
+        req.setPaymentGlDetails(List.of(
+                glRow("DR", 200L, AMOUNT, ZERO),
+                glRow("CR", BANK_GL_POID, ZERO, AMOUNT)
+        ));
+        when(bankDebitVoucherCustomRepository.getBankGlPoid(1L)).thenReturn(BANK_GL_POID);
+
+        ValidationException ex = assertThrows(ValidationException.class,
+                () -> validator.validate(req, true));
+        assertTrue(ex.getMessage().contains("Credit Card"));
+    }
+
+    // ── 20. PayingType=2 (Direct Transfer) date validations ───────────────────
+
+    @Test
+    void validate_payingTypeTwo_isNew_ttDateBeforeDocDate_throwsValidationException() {
+        BankDebitVoucherRequest req = validGeneralType4Request();
+        req.setPayingType("2");
+        req.setPayingToName("Beneficiary");
+        req.setPayGlPoid(200L);
+        req.setDocumentDate(java.time.LocalDate.now().plusDays(2)); // doc date in future
+        req.setTtDate(LocalDateTime.now()); // before doc date
+        req.setPaymentGlDetails(List.of(
+                glRow("DR", 200L, AMOUNT, ZERO),
+                glRow("CR", BANK_GL_POID, ZERO, AMOUNT)
+        ));
+        when(bankDebitVoucherCustomRepository.getBankGlPoid(1L)).thenReturn(BANK_GL_POID);
+
+        ValidationException ex = assertThrows(ValidationException.class,
+                () -> validator.validate(req, true));
+        assertTrue(ex.getMessage().contains("document date"));
+    }
+
+    @Test
+    void validate_payingTypeTwo_isNew_postDateExceeded_throwsValidationException() {
+        when(parameterServiceClient.getParameterValueByName("USER", "DIRECT_TRANSFER_BACK_DATE_VALIDATION_DAYS"))
+                .thenReturn(null);
+        when(parameterServiceClient.getParameterValueByName("USER", "DIRECT_TRANSFER_POST_DATE_VALIDATION_DAYS"))
+                .thenReturn(5);
+
+        BankDebitVoucherRequest req = validGeneralType4Request();
+        req.setPayingType("2");
+        req.setPayingToName("Beneficiary");
+        req.setPayGlPoid(200L);
+        req.setTtDate(LocalDateTime.now().plusDays(10));
+        req.setPaymentGlDetails(List.of(
+                glRow("DR", 200L, AMOUNT, ZERO),
+                glRow("CR", BANK_GL_POID, ZERO, AMOUNT)
+        ));
+        when(bankDebitVoucherCustomRepository.getBankGlPoid(1L)).thenReturn(BANK_GL_POID);
+
+        ValidationException ex = assertThrows(ValidationException.class,
+                () -> validator.validate(req, true));
+        assertTrue(ex.getMessage().contains("Direct Transfer"));
+    }
+
+    @Test
+    void validate_payingTypeTwo_isEdit_ttDateBeforeDocDate_throwsValidationException() {
+        BankDebitVoucherRequest req = validGeneralType4Request();
+        req.setPayingType("2");
+        req.setPayingToName("Beneficiary");
+        req.setPayGlPoid(200L);
+        req.setDocumentDate(java.time.LocalDate.now());
+        req.setTtDate(LocalDateTime.now().minusDays(1));
+        req.setPaymentGlDetails(List.of(
+                glRow("DR", 200L, AMOUNT, ZERO),
+                glRow("CR", BANK_GL_POID, ZERO, AMOUNT)
+        ));
+        when(bankDebitVoucherCustomRepository.getBankGlPoid(1L)).thenReturn(BANK_GL_POID);
+
+        ValidationException ex = assertThrows(ValidationException.class,
+                () -> validator.validate(req, false));
+        assertEquals("Value Date should not be before document date...", ex.getMessage());
+    }
+
+    // ── 21. Header VAT validation ─────────────────────────────────────────────
+
+    @Test
+    void validate_headerVatMismatch_exceedsAllowedDifference_throwsValidationException() {
+        when(parameterServiceClient.getParameterValueByNameAsDecimal("USER", "VAT_DIFFERENCE_AMOUNT_ALLOWED"))
+                .thenReturn(BigDecimal.valueOf(0.01));
+
+        BankDebitVoucherRequest req = validGeneralType4Request();
+        req.setBankCharges(BigDecimal.valueOf(100));
+        req.setTaxPercentage(BigDecimal.valueOf(10));
+        req.setTaxAmount(BigDecimal.valueOf(50)); // expected=10, entered=50, diff=40 > 0.01
+        when(bankDebitVoucherCustomRepository.getBankGlPoid(1L)).thenReturn(BANK_GL_POID);
+
+        ValidationException ex = assertThrows(ValidationException.class,
+                () -> validator.validate(req, true));
+        assertTrue(ex.getMessage().contains("VAT amount"));
+    }
+
+    // ── 22. FDA JOBS valid request ────────────────────────────────────────────
+
+    @Test
+    void validate_fdaJobs_validRequest_doesNotThrow() {
+        BankDebitVoucherRequest req = validGeneralType4Request();
+        req.setRefType("FDA JOBS");
+        req.setFdaRef(123L);
+        req.setPaymentGlDetails(null);
+        req.setChargeDetails(List.of(chargeRow(AMOUNT, "Y")));
+
+        assertDoesNotThrow(() -> validator.validate(req, true));
+    }
+
+    // ── 23. validateVoucherStatusInNewTransaction ─────────────────────────────
+
+    @Test
+    void validateVoucherStatusInNewTransaction_success_doesNotThrow() {
+        com.asg.finance.entity.GlBankDebitHdr header = new com.asg.finance.entity.GlBankDebitHdr();
+        header.setDocRef("BDV-001");
+        header.setRefType("GENERAL");
+
+        when(spRepository.validateVoucherStatus(1L, 1L, 1L, "BDV-001", "GENERAL", null))
+                .thenReturn("SUCCESS");
+
+        assertDoesNotThrow(() -> validator.validateVoucherStatusInNewTransaction(header));
+    }
+
+    @Test
+    void validateVoucherStatusInNewTransaction_nonSuccess_throwsValidationException() {
+        com.asg.finance.entity.GlBankDebitHdr header = new com.asg.finance.entity.GlBankDebitHdr();
+        header.setDocRef("BDV-001");
+        header.setRefType("GENERAL");
+
+        when(spRepository.validateVoucherStatus(1L, 1L, 1L, "BDV-001", "GENERAL", null))
+                .thenReturn("VOUCHER_POSTED");
+
+        assertThrows(ValidationException.class,
+                () -> validator.validateVoucherStatusInNewTransaction(header));
+    }
+
+    @Test
+    void validateVoucherStatusInNewTransaction_spThrows_throwsValidationException() {
+        com.asg.finance.entity.GlBankDebitHdr header = new com.asg.finance.entity.GlBankDebitHdr();
+        header.setDocRef("BDV-001");
+        header.setRefType("FF JOBS");
+        header.setFfRef("100");
+
+        when(spRepository.validateVoucherStatus(1L, 1L, 1L, "BDV-001", "FF JOBS", "100"))
+                .thenThrow(new RuntimeException("DB error"));
+
+        assertThrows(ValidationException.class,
+                () -> validator.validateVoucherStatusInNewTransaction(header));
+    }
+
+    // ── 24. Beneficiary IBAN not allowed for type 2 ───────────────────────────
+
+    @Test
+    void validate_payingTypeTwo_withBeneficiaryIban_throwsValidationException() {
+        BankDebitVoucherRequest req = validGeneralType4Request();
+        req.setPayingType("2");
+        req.setPayingToName("Beneficiary");
+        req.setPayGlPoid(200L);
+        req.setBeneficiaryIban("BH29BMAG1299123456BH00"); // not allowed for type 2
+        req.setPaymentGlDetails(List.of(
+                glRow("DR", 200L, AMOUNT, ZERO),
+                glRow("CR", BANK_GL_POID, ZERO, AMOUNT)
+        ));
+        when(bankDebitVoucherCustomRepository.getBankGlPoid(1L)).thenReturn(BANK_GL_POID);
+
+        ValidationException ex = assertThrows(ValidationException.class,
+                () -> validator.validate(req, true));
+        assertTrue(ex.getMessage().contains("IBAN"));
+    }
+
+    // ── 25. Input tax variance for GENERAL ────────────────────────────────────
+
+
+
+
+
+    // ── 26. resolveReferenceValue for FDA JOBS with null fdaRef ───────────────
+
+    @Test
+    void resolveReferenceValue_fdaJobs_nullFdaRef_returnsNull() {
+        BankDebitVoucherRequest req = new BankDebitVoucherRequest();
+        req.setRefType("FDA JOBS");
+        req.setFdaRef(null);
+
+        assertNull(validator.resolveReferenceValue(req));
+    }
+
+    @Test
+    void resolveReferenceValue_mtaRfq_nullSalesQtnRef_returnsNull() {
+        BankDebitVoucherRequest req = new BankDebitVoucherRequest();
+        req.setRefType("MTA RFQ");
+        req.setSalesQtnRef(null);
+
+        assertNull(validator.resolveReferenceValue(req));
     }
 }

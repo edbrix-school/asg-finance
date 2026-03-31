@@ -1150,7 +1150,8 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                     header.getTransactionPoid(),
                     header.getGroupPoid(),
                     header.getCompanyPoid(),
-                    getCurrentUser()
+                    getCurrentUser(),
+                    "N"
             );
         } catch (Exception e) {
             log.warn("Before save validation failed: {}", e.getMessage());

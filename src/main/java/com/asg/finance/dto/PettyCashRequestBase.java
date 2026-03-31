@@ -43,6 +43,7 @@ public interface PettyCashRequestBase {
     List<GlPettyCashPaymentDtlRequestDto> getGlPettyCashPaymentDtlRequestDtos();
     List<GlPettyCashItemDtlRequestDto> getGlPettyCashItemDtlRequestDtos();
     List<GlPettyCashChargeDtlRequestDto> getGlPettyCashChargeDtlRequestDtos();
+    List<GlPettyCashPaymentGrnDtlRequestDto> getGlPettyCashGrnDtlRequestDtos();
     String getDocId();
     Long getBookPoid();
 }

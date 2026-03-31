@@ -9,6 +9,8 @@ import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.BankDebitVoucherRequest;
 import com.asg.finance.dto.BankDebitVoucherResponse;
 import com.asg.finance.dto.PayGLValidationRequest;
+import com.asg.finance.dto.ItemDetailDto;
+import com.asg.finance.dto.PaymentGlDetails;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.finance.service.BankDebitVoucherService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -32,6 +34,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.sql.Date;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 
 import static com.asg.common.lib.dto.response.ApiResponse.*;
@@ -320,7 +323,36 @@ public class BankDebitVoucherController {
             @PathVariable @NotNull @Min(1) Long transactionPoid,
             @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto) {
         bankDebitVoucherService.softDeleteBankDebitVoucher(transactionPoid, deleteReasonDto);
-        return success("Bank Debit Voucher soft deleted successfully", transactionPoid);
+        return success("Bank Debit Voucher  deleted successfully", transactionPoid);
+    }
+
+    @Operation(summary = "Get MTA RFQ Item Details", description = "Loads item detail rows for a given MTA RFQ reference (PROC_BANK_DEB_CREATE_FROM_MTA)")
+    @AllowedAction(UserRolesRightsEnum.VIEW)
+    @GetMapping("/mta-items")
+    public ResponseEntity<?> getMTAItems(
+            @Parameter(description = "Sales Quotation Reference POID", required = true)
+            @RequestParam @NotNull @Min(1) Long salesQtnRefPoid) {
+        List<ItemDetailDto> response = bankDebitVoucherService.loadMTAItems(salesQtnRefPoid);
+        return success("MTA item details retrieved successfully", response);
+    }
+
+    @Operation(summary = "Get MTA Reference Display Value", description = "Calls PROC_GL_PETTY_SET_MTAREF to derive the MtaRef display field after SalesQtnRef LOV selection")
+    @AllowedAction(UserRolesRightsEnum.VIEW)
+    @GetMapping("/mta-ref")
+    public ResponseEntity<?> getMtaRef(
+            @Parameter(description = "Sales Quotation Reference POID", required = true)
+            @RequestParam @NotNull @Min(1) Long salesQtnRefPoid) {
+        String mtaRef = bankDebitVoucherService.getMtaRef(salesQtnRefPoid);
+        return success("MTA reference retrieved successfully", mtaRef);
+    }
+
+    @Operation(summary = "Generate Default GL Rows", description = "Returns suggested Payment GL Detail rows based on header fields (mirrors legacy ArrayTableStartDefaultRows)")
+    @AllowedAction(UserRolesRightsEnum.CREATE)
+    @PostMapping("/default-gl-rows")
+    public ResponseEntity<?> generateDefaultGlRows(
+            @Valid @RequestBody BankDebitVoucherRequest request) {
+        List<PaymentGlDetails> rows = bankDebitVoucherService.generateDefaultGlRows(request);
+        return success("Default GL rows generated successfully", rows);
     }
 
     @Operation(summary = "Get FF Charges")

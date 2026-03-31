@@ -127,8 +127,4 @@ public class GlPettyCashPaymentHdr extends BaseEntity {
     private Long companyDivPoid;
 
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "PETTY_CASH_GL_POID", referencedColumnName = "GL_POID", insertable = false, updatable = false)
-    private GLMaster glMaster;
-
 }

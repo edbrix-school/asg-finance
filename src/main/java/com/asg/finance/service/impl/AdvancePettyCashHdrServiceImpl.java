@@ -238,6 +238,7 @@ public class AdvancePettyCashHdrServiceImpl implements AdvancePettyCashHdrServic
                 .detRowId(detail.getDetRowId())
                 .transactionPoid(detail.getTransactionPoid())
                 .documentDate(detail.getPettyCashTrnDate())
+                .pettyCashPoid(detail.getPettyCashPoid())
                 .pettyCashReference(detail.getPettyCashRef())
                 .drilldownLinkInfo(detail.getDrilldownLinkInfo())
                 .amount(detail.getAmount())
@@ -246,8 +247,8 @@ public class AdvancePettyCashHdrServiceImpl implements AdvancePettyCashHdrServic
     }
 
     private void validateTransactionDate(LocalDate transactionDate) {
-        if (transactionDate != null && transactionDate.isAfter(LocalDate.now())) {
-            throw new ValidationException("Transaction date cannot be in future");
+        if (transactionDate == null) {
+            throw new ValidationException("Transaction date cannot be Null");
         }
     }
 

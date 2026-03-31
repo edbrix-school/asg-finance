@@ -2,37 +2,36 @@ package com.asg.finance.repository;
 
 import com.asg.finance.dto.PettyCashFromFdaDto;
 import com.asg.finance.dto.PettyCashFromFfDto;
+import com.asg.finance.dto.PettyCashFromGenrlPoDto;
+import com.asg.finance.dto.PettyCashFromGrnDto;
 import com.asg.finance.dto.PettyCashFromPoDto;
 import com.asg.finance.dto.PettyGlBalanceDto;
-
-import java.util.List;
+import com.asg.finance.dto.PettyRefTypeResponse;
 
 public interface PettyCashLoadByRefTypeRepository {
-    List<PettyCashFromPoDto> loadPettyCashFromPo(
+
+    PettyRefTypeResponse<PettyCashFromPoDto> loadPettyCashFromPo(
             Long loginGroupPoid,
             Long loginCompanyPoid,
             Long loginUserPoid,
-            String rfqPoid,
-            StringBuilder result
+            String rfqPoid
     );
 
-    List<PettyCashFromFfDto> loadPettyCashFromFf(
+    PettyRefTypeResponse<PettyCashFromFfDto> loadPettyCashFromFf(
             Long loginGroupPoid,
             Long loginCompanyPoid,
             Long loginUserPoid,
-            String ffPoid,
-            StringBuilder result
+            String ffPoid
     );
 
-    List<PettyCashFromFdaDto> loadPettyCashFromFda(
+    PettyRefTypeResponse<PettyCashFromFdaDto> loadPettyCashFromFda(
             Long loginGroupPoid,
             Long loginCompanyPoid,
             Long loginUserPoid,
-            String fdaPoid,
-            StringBuilder result
+            String fdaPoid
     );
 
-    List<PettyGlBalanceDto> getPettyGlBalance(
+    PettyRefTypeResponse<PettyGlBalanceDto> getPettyGlBalance(
             Long loginGroupPoid,
             Long loginCompanyPoid,
             Long loginUserPoid,
@@ -40,6 +39,21 @@ public interface PettyCashLoadByRefTypeRepository {
             Long docKeyPoid,
             String lovName,
             Long lovValue
+    );
+
+    PettyRefTypeResponse<PettyCashFromGrnDto> loadPettyCashFromGrn(
+            Long loginGroupPoid,
+            Long loginCompanyPoid,
+            Long loginUserPoid,
+            String transactionDate,
+            String grnSupplierPoid
+    );
+
+    PettyRefTypeResponse<PettyCashFromGenrlPoDto> loadPettyCashFromCompletedPo(
+            Long loginGroupPoid,
+            Long loginCompanyPoid,
+            Long loginUserPoid,
+            String poPoid
     );
 
 }

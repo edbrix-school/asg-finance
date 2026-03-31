@@ -2,6 +2,8 @@ package com.asg.finance.validator;
 
 import com.asg.common.lib.client.ParameterServiceClient;
 import com.asg.finance.dto.BankDebitVoucherRequest;
+import com.asg.finance.dto.ChargeDetailDto;
+import com.asg.finance.dto.ItemDetailDto;
 import com.asg.finance.dto.PaymentGlDetails;
 import com.asg.finance.entity.GlBankDebitHdr;
 import com.asg.finance.repository.BankDebitVoucherCustomRepository;
@@ -69,6 +71,12 @@ public class BankDebitVoucherValidator {
         validateVatRules(req);
         validateInputTaxVariance(req);
 
+        // Charge vs header amount reconciliation for FF/FDA/MTA (GAP-17)
+        validateChargeAmountReconciliation(req);
+
+        // Bank GL credit row integrity for GENERAL/CUSTOM (GAP-18)
+       // validateBankGlIntegrity(req);
+
         // TT / value-date validations (based on paying type and system params)
         validateTtDate(req, isNew);
     }
@@ -126,6 +134,9 @@ public class BankDebitVoucherValidator {
         }
         if ("FDA JOBS".equalsIgnoreCase(refType) && req.getFdaRef() == null) {
             throw new ValidationException("FDA Reference is required for FDA JOBS");
+        }
+        if ("MTA RFQ".equalsIgnoreCase(refType) && req.getSalesQtnRef() == null) {
+            throw new ValidationException("Sales Quotation Reference is required for MTA RFQ");
         }
     }
 
@@ -291,6 +302,12 @@ public class BankDebitVoucherValidator {
                 throw new ValidationException("Charge Details are required for Ref Type " + refType);
             }
         }
+
+        if ("MTA RFQ".equalsIgnoreCase(refType)) {
+            if (req.getItemDetails() == null || req.getItemDetails().isEmpty()) {
+                throw new ValidationException("Item Details are required for Ref Type MTA RFQ");
+            }
+        }
     }
 
     // -------------------------
@@ -317,11 +334,21 @@ public class BankDebitVoucherValidator {
             totalGlCr = totalGlCr.add(nvl(det.getCrAmt()));
         }
 
+        // For CUSTOM: separately validate that DR entries and CR entries are both present
+        if ("CUSTOM".equalsIgnoreCase(refType)) {
+            if (totalGlDr.compareTo(ZERO) == 0) {
+                throw new ValidationException("No Debit Entries Entered...");
+            }
+            if (totalGlCr.compareTo(ZERO) == 0) {
+                throw new ValidationException("No Credit Entries Entered...");
+            }
+        }
+
         if (totalGlDr.compareTo(totalGlCr) != 0) {
             throw new ValidationException(String.format("Total DR (%.3f) and CR (%.3f) in Payment GL details must be equal", totalGlDr, totalGlCr));
         }
 
-        if (totalGlCr.compareTo(headerAmount) != 0) {
+        if ("GENERAL".equalsIgnoreCase(refType) && totalGlCr.compareTo(headerAmount) != 0) {
             throw new ValidationException(String.format("Header amount (%.3f) does not match total CR (%.3f)", headerAmount, totalGlCr));
         }
     }
@@ -416,10 +443,10 @@ public class BankDebitVoucherValidator {
         String payingType = trim(req.getPayingType());
         if (isBlank(payingType)) return;
 
-        // If ttDate not provided, some types may allow null (frontend sets it); legacy required TT date in DTO
+        // TT Date is mandatory for ALL paying types — mirrors legacy DocumentBeforeSaveBillwiseCostGroups
+        // (unconditional check at the end of that method regardless of paying type)
         if (req.getTtDate() == null) {
-            // If you require ttDate always, consider throwing here; keeping permissive to match your DTO usage
-            return;
+            throw new ValidationException("Value Date is a required field...");
         }
 
         // Compare to system date and/or existing document date
@@ -492,6 +519,106 @@ public class BankDebitVoucherValidator {
     }
 
     // -------------------------
+    // 15. Bank GL integrity — credit row and amount balance (GAP-18)
+    // -------------------------
+    private void validateBankGlIntegrity(BankDebitVoucherRequest req) {
+        String refType = trim(req.getRefType());
+        String payingType = trim(req.getPayingType());
+
+        // Only applies to GENERAL and CUSTOM with payment GL details present
+        if (!"GENERAL".equalsIgnoreCase(refType) && !"CUSTOM".equalsIgnoreCase(refType)) return;
+        if (req.getPaymentGlDetails() == null || req.getPaymentGlDetails().isEmpty()) return;
+        if (req.getBankPoid() == null) return;
+
+        // Resolve bank's associated GL POID — must not be null (GAP-18: bank must have a GL account)
+        Long bankGlPoid = bankDebitVoucherCustomRepository.getBankGlPoid(req.getBankPoid());
+        if (bankGlPoid == null) {
+            throw new ValidationException("The selected bank has no associated GL account. Please configure the bank GL account before proceeding.");
+        }
+
+        // For GENERAL: enforce that at least one CR row maps to the bank GL
+        // For CUSTOM: also requires a bank CR row
+        boolean hasBankCrRow = req.getPaymentGlDetails().stream()
+                .anyMatch(d -> bankGlPoid.equals(d.getGlPoid())
+                        && d.getCrAmt() != null
+                        && d.getCrAmt().compareTo(ZERO) > 0);
+
+        if (!hasBankCrRow) {
+            throw new ValidationException("A credit entry to the bank GL account is required in the Payment GL Details.");
+        }
+
+        // For GENERAL: enforce presence of a payGL debit row when PayingType != 4
+        if ("GENERAL".equalsIgnoreCase(refType) && !"4".equals(payingType) && req.getPayGlPoid() != null) {
+            boolean hasPayGlDrRow = req.getPaymentGlDetails().stream()
+                    .anyMatch(d -> req.getPayGlPoid().equals(d.getGlPoid())
+                            && d.getDrAmt() != null
+                            && d.getDrAmt().compareTo(ZERO) > 0);
+
+            if (!hasPayGlDrRow) {
+                throw new ValidationException("A debit entry for the Pay GL account is required in the Payment GL Details.");
+            }
+        }
+
+        // Validate bank GL credit total == amount + bankCharges + taxAmount (GAP-18)
+        BigDecimal expectedTotal = nvl(req.getAmount())
+                .add(nvl(req.getBankCharges()))
+                .add(nvl(req.getTaxAmount()));
+
+        BigDecimal bankGlCrTotal = req.getPaymentGlDetails().stream()
+                .filter(d -> bankGlPoid.equals(d.getGlPoid())
+                        && d.getCrAmt() != null
+                        && d.getCrAmt().compareTo(ZERO) > 0)
+                .map(d -> nvl(d.getCrAmt()))
+                .reduce(ZERO, BigDecimal::add);
+
+        // Allow a small rounding difference (1 unit in 3rd decimal)
+        BigDecimal diff = bankGlCrTotal.subtract(expectedTotal).abs();
+        if (diff.compareTo(BigDecimal.valueOf(0.001)) > 0) {
+            throw new ValidationException(String.format(
+                    "Bank GL credit total (%.3f) must equal Amount + Bank Charges + Tax (%.3f)",
+                    bankGlCrTotal, expectedTotal));
+        }
+    }
+
+    // -------------------------
+    // 14. Charge/Item vs header amount reconciliation (GAP-17)
+    // -------------------------
+    private void validateChargeAmountReconciliation(BankDebitVoucherRequest req) {
+        String refType = trim(req.getRefType());
+        BigDecimal headerAmount = nvl(req.getAmount());
+
+        if ("FF JOBS".equalsIgnoreCase(refType) || "FDA JOBS".equalsIgnoreCase(refType)) {
+            if (req.getChargeDetails() == null || req.getChargeDetails().isEmpty()) return;
+
+            // Only rows with checkAll != 'N' are counted
+            BigDecimal totalCharges = req.getChargeDetails().stream()
+                    .filter(c -> !"N".equalsIgnoreCase(c.getCheckAll()))
+                    .map(c -> nvl(c.getChargeAmount()).add(nvl(c.getTaxAmount())))
+                    .reduce(ZERO, BigDecimal::add);
+
+            if (totalCharges.compareTo(ZERO) > 0 && totalCharges.compareTo(headerAmount) != 0) {
+                throw new ValidationException(String.format(
+                        "Total charge amount (%.3f) must equal header amount (%.3f) for %s",
+                        totalCharges, headerAmount, refType));
+            }
+        }
+
+        if ("MTA RFQ".equalsIgnoreCase(refType)) {
+            if (req.getItemDetails() == null || req.getItemDetails().isEmpty()) return;
+
+            BigDecimal totalItems = req.getItemDetails().stream()
+                    .map(i -> nvl(i.getTotal()))
+                    .reduce(ZERO, BigDecimal::add);
+
+            if (totalItems.compareTo(ZERO) > 0 && totalItems.compareTo(headerAmount) != 0) {
+                throw new ValidationException(String.format(
+                        "Total item amount (%.3f) must equal header amount (%.3f) for MTA RFQ",
+                        totalItems, headerAmount));
+            }
+        }
+    }
+
+    // -------------------------
     // Helpers & simple util
     // -------------------------
     private boolean isBlank(String s) {
@@ -510,11 +637,11 @@ public class BankDebitVoucherValidator {
         return d == null ? null : new java.sql.Date(d.getTime()).toLocalDate();
     }
 
-    //sales qtn used instead of mtaref, check
     public String resolveReferenceValue(BankDebitVoucherRequest req) {
         String refType = trim(req.getRefType());
         if ("FF JOBS".equalsIgnoreCase(refType)) return req.getFfRef();
         if ("FDA JOBS".equalsIgnoreCase(refType)) return req.getFdaRef() != null ? req.getFdaRef().toString() : null;
+        if ("MTA RFQ".equalsIgnoreCase(refType)) return req.getSalesQtnRef() != null ? req.getSalesQtnRef().toString() : null;
         return null;
     }
 

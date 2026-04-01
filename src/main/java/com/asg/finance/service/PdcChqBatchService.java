@@ -25,7 +25,7 @@ public interface PdcChqBatchService {
 
     PdcBatchCreationProcResponse processBatch(PdcBatchCreationProcRequest request);
 
-    //PdcBatchCreationProcResponse runBankPostingProcedure(PdcBankPostingProcRequest request);
+    PdcBatchCreationProcResponse runBankPostingProcedure(PdcBankPostingProcRequest request);
 
     PdcBatchCreationProcResponse createBatchFromExcel(PdcBatchCreationExcelProcRequest request);
 

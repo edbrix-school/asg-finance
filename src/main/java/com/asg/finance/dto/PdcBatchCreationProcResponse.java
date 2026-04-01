@@ -11,6 +11,6 @@ import java.util.List;
 @Builder
 public class PdcBatchCreationProcResponse {
     private String status;
-    // 🔥 MUST ADD THIS
+
     private List<PdcChqBatchDtlResponseDto> chequeDetails;
 }

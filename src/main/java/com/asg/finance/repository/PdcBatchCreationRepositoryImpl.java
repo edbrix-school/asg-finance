@@ -122,11 +122,11 @@ public class PdcBatchCreationRepositoryImpl implements PdcBatchCreationRepositor
         String status = (String) query.getOutputParameterValue("P_STATUS");
 
 
-        // ✅ RETURN BOTH STATUS + DATA
+        // RETURN BOTH STATUS + DATA
          return new PdcBatchCreationProcResponse(status, null);
     }
 
-    /*@Override
+    @Override
     public PdcBatchCreationProcResponse runBankPosting(PdcBankPostingProcRequest request) {
 
         StoredProcedureQuery query = entityManager
@@ -172,8 +172,8 @@ public class PdcBatchCreationRepositoryImpl implements PdcBatchCreationRepositor
         // RESPONSE
         String status = (String) query.getOutputParameterValue("P_STATUS");
 
-        return new PdcBatchCreationProcResponse(status);
-    }*/
+        return new PdcBatchCreationProcResponse(status, null);
+    }
 
     @Override
     public PdcBatchCreationProcResponse runBatchCreationXL(PdcBatchCreationExcelProcRequest request) {

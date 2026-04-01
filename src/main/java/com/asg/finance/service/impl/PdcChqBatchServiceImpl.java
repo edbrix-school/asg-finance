@@ -401,13 +401,13 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
                     request.getTransactionPoid()
             );
         }
-        // ✅ Step 1: Call procedure
+        // Step 1: Call procedure
         PdcBatchCreationProcResponse procResponse =
                 pdcBatchCreationRepository.runBatchCreation(request);
 
         String status = procResponse.getStatus();
 
-        // 🔥 Step 2: Fetch child rows (same as legacy refresh)
+        //  Step 2: Fetch child rows (same as legacy refresh)
         List<PdcChqBatchDtlResponseDto> dtlList = new ArrayList<>();
 
         if (status != null && status.startsWith("SUCCESS")) {
@@ -419,14 +419,14 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
                     .toList();
         }
 
-        // ✅ Step 3: Return both status + data
+        // Step 3: Return both status + data
         return PdcBatchCreationProcResponse.builder()
                 .status(status)
                 .chequeDetails(dtlList)
                 .build();
     }
 
-  /*  public PdcBatchCreationProcResponse runBankPostingProcedure(PdcBankPostingProcRequest request) {
+   public PdcBatchCreationProcResponse runBankPostingProcedure(PdcBankPostingProcRequest request) {
         boolean exists = hdrRepo.existsByTransactionPoid(request.getTransactionPoid());
         if (!exists) {
             throw new ResourceNotFoundException(
@@ -436,7 +436,7 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
             );
         }
         return pdcBatchCreationRepository.runBankPosting(request);
-    }*/
+    }
 
     public PdcBatchCreationProcResponse createBatchFromExcel(PdcBatchCreationExcelProcRequest request) {
         boolean exists = hdrRepo.existsByTransactionPoid(request.getTransactionPoid());

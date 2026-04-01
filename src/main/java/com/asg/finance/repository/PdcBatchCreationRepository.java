@@ -13,7 +13,7 @@ public interface PdcBatchCreationRepository {
 
     PdcBatchCreationProcResponse runBatchCreation(PdcBatchCreationProcRequest request);
 
-    PdcBatchCreationProcResponse runBankPosting(PdcBankPostingProcRequest request);
+    //PdcBatchCreationProcResponse runBankPosting(PdcBankPostingProcRequest request);
 
     PdcBatchCreationProcResponse runBatchCreationXL(PdcBatchCreationExcelProcRequest request);
 }

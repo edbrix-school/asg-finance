@@ -6,11 +6,14 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.ParameterMode;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.StoredProcedureQuery;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 @Repository
@@ -66,6 +69,7 @@ public class PdcBatchCreationRepositoryImpl implements PdcBatchCreationRepositor
     }
 
     @Override
+    @Transactional
     public PdcBatchCreationProcResponse runBatchCreation(PdcBatchCreationProcRequest request) {
         StoredProcedureQuery query = entityManager
                 .createStoredProcedureQuery("PROC_PDC_CHQ_BATCH_CREATION");
@@ -111,14 +115,18 @@ public class PdcBatchCreationRepositoryImpl implements PdcBatchCreationRepositor
 
         // Execute stored procedure
         query.execute();
+        entityManager.flush();
+        entityManager.clear();
 
         // Retrieve response
         String status = (String) query.getOutputParameterValue("P_STATUS");
 
-        return new PdcBatchCreationProcResponse(status);
+
+        // ✅ RETURN BOTH STATUS + DATA
+         return new PdcBatchCreationProcResponse(status, null);
     }
 
-    @Override
+    /*@Override
     public PdcBatchCreationProcResponse runBankPosting(PdcBankPostingProcRequest request) {
 
         StoredProcedureQuery query = entityManager
@@ -165,7 +173,7 @@ public class PdcBatchCreationRepositoryImpl implements PdcBatchCreationRepositor
         String status = (String) query.getOutputParameterValue("P_STATUS");
 
         return new PdcBatchCreationProcResponse(status);
-    }
+    }*/
 
     @Override
     public PdcBatchCreationProcResponse runBatchCreationXL(PdcBatchCreationExcelProcRequest request) {
@@ -205,6 +213,6 @@ public class PdcBatchCreationRepositoryImpl implements PdcBatchCreationRepositor
 
         String status = (String) query.getOutputParameterValue("P_STATUS");
 
-        return new PdcBatchCreationProcResponse(status);
+        return new PdcBatchCreationProcResponse(status, null);
     }
 }

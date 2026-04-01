@@ -84,6 +84,7 @@ public class PettyCashCreateRequestDto implements PettyCashRequestBase {
     private List<GlPettyCashPaymentDtlRequestDto> glPettyCashPaymentDtlRequestDtos;
     private List<GlPettyCashItemDtlRequestDto> glPettyCashItemDtlRequestDtos;
     private List<GlPettyCashChargeDtlRequestDto> glPettyCashChargeDtlRequestDtos;
+    private List<GlPettyCashPaymentGrnDtlRequestDto> glPettyCashGrnDtlRequestDtos;
     private String docId;
 
     private Long bookPoid;

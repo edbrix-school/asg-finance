@@ -12,7 +12,6 @@ import com.asg.finance.dto.TelexFileGenerateResponseDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.dto.FilterRequestDto;
-import com.asg.finance.entity.GlBankDebitHdr;
 import com.asg.finance.entity.GlBankFileDtl;
 import com.asg.finance.entity.GlBankFileHdr;
 import com.asg.finance.repository.GlBankDebitHdrRepository;
@@ -62,6 +61,15 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
     @Transactional
     public TelexFileGenerateResponseDto createTelexFile(TelexFileGenerateRequestDto request) {
         try {
+            // Validate intermediary bank details for selected records
+            if (request.getDetails() != null && !request.getDetails().isEmpty()) {
+                for (TelexFileDtlDto dto : request.getDetails()) {
+                    if ("Y".equalsIgnoreCase(dto.getSelected()) && dto.getDebitTransactionPoid() != null) {
+                        validateIntermediaryBankDetails(dto.getDebitTransactionPoid(), dto.getDebitDocRef(), dto.getDebitCurrencyCode());
+                    }
+                }
+            }
+
             GlBankFileHdr hdr = new GlBankFileHdr();
             hdr.setTransactionDate(request.getTransactionDate());
             hdr.setGroupPoid(UserContext.getGroupPoid());
@@ -120,6 +128,15 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
     @Transactional
     public TelexFileGenerateResponseDto updateTelexFile(Long transactionPoid, TelexFileGenerateRequestDto request) {
         try {
+            // Validate intermediary bank details for selected records
+            if (request.getDetails() != null && !request.getDetails().isEmpty()) {
+                for (TelexFileDtlDto dto : request.getDetails()) {
+                    if ("Y".equalsIgnoreCase(dto.getSelected()) && dto.getDebitTransactionPoid() != null) {
+                        validateIntermediaryBankDetails(dto.getDebitTransactionPoid(), dto.getDebitDocRef(), dto.getDebitCurrencyCode());
+                    }
+                }
+            }
+
             GlBankFileHdr hdr = hdrRepository.findByTransactionPoid(transactionPoid)
                     .orElseThrow(() -> new ResourceNotFoundException("Telex File", "transactionPoid", transactionPoid));
             
@@ -217,8 +234,15 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
                 .orElseThrow(() -> new ResourceNotFoundException("Telex File", "transactionPoid", debitVoucherPoid));
 
         Long userId = UserContext.getUserPoid() != null ? UserContext.getUserPoid() : 1L;
-        return procRepository.regenerateTelexFile(UserContext.getGroupPoid(), UserContext.getCompanyPoid(),
+        String result = procRepository.regenerateTelexFile(UserContext.getGroupPoid(), UserContext.getCompanyPoid(),
                 userId, debitVoucherPoid);
+
+        // Create log summary entry for regenerate action
+        String docId = UserContext.getDocumentId();
+        String key = debitVoucherPoid.toString();
+        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, docId, key);
+
+        return result;
     }
 
     @Override
@@ -373,6 +397,37 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
         if (!toDelete.isEmpty()) {
             toDelete.forEach(detRowId -> dtlRepository.deleteByTransactionPoidAndDetRowId(transactionPoid, detRowId));
         }
+    }
+
+    private void validateIntermediaryBankDetails(Long debitTransactionPoid, String docRef, String currencyCode) {
+        // Only validate for non-BHD currencies
+        if ("BHD".equals(currencyCode)) {
+            return;
+        }
+        Map<String, String> beneficiaryDetails = procRepository.getBeneficiaryDetails(debitTransactionPoid);
+        String beneficiaryCountry = beneficiaryDetails.get("BENEFICIARY_COUNTRY");
+        String intermediaryCountryPoid = beneficiaryDetails.get("INTERMEDIARY_COUNTRY_POID");
+        String intermediaryAcct = beneficiaryDetails.get("INTERMEDIARY_ACCT");
+        String intermediaryBank = beneficiaryDetails.get("INTERMEDIARY_BANK");
+
+        // Rule 1: BENEFICIARY_COUNTRY must be defined
+        if (beneficiaryCountry == null || beneficiaryCountry.equals("0") || beneficiaryCountry.isEmpty()) {
+            throw new ValidationException("Validation failed : intermediary bank/country/account/bank name not defined in master...." + docRef);
+        }
+
+        // Rule 2: If INTERMEDIARY_ACCT exists, then INTERMEDIARY_COUNTRY_POID and INTERMEDIARY_BANK must exist
+        if (intermediaryAcct != null && !intermediaryAcct.equals("XX") && !intermediaryAcct.isEmpty() && (intermediaryCountryPoid == null || intermediaryCountryPoid.equals("0") ||
+                intermediaryBank == null || intermediaryBank.equals("XX") || intermediaryBank.isEmpty())) {
+                throw new ValidationException("Validation failed : intermediary bank/country/account/bank name not defined in master...." + docRef);
+            }
+
+
+        // Rule 3: If INTERMEDIARY_BANK exists, then INTERMEDIARY_COUNTRY_POID and INTERMEDIARY_ACCT must exist
+        if (intermediaryBank != null && !intermediaryBank.equals("XX") && !intermediaryBank.isEmpty() && (intermediaryCountryPoid == null || intermediaryCountryPoid.equals("0") ||
+                intermediaryAcct == null || intermediaryAcct.equals("XX") || intermediaryAcct.isEmpty())) {
+                throw new ValidationException("Validation failed : intermediary bank/country/account/bank name not defined in master...." + docRef);
+            }
+
     }
 
     private String extractTriggerErrorMessage(Exception e) {

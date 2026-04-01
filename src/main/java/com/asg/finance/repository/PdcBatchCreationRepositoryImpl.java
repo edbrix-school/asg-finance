@@ -6,10 +6,15 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.ParameterMode;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.StoredProcedureQuery;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 
 @Repository
 @RequiredArgsConstructor
@@ -64,6 +69,7 @@ public class PdcBatchCreationRepositoryImpl implements PdcBatchCreationRepositor
     }
 
     @Override
+    @Transactional
     public PdcBatchCreationProcResponse runBatchCreation(PdcBatchCreationProcRequest request) {
         StoredProcedureQuery query = entityManager
                 .createStoredProcedureQuery("PROC_PDC_CHQ_BATCH_CREATION");
@@ -71,6 +77,14 @@ public class PdcBatchCreationRepositoryImpl implements PdcBatchCreationRepositor
         Long companyPoid = UserContext.getCompanyPoid();
         Long loginUserPoid = UserContext.getUserPoid();
         String loginUser = String.valueOf(loginUserPoid);
+
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MMM-yyyy", Locale.ENGLISH);
+
+        String formattedDate = request.getStartDate()
+                .format(formatter)
+                .toUpperCase();
+
+
 
         // Register IN parameters
         query.registerStoredProcedureParameter("P_COMPANY_POID", Long.class, ParameterMode.IN);
@@ -93,7 +107,7 @@ public class PdcBatchCreationRepositoryImpl implements PdcBatchCreationRepositor
         query.setParameter("P_NO_OF_CHQ", request.getNoOfCheques());
         query.setParameter("P_CHQ_AMT", request.getChequeAmount());
         query.setParameter("P_START_CHQ_NO", request.getStartChequeNo());
-        query.setParameter("P_START_DATE", request.getStartDate());
+        query.setParameter("P_START_DATE", formattedDate);
         query.setParameter("P_PRE_PRINTED", request.getPrePrinted());
         query.setParameter("P_LOGIN_USER", loginUser);
         query.setParameter("P_NARRATION", request.getNarration());
@@ -101,11 +115,15 @@ public class PdcBatchCreationRepositoryImpl implements PdcBatchCreationRepositor
 
         // Execute stored procedure
         query.execute();
+        entityManager.flush();
+        entityManager.clear();
 
         // Retrieve response
         String status = (String) query.getOutputParameterValue("P_STATUS");
 
-        return new PdcBatchCreationProcResponse(status);
+
+        // RETURN BOTH STATUS + DATA
+         return new PdcBatchCreationProcResponse(status, null);
     }
 
     @Override
@@ -154,7 +172,7 @@ public class PdcBatchCreationRepositoryImpl implements PdcBatchCreationRepositor
         // RESPONSE
         String status = (String) query.getOutputParameterValue("P_STATUS");
 
-        return new PdcBatchCreationProcResponse(status);
+        return new PdcBatchCreationProcResponse(status, null);
     }
 
     @Override
@@ -195,6 +213,6 @@ public class PdcBatchCreationRepositoryImpl implements PdcBatchCreationRepositor
 
         String status = (String) query.getOutputParameterValue("P_STATUS");
 
-        return new PdcBatchCreationProcResponse(status);
+        return new PdcBatchCreationProcResponse(status, null);
     }
 }

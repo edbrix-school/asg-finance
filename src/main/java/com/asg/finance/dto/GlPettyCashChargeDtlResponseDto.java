@@ -30,6 +30,7 @@ public class GlPettyCashChargeDtlResponseDto {
 
     private String refDocId;
     private Long refDocPoid;
+    private DetailsDto refDocPoidDtl;
     private Long fdaDetRowId;
     private String checkAll;
 

@@ -20,6 +20,7 @@ public class GlPettyCashPaymentDtlResponseDto {
     private Long detRowId;
     private String type;
     private Long companyPoid;
+    private DetailsDto companyPoidDtl;
     private Long glPoid;
     private DetailsDto glPoidDtl;
     private Long chargePoid;
@@ -36,6 +37,7 @@ public class GlPettyCashPaymentDtlResponseDto {
     private BigDecimal vatAmount;
     private BigDecimal totalAmount;
     private Long vatSupplier;
+    private DetailsDto vatSupplierDtl;
     private String inputVatNumber;
     private LocalDate supplierInvDate;
     private Long taxPoid;

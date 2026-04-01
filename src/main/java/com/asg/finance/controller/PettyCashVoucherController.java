@@ -371,12 +371,11 @@ public class PettyCashVoucherController {
             @RequestParam String rfqPoid
     ) {
 
-        StringBuilder result = new StringBuilder();
+        PettyRefTypeResponse<PettyCashFromPoDto> response =
+                pettyCashVoucherService.loadPettyCashFromPo(groupPoid, companyPoid, userPoid, rfqPoid);
 
-        List<PettyCashFromPoDto> response =
-                pettyCashVoucherService.loadPettyCashFromPo(groupPoid, companyPoid, userPoid, rfqPoid, result);
-
-        return success("Petty Cash from PO fetched successfully", response);
+        String message = response.getMessage() != null ? response.getMessage() : "Petty Cash from PO fetched successfully";
+        return success(message, response.getResponseList());
     }
 
 
@@ -408,12 +407,11 @@ public class PettyCashVoucherController {
             @RequestParam String ffPoid
     ) {
 
-        StringBuilder result = new StringBuilder();
+        PettyRefTypeResponse<PettyCashFromFfDto> response =
+                pettyCashVoucherService.loadPettyCashFromFf(groupPoid, companyPoid, userPoid, ffPoid);
 
-        List<PettyCashFromFfDto> response =
-                pettyCashVoucherService.loadPettyCashFromFf(groupPoid, companyPoid, userPoid, ffPoid, result);
-
-        return success("Petty Cash from FF fetched successfully", response);
+        String message = response.getMessage() != null ? response.getMessage() : "Petty Cash from FF fetched successfully";
+        return success(message, response.getResponseList());
     }
 
 
@@ -445,12 +443,11 @@ public class PettyCashVoucherController {
             @RequestParam String fdaPoid
     ) {
 
-        StringBuilder result = new StringBuilder();
+        PettyRefTypeResponse<PettyCashFromFdaDto> response =
+                pettyCashVoucherService.loadPettyCashFromFda(groupPoid, companyPoid, userPoid, fdaPoid);
 
-        List<PettyCashFromFdaDto> response =
-                pettyCashVoucherService.loadPettyCashFromFda(groupPoid, companyPoid, userPoid, fdaPoid, result);
-
-        return success("Petty Cash from FDA fetched successfully", response);
+        String message = response.getMessage() != null ? response.getMessage() : "Petty Cash from FDA fetched successfully";
+        return success(message, response.getResponseList());
     }
 
     @Operation(
@@ -478,7 +475,7 @@ public class PettyCashVoucherController {
             @RequestParam Long lovValue
     ) {
 
-        List<PettyGlBalanceDto> response = pettyCashVoucherService.loadPettyGlBalance(
+        PettyRefTypeResponse<PettyGlBalanceDto> response = pettyCashVoucherService.loadPettyGlBalance(
                 UserContext.getGroupPoid(),
                 UserContext.getCompanyPoid(),
                 UserContext.getUserPoid(),
@@ -488,7 +485,97 @@ public class PettyCashVoucherController {
                 lovValue
         );
 
-        return success("Balance fetched successfully", response);
+        String message = response.getMessage() != null ? response.getMessage() : "Balance fetched successfully";
+        return success(message, response.getResponseList());
+    }
+
+    @Operation(
+            summary = "Load Petty Cash from GRN",
+            description = "Loads pending GRN details for a given supplier using PROC_GL_PETTY_INSERT_GRN_JOBS.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Petty cash from GRN fetched successfully",
+                            content = @Content(schema = @Schema(implementation = PettyCashFromGrnDto.class))),
+                    @ApiResponse(responseCode = "400", description = "Invalid input parameters"),
+                    @ApiResponse(responseCode = "401", description = "Unauthorized")
+            },
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
+    @GetMapping("/load-from-grn")
+    public ResponseEntity<?> loadFromGrn(
+            @Parameter(description = "Group POID", example = "1001") @RequestParam Long groupPoid,
+            @Parameter(description = "Company POID", example = "2001") @RequestParam Long companyPoid,
+            @Parameter(description = "User POID", example = "3001") @RequestParam Long userPoid,
+            @Parameter(description = "Transaction date", example = "2024-01-01") @RequestParam String transactionDate,
+            @Parameter(description = "GRN Supplier POID", example = "123") @RequestParam String grnSupplierPoid
+    ) {
+        PettyRefTypeResponse<PettyCashFromGrnDto> response =
+                pettyCashVoucherService.loadPettyCashFromGrn(groupPoid, companyPoid, userPoid, transactionDate, grnSupplierPoid);
+        String message = response.getMessage() != null ? response.getMessage() : "Petty Cash from GRN fetched successfully";
+        return success(message, response.getResponseList());
+    }
+
+    @Operation(
+            summary = "Load Petty Cash from Completed PO",
+            description = "Loads items from a completed (non-RFQ/MTA) PO using PROC_GL_PETTY_CREATE_GENRL_PO.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Petty cash from completed PO fetched successfully",
+                            content = @Content(schema = @Schema(implementation = PettyCashFromGenrlPoDto.class))),
+                    @ApiResponse(responseCode = "400", description = "Invalid input parameters"),
+                    @ApiResponse(responseCode = "401", description = "Unauthorized")
+            },
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
+    @GetMapping("/load-from-completed-po")
+    public ResponseEntity<?> loadFromCompletedPo(
+            @Parameter(description = "Group POID", example = "1001") @RequestParam Long groupPoid,
+            @Parameter(description = "Company POID", example = "2001") @RequestParam Long companyPoid,
+            @Parameter(description = "User POID", example = "3001") @RequestParam Long userPoid,
+            @Parameter(description = "PO POID", example = "456") @RequestParam String poPoid
+    ) {
+        PettyRefTypeResponse<PettyCashFromGenrlPoDto> response =
+                pettyCashVoucherService.loadPettyCashFromCompletedPo(groupPoid, companyPoid, userPoid, poPoid);
+        String message = response.getMessage() != null ? response.getMessage() : "Petty Cash from completed PO fetched successfully";
+        return success(message, response.getResponseList());
+    }
+
+    @Operation(
+            summary = "Get allowed ref types for user",
+            description = "Returns the list of ref types the current user is allowed to see, via PROC_GL_PETTY_REF_WHERE_CLAUSE.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Allowed ref types fetched successfully"),
+                    @ApiResponse(responseCode = "401", description = "Unauthorized")
+            },
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
+    @GetMapping("/allowed-ref-types")
+    public ResponseEntity<?> getAllowedRefTypes(
+            @Parameter(description = "User POID", example = "3001") @RequestParam Long userPoid
+    ) {
+        List<String> response = pettyCashVoucherService.getAllowedRefTypes(userPoid);
+        return success("Allowed ref types fetched successfully", response);
+    }
+
+    @Operation(
+            summary = "Get global parameters for Petty Cash Payment page",
+            description = "Returns all UI configuration, default values, and validation limits needed by the frontend to initialise the Petty Cash Payment page.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Global parameters fetched successfully",
+                            content = @Content(schema = @Schema(implementation = PettyCashGlobalParamsDto.class))),
+                    @ApiResponse(responseCode = "401", description = "Unauthorized")
+            },
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
+    @GetMapping("/global-params")
+    public ResponseEntity<?> getGlobalParams(
+            @Parameter(description = "Petty Cash GL POID (used to resolve ledger-specific parameters PETTY_CASH_ADVANCE_LEDGER and PETTY_CASH_LEDGER)")
+            @RequestParam(required = false) Long pettyCashGlPoid
+    ) {
+        PettyCashGlobalParamsDto params = pettyCashVoucherService.getPettyCashGlobalParams(pettyCashGlPoid);
+        return success("Global parameters fetched successfully", params);
     }
 
     @AllowedAction(UserRolesRightsEnum.PRINT)

@@ -1,7 +1,9 @@
 package com.asg.finance.advancepettycash.controller;
 
 import com.asg.common.lib.dto.DeleteReasonDto;
+import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.finance.controller.AdvancePettyCashHdrController;
@@ -25,6 +27,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.*;
@@ -34,7 +37,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(value = AdvancePettyCashHdrController.class,
     excludeFilters = @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.asg.finance.aspect.*"))
-@ContextConfiguration(classes = {AdvancePettyCashHdrController.class})
+@ContextConfiguration(classes = {AdvancePettyCashHdrController.class, com.asg.finance.exceptions.GlobalExceptionHandler.class})
 class AdvancePettyCashHdrControllerTest {
 
     @Autowired
@@ -203,5 +206,147 @@ class AdvancePettyCashHdrControllerTest {
                             .param("size", "10"))
                     .andExpect(status().isInternalServerError());
         }
+    }
+
+    @Test
+    void createAdvancePettyCash_InvalidJson() throws Exception {
+        mockMvc.perform(post("/v1/advance-petty-cash")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("invalid json"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void listAdvancePettyCash_WithFilters() throws Exception {
+        Map<String, Object> data = new HashMap<>();
+        data.put("content", responseDTO);
+        
+        FilterRequestDto filters = new FilterRequestDto("AND", "N", List.of());
+        when(service.listAdvancePettyCash(anyString(), any(FilterRequestDto.class), any(Pageable.class), any(), any()))
+                .thenReturn(data);
+
+        try (MockedStatic<UserContext> mockedUserContext = mockStatic(UserContext.class)) {
+            mockedUserContext.when(UserContext::getDocumentId).thenReturn("DOC123");
+
+            mockMvc.perform(post("/v1/advance-petty-cash/list")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(filters)))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    @Test
+    void listAdvancePettyCash_WithoutRequestBody() throws Exception {
+        Map<String, Object> data = new HashMap<>();
+        when(service.listAdvancePettyCash(anyString(), isNull(), any(Pageable.class), any(), any()))
+                .thenReturn(data);
+
+        try (MockedStatic<UserContext> mockedUserContext = mockStatic(UserContext.class)) {
+            mockedUserContext.when(UserContext::getDocumentId).thenReturn("DOC123");
+
+            mockMvc.perform(post("/v1/advance-petty-cash/list"))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    @Test
+    void createAdvancePettyCash_ValidationErrors_MissingRequiredFields() throws Exception {
+        AdvancePettyCashHdrRequestDTO invalidRequest = AdvancePettyCashHdrRequestDTO.builder()
+                .build(); // Missing required fields
+
+        mockMvc.perform(post("/v1/advance-petty-cash")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void createAdvancePettyCash_InvalidAmount() throws Exception {
+        AdvancePettyCashHdrRequestDTO invalidRequest = AdvancePettyCashHdrRequestDTO.builder()
+                .transactionDate(LocalDate.now())
+                .pettyCashGlPoid(1L)
+                .payingTo("John Doe")
+                .iouAmount(BigDecimal.valueOf(-1000)) // Negative amount
+                .narration("Test narration")
+                .status("OPEN")
+                .build();
+
+        mockMvc.perform(post("/v1/advance-petty-cash")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void updateAdvancePettyCash_ValidationErrors() throws Exception {
+        AdvancePettyCashHdrRequestDTO invalidRequest = AdvancePettyCashHdrRequestDTO.builder()
+                .transactionDate(LocalDate.now())
+                .payingTo("") // Empty string
+                .build();
+
+        mockMvc.perform(put("/v1/advance-petty-cash/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getAdvancePettyCashById_InvalidId() throws Exception {
+        mockMvc.perform(get("/v1/advance-petty-cash/invalid"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void updateAdvancePettyCash_ZeroId() throws Exception {
+        mockMvc.perform(put("/v1/advance-petty-cash/0")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestDTO)))
+                .andExpect(status().isOk());
+
+        verify(service, times(1)).updateAdvancePettyCash(eq(0L), any(AdvancePettyCashHdrRequestDTO.class));
+    }
+
+    @Test
+    void createAdvancePettyCash_ServiceException() throws Exception {
+
+        when(service.createAdvancePettyCash(any(AdvancePettyCashHdrRequestDTO.class)))
+                .thenThrow(new ValidationException("Service error"));
+
+        mockMvc.perform(post("/v1/advance-petty-cash")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestDTO)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void updateAdvancePettyCash_ServiceException() throws Exception {
+
+        when(service.updateAdvancePettyCash(eq(1L), any(AdvancePettyCashHdrRequestDTO.class)))
+                .thenThrow(new ValidationException("Update service error"));
+
+        mockMvc.perform(put("/v1/advance-petty-cash/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestDTO)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getAdvancePettyCashById_ServiceException() throws Exception {
+
+        when(service.getAdvancePettyCashById(1L))
+                .thenThrow(new RuntimeException("Get service error"));
+
+        mockMvc.perform(get("/v1/advance-petty-cash/1"))
+                .andExpect(status().isInternalServerError());
+    }
+
+    @Test
+    void softDeleteAdvancePettyCash_ServiceException() throws Exception {
+
+        doThrow(new ValidationException("Delete service error"))
+                .when(service).softDeleteAdvancePettyCash(eq(1L), any());
+
+        mockMvc.perform(delete("/v1/advance-petty-cash/1"))
+                .andExpect(status().isBadRequest());
     }
 }

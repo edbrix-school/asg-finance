@@ -32,7 +32,9 @@ public class PettyCashResponseDto {
     private String advance;
     private String refType;
     private String fdaRef;
+    private DetailsDto fdaRefDtl;
     private String ffRef;
+    private DetailsDto ffRefDtl;
     private LocalDate settledDate;
     private String remarks;
     private BigDecimal settledTotal;
@@ -47,13 +49,18 @@ public class PettyCashResponseDto {
     private String multiCompany;
     private String poRef;
     private String salesQtnRef;
+    private DetailsDto salesQtnRefDtl;
     private BigDecimal crTotal;
     private BigDecimal drTotal;
     private BigDecimal roundingAmount;
     private Long grnSupplierPoid;
+    private DetailsDto grnSupplierPoidDtl;
     private Long supplierGlPoid;
+    private DetailsDto supplierGlPoidDtl;
     private Long customerGlPoid;
+    private DetailsDto customerGlPoidDtl;
     private Long advancePettyCashPoid;
+    private DetailsDto advancePettyCashPoidDtl;
     private String advanceStatus;
     private BigDecimal advanceAmount;
     private Long companyDivPoid;

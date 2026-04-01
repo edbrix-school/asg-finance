@@ -2,6 +2,7 @@ package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.*;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
+import com.asg.common.lib.dto.response.LoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.model.CustomAuthDetails;
@@ -30,6 +31,7 @@ import org.springframework.data.domain.Pageable;
 import javax.sql.DataSource;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -1307,5 +1309,318 @@ class BankPaymentVoucherServiceImplTest {
 
         assertNotNull(result);
         verify(chargeDtlRepository, atLeast(1)).saveAll(anyList());
+    }
+
+    @Test
+    @DisplayName("createBankPaymentVoucher – GENERAL with billwise and cost center saves both breakups")
+    void createBankPaymentVoucher_GeneralWithBreakups_SavesBillwiseAndCostCenter() {
+        BankPaymentGLDetailRequest detail = new BankPaymentGLDetailRequest();
+        detail.setDetRowId(1L);
+        detail.setType("DR");
+        detail.setGlPoid(20L);
+        detail.setCompanyPoid(COMPANY_POID);
+        detail.setDrAmt(100.0);
+        detail.setActionType("isCreated");
+
+        BillwiseBreakupPopupRequestDto billwise = BillwiseBreakupPopupRequestDto.builder()
+                .billDetRowId(1L)
+                .billRefType("INV")
+                .billRef("INV-1")
+                .billDueDate(LocalDate.now())
+                .amount(new BigDecimal("100.00"))
+                .billRemarks("BW")
+                .build();
+        detail.setBillWiseBreakup(List.of(billwise));
+
+        CostCenterBreakupPopupRequestDto cc = CostCenterBreakupPopupRequestDto.builder()
+                .costGroup("COST_CENTER")
+                .costPoid("101")
+                .amount(new BigDecimal("100.00"))
+                .build();
+        detail.setCostCenterBreakup(List.of(cc));
+
+        BankPaymentVoucherRequest req = buildGeneralRequest();
+        req.setGlDetails(List.of(detail));
+
+        GLPaymentVoucherHDREntity savedHeader = GLPaymentVoucherHDREntity.builder()
+                .transactionPoid(TRANS_POID).groupPoid(GROUP_POID).companyPoid(COMPANY_POID)
+                .refType("GENERAL").deleted("N").released("N").prePrinted("N").chqPrinted("N").build();
+
+        GLPaymentVoucherDtlGLEntity savedGl = new GLPaymentVoucherDtlGLEntity();
+        savedGl.setDetRowId(1L);
+        savedGl.setTransactionPoid(TRANS_POID);
+
+        when(globalParameterService.getParameterValue(anyString(), anyString(), anyString(), anyString()))
+                .thenReturn("999");
+        when(paymentVoucherRepository.save(any(GLPaymentVoucherHDREntity.class))).thenReturn(savedHeader);
+        doNothing().when(paymentVoucherRepository).flush();
+        when(paymentVoucherDetailsRepository.saveAll(anyList())).thenReturn(List.of(savedGl));
+        stubGetVoucherByIdGeneral(savedHeader);
+
+        BankPaymentVoucherResponse result = service.createBankPaymentVoucher(req, DOC_ID);
+
+        assertNotNull(result);
+        verify(billwiseBreakupRepository).insertBillwiseBreakup(anyList());
+        verify(costCenterBreakupDtlRepository).insertCostBreakup(anyList());
+    }
+
+    @Test
+    @DisplayName("updateBankPaymentVoucher – GENERAL mixed action types process create/update/delete/noChanges")
+    void updateBankPaymentVoucher_GeneralMixedActions_ProcessesAllBranches() {
+        GLPaymentVoucherHDREntity header = GLPaymentVoucherHDREntity.builder()
+                .transactionPoid(TRANS_POID).groupPoid(GROUP_POID).companyPoid(COMPANY_POID)
+                .refType("GENERAL").deleted("N").released("N").prePrinted("N").chqPrinted("N").build();
+
+        GLPaymentVoucherDtlGLEntity existing1 = new GLPaymentVoucherDtlGLEntity();
+        existing1.setDetRowId(1L);
+        existing1.setTransactionPoid(TRANS_POID);
+        GLPaymentVoucherDtlGLEntity existing2 = new GLPaymentVoucherDtlGLEntity();
+        existing2.setDetRowId(2L);
+        existing2.setTransactionPoid(TRANS_POID);
+        GLPaymentVoucherDtlGLEntity existing3 = new GLPaymentVoucherDtlGLEntity();
+        existing3.setDetRowId(3L);
+        existing3.setTransactionPoid(TRANS_POID);
+
+        BankPaymentGLDetailRequest created = new BankPaymentGLDetailRequest();
+        created.setActionType("isCreated");
+        created.setDetRowId(9L);
+        created.setType("DR");
+        created.setGlPoid(22L);
+        created.setCompanyPoid(COMPANY_POID);
+        created.setDrAmt(100.0);
+
+        BillwiseBreakupPopupRequestDto billwise = BillwiseBreakupPopupRequestDto.builder()
+                .billDetRowId(2L)
+                .billRefType("INV")
+                .billRef("INV-22")
+                .billDueDate(LocalDate.now())
+                .amount(new BigDecimal("100"))
+                .build();
+        created.setBillWiseBreakup(List.of(billwise));
+
+        CostCenterBreakupPopupRequestDto cc = CostCenterBreakupPopupRequestDto.builder()
+                .costGroup("COST_CENTER")
+                .costPoid("500")
+                .amount(new BigDecimal("100"))
+                .build();
+        created.setCostCenterBreakup(List.of(cc));
+
+        BankPaymentGLDetailRequest updated = new BankPaymentGLDetailRequest();
+        updated.setActionType("isUpdated");
+        updated.setDetRowId(1L);
+        updated.setType("CR");
+        updated.setGlPoid(23L);
+        updated.setCompanyPoid(COMPANY_POID);
+        updated.setCrAmt(120.0);
+
+        BankPaymentGLDetailRequest deleted = new BankPaymentGLDetailRequest();
+        deleted.setActionType("isDeleted");
+        deleted.setDetRowId(2L);
+
+        BankPaymentGLDetailRequest unchanged = new BankPaymentGLDetailRequest();
+        unchanged.setActionType(" ");
+        unchanged.setDetRowId(3L);
+
+        BankPaymentVoucherRequest req = buildGeneralRequest();
+        req.setRefType("GENERAL");
+        req.setGlDetails(List.of(created, updated, deleted, unchanged));
+
+        GLPaymentVoucherDtlGLEntity saved = new GLPaymentVoucherDtlGLEntity();
+        saved.setDetRowId(10L);
+        saved.setTransactionPoid(TRANS_POID);
+        saved.setCreatedDate(LocalDateTime.now());
+
+        when(paymentVoucherRepository.findById(TRANS_POID)).thenReturn(Optional.of(header));
+        when(globalParameterService.getParameterValue(anyString(), anyString(), anyString(), anyString()))
+                .thenReturn("999");
+        when(paymentVoucherRepository.save(any(GLPaymentVoucherHDREntity.class))).thenReturn(header);
+        when(paymentVoucherDetailsRepository.findByTransactionPoid(TRANS_POID))
+                .thenReturn(List.of(existing1, existing2, existing3), List.of(saved));
+        when(paymentVoucherDetailsRepository.saveAll(anyList())).thenReturn(List.of(saved));
+        doNothing().when(paymentVoucherDetailsRepository).deleteAll(anyList());
+        when(billwiseBreakupService.loadBillwiseBreakup(anyLong(), anyLong(), anyString(), anyLong()))
+                .thenReturn(new GlVoucherLoadBillwiseBreakupResponseDto());
+        when(costCenterBreakupService.loadCostCenterData(anyString(), anyLong(), anyLong(), anyLong(), anyLong()))
+                .thenReturn(new GlVoucherCostCenterBreakupResponseDto());
+
+        BankPaymentVoucherResponse result = service.updateBankPaymentVoucher(TRANS_POID, req, DOC_ID);
+
+        assertNotNull(result);
+        verify(paymentVoucherDetailsRepository).deleteAll(anyList());
+        verify(loggingService).createLogBatch(anyList());
+        verify(billwiseBreakupService).updateBillwiseBreakups(anyList(), eq(USER_POID));
+        verify(costCenterBreakupDtlRepository, atLeastOnce()).insertCostBreakup(anyList());
+    }
+
+    @Test
+    @DisplayName("updateBankPaymentVoucher – FDA JOBS mixed charge action types process all branches")
+    void updateBankPaymentVoucher_FdaJobsMixedActions_ProcessesAllChargeBranches() {
+        GLPaymentVoucherHDREntity fdaHeader = GLPaymentVoucherHDREntity.builder()
+                .transactionPoid(TRANS_POID).groupPoid(GROUP_POID).companyPoid(COMPANY_POID)
+                .refType("FDA JOBS").fdaRef(50L).deleted("N").released("N").prePrinted("N").build();
+
+        GlBankPaymentChargeDtlEntity e1 = new GlBankPaymentChargeDtlEntity();
+        e1.setDetRowId(1L);
+        e1.setTransactionPoid(TRANS_POID);
+        GlBankPaymentChargeDtlEntity e2 = new GlBankPaymentChargeDtlEntity();
+        e2.setDetRowId(2L);
+        e2.setTransactionPoid(TRANS_POID);
+        GlBankPaymentChargeDtlEntity e3 = new GlBankPaymentChargeDtlEntity();
+        e3.setDetRowId(3L);
+        e3.setTransactionPoid(TRANS_POID);
+
+        BankPaymentChargeDetailRequest created = new BankPaymentChargeDetailRequest();
+        created.setActionType("isCreated");
+        created.setChargePoid(90L);
+        created.setChargeAmount(20L);
+
+        BankPaymentChargeDetailRequest updated = new BankPaymentChargeDetailRequest();
+        updated.setActionType("isUpdated");
+        updated.setDetRowId(1L);
+        updated.setChargePoid(91L);
+        updated.setChargeAmount(30L);
+
+        BankPaymentChargeDetailRequest deleted = new BankPaymentChargeDetailRequest();
+        deleted.setActionType("isDeleted");
+        deleted.setDetRowId(2L);
+
+        BankPaymentChargeDetailRequest unchanged = new BankPaymentChargeDetailRequest();
+        unchanged.setActionType("");
+        unchanged.setDetRowId(3L);
+
+        BankPaymentVoucherRequest req = buildFdaRequest();
+        req.setChargeDetailRequests(List.of(created, updated, deleted, unchanged));
+
+        GlBankPaymentChargeDtlEntity saved = new GlBankPaymentChargeDtlEntity();
+        saved.setDetRowId(4L);
+        saved.setTransactionPoid(TRANS_POID);
+        saved.setCreatedDate(LocalDateTime.now());
+
+        when(paymentVoucherRepository.findById(TRANS_POID)).thenReturn(Optional.of(fdaHeader));
+        when(globalParameterService.getParameterValue(anyString(), anyString(), anyString(), anyString()))
+                .thenReturn("999");
+        when(paymentVoucherRepository.save(any(GLPaymentVoucherHDREntity.class))).thenReturn(fdaHeader);
+        when(chargeDtlRepository.findByTransactionPoid(TRANS_POID))
+                .thenReturn(List.of(e1, e2, e3), List.of(saved));
+        when(chargeDtlRepository.saveAll(anyList())).thenReturn(List.of(saved));
+        doNothing().when(chargeDtlRepository).deleteAll(anyList());
+        when(billwiseBreakupService.loadBillwiseBreakup(anyLong(), anyLong(), anyString(), anyLong()))
+                .thenReturn(new GlVoucherLoadBillwiseBreakupResponseDto());
+        when(costCenterBreakupService.loadCostCenterData(anyString(), anyLong(), anyLong(), anyLong(), anyLong()))
+                .thenReturn(new GlVoucherCostCenterBreakupResponseDto());
+
+        BankPaymentVoucherResponse result = service.updateBankPaymentVoucher(TRANS_POID, req, DOC_ID);
+
+        assertNotNull(result);
+        verify(chargeDtlRepository).deleteAll(anyList());
+        verify(loggingService).createLogBatch(anyList());
+    }
+
+    @Test
+    @DisplayName("getVoucherById – maps billwise DR/CR and cost center LOV by poid/code")
+    void getVoucherById_General_MapsBreakupDataAndCostCenterDetails() {
+        GLPaymentVoucherDtlGLEntity glDtl = new GLPaymentVoucherDtlGLEntity();
+        glDtl.setTransactionPoid(TRANS_POID);
+        glDtl.setDetRowId(1L);
+        glDtl.setGlPoid(20L);
+
+        LoadBillwiseBreakupResponseDto dr = mock(LoadBillwiseBreakupResponseDto.class);
+        when(dr.getMainDetRowId()).thenReturn(1L);
+        when(dr.getBillDetRowId()).thenReturn(11L);
+        when(dr.getBillRefType()).thenReturn("INV");
+        when(dr.getBillRef()).thenReturn("INV-1");
+        when(dr.getBillDueDate()).thenReturn(LocalDate.now());
+        when(dr.getDrAmt()).thenReturn(new BigDecimal("10"));
+        when(dr.getCrAmt()).thenReturn(BigDecimal.ZERO);
+        when(dr.getBillRemarks()).thenReturn("DR");
+
+        LoadBillwiseBreakupResponseDto cr = mock(LoadBillwiseBreakupResponseDto.class);
+        when(cr.getMainDetRowId()).thenReturn(1L);
+        when(cr.getBillDetRowId()).thenReturn(12L);
+        when(cr.getBillRefType()).thenReturn("INV");
+        when(cr.getBillRef()).thenReturn("INV-2");
+        when(cr.getBillDueDate()).thenReturn(LocalDate.now());
+        when(cr.getDrAmt()).thenReturn(null);
+        when(cr.getCrAmt()).thenReturn(new BigDecimal("8"));
+        when(cr.getBillRemarks()).thenReturn("CR");
+
+        CostCenterBreakupResponseDto numeric = mock(CostCenterBreakupResponseDto.class);
+        when(numeric.getMainDetRowId()).thenReturn(1L);
+        when(numeric.getCostDetRowId()).thenReturn(20L);
+        when(numeric.getCostGroup()).thenReturn("COST_CENTER");
+        when(numeric.getCostPoid()).thenReturn("123");
+        when(numeric.getAmount()).thenReturn(new BigDecimal("4"));
+
+        CostCenterBreakupResponseDto alpha = mock(CostCenterBreakupResponseDto.class);
+        when(alpha.getMainDetRowId()).thenReturn(1L);
+        when(alpha.getCostDetRowId()).thenReturn(20L);
+        when(alpha.getCostGroup()).thenReturn("COST_CENTER");
+        when(alpha.getCostPoid()).thenReturn("CC-A1");
+        when(alpha.getAmount()).thenReturn(new BigDecimal("6"));
+
+        GlVoucherLoadBillwiseBreakupResponseDto billwiseResp = mock(GlVoucherLoadBillwiseBreakupResponseDto.class);
+        when(billwiseResp.getLoadBillwiseBreakupResponseDtoList()).thenReturn(List.of(dr, cr));
+
+        GlVoucherCostCenterBreakupResponseDto ccResp = mock(GlVoucherCostCenterBreakupResponseDto.class);
+        when(ccResp.getCostBreakupList()).thenReturn(List.of(numeric, alpha));
+
+        when(paymentVoucherRepository.findById(TRANS_POID)).thenReturn(Optional.of(headerEntity));
+        when(paymentVoucherDetailsRepository.findByTransactionPoid(TRANS_POID)).thenReturn(List.of(glDtl));
+        when(billwiseBreakupService.loadBillwiseBreakup(anyLong(), anyLong(), anyString(), anyLong()))
+                .thenReturn(billwiseResp);
+        when(costCenterBreakupService.loadCostCenterData(anyString(), anyLong(), anyLong(), anyLong(), anyLong()))
+                .thenReturn(ccResp);
+
+        BankPaymentVoucherResponse result = service.getVoucherById(TRANS_POID, DOC_ID);
+
+        assertNotNull(result);
+        assertFalse(result.getGlDetails().isEmpty());
+        assertFalse(result.getGlDetails().get(0).getBillwiseBreakupList().isEmpty());
+        assertFalse(result.getGlDetails().get(0).getCostCenterBreakupList().isEmpty());
+        verify(lovService).getDetailsByPoidAndLovName(eq(123L), eq("COST_CENTER"));
+        verify(lovService).getDetailsByCodeAndLovName(eq("CC-A1"), eq("COST_CENTER"));
+    }
+
+    @Test
+    @DisplayName("printchequeLeaf – pre-printed voucher uses cheque leaf report")
+    void printChequeLeaf_PrePrinted_UsesChequeLeafReport() throws Exception {
+        headerEntity.setPrePrinted("Y");
+        headerEntity.setBankPoid(BANK_POID);
+
+        Map<String, Object> params = new HashMap<>();
+        net.sf.jasperreports.engine.JasperReport report = mock(net.sf.jasperreports.engine.JasperReport.class);
+        byte[] pdf = new byte[]{7, 8, 9};
+
+        when(paymentVoucherRepository.findById(TRANS_POID)).thenReturn(Optional.of(headerEntity));
+        when(printService.buildBaseParams(eq(TRANS_POID), eq(DOC_ID))).thenReturn(params);
+        when(printService.load("Finance/BankPayments/BankPaymentVoucherChequeLeaf.jrxml")).thenReturn(report);
+        when(printService.fillReportToPdf(eq(report), anyMap(), eq(dataSource))).thenReturn(pdf);
+
+        byte[] result = service.printchequeLeaf(TRANS_POID);
+
+        assertArrayEquals(pdf, result);
+        assertEquals(BANK_POID, params.get("BANK_POID"));
+        verify(printService).load("Finance/BankPayments/BankPaymentVoucherChequeLeaf.jrxml");
+    }
+
+    @Test
+    @DisplayName("getReconciledDate – cursor row maps reconcile date and hold")
+    void getReconciledDate_CursorRow_MapsValues() throws Exception {
+        StoredProcedureQuery spQuery = mock(StoredProcedureQuery.class);
+        java.sql.ResultSet rs = mock(java.sql.ResultSet.class);
+
+        when(entityManager.createStoredProcedureQuery("PROC_DEBIT_PAYMENT_RECON_DATE")).thenReturn(spQuery);
+        when(spQuery.registerStoredProcedureParameter(anyString(), any(), any())).thenReturn(spQuery);
+        when(spQuery.setParameter(anyString(), any())).thenReturn(spQuery);
+        when(spQuery.execute()).thenReturn(true);
+        when(spQuery.getOutputParameterValue("OUTDATA")).thenReturn(rs);
+        when(rs.next()).thenReturn(true);
+        when(rs.getString("RECONCILE_DATE")).thenReturn("2026-01-01");
+        when(rs.getString("HOLD")).thenReturn("N");
+
+        ReconcileResultDto result = service.getReconciledDate(DOC_ID, TRANS_POID);
+
+        assertEquals("2026-01-01", result.getReconcileDate());
+        assertEquals("N", result.getHold());
     }
 }

@@ -401,10 +401,32 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
                     request.getTransactionPoid()
             );
         }
-        return pdcBatchCreationRepository.runBatchCreation(request);
+        // Step 1: Call procedure
+        PdcBatchCreationProcResponse procResponse =
+                pdcBatchCreationRepository.runBatchCreation(request);
+
+        String status = procResponse.getStatus();
+
+        //  Step 2: Fetch child rows (same as legacy refresh)
+        List<PdcChqBatchDtlResponseDto> dtlList = new ArrayList<>();
+
+        if (status != null && status.startsWith("SUCCESS")) {
+
+            dtlList = dtlRepo
+                    .findByTransactionPoidOrderByDetRowIdAsc(request.getTransactionPoid())
+                    .stream()
+                    .map(this::mapDtlEntityToResponseDto)
+                    .toList();
+        }
+
+        // Step 3: Return both status + data
+        return PdcBatchCreationProcResponse.builder()
+                .status(status)
+                .chequeDetails(dtlList)
+                .build();
     }
 
-    public PdcBatchCreationProcResponse runBankPostingProcedure(PdcBankPostingProcRequest request) {
+   public PdcBatchCreationProcResponse runBankPostingProcedure(PdcBankPostingProcRequest request) {
         boolean exists = hdrRepo.existsByTransactionPoid(request.getTransactionPoid());
         if (!exists) {
             throw new ResourceNotFoundException(

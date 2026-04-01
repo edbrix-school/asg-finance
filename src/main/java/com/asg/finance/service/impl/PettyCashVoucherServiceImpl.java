@@ -76,8 +76,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
     private static final String ACTION_TYPE_ISUPDATED = "ISUPDATED";
     private static final String ACTION_TYPE_NOCHANGES = "NOCHANGES";
     private static final String CHECK_ALL_N = "N";
-    private static final String TYPE_DR = "Dr";
-    private static final String TYPE_CR = "Cr";
+    private static final String TYPE_DR = "DR";
+    private static final String TYPE_CR = "CR";
     private static final String REF_TYPE_GENERAL = "GENERAL";
     private static final String REF_TYPE_CUSTOM = "CUSTOM";
     private static final String REF_TYPE_SUPPLIER = "SUPPLIER";
@@ -1741,8 +1741,9 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
         }
         BigDecimal balance = balanceList.get(0).getBalance();
         if (balance != null && requestDto.getAmount().compareTo(balance) > 0) {
-            throw new ValidationException(String.format(VALIDATION_PAID_AMOUNT_EXCEEDS_BALANCE,
-                    requestDto.getAmount().toPlainString(), balance.toPlainString()));
+            throw new ValidationException(
+                    "Paid amount (" + requestDto.getAmount().toPlainString()
+                            + ") exceeds available petty cash balance (" + balance.toPlainString() + ").");
         }
     }
 
@@ -2119,7 +2120,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
         List<GlPettyCashPaymentDtlRequestDto> activeDtls = allDtls.stream()
                 .filter(d -> !ACTION_TYPE_ISDELETED.equals(d.getActionType() != null ? d.getActionType().toUpperCase() : ""))
-                .toList();
+                .collect(Collectors.toList());
 
         BigDecimal amount = safe(requestDto.getAmount());
         BigDecimal rounding = safe(requestDto.getRoundingAmount());

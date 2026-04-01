@@ -23,6 +23,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Map;
 
@@ -160,6 +161,28 @@ public class AdvancePettyCashHdrController {
     ) {
         service.softDeleteAdvancePettyCash(transactionPoid, deleteReasonDto);
         return success("Advance Petty Cash has been soft deleted successfully");
+    }
+
+    @Operation(
+            summary = "Load Advance Details",
+            description = "Loads advance details for a given advance POID and amount by calling the stored procedure",
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Successfully loaded advance details",
+                            content = @Content(mediaType = "application/json")
+                    )
+            }
+    )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
+    @GetMapping("/load-advance-details")
+    public ResponseEntity<?> loadAdvanceDetails(
+            @Parameter(description = "Advance POID", required = true)
+            @RequestParam String advancePoid,
+            @Parameter(description = "Amount", required = true)
+            @RequestParam BigDecimal amount
+    ) {
+        return success("Advance details fetched successfully", service.loadAdvanceDetails(amount, advancePoid));
     }
 
     @Operation(

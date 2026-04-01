@@ -14,6 +14,7 @@ import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.finance.dto.AdvanceDetailDto;
 import com.asg.finance.dto.AdvancePettyCashDtlResponseDTO;
 import com.asg.finance.dto.AdvancePettyCashHdrRequestDTO;
 import com.asg.finance.dto.AdvancePettyCashHdrResponseDTO;
@@ -22,6 +23,7 @@ import com.asg.finance.entity.AdvancePettyCashHdr;
 
 import com.asg.finance.repository.AdvancePettyCashHdrRepository;
 import com.asg.finance.repository.AdvancePettyCashDtlRepository;
+import com.asg.finance.repository.PettyCashPaymentVoucherCustomRepository;
 
 import com.asg.finance.entity.AdvancePettyCashDtl;
 
@@ -38,6 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -49,6 +52,7 @@ public class AdvancePettyCashHdrServiceImpl implements AdvancePettyCashHdrServic
     private final AdvancePettyCashDtlRepository detailRepository;
     private final GLMasterRepository glMasterRepository;
     private final LoggingService loggingService;
+    private final PettyCashPaymentVoucherCustomRepository pettyCashCustomRepository;
     
     @Autowired
     private final DocumentSearchService documentService;
@@ -156,6 +160,22 @@ public class AdvancePettyCashHdrServiceImpl implements AdvancePettyCashHdrServic
         Page<Map<String, Object>> page = new PageImpl<>(raw.records(), pageable, raw.totalRecords());
 
         return PaginationUtil.wrapPage(page, raw.displayFields());
+    }
+
+    @Override
+    public List<AdvanceDetailDto> loadAdvanceDetails(BigDecimal amount, String advancePoid) {
+        StringBuilder result = new StringBuilder();
+        List<AdvanceDetailDto> outData = new ArrayList<>();
+        pettyCashCustomRepository.loadAdvanceDetails(
+                UserContext.getGroupPoid(),
+                UserContext.getCompanyPoid(),
+                UserContext.getUserPoid(),
+                amount,
+                advancePoid,
+                result,
+                outData
+        );
+        return outData;
     }
 
     private static void validatePeriodDates(LocalDate periodFrom, LocalDate periodTo) {

@@ -162,17 +162,17 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             validateRoundingAmount(requestDto.getRoundingAmount());
 
 
-            List<AdvanceDetailDto> advanceDetails = new ArrayList<>();
-            if ("AGAINST_ADVANCE".equalsIgnoreCase(requestDto.getStatus()) &&
-                    requestDto.getAdvancePettyCashPoid() != null) {
-
-                pettyCashPaymentVoucherCustomRepository.loadAdvanceDetails(
-                        UserContext.getGroupPoid(), UserContext.getUserPoid(), UserContext.getCompanyPoid(),
-                        requestDto.getAmount(), String.valueOf(requestDto.getAdvancePettyCashPoid()),
-                        result, advanceDetails
-                );
-                logResult("PROC_GL_PETTY_ADVANCE_DTLLOAD", result);
-            }
+//            List<AdvanceDetailDto> advanceDetails = new ArrayList<>();
+//            if ("AGAINST_ADVANCE".equalsIgnoreCase(requestDto.getStatus()) &&
+//                    requestDto.getAdvancePettyCashPoid() != null) {
+//
+//                pettyCashPaymentVoucherCustomRepository.loadAdvanceDetails(
+//                        UserContext.getGroupPoid(), UserContext.getUserPoid(), UserContext.getCompanyPoid(),
+//                        requestDto.getAmount(), String.valueOf(requestDto.getAdvancePettyCashPoid()),
+//                        result, advanceDetails
+//                );
+//                logResult("PROC_GL_PETTY_ADVANCE_DTLLOAD", result);
+//            }
 
             validateCashBalance(requestDto, documentId);
 
@@ -1550,6 +1550,23 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                                 u.getUnitName(), u.getGroupPoid(), u.getUnitName2(), u.getSeqNo())));
             }
         });
+    }
+
+    @Override
+    public List<AdvanceDetailDto> loadAdvanceDetails(BigDecimal amount, String advancePoid) {
+        StringBuilder result = new StringBuilder();
+        List<AdvanceDetailDto> outData = new ArrayList<>();
+        pettyCashPaymentVoucherCustomRepository.loadAdvanceDetails(
+                UserContext.getGroupPoid(),
+                UserContext.getCompanyPoid(),
+                UserContext.getUserPoid(),
+                amount,
+                advancePoid,
+                result,
+                outData
+        );
+        logResult("PROC_GL_PETTY_ADVANCE_DTLLOAD", result);
+        return outData;
     }
 
     @Override

@@ -366,7 +366,7 @@ public class PdcChqBatchController {
     }
 
 
-    @Operation(
+  /*  @Operation(
             summary = "Run Bank Posting Procedure for PDC Cheque Batch",
             description = """
                     Executes Oracle procedure `PROC_PDC_CHQ_BANK_POSTING` for the given PDC Cheque Batch.
@@ -389,8 +389,8 @@ public class PdcChqBatchController {
                     @ApiResponse(responseCode = "404", description = "Batch not found"),
                     @ApiResponse(responseCode = "500", description = "Unexpected server error")
             }
-    )
-    @AllowedAction(UserRolesRightsEnum.CREATE)
+    )*/
+   /* @AllowedAction(UserRolesRightsEnum.CREATE)
     @PostMapping("/{transactionPoid}/run-bank-posting")
     public ResponseEntity<?> runBankPostingProcedure(
             @Parameter(description = "Transaction POID for this batch", required = true)
@@ -412,7 +412,7 @@ public class PdcChqBatchController {
         } catch (Exception ex) {
             return internalServerError("Unexpected error during Bank Posting Procedure: " + ex.getMessage());
         }
-    }
+    }*/
 
     @Operation(
             summary = "Run Excel-Based PDC Cheque Batch Creation",

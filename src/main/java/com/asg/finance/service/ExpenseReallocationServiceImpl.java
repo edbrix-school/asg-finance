@@ -20,6 +20,7 @@ import com.asg.finance.repository.*;
 import jakarta.persistence.Column;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -270,34 +271,51 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
             Sheet sheet = workbook.getSheetAt(0);
             List<String> headers = new ArrayList<>();
 
-            // -------- HEADER PARSING (ROW 1 + ROW 2) --------
             Row headerRow1 = sheet.getRow(1);
             Row headerRow2 = sheet.getRow(2);
+
             if (headerRow1 == null || headerRow2 == null) {
                 throw new ValidationException("Invalid template: Header rows missing");
-            }
-            String costCenterCode= String.valueOf(headerRow1.getCell(1));
-
-            if(costCenterCode==null || !costCenterRepository.existsByCostCenterCode(costCenterCode)){
-                throw new ValidationException("Please check Cost center or Company code and upload again");
             }
 
             int colIndex = 0;
             int span = getMergedColumnSpan(sheet, 1, 1);
 
             for (int i = 0; i < span + 1; i++) {
-                headers.add(getStringCell(headerRow2.getCell(colIndex++)));
+
+                String costCenterCode = StringUtils.trimToNull(
+                        getStringCell(headerRow2.getCell(colIndex++))
+                );
+
+                if (costCenterCode == null || costCenterCode.isBlank()) {
+                    headers.add(null); // mark as skip column
+                    continue;
+                }
+
+                if ("Company Code".equalsIgnoreCase(costCenterCode) ||
+                        "TOTAL".equalsIgnoreCase(costCenterCode)) {
+
+                    headers.add(costCenterCode);
+                    continue;
+                }
+
+                boolean exists = costCenterRepository.existsByCostCenterCode(costCenterCode);
+
+                if (!exists) {
+                    throw new ValidationException("Please check Cost center or Company code and upload again");
+                }
+
+                headers.add(costCenterCode);
             }
 
-            // -------- DATA ROWS --------
             for (int r = 3; r <= sheet.getLastRowNum(); r++) {
 
                 Row row = sheet.getRow(r);
-                if (row == null)
-                    continue;
+                if (row == null) continue;
 
-                String companyCode = getStringCell(row.getCell(0));
-                if (companyCode == null || companyCode.equalsIgnoreCase("Totals")) {
+                String companyCode = StringUtils.trimToNull(getStringCell(row.getCell(0)));
+
+                if (companyCode == null || "Totals".equalsIgnoreCase(companyCode)) {
                     continue;
                 }
 
@@ -309,18 +327,33 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
                     String key = headers.get(c);
                     Cell cell = row.getCell(c);
 
+                    if (key == null) {
+                        continue;
+                    }
+
                     if ("Company Code".equalsIgnoreCase(key)) {
-                        String value=getStringCell(cell);
-                        LovGetListDto dto=     mapLovDetails(value,"COMPANY",false);
-                        if(dto.getPoid()==null){
+
+                        String companyCodeValue = StringUtils.trimToNull(getStringCell(cell));
+
+                        if (companyCodeValue == null) {
+                            throw new ValidationException(
+                                    "Company Code cannot be empty at row " + (r + 1)
+                            );
+                        }
+
+                        LovGetListDto dto = mapLovDetails(companyCodeValue, "COMPANY", false);
+
+                        if (dto == null || dto.getPoid() == null) {
                             throw new ValidationException("Please check Cost center or Company code and upload again");
                         }
-                        rowMap.put(key, getStringCell(cell));
+
+                        rowMap.put(key, companyCodeValue);
                         continue;
                     }
 
                     BigDecimal value = getDecimal(cell);
                     value = value != null ? value : BigDecimal.ZERO;
+
                     rowMap.put(key, value);
 
                     if (!"TOTAL".equalsIgnoreCase(key)) {
@@ -328,12 +361,15 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
                     }
                 }
 
-                BigDecimal excelTotal = getDecimal(row.getCell(headers.size() - 1));
+                Cell totalCell = row.getCell(headers.size() - 1);
+                BigDecimal excelTotal = getDecimal(totalCell);
                 excelTotal = excelTotal != null ? excelTotal : BigDecimal.ZERO;
 
                 if (rowTotal.compareTo(excelTotal) != 0) {
                     throw new RuntimeException(
-                            "Invalid Total at row " + (r + 1) + ". Expected: " + rowTotal + " Found: " + excelTotal);
+                            "Invalid Total at row " + (r + 1) +
+                                    ". Expected: " + rowTotal + " Found: " + excelTotal
+                    );
                 }
 
                 grandTotal = grandTotal.add(rowTotal);
@@ -347,7 +383,9 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         }
 
         if (grandTotal.compareTo(BigDecimal.valueOf(100)) != 0) {
-            throw new IllegalArgumentException("Total allocation must be 100%, found: " + grandTotal);
+            throw new IllegalArgumentException(
+                    "Total allocation must be 100%, found: " + grandTotal
+            );
         }
 
         return result;
@@ -835,15 +873,56 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
     }
 
     private BigDecimal getDecimal(Cell cell) {
-        if (cell == null)
-            return BigDecimal.ZERO;
-        return BigDecimal.valueOf(cell.getNumericCellValue());
+        if (cell == null) return BigDecimal.ZERO;
+
+        try {
+            switch (cell.getCellType()) {
+
+                case NUMERIC:
+                    return BigDecimal.valueOf(cell.getNumericCellValue());
+
+                case STRING:
+                    String value = cell.getStringCellValue();
+                    if (value == null || value.trim().isEmpty()) {
+                        return BigDecimal.ZERO;
+                    }
+                    return new BigDecimal(value.trim());
+
+                case FORMULA:
+                    return BigDecimal.valueOf(cell.getNumericCellValue());
+
+                default:
+                    return BigDecimal.ZERO;
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private String getStringCell(Cell cell) {
-        if (cell == null)
-            return null;
-        return cell.getStringCellValue().trim();
+        if (cell == null) return null;
+
+        try {
+            switch (cell.getCellType()) {
+
+                case STRING:
+                    return cell.getStringCellValue().trim();
+
+                case NUMERIC:
+                    double num = cell.getNumericCellValue();
+                    return (num == (long) num)
+                            ? String.valueOf((long) num)
+                            : String.valueOf(num);
+
+                case FORMULA:
+                    return cell.getStringCellValue().trim();
+
+                default:
+                    return null;
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private List<String> allocationKeys() {

@@ -1,5 +1,6 @@
 package com.asg.finance.dto;
 
+import com.asg.common.lib.dto.LovGetListDto;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -22,7 +23,7 @@ public class ExpenseReallocationResponse {
     private String docRef;
     private String narration;
     private Long expenseGroupGlId;
-    private String expenseGroupGlName;
+    private LovGetListDto expenseGroupGlDtl;
     private Long fromCompanyId;
     private String fromCompanyName;
     private Long jvPoid;

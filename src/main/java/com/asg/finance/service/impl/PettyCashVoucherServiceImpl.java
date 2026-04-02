@@ -1631,14 +1631,14 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             // Set type and amount based on which one has value
             if (src.getDrAmt() != null && src.getDrAmt().compareTo(BigDecimal.ZERO) > 0) {
                 builder.type("DR");
-                builder.amount(src.getDrAmt());
+                builder.amount(scale3(src.getDrAmt()));
             } else if (src.getCrAmt() != null && src.getCrAmt().compareTo(BigDecimal.ZERO) > 0) {
                 builder.type("CR");
-                builder.amount(src.getCrAmt());
+                builder.amount(scale3(src.getCrAmt()));
             } else {
                 // Default to DR if both are zero/null
                 builder.type("DR");
-                builder.amount(src.getDrAmt() != null ? src.getDrAmt() : BigDecimal.ZERO);
+                builder.amount(src.getDrAmt() != null ? scale3(src.getDrAmt()) : BigDecimal.ZERO);
             }
 
             return builder.build();
@@ -1668,7 +1668,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                             .costDetRowId(cc.getCostDetRowId())
                             .costGroup(cc.getCostGroup())
                             .costPoid(cc.getCostPoid())
-                            .amount(cc.getAmount())
+                            .amount(scale3(cc.getAmount()))
                             .actionType("noChanges")
                             .build();
                     if (cc.getCostPoid() != null && !cc.getCostPoid().isEmpty() && 

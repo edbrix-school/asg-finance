@@ -2590,15 +2590,13 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
         }
 
         if (savedHeader.getAdvancePettyCashPoid() != null) {
-            advancePettyCashHdrRepository.findByTransactionPoid(savedHeader.getAdvancePettyCashPoid())
-                    .ifPresent(adv -> builder.advancePettyCashPoidDtl(new DetailsDto(
-                            adv.getTransactionPoid(),
-                            adv.getDocRef(),
-                            adv.getDocRef(),
-                            adv.getGroupPoid(),
-                            null,
-                            null
-                    )));
+            LovGetListDto advLov = lovService.getDetailsByPoidAndLovName(savedHeader.getAdvancePettyCashPoid(), "ADVANCE_PETTY_CASH_PENDING");
+            if (advLov != null && advLov.getPoid() != null) {
+                builder.advancePettyCashPoidDtl(new DetailsDto(
+                        advLov.getPoid(), advLov.getCode(), advLov.getLabel(),
+                        advLov.getValue(), advLov.getDescription(), advLov.getSeqNo()
+                ));
+            }
         }
 
         if (savedHeader.getFfRef() != null && !savedHeader.getFfRef().isBlank()) {

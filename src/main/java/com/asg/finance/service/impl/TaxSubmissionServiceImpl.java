@@ -65,8 +65,9 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         Long groupPoid = UserContext.getGroupPoid();
         Long companyPoid = UserContext.getCompanyPoid();
         String userId = UserContext.getUserId();
-        
-        log.info("createTaxSubmission started for groupPoid={} companyPoid={} userId={}", groupPoid, companyPoid, userId);
+
+        log.info("createTaxSubmission started for groupPoid={} companyPoid={} userId={}", groupPoid, companyPoid,
+                userId);
 
         // Use session company if not provided (read-only)
         Long finalCompanyId = request.getCompanyId() != null ? request.getCompanyId() : companyPoid;
@@ -82,7 +83,8 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
             throw new ValidationException("Period To is required");
         }
 
-        // Normalize period dates to midnight to match legacy behavior / PL-SQL expectations
+        // Normalize period dates to midnight to match legacy behavior / PL-SQL
+        // expectations
         Timestamp normalizedPeriodFrom = normalizeToMidnight(request.getPeriodFrom());
         Timestamp normalizedPeriodTo = normalizeToMidnight(request.getPeriodTo());
 
@@ -144,7 +146,8 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
     public TaxSubmissionResponse getTaxSubmissionById(Long transactionPoid) {
         log.info("getTaxSubmissionById started for transactionPoid={}", transactionPoid);
 
-        // GROUP_POID is NULL in all records, so use findByTransactionPoid without GROUP_POID filter
+        // GROUP_POID is NULL in all records, so use findByTransactionPoid without
+        // GROUP_POID filter
         GlobalTaxSubmissionHdr header = hdrRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Tax Submission", "transactionPoid", transactionPoid));
 
@@ -161,14 +164,15 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
     public TaxSubmissionResponse updateTaxSubmission(Long transactionPoid, UpdateTaxSubmissionRequest request) {
         Long groupPoid = UserContext.getGroupPoid();
         String userId = UserContext.getUserId();
-        log.info("updateTaxSubmission started for transactionPoid={} groupPoid={} userId={}", transactionPoid, groupPoid, userId);
+        log.info("updateTaxSubmission started for transactionPoid={} groupPoid={} userId={}", transactionPoid,
+                groupPoid, userId);
 
         GlobalTaxSubmissionHdr header = hdrRepository.findByTransactionPoidAndGroupPoid(transactionPoid, groupPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Tax Submission", "transactionPoid", transactionPoid));
 
         // Create a copy of the existing entity for logging
         GlobalTaxSubmissionHdr oldEntity = new GlobalTaxSubmissionHdr();
-        BeanUtils.copyProperties(header ,oldEntity);
+        BeanUtils.copyProperties(header, oldEntity);
 
         // Check if can be updated (not closed/approved/posted)
         if (header.getPeriodClosedDate() != null) {
@@ -186,7 +190,8 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
             throw new ValidationException("Period To is required");
         }
 
-        // Normalize period dates to midnight to match legacy behavior / PL-SQL expectations
+        // Normalize period dates to midnight to match legacy behavior / PL-SQL
+        // expectations
         Timestamp normalizedPeriodFrom = normalizeToMidnight(request.getPeriodFrom());
         Timestamp normalizedPeriodTo = normalizeToMidnight(request.getPeriodTo());
 
@@ -216,10 +221,11 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
 
         // Check if period changed - if so, clear existing details
         boolean periodChanged = !header.getPeriodFrom().equals(normalizedPeriodFrom) ||
-                                !header.getPeriodTo().equals(normalizedPeriodTo);
+                !header.getPeriodTo().equals(normalizedPeriodTo);
         if (periodChanged) {
             dtlRepository.deleteByTransactionPoid(transactionPoid);
-            log.info("updateTaxSubmission cleared details due to period change for transactionPoid={}", transactionPoid);
+            log.info("updateTaxSubmission cleared details due to period change for transactionPoid={}",
+                    transactionPoid);
         }
 
         // Update header
@@ -233,7 +239,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         // Log the update
         String key = savedHeader.getTransactionPoid().toString();
         String docId = UserContext.getDocumentId();
-        loggingService.logChanges(oldEntity, savedHeader, GlobalTaxSubmissionHdr.class, 
+        loggingService.logChanges(oldEntity, savedHeader, GlobalTaxSubmissionHdr.class,
                 docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
         // Build response
@@ -250,7 +256,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         Long groupPoid = UserContext.getGroupPoid();
         log.info("deleteTaxSubmission started for transactionPoid={} groupPoid={}", transactionPoid, groupPoid);
 
-        GlobalTaxSubmissionHdr header = hdrRepository.findByTransactionPoidAndGroupPoid(transactionPoid, groupPoid)
+        GlobalTaxSubmissionHdr header = hdrRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Tax Submission", "transactionPoid", transactionPoid));
 
         // Check if can be deleted
@@ -266,46 +272,50 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
                 "GLOBAL_TAX_SUBMISSION_HDR",
                 "TRANSACTION_POID",
                 deleteReasonDto,
-                header.getTransactionDate().toLocalDateTime().toLocalDate()
-        );
-        
-        // Log the deletion
-        loggingService.createLogSummaryEntry(LogDetailsEnum.DELETED, UserContext.getDocumentId(), transactionPoid.toString());
+                header.getTransactionDate().toLocalDateTime().toLocalDate());
 
+        // Log the deletion
+        loggingService.createLogSummaryEntry(LogDetailsEnum.DELETED, UserContext.getDocumentId(),
+                transactionPoid.toString());
 
         log.info("deleteTaxSubmission completed for transactionPoid={}", transactionPoid);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Map<String, Object> listTaxSubmission(FilterRequestDto filters, 
-                                                 Pageable pageable, LocalDate periodFrom, LocalDate periodTo) {
+    public Map<String, Object> listTaxSubmission(FilterRequestDto filters,
+            Pageable pageable, LocalDate periodFrom, LocalDate periodTo) {
         String documentId = UserContext.getDocumentId();
         if (documentId == null) {
             documentId = "400-118"; // Default document ID for tax submission
         }
-        
+
         log.info("listTaxSubmission started for documentId={}", documentId);
 
         if ((periodFrom == null && periodTo != null) || (periodFrom != null && periodTo == null)) {
-            throw new ValidationException("Both periodFrom and periodTo should be specified or both dates should be empty.");
+            throw new ValidationException(
+                    "Both periodFrom and periodTo should be specified or both dates should be empty.");
         }
-        
+
         if (periodFrom != null && periodTo != null && periodFrom.isAfter(periodTo)) {
             throw new ValidationException("Period From must not be after Period To");
         }
 
         String operator = documentService.resolveOperator(filters);
         String isDeleted = documentService.resolveIsDeleted(filters);
-        List<FilterDto> filterList = documentService.resolveDateFilters(filters, "TRANSACTION_DATE", periodFrom, periodTo);
+        List<FilterDto> filterList = documentService.resolveDateFilters(filters, "TRANSACTION_DATE", periodFrom,
+                periodTo);
 
-        // Ensure filterList is mutable (resolveDateFilters may return Collections.emptyList() which is immutable)
+        // Ensure filterList is mutable (resolveDateFilters may return
+        // Collections.emptyList() which is immutable)
         filterList = new ArrayList<>(filterList);
 
         // Use custom search method
-        // Note: GROUP_POID column is NULL in all records in GLOBAL_TAX_SUBMISSION_HDR table,
+        // Note: GROUP_POID column is NULL in all records in GLOBAL_TAX_SUBMISSION_HDR
+        // table,
         // so we pass null for groupPoid to skip GROUP_POID filtering entirely
-        RawSearchResult raw = searchTaxSubmissions(filterList, operator, pageable, isDeleted, null, periodFrom, periodTo);
+        RawSearchResult raw = searchTaxSubmissions(filterList, operator, pageable, isDeleted, null, periodFrom,
+                periodTo);
 
         Page<Map<String, Object>> page = new PageImpl<>(raw.records(), pageable, raw.totalRecords());
 
@@ -319,7 +329,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         Long groupPoid = UserContext.getGroupPoid();
         Long userPoid = UserContext.getUserPoid();
         String userId = UserContext.getUserId();
-        
+
         log.info("loadVatDetails started for transactionPoid={} groupPoid={}", transactionPoid, groupPoid);
 
         GlobalTaxSubmissionHdr header = hdrRepository.findByTransactionPoidAndGroupPoid(transactionPoid, groupPoid)
@@ -339,7 +349,8 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         }
 
         // Validate period is 1 month duration
-        long daysBetween = (header.getPeriodTo().getTime() - header.getPeriodFrom().getTime()) / (1000 * 60 * 60 * 24) + 1;
+        long daysBetween = (header.getPeriodTo().getTime() - header.getPeriodFrom().getTime()) / (1000 * 60 * 60 * 24)
+                + 1;
         if (daysBetween > 31) {
             throw new ValidationException("Period must be 1 month duration (30 days max) to load VAT details");
         }
@@ -359,20 +370,19 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
             detail.setTransactionPoid(transactionPoid);
             detail.setDetRowId(((Number) detailMap.get("DET_ROW_ID")).longValue());
             detail.setTaxType((String) detailMap.get("TAX_TYPE"));
-            detail.setTaxPoid(detailMap.get("TAX_POID") != null ? 
-                    ((Number) detailMap.get("TAX_POID")).longValue() : null);
+            detail.setTaxPoid(
+                    detailMap.get("TAX_POID") != null ? ((Number) detailMap.get("TAX_POID")).longValue() : null);
             detail.setTaxCode((String) detailMap.get("TAX_CODE"));
             detail.setTaxDescription((String) detailMap.get("TAX_DESCRIPTION"));
             Object taxPercentage = detailMap.get("TAX_PERCENTAGE");
             if (taxPercentage != null) {
                 detail.setTaxPercentage(taxPercentage.toString());
             }
-            detail.setTaxBaseAmount(detailMap.get("TAX_BASE_AMOUNT") != null ? 
-                    (BigDecimal) detailMap.get("TAX_BASE_AMOUNT") : null);
-            detail.setTaxAmount(detailMap.get("TAX_AMOUNT") != null ? 
-                    (BigDecimal) detailMap.get("TAX_AMOUNT") : null);
-            detail.setTotalAmount(detailMap.get("TOTAL_AMOUNT") != null ? 
-                    (BigDecimal) detailMap.get("TOTAL_AMOUNT") : null);
+            detail.setTaxBaseAmount(
+                    detailMap.get("TAX_BASE_AMOUNT") != null ? (BigDecimal) detailMap.get("TAX_BASE_AMOUNT") : null);
+            detail.setTaxAmount(detailMap.get("TAX_AMOUNT") != null ? (BigDecimal) detailMap.get("TAX_AMOUNT") : null);
+            detail.setTotalAmount(
+                    detailMap.get("TOTAL_AMOUNT") != null ? (BigDecimal) detailMap.get("TOTAL_AMOUNT") : null);
             detail.setRemarks((String) detailMap.get("REMARKS"));
             detail.setCreatedBy(userId);
             detailEntities.add(detail);
@@ -388,7 +398,8 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
                 .map(this::convertDetailToResponse)
                 .collect(Collectors.toList()));
 
-        log.info("loadVatDetails completed for transactionPoid={} loadedCount={}", transactionPoid, detailEntities.size());
+        log.info("loadVatDetails completed for transactionPoid={} loadedCount={}", transactionPoid,
+                detailEntities.size());
         return response;
     }
 
@@ -396,7 +407,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
     @Transactional
     public SubmitTaxSubmissionResponse submitTaxSubmission(Long transactionPoid, SubmitTaxSubmissionRequest request) {
         Long groupPoid = UserContext.getGroupPoid();
-        
+
         log.info("submitTaxSubmission started for transactionPoid={} action={}", transactionPoid, request.getAction());
 
         GlobalTaxSubmissionHdr header = hdrRepository.findByTransactionPoidAndGroupPoid(transactionPoid, groupPoid)
@@ -438,7 +449,8 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         Long groupPoid = UserContext.getGroupPoid();
         String userId = UserContext.getUserId();
 
-        log.info("runAfterSave started for transactionPoid={} groupPoid={} userId={}", transactionPoid, groupPoid, userId);
+        log.info("runAfterSave started for transactionPoid={} groupPoid={} userId={}", transactionPoid, groupPoid,
+                userId);
 
         GlobalTaxSubmissionHdr header = hdrRepository.findByTransactionPoidAndGroupPoid(transactionPoid, groupPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Tax Submission", "transactionPoid", transactionPoid));
@@ -451,7 +463,8 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         }
 
         // Reload header (procedure may have updated fields like PERIOD_CLOSED_BY/DATE)
-        GlobalTaxSubmissionHdr reloadedHeader = hdrRepository.findByTransactionPoidAndGroupPoid(transactionPoid, groupPoid)
+        GlobalTaxSubmissionHdr reloadedHeader = hdrRepository
+                .findByTransactionPoidAndGroupPoid(transactionPoid, groupPoid)
                 .orElse(header);
         List<GlobalTaxSubmissionDtl> details = dtlRepository.findByTransactionPoid(transactionPoid);
 
@@ -465,13 +478,14 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
     @Transactional(readOnly = true)
     public ValidatePeriodResponse validatePeriod(ValidatePeriodRequest request) {
         Long groupPoid = UserContext.getGroupPoid();
-        log.info("validatePeriod started for companyId={} periodFrom={} periodTo={}", 
+        log.info("validatePeriod started for companyId={} periodFrom={} periodTo={}",
                 request.getCompanyId(), request.getPeriodFrom(), request.getPeriodTo());
 
         ValidatePeriodResponse response = new ValidatePeriodResponse();
         List<String> errors = new ArrayList<>();
 
-        // Normalize period dates to midnight to match legacy behavior / PL-SQL expectations
+        // Normalize period dates to midnight to match legacy behavior / PL-SQL
+        // expectations
         Timestamp normalizedPeriodFrom = normalizeToMidnight(request.getPeriodFrom());
         Timestamp normalizedPeriodTo = normalizeToMidnight(request.getPeriodTo());
 
@@ -507,37 +521,38 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
     // Private helper methods
 
     /**
-     * Custom search method for tax submissions that handles GROUP_POID with exact numeric match
+     * Custom search method for tax submissions that handles GROUP_POID with exact
+     * numeric match
      */
-    private RawSearchResult searchTaxSubmissions(List<FilterDto> filters, String operator, Pageable pageable, 
-                                                 String isDeleted, @Nullable Long groupPoid, 
-                                                 @Nullable LocalDate periodFrom, @Nullable LocalDate periodTo) {
+    private RawSearchResult searchTaxSubmissions(List<FilterDto> filters, String operator, Pageable pageable,
+            String isDeleted, @Nullable Long groupPoid,
+            @Nullable LocalDate periodFrom, @Nullable LocalDate periodTo) {
         // Base SQL query
         String baseSql = "SELECT * FROM GLOBAL_TAX_SUBMISSION_HDR";
-        
+
         // Get searchable columns from table
         List<String> columnNames = tableMetaRepository.getColumnsFromTable("GLOBAL_TAX_SUBMISSION_HDR");
-        
+
         // Build WHERE clause with proper GROUP_POID handling
-        WhereClauseResult whereClause = buildTaxSubmissionWhereClause(columnNames, filters, operator, isDeleted, 
-                                                                       groupPoid, periodFrom, periodTo);
-        
+        WhereClauseResult whereClause = buildTaxSubmissionWhereClause(columnNames, filters, operator, isDeleted,
+                groupPoid, periodFrom, periodTo);
+
         // Apply sorting
         String sortedSql = applyTaxSubmissionSorting(baseSql, pageable, columnNames, whereClause.sql());
-        
+
         // Add pagination
         String finalSql = sortedSql + " OFFSET ? ROWS FETCH NEXT ? ROWS ONLY";
-        
+
         List<Object> params = new ArrayList<>(whereClause.params());
         params.add(pageable.getPageNumber() * pageable.getPageSize()); // offset
         params.add(pageable.getPageSize()); // limit
-        
+
         // Execute query
         List<Map<String, Object>> rows = tableMetaRepository.executeDynamicQuery(finalSql, params, columnNames);
-        
+
         // Get display fields from document configuration
         Map<String, String> displayFields = getDisplayFields("400-118");
-        
+
         // Enrich rows with displayable fields and label/value
         for (Map<String, Object> row : rows) {
             if (displayFields != null) {
@@ -549,41 +564,43 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
             row.putIfAbsent("label", row.get("TRANSACTION_POID"));
             row.putIfAbsent("value", row.get("DOC_REF"));
         }
-        
+
         // Get total count
         String countSql = "SELECT COUNT(*) FROM (" + baseSql + " " + whereClause.sql() + ") total_count";
         Long totalRecords = tableMetaRepository.executeCountQuery(countSql, whereClause.params());
-        
+
         return new RawSearchResult(rows, displayFields != null ? displayFields : Map.of(), totalRecords);
     }
-    
+
     /**
      * Build WHERE clause for tax submission search with proper GROUP_POID handling
      */
-    private WhereClauseResult buildTaxSubmissionWhereClause(List<String> fields, List<FilterDto> filters, 
-                                                            String operator, String isDeleted, 
-                                                            @Nullable Long groupPoid,
-                                                            @Nullable LocalDate periodFrom, 
-                                                            @Nullable LocalDate periodTo) {
+    private WhereClauseResult buildTaxSubmissionWhereClause(List<String> fields, List<FilterDto> filters,
+            String operator, String isDeleted,
+            @Nullable Long groupPoid,
+            @Nullable LocalDate periodFrom,
+            @Nullable LocalDate periodTo) {
         StringBuilder sql = new StringBuilder(" WHERE 1=1 ");
         List<Object> params = new ArrayList<>();
-        
+
         // DELETED filter (exact match)
         if ("Y".equalsIgnoreCase(isDeleted)) {
             sql.append(" AND DELETED = 'Y'");
         } else {
             sql.append(" AND (DELETED IS NULL OR DELETED = 'N')");
         }
-        
+
         // GROUP_POID filter (exact numeric match - critical for data isolation)
-        // NOTE: GROUP_POID column is NULL in all records in GLOBAL_TAX_SUBMISSION_HDR table,
+        // NOTE: GROUP_POID column is NULL in all records in GLOBAL_TAX_SUBMISSION_HDR
+        // table,
         // so this filter is intentionally skipped (groupPoid is always passed as null)
-        // If GROUP_POID data is populated in the future, this filter will automatically work
+        // If GROUP_POID data is populated in the future, this filter will automatically
+        // work
         if (groupPoid != null) {
             sql.append(" AND GROUP_POID = ?");
             params.add(groupPoid);
         }
-        
+
         // Date filters for periodFrom/periodTo (if provided)
         if (periodFrom != null && periodTo != null) {
             sql.append(" AND TRANSACTION_DATE >= DATE ?");
@@ -591,16 +608,17 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
             sql.append(" AND TRANSACTION_DATE <= DATE ?");
             params.add(java.sql.Date.valueOf(periodTo));
         }
-        
+
         // Handle other filters
         boolean hasOrGroup = "OR".equalsIgnoreCase(operator);
         boolean groupStarted = false;
-        
+
         for (FilterDto f : Optional.ofNullable(filters).orElse(List.of())) {
             String field = f.searchField().toUpperCase();
             String rawValue = f.searchValue();
-            if (rawValue == null) continue;
-            
+            if (rawValue == null)
+                continue;
+
             if ("GLOBALSEARCH".equals(field)) {
                 handleGlobalSearch(sql, fields, rawValue, params);
             } else if (fields.contains(field)) {
@@ -608,13 +626,13 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
                 String op = cmp[0], value = cmp[1];
                 boolean isDateField = value.matches("\\d{4}-\\d{2}-\\d{2}");
                 String fieldCondition = buildTaxSubmissionFieldCondition(field, op, value, isDateField, params);
-                
+
                 // Close OR group before date filters
                 if (isDateField && groupStarted) {
                     sql.append(")");
                     groupStarted = false;
                 }
-                
+
                 // Append condition with proper grouping
                 if (isDateField) {
                     sql.append(" AND ").append(fieldCondition);
@@ -629,24 +647,25 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
                 }
             }
         }
-        
+
         // Close open OR group
-        if (groupStarted) sql.append(")");
-        
+        if (groupStarted)
+            sql.append(")");
+
         return new WhereClauseResult(sql.toString(), params);
     }
-    
+
     /**
      * Build field condition for tax submission search
      * Numeric fields use exact match, text fields use LIKE
      */
-    private String buildTaxSubmissionFieldCondition(String field, String op, String value, 
-                                                    boolean isDateField, List<Object> params) {
+    private String buildTaxSubmissionFieldCondition(String field, String op, String value,
+            boolean isDateField, List<Object> params) {
         // Numeric fields that should use exact match
-        boolean isNumericField = "TRANSACTION_POID".equals(field) || 
-                                 "GROUP_POID".equals(field) || 
-                                 "COMPANY_POID".equals(field);
-        
+        boolean isNumericField = "TRANSACTION_POID".equals(field) ||
+                "GROUP_POID".equals(field) ||
+                "COMPANY_POID".equals(field);
+
         if (!"=".equals(op)) {
             // Comparison operators (>, >=, <, <=)
             if (isDateField) {
@@ -659,7 +678,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
                 return "UPPER(" + field + ") LIKE ?";
             }
         }
-        
+
         // Equals operator
         if (value.contains("|")) {
             // Multiple values (OR condition)
@@ -676,7 +695,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
             }
             return "(" + String.join(" OR ", orClauses) + ")";
         }
-        
+
         // Single value
         if (isNumericField) {
             params.add(Long.parseLong(value.trim()));
@@ -686,19 +705,19 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
             return "UPPER(" + field + ") LIKE ?";
         }
     }
-    
+
     /**
      * Handle global search across multiple fields
      */
     private void handleGlobalSearch(StringBuilder sql, List<String> fields, String value, List<Object> params) {
         List<String> orClauses = new ArrayList<>();
-        
+
         for (String f : fields) {
             // Numeric fields use exact match, text fields use LIKE
-            boolean isNumericField = "TRANSACTION_POID".equals(f) || 
-                                   "GROUP_POID".equals(f) || 
-                                   "COMPANY_POID".equals(f);
-            
+            boolean isNumericField = "TRANSACTION_POID".equals(f) ||
+                    "GROUP_POID".equals(f) ||
+                    "COMPANY_POID".equals(f);
+
             if (isNumericField) {
                 try {
                     Long numValue = Long.parseLong(value.trim());
@@ -712,23 +731,23 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
                 params.add("%" + value.toUpperCase() + "%");
             }
         }
-        
+
         if (!orClauses.isEmpty()) {
             sql.append(" AND (").append(String.join(" OR ", orClauses)).append(")");
         }
     }
-    
+
     /**
      * Parse comparison operator and value
      */
     private String[] parseComparison(String rawValue) {
         if (rawValue == null || rawValue.trim().isEmpty()) {
-            return new String[]{"=", ""};
+            return new String[] { "=", "" };
         }
-        
+
         String value = rawValue.trim();
         String op = "=";
-        
+
         if (value.startsWith(">=")) {
             op = ">=";
             value = value.substring(2).trim();
@@ -742,21 +761,22 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
             op = "<";
             value = value.substring(1).trim();
         }
-        
-        return new String[]{op, value};
+
+        return new String[] { op, value };
     }
-    
+
     /**
      * Apply sorting to SQL query
      */
-    private String applyTaxSubmissionSorting(String baseSql, Pageable pageable, List<String> columnNames, String whereClause) {
+    private String applyTaxSubmissionSorting(String baseSql, Pageable pageable, List<String> columnNames,
+            String whereClause) {
         // Strip ORDER BY from base SQL if Pageable has sorting
         String sql = pageable.getSort().isSorted()
                 ? baseSql.replaceAll("(?i)ORDER\\s+BY[\\s\\S]*?(?=\\))", "")
                 : baseSql;
-        
+
         StringBuilder sqlBuilder = new StringBuilder(sql).append(whereClause);
-        
+
         // Apply dynamic sorting from Pageable
         if (pageable.getSort().isSorted()) {
             String orderBy = pageable.getSort().stream()
@@ -770,10 +790,10 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
             // Default sorting by TRANSACTION_POID DESC
             sqlBuilder.append(" ORDER BY TRANSACTION_POID DESC");
         }
-        
+
         return sqlBuilder.toString();
     }
-    
+
     /**
      * Get display fields from document configuration
      */
@@ -782,13 +802,13 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         if (doc == null) {
             return Map.of();
         }
-        
+
         if (doc.getListOfDisplayColumnsAndTypes() != null && !doc.getListOfDisplayColumnsAndTypes().isBlank()) {
             return parseDisplayColumns(doc.getListOfDisplayColumnsAndTypes());
         }
         return Map.of();
     }
-    
+
     /**
      * Parse display columns configuration
      */
@@ -796,7 +816,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         if (config == null || config.isBlank()) {
             return Map.of();
         }
-        
+
         Map<String, String> map = new LinkedHashMap<>();
         for (String part : config.split("\\|")) {
             String trimmed = part.trim();
@@ -810,12 +830,13 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         }
         return map;
     }
-    
+
     /**
      * Helper class for WHERE clause result
      */
-    private record WhereClauseResult(String sql, List<Object> params) {}
-    
+    private record WhereClauseResult(String sql, List<Object> params) {
+    }
+
     private TaxSubmissionResponse buildResponse(GlobalTaxSubmissionHdr header, List<GlobalTaxSubmissionDtl> details) {
         TaxSubmissionResponse response = new TaxSubmissionResponse();
         BeanUtils.copyProperties(header, response);
@@ -856,7 +877,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         if (company == null || company.getVatFilingPeriod() == null || company.getVatFilingPeriod().isBlank()) {
             return null;
         }
-        
+
         try {
             return Integer.parseInt(company.getVatFilingPeriod());
         } catch (NumberFormatException e) {
@@ -879,4 +900,3 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         return Timestamp.valueOf(localDate.atStartOfDay());
     }
 }
-

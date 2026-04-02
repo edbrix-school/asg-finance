@@ -250,7 +250,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         Long groupPoid = UserContext.getGroupPoid();
         log.info("deleteTaxSubmission started for transactionPoid={} groupPoid={}", transactionPoid, groupPoid);
 
-        GlobalTaxSubmissionHdr header = hdrRepository.findByTransactionPoid(transactionPoid)
+        GlobalTaxSubmissionHdr header = hdrRepository.findByTransactionPoidAndGroupPoid(transactionPoid, groupPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Tax Submission", "transactionPoid", transactionPoid));
 
         // Check if can be deleted
@@ -299,8 +299,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         String isDeleted = documentService.resolveIsDeleted(filters);
         List<FilterDto> filterList = documentService.resolveDateFilters(filters, "TRANSACTION_DATE", periodFrom, periodTo);
 
-        // Ensure filterList is mutable (resolveDateFilters may return
-        // Collections.emptyList() which is immutable)
+        // Ensure filterList is mutable (resolveDateFilters may return Collections.emptyList() which is immutable)
         filterList = new ArrayList<>(filterList);
 
         // Use custom search method
@@ -558,7 +557,6 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         return new RawSearchResult(rows, displayFields != null ? displayFields : Map.of(), totalRecords);
     }
     
-
     /**
      * Build WHERE clause for tax submission search with proper GROUP_POID handling
      */
@@ -700,7 +698,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
             boolean isNumericField = "TRANSACTION_POID".equals(f) || 
                                    "GROUP_POID".equals(f) || 
                                    "COMPANY_POID".equals(f);
-
+            
             if (isNumericField) {
                 try {
                     Long numValue = Long.parseLong(value.trim());
@@ -730,7 +728,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         
         String value = rawValue.trim();
         String op = "=";
-
+        
         if (value.startsWith(">=")) {
             op = ">=";
             value = value.substring(2).trim();
@@ -756,7 +754,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         String sql = pageable.getSort().isSorted()
                 ? baseSql.replaceAll("(?i)ORDER\\s+BY[\\s\\S]*?(?=\\))", "")
                 : baseSql;
-
+        
         StringBuilder sqlBuilder = new StringBuilder(sql).append(whereClause);
         
         // Apply dynamic sorting from Pageable
@@ -784,7 +782,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         if (doc == null) {
             return Map.of();
         }
-
+        
         if (doc.getListOfDisplayColumnsAndTypes() != null && !doc.getListOfDisplayColumnsAndTypes().isBlank()) {
             return parseDisplayColumns(doc.getListOfDisplayColumnsAndTypes());
         }
@@ -798,7 +796,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         if (config == null || config.isBlank()) {
             return Map.of();
         }
-
+        
         Map<String, String> map = new LinkedHashMap<>();
         for (String part : config.split("\\|")) {
             String trimmed = part.trim();
@@ -818,7 +816,6 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
      */
     private record WhereClauseResult(String sql, List<Object> params) {}
     
-
     private TaxSubmissionResponse buildResponse(GlobalTaxSubmissionHdr header, List<GlobalTaxSubmissionDtl> details) {
         TaxSubmissionResponse response = new TaxSubmissionResponse();
         BeanUtils.copyProperties(header, response);

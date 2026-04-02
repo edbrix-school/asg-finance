@@ -18,7 +18,6 @@ import com.asg.common.lib.service.PrintService;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.GlobalParameterService;
 import com.asg.finance.annotation.PerformGlPosting;
-import com.asg.finance.entity.AdvancePettyCashHdr;
 import com.asg.finance.entity.GLMaster;
 import com.asg.finance.entity.SupplierMasterEntity;
 import com.asg.finance.repository.GLMasterRepository;
@@ -160,19 +159,6 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             logResult("PROC_GL_DTL_BEFORE_SAVE_VAL_V2", result);
             validateTaxAndVatRules(requestDto, taxInputGlPoid.toString());
             validateRoundingAmount(requestDto.getRoundingAmount());
-
-
-//            List<AdvanceDetailDto> advanceDetails = new ArrayList<>();
-//            if ("AGAINST_ADVANCE".equalsIgnoreCase(requestDto.getStatus()) &&
-//                    requestDto.getAdvancePettyCashPoid() != null) {
-//
-//                pettyCashPaymentVoucherCustomRepository.loadAdvanceDetails(
-//                        UserContext.getGroupPoid(), UserContext.getUserPoid(), UserContext.getCompanyPoid(),
-//                        requestDto.getAmount(), String.valueOf(requestDto.getAdvancePettyCashPoid()),
-//                        result, advanceDetails
-//                );
-//                logResult("PROC_GL_PETTY_ADVANCE_DTLLOAD", result);
-//            }
 
             validateCashBalance(requestDto, documentId);
 
@@ -372,9 +358,6 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             // Logging for create operation
             loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), savedHeader.getTransactionPoid().toString());
 
-            triggerPostSaveWorkflow(savedHeader.getTransactionPoid(), documentId);
-
-            // Ensure detail rows are flushed before @PerformGlPosting JDBC call executes.
             entityManager.flush();
             return mapToResponseDto(savedHeader, paymentDtls, chargeDtls, itemDtls);
 
@@ -645,9 +628,6 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             // Logging for update operation
             loggingService.logChanges(oldEntity, updatedHdr, GlPettyCashPaymentHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
-            triggerPostSaveWorkflow(updatedHdr.getTransactionPoid(), documentId);
-
-            // Ensure detail updates/deletes are flushed before @PerformGlPosting JDBC call executes.
             entityManager.flush();
             return mapToResponseDto(updatedHdr, paymentDtls, chargeDtls, itemDtls);
 
@@ -1634,11 +1614,6 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
         }
     }
 
-    private void triggerPostSaveWorkflow(Long transactionPoid, String docId) {
-        // TODO: Publish PettyCashVoucherSavedEvent or call approval/GL posting service
-        log.info("Post-save workflow triggered for transactionPoid={}, docId={}", transactionPoid, docId);
-    }
-
     private List<BillwiseBreakupPopupRequestDto> mapToPopupDto(List<LoadBillwiseBreakupResponseDto> list) {
 
         if (list == null) return Collections.emptyList();
@@ -1708,8 +1683,6 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                                 dto.setCostCenterDetails(lovService.getDetailsByCodeAndLovName(cc.getCostPoid(), cc.getCostGroup()));
                             }
                         }
-                        dto.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(
-                                Long.valueOf(cc.getCostPoid()), cc.getCostGroup()));
                     }
                     return dto;
                 })

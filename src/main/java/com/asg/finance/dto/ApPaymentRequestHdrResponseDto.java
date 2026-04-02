@@ -46,4 +46,6 @@ public class ApPaymentRequestHdrResponseDto {
 
     /* 🔽 Detail lines */
     private List<ApPaymentRequestDtlResponseDto> details;
+    private List<ApPaymentRequestStockDtlResponse> stockDetails;
+
 }

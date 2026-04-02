@@ -675,29 +675,26 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
     }
 
     private void validateMandatoryFields(CreateExpenseReallocationRequest request) {
-        if (request.getTransactionDate() == null) {
-            throw new RuntimeException("Transaction Date is required");
-        }
         if (request.getExpenseGroupGlId() == null) {
-            throw new RuntimeException("Expense Group GL is required");
+            throw new ValidationException("Expense Group GL is required");
         }
         if (request.getFromCompanyId() == null) {
-            throw new RuntimeException("From Company is required");
+            throw new ValidationException("From Company is required");
         }
     }
 
     private void validateMandatoryFieldsForUpdate(UpdateExpenseReallocationRequest request) {
         if (request.getTransactionDate() == null) {
-            throw new RuntimeException("Transaction Date is required");
+            throw new ValidationException("Transaction Date is required");
         }
         if (request.getCompanyPoid() == null) {
-            throw new RuntimeException("Company POID is required");
+            throw new ValidationException("Company POID is required");
         }
         if (request.getExpenseGroupGlId() == null) {
-            throw new RuntimeException("Expense Group GL is required");
+            throw new ValidationException("Expense Group GL is required");
         }
         if (request.getFromCompanyId() == null) {
-            throw new RuntimeException("From Company is required");
+            throw new ValidationException("From Company is required");
         }
     }
 
@@ -705,10 +702,10 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         Set<Long> companySet = new HashSet<>();
         for (ExpenseReallocationDetailRequest detail : details) {
             if (detail.getCompany() == null) {
-                throw new RuntimeException("Company is required for all detail lines");
+                throw new ValidationException("Company is required for all detail lines");
             }
             if (companySet.contains(detail.getCompany())) {
-                throw new RuntimeException("Duplicate company found: " + detail.getCompany());
+                throw new IllegalStateException("Duplicate company found: " + detail.getCompany());
             }
             companySet.add(detail.getCompany());
 
@@ -759,11 +756,13 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         response.setDeleted(header.getDeleted());
         response.setGlPosting(false);
 
-        setCompanyInfo(response, header.getCompanyPoid());
+        response.setCompanyPoid(header.getCompanyPoid());
+        response.setCompanyName(getCompanyInfo(header.getCompanyPoid()));
+
+        response.setFromCompanyId(header.getFromCompany());
+        response.setFromCompanyName(getCompanyInfo(header.getFromCompany()));
 
         setExpenseGroupInfo(response, header.getExpenseGroupGl());
-
-        setFromCompanyInfo(response, header.getFromCompany());
 
         List<GlExpenseReallocationDtl> details = dtlRepository.findByTransactionPoid(header.getTransactionPoid()).orElse(new ArrayList<GlExpenseReallocationDtl>());
         response.setDetails(details.stream().map(this::convertDetailToResponse).collect(Collectors.toList()));
@@ -777,15 +776,14 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         return response;
     }
 
-    private void setCompanyInfo(ExpenseReallocationResponse response, Long companyPoid) {
-        if (companyPoid == null) return;
-
-        response.setCompanyPoid(companyPoid);
+    private String getCompanyInfo(Long companyPoid) {
+        if (companyPoid == null) return null;
 
         CompanyDto company = companyServiceClient.findById(companyPoid);
         if (company != null) {
-            response.setCompanyName(company.getCompanyName());
+            return company.getCompanyName();
         }
+        return null;
     }
 
     private void setExpenseGroupInfo(ExpenseReallocationResponse response, Long expenseGroupGl) {
@@ -797,17 +795,6 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         LovGetListDto gl = mapLovDetails(expenseGroupGl, "GL_MASTER_GROUPS", true);
         if (gl != null) {
             response.setExpenseGroupGlDtl(gl);
-        }
-    }
-
-    private void setFromCompanyInfo(ExpenseReallocationResponse response, Long fromCompany) {
-        if (fromCompany == null) return;
-
-        response.setFromCompanyId(fromCompany);
-
-        CompanyDto company = companyServiceClient.findById(fromCompany);
-        if (company != null) {
-            response.setFromCompanyName(company.getCompanyName());
         }
     }
 
@@ -865,10 +852,11 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         response.setDetRowId(xlDetail.getDetRowId());
         response.setCompany(xlDetail.getCompany());
         response.setCompanyCode(xlDetail.getCompanyCode());
-        response.setCompanyName(null);
         response.setCostCentre(xlDetail.getCostCentre());
         response.setPercent(xlDetail.getPercent());
         response.setRemarks(xlDetail.getRemarks());
+        String companyName = getCompanyInfo(xlDetail.getCompany());
+        response.setCompanyName(companyName);
         return response;
     }
 

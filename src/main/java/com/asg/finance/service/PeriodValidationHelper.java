@@ -3,9 +3,8 @@ package com.asg.finance.service;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.sql.Timestamp;
 import java.time.LocalDate;
-import java.time.ZoneId;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,7 +20,7 @@ public class PeriodValidationHelper {
      * - Period duration (P_PERIOD_TO - P_PERIOD_FROM) <= 30 days when VAT_FILING_PERIOD = 1
      * - Period must be within same month when VAT_FILING_PERIOD = 1
      */
-    public List<String> validatePeriodRules(Timestamp periodFrom, Timestamp periodTo, Integer vatFilingPeriod) {
+    public List<String> validatePeriodRules(LocalDateTime periodFrom, LocalDateTime periodTo, Integer vatFilingPeriod) {
         List<String> errors = new ArrayList<>();
         
         if (periodFrom == null || periodTo == null) {
@@ -29,8 +28,8 @@ public class PeriodValidationHelper {
             return errors;
         }
         
-        LocalDate fromDate = periodFrom.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-        LocalDate toDate = periodTo.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+        LocalDate fromDate = periodFrom.toLocalDate();
+        LocalDate toDate = periodTo.toLocalDate();
         
         // Check if Period From is first day of month
         if (fromDate.getDayOfMonth() != 1) {

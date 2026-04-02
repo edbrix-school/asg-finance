@@ -9,7 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.sql.ResultSet;
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -34,15 +34,15 @@ public class TaxSubmissionStoredProcedureHelper {
      * @return Status message (contains ERROR or WARNING if validation fails)
      */
     public String validateBeforeSave(Long groupPoid, Long companyPoid, String userPoid, 
-                                     Timestamp periodFrom, Timestamp periodTo, Long transactionPoid) {
+                                     LocalDateTime periodFrom, LocalDateTime periodTo, Long transactionPoid) {
         try {
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("PROC_TAX_SUBMIN_BEFORE_SAVE");
             
             query.registerStoredProcedureParameter("P_GROUP_POID", Long.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("P_COMPANY_POID", Long.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("P_USER_POID", String.class, ParameterMode.IN);
-            query.registerStoredProcedureParameter("P_PERIOD_FROM", Timestamp.class, ParameterMode.IN);
-            query.registerStoredProcedureParameter("P_PERIOD_TO", Timestamp.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("P_PERIOD_FROM", LocalDateTime.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("P_PERIOD_TO", LocalDateTime.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("P_TRANSACTION_POID", Long.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("P_RESULT", String.class, ParameterMode.OUT);
             
@@ -122,7 +122,7 @@ public class TaxSubmissionStoredProcedureHelper {
      * @return List of detail records loaded from cursor
      */
     public List<Map<String, Object>> loadVatDetails(Long groupPoid, Long companyPoid, Long userPoid,
-                                                     Long transactionPoid, Timestamp periodFrom, Timestamp periodTo) {
+                                                     Long transactionPoid, LocalDateTime periodFrom, LocalDateTime periodTo) {
         List<Map<String, Object>> details = new ArrayList<>();
         
         try {
@@ -132,8 +132,8 @@ public class TaxSubmissionStoredProcedureHelper {
             query.registerStoredProcedureParameter("P_COMPANY_POID", Long.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("P_USER_POID", Long.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("P_TRANSACTION_POID", Long.class, ParameterMode.IN);
-            query.registerStoredProcedureParameter("P_PERIOD_FROM", Timestamp.class, ParameterMode.IN);
-            query.registerStoredProcedureParameter("P_PERIOD_TO", Timestamp.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("P_PERIOD_FROM", LocalDateTime.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("P_PERIOD_TO", LocalDateTime.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("P_RESULT", String.class, ParameterMode.OUT);
             query.registerStoredProcedureParameter("P_OUTDATA", ResultSet.class, ParameterMode.REF_CURSOR);
             

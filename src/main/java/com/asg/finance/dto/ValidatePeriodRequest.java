@@ -5,7 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
@@ -16,10 +16,10 @@ public class ValidatePeriodRequest {
     private Long companyId;
 
     @NotNull(message = "Period From is required")
-    private Timestamp periodFrom;
+    private LocalDateTime periodFrom;
 
     @NotNull(message = "Period To is required")
-    private Timestamp periodTo;
+    private LocalDateTime periodTo;
 }
 
 

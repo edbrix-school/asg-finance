@@ -36,9 +36,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -84,8 +84,8 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         }
 
         // Normalize period dates to midnight to match legacy behavior / PL-SQL expectations
-        Timestamp normalizedPeriodFrom = normalizeToMidnight(request.getPeriodFrom());
-        Timestamp normalizedPeriodTo = normalizeToMidnight(request.getPeriodTo());
+        LocalDateTime normalizedPeriodFrom = normalizeToMidnight(request.getPeriodFrom());
+        LocalDateTime normalizedPeriodTo = normalizeToMidnight(request.getPeriodTo());
 
         // Get VAT filing period parameter
         Integer vatFilingPeriod = getVatFilingPeriod(finalCompanyId);
@@ -187,8 +187,8 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         }
 
         // Normalize period dates to midnight to match legacy behavior / PL-SQL expectations
-        Timestamp normalizedPeriodFrom = normalizeToMidnight(request.getPeriodFrom());
-        Timestamp normalizedPeriodTo = normalizeToMidnight(request.getPeriodTo());
+        LocalDateTime normalizedPeriodFrom = normalizeToMidnight(request.getPeriodFrom());
+        LocalDateTime normalizedPeriodTo = normalizeToMidnight(request.getPeriodTo());
 
         // Get VAT filing period parameter
         Integer vatFilingPeriod = getVatFilingPeriod(header.getCompanyPoid());
@@ -338,7 +338,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         }
 
         // Validate period is 1 month duration
-        long daysBetween = (header.getPeriodTo().getTime() - header.getPeriodFrom().getTime()) / (1000 * 60 * 60 * 24) + 1;
+        long daysBetween = ChronoUnit.DAYS.between(header.getPeriodFrom(), header.getPeriodTo()) + 1;
         if (daysBetween > 31) {
             throw new ValidationException("Period must be 1 month duration (30 days max) to load VAT details");
         }
@@ -470,8 +470,8 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         List<String> errors = new ArrayList<>();
 
         // Normalize period dates to midnight to match legacy behavior / PL-SQL expectations
-        Timestamp normalizedPeriodFrom = normalizeToMidnight(request.getPeriodFrom());
-        Timestamp normalizedPeriodTo = normalizeToMidnight(request.getPeriodTo());
+        LocalDateTime normalizedPeriodFrom = normalizeToMidnight(request.getPeriodFrom());
+        LocalDateTime normalizedPeriodTo = normalizeToMidnight(request.getPeriodTo());
 
         // Get VAT filing period parameter
         Integer vatFilingPeriod = getVatFilingPeriod(request.getCompanyId());
@@ -864,17 +864,15 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
     }
 
     /**
-     * Normalize a {@link Timestamp} to midnight (00:00:00) of its date component.
+     * Normalize a {@link LocalDateTime} to midnight (00:00:00) of its date component.
      * This mirrors the legacy ADF behavior where only the date part was sent to
      * PL/SQL procedures expecting DATE values that are compared using TRUNC.
      */
-    private Timestamp normalizeToMidnight(Timestamp timestamp) {
-        if (timestamp == null) {
+    private LocalDateTime normalizeToMidnight(LocalDateTime dateTime) {
+        if (dateTime == null) {
             return null;
         }
-        LocalDateTime ldt = timestamp.toLocalDateTime();
-        LocalDate localDate = ldt.toLocalDate();
-        return Timestamp.valueOf(localDate.atStartOfDay());
+        return dateTime.toLocalDate().atStartOfDay();
     }
 }
 

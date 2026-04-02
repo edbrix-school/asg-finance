@@ -37,7 +37,6 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -90,6 +89,10 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
                 
                 for (int i = 0; i < request.getDetails().size(); i++) {
                     TelexFileDtlDto dto = request.getDetails().get(i);
+                    // Skip records with actionType "ISDELETED"
+                    if ("ISDELETED".equalsIgnoreCase(dto.getActionType())) {
+                        continue;
+                    }
                     GlBankFileDtl detail = convertToDetailEntity(dto, savedHdr.getTransactionPoid());
                     detail.setDetRowId((long) (i + 1));
                     details.add(detail);

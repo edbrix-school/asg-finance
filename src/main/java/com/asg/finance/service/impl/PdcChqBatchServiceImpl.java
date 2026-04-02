@@ -37,6 +37,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -345,16 +346,23 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
         return PdcChqBatchHdrResponseDto.builder()
                 .transactionPoid(hdr.getTransactionPoid())
                 .transactionDate(hdr.getTransactionDate())
+                .groupPoid(hdr.getGroupPoid())
+                .companyPoid(hdr.getCompanyPoid())
                 .docRef(hdr.getDocRef())
                 .bankPoid(hdr.getBankPoid())
                 .payGlPoid(hdr.getPayGlPoid())
                 .payingTo(hdr.getPayingTo())
+                .payingType(hdr.getPayingType())
+                .divisionCode(hdr.getDivisionCode())
                 .narration(hdr.getNarration())
                 .prePrinted(hdr.getPrePrinted())
                 .accountPayee(hdr.getAccountPayee())
                 .chqStartNo(hdr.getChqStartNo())
                 .chqStartDate(hdr.getChqStartDate())
                 .billType(hdr.getBillType())
+                .billRef(hdr.getBillRef())
+                .costGroup(hdr.getCostGroup())
+                .costPoid(hdr.getCostPoid())
                 .chqAmount(hdr.getChqAmount())
                 .noOfChqs(hdr.getNoOfChqs())
                 .totalAmount(hdr.getTotalAmount())
@@ -362,7 +370,6 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
                 .lastModifiedBy(hdr.getLastModifiedBy())
                 .lastModifiedDate(hdr.getLastModifiedDate())
                 .deleted(hdr.getDeleted())
-                .billRef(hdr.getBillRef())
                 .chequeDetails(dtlList)
                 .createdDate(hdr.getCreatedDate())
                 .createdBy(hdr.getCreatedBy())
@@ -426,7 +433,8 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
                 .build();
     }
 
-   public PdcBatchCreationProcResponse runBankPostingProcedure(PdcBankPostingProcRequest request) {
+    public PdcBatchCreationProcResponse runBankPostingProcedure(PdcBankPostingProcRequest request) {
+
         boolean exists = hdrRepo.existsByTransactionPoid(request.getTransactionPoid());
         if (!exists) {
             throw new ResourceNotFoundException(
@@ -435,20 +443,66 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
                     request.getTransactionPoid()
             );
         }
-        return pdcBatchCreationRepository.runBankPosting(request);
+
+        // Step 1: Call procedure
+        PdcBatchCreationProcResponse procResponse =
+                pdcBatchCreationRepository.runBankPosting(request);
+
+        String status = procResponse.getStatus();
+
+        // Step 2: Fetch UPDATED child rows
+        List<PdcChqBatchDtlResponseDto> dtlList = new ArrayList<>();
+
+        if (status != null && status.startsWith("SUCCESS")) {
+
+            dtlList = dtlRepo
+                    .findByTransactionPoidOrderByDetRowIdAsc(request.getTransactionPoid())
+                    .stream()
+                    .map(this::mapDtlEntityToResponseDto)
+                    .toList();
+        }
+
+        //  Step 3: Return status + updated data
+        return PdcBatchCreationProcResponse.builder()
+                .status(status)
+                .chequeDetails(dtlList)
+                .build();
     }
 
     public PdcBatchCreationProcResponse createBatchFromExcel(PdcBatchCreationExcelProcRequest request) {
+
         boolean exists = hdrRepo.existsByTransactionPoid(request.getTransactionPoid());
         if (!exists) {
             throw new ResourceNotFoundException(
                     "PDC Batch not found for: ",
-                     "TransactionPoid",
+                    "TransactionPoid",
                     request.getTransactionPoid()
             );
         }
 
-        return pdcBatchCreationRepository.runBatchCreationXL(request);
+        // Step 1: Call procedure
+        PdcBatchCreationProcResponse procResponse =
+                pdcBatchCreationRepository.runBatchCreationXL(request);
+
+        String status = procResponse.getStatus();
+
+        //  Step 2: Fetch inserted rows (EXACT legacy behavior)
+        List<PdcChqBatchDtlResponseDto> dtlList = new ArrayList<>();
+
+        if (status != null && status.startsWith("SUCCESS")) {
+
+            dtlList = dtlRepo
+                    .findByTransactionPoidOrderByDetRowIdAsc(request.getTransactionPoid())
+                    .stream()
+                    .map(this::mapDtlEntityToResponseDto)
+                    .toList();
+        }
+
+        //  Step 3: Return status + data
+        return PdcBatchCreationProcResponse.builder()
+                .status(status)
+                .chequeDetails(dtlList)
+                .build();
     }
     
 
@@ -486,11 +540,12 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
 
             PdcBatchExcelUploadTemp temp = new PdcBatchExcelUploadTemp();
 
-            temp.setChequeDate(getString(row.getCell(0)));
+            temp.setSn(getString(row.getCell(0)));
             temp.setChequeNumber(getString(row.getCell(1)));
-            temp.setChequeAmount(getString(row.getCell(2)));
-            temp.setDrAmt(getString(row.getCell(3)));
-            temp.setDrAmt2(getString(row.getCell(4)));
+            temp.setChequeDate(getString(row.getCell(2)));
+            temp.setChequeAmount(getString(row.getCell(3)));
+            temp.setDrAmt(getString(row.getCell(4)));
+            temp.setDrAmt2(getString(row.getCell(5)));
 
             tempList.add(temp);
             rowIndex++;

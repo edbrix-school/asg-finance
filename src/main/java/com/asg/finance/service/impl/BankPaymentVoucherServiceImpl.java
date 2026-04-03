@@ -1594,6 +1594,21 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         }
         return printService.fillReportToPdf(mainReport, params, dataSource);
     }
+    @Override
+    public byte[] printchequeLeaf(Long transactionPoid) throws Exception {
+        GLPaymentVoucherHDREntity header = paymentVoucherRepository.findById(transactionPoid)
+                .orElseThrow(() -> new ValidationException("Voucher not found with ID: " + transactionPoid));
+    
+        Map<String, Object> params = printService.buildBaseParams(transactionPoid, UserContext.getDocumentId());
+        params.put("BANK_POID", header.getBankPoid());
+        params.put("ACCOUNT_PAYEE_IMG", "jasper/Finance/BankPayments/AccountsPayeeOnly.png");
+        JasperReport mainReport = null;
+        if (null != header.getPrePrinted() && header.getPrePrinted().contains("Y")) {
+            mainReport = printService.load("Finance/BankPayments/BankPaymentVoucherChequeLeaf.jrxml");
+        }
+        return printService.fillReportToPdf(mainReport, params, dataSource);
+    }
+
 
     @Override
     public ReconcileResultDto getReconciledDate(String documentId, Long transactionPoid) {

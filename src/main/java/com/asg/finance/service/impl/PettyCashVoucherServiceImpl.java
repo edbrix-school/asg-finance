@@ -18,7 +18,6 @@ import com.asg.common.lib.service.PrintService;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.GlobalParameterService;
 import com.asg.finance.annotation.PerformGlPosting;
-import com.asg.finance.entity.AdvancePettyCashHdr;
 import com.asg.finance.entity.GLMaster;
 import com.asg.finance.entity.SupplierMasterEntity;
 import com.asg.finance.repository.GLMasterRepository;
@@ -32,9 +31,7 @@ import com.asg.finance.entity.GlPettyCashPaymentDtl;
 import com.asg.finance.entity.GlPettyCashPaymentGrnDtl;
 import com.asg.finance.entity.GlPettyCashPaymentHdr;
 import com.asg.finance.dto.GlPettyCashPaymentGrnDtlRequestDto;
-import com.asg.finance.dto.GlPettyCashPaymentGrnDtlResponseDto;
 import com.asg.finance.repository.GlPettyCashPaymentGrnDtlRepository;
-import com.asg.finance.entity.master.ShipChargeEntity;
 import com.asg.finance.repository.*;
 import com.asg.finance.repository.master.ShipChargeRepository;
 import com.asg.common.lib.security.util.UserContext;
@@ -163,19 +160,6 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             validateTaxAndVatRules(requestDto, taxInputGlPoid.toString());
             validateRoundingAmount(requestDto.getRoundingAmount());
 
-
-            List<AdvanceDetailDto> advanceDetails = new ArrayList<>();
-            if ("AGAINST_ADVANCE".equalsIgnoreCase(requestDto.getStatus()) &&
-                    requestDto.getAdvancePettyCashPoid() != null) {
-
-                pettyCashPaymentVoucherCustomRepository.loadAdvanceDetails(
-                        UserContext.getGroupPoid(), UserContext.getUserPoid(), UserContext.getCompanyPoid(),
-                        requestDto.getAmount(), String.valueOf(requestDto.getAdvancePettyCashPoid()),
-                        result, advanceDetails
-                );
-                logResult("PROC_GL_PETTY_ADVANCE_DTLLOAD", result);
-            }
-
             validateCashBalance(requestDto, documentId);
 
             GlPettyCashPaymentHdr savedHeader = glPettyCashPaymentHdrRepository.save(header);
@@ -185,8 +169,6 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             List<GlPettyCashPaymentDtlResponseDto> paymentDtls = new ArrayList<>();
             List<GlPettyCashChargeDtlResponseDto> chargeDtls = new ArrayList<>();
             List<GLPettyCashItemDtlResponseDto> itemDtls = new ArrayList<>();
-            List<GlPettyCashPaymentGrnDtlResponseDto> grnDtls = new ArrayList<>();
-
 
             String refType = requestDto.getRefType();
             switch (refType.toUpperCase()) {
@@ -334,7 +316,6 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                         throw new ValidationException("At least one GRN detail row is required.");
                     }
                     var savedGrnDtls = glPettyCashPaymentGrnDtlRepository.saveAll(mapGrnDtls(activeGrnDtls, hdrPoid));
-                    grnDtls = mapGrnResponse(savedGrnDtls);
                     savedGrnDtls.forEach(dtl -> {
                         String logDetail = String.format("Row Created on GRN Detail with detRowId: %s", dtl.getDetRowId());
                         loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
@@ -377,11 +358,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             // Logging for create operation
             loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), savedHeader.getTransactionPoid().toString());
 
-            triggerPostSaveWorkflow(savedHeader.getTransactionPoid(), documentId);
-
-            // Ensure detail rows are flushed before @PerformGlPosting JDBC call executes.
             entityManager.flush();
-            return mapToResponseDto(savedHeader, paymentDtls, chargeDtls, itemDtls, grnDtls);
+            return mapToResponseDto(savedHeader, paymentDtls, chargeDtls, itemDtls);
 
         } catch (Exception e) {
             throw new ValidationException("Error during petty cash creation: " + e.getMessage());
@@ -481,7 +459,6 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             List<GlPettyCashPaymentDtlResponseDto> paymentDtls = new ArrayList<>();
             List<GlPettyCashChargeDtlResponseDto> chargeDtls = new ArrayList<>();
             List<GLPettyCashItemDtlResponseDto> itemDtls = new ArrayList<>();
-            List<GlPettyCashPaymentGrnDtlResponseDto> grnDtls = new ArrayList<>();
 
             switch (refType) {
                 case "GENERAL" -> {
@@ -610,7 +587,6 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     var existingGrnDtls = glPettyCashPaymentGrnDtlRepository.findByTransactionPoid(transactionPoid);
                     var mergedGrn = mergeGrnDtls(existingGrnDtls, requestDto, transactionPoid);
                     glPettyCashPaymentGrnDtlRepository.saveAll(mergedGrn);
-                    grnDtls = mapGrnResponse(mergedGrn);
                 }
                 default -> throw new IllegalArgumentException("Invalid RefType: " + refType);
             }
@@ -652,11 +628,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             // Logging for update operation
             loggingService.logChanges(oldEntity, updatedHdr, GlPettyCashPaymentHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
-            triggerPostSaveWorkflow(updatedHdr.getTransactionPoid(), documentId);
-
-            // Ensure detail updates/deletes are flushed before @PerformGlPosting JDBC call executes.
             entityManager.flush();
-            return mapToResponseDto(updatedHdr, paymentDtls, chargeDtls, itemDtls, grnDtls);
+            return mapToResponseDto(updatedHdr, paymentDtls, chargeDtls, itemDtls);
 
         } catch (Exception e) {
             throw new ValidationException("Error during petty cash update: " + e.getMessage());
@@ -754,10 +727,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     newEntity.setLastModifiedBy(getCurrentUser());
                     newEntity.setLastModifiedDate(LocalDateTime.now());
 
-                    if (dto.getGlPoid() != null)
-                        newEntity.setGlMaster(GLMaster.builder().glPoid(dto.getGlPoid()).build());
-                    if (dto.getChargePoid() != null)
-                        newEntity.setChargeMaster(ShipChargeEntity.builder().chargePoid(dto.getChargePoid()).build());
+                    newEntity.setGlPoid(dto.getGlPoid());
+                    newEntity.setChargePoid(dto.getChargePoid());
 
                     toSave.add(newEntity);
                     break;
@@ -789,10 +760,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     existingEntity.setLastModifiedBy(getCurrentUser());
                     existingEntity.setLastModifiedDate(LocalDateTime.now());
 
-                    if (dto.getGlPoid() != null)
-                        existingEntity.setGlMaster(GLMaster.builder().glPoid(dto.getGlPoid()).build());
-                    if (dto.getChargePoid() != null)
-                        existingEntity.setChargeMaster(ShipChargeEntity.builder().chargePoid(dto.getChargePoid()).build());
+                    existingEntity.setGlPoid(dto.getGlPoid());
+                    existingEntity.setChargePoid(dto.getChargePoid());
 
                     toSave.add(existingEntity);
                     
@@ -1283,17 +1252,12 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
     @Transactional(readOnly = true)
     public PettyCashResponseDto findById(Long transactionPoid, String documentId) {
 
-        PettyCashResponseDto response = new PettyCashResponseDto();
-
         try {
 
             GlPettyCashPaymentHdr header = glPettyCashPaymentHdrRepository.findByTransactionPoid(transactionPoid)
                     .orElseThrow(() -> new EntityNotFoundException("Header not found for TransactionPoid: " + transactionPoid));
 
-
-            BeanUtils.copyProperties(header, response);
-            log.info(" Header retrieved successfully: {}", header.getDocRef());
-
+            log.info("Header retrieved successfully: {}", header.getDocRef());
 
             List<GlPettyCashPaymentDtl> paymentEntities =
                     glPettyCashPaymentDtlRepository.findByTransactionPoid(header.getTransactionPoid());
@@ -1325,17 +1289,10 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                 }
             }
 
-
             List<GlPettyCashChargeDtlResponseDto> chargeDtls = mapChargeResponse(chargeEntities);
             List<GLPettyCashItemDtlResponseDto> itemDtls = mapItemResponse(itemEntities);
 
-            response.setPaymentDtls(paymentDtls);
-            response.setChargeDtls(chargeDtls);
-            response.setItemDtls(itemDtls);
-
-            loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, documentId, transactionPoid.toString());
-
-            return response;
+            return mapToResponseDto(header, paymentDtls, chargeDtls, itemDtls);
 
         } catch (Exception e) {
 
@@ -1379,6 +1336,10 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
         Page<Map<String, Object>> page = new PageImpl<>(raw.records(), pageable, raw.totalRecords());
 
         return PaginationUtil.wrapPage(page, raw.displayFields());
+    }
+
+    private static BigDecimal scale3(BigDecimal value) {
+        return value == null ? null : value.setScale(3, RoundingMode.HALF_UP);
     }
 
     private String getCurrentUser() {
@@ -1572,6 +1533,23 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
     }
 
     @Override
+    public List<AdvanceDetailDto> loadAdvanceDetails(BigDecimal amount, String advancePoid) {
+        StringBuilder result = new StringBuilder();
+        List<AdvanceDetailDto> outData = new ArrayList<>();
+        pettyCashPaymentVoucherCustomRepository.loadAdvanceDetails(
+                UserContext.getGroupPoid(),
+                UserContext.getCompanyPoid(),
+                UserContext.getUserPoid(),
+                amount,
+                advancePoid,
+                result,
+                outData
+        );
+        logResult("PROC_GL_PETTY_ADVANCE_DTLLOAD", result);
+        return outData;
+    }
+
+    @Override
     public List<String> getAllowedRefTypes(Long userPoid) {
         log.info("Getting allowed ref types for userPoid: {}", userPoid);
         String whereClause = pettyCashPaymentVoucherCustomRepository.getRefTypeWhereClause(userPoid);
@@ -1636,11 +1614,6 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
         }
     }
 
-    private void triggerPostSaveWorkflow(Long transactionPoid, String docId) {
-        // TODO: Publish PettyCashVoucherSavedEvent or call approval/GL posting service
-        log.info("Post-save workflow triggered for transactionPoid={}, docId={}", transactionPoid, docId);
-    }
-
     private List<BillwiseBreakupPopupRequestDto> mapToPopupDto(List<LoadBillwiseBreakupResponseDto> list) {
 
         if (list == null) return Collections.emptyList();
@@ -1658,14 +1631,14 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             // Set type and amount based on which one has value
             if (src.getDrAmt() != null && src.getDrAmt().compareTo(BigDecimal.ZERO) > 0) {
                 builder.type("DR");
-                builder.amount(src.getDrAmt());
+                builder.amount(scale3(src.getDrAmt()));
             } else if (src.getCrAmt() != null && src.getCrAmt().compareTo(BigDecimal.ZERO) > 0) {
                 builder.type("CR");
-                builder.amount(src.getCrAmt());
+                builder.amount(scale3(src.getCrAmt()));
             } else {
                 // Default to DR if both are zero/null
                 builder.type("DR");
-                builder.amount(src.getDrAmt() != null ? src.getDrAmt() : BigDecimal.ZERO);
+                builder.amount(src.getDrAmt() != null ? scale3(src.getDrAmt()) : BigDecimal.ZERO);
             }
 
             return builder.build();
@@ -1695,7 +1668,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                             .costDetRowId(cc.getCostDetRowId())
                             .costGroup(cc.getCostGroup())
                             .costPoid(cc.getCostPoid())
-                            .amount(cc.getAmount())
+                            .amount(scale3(cc.getAmount()))
                             .actionType("noChanges")
                             .build();
                     if (cc.getCostPoid() != null && !cc.getCostPoid().isEmpty() && 
@@ -1710,8 +1683,6 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                                 dto.setCostCenterDetails(lovService.getDetailsByCodeAndLovName(cc.getCostPoid(), cc.getCostGroup()));
                             }
                         }
-                        dto.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(
-                                Long.valueOf(cc.getCostPoid()), cc.getCostGroup()));
                     }
                     return dto;
                 })
@@ -2118,10 +2089,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                             .detRowId(detRowId)
                             .type(dtl.getType())
                             .companyPoid(dtl.getCompanyPoid())
-                            .glMaster(dtl.getGlPoid() != null
-                                    ? GLMaster.builder().glPoid(dtl.getGlPoid()).build() : null)
-                            .chargeMaster(dtl.getChargePoid() != null
-                                    ? ShipChargeEntity.builder().chargePoid(dtl.getChargePoid()).build() : null)
+                            .glPoid(dtl.getGlPoid())
+                            .chargePoid(dtl.getChargePoid())
                             .drAmt(dtl.getDrAmt())
                             .crAmt(dtl.getCrAmt())
                             .vatAmount(dtl.getVatAmount())
@@ -2331,42 +2300,6 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
         return savedEntities;
     }
 
-    private List<GlPettyCashPaymentGrnDtlResponseDto> mapGrnResponse(List<GlPettyCashPaymentGrnDtl> savedDtls) {
-        return savedDtls.stream()
-                .map(dtl -> {
-                    GlPettyCashPaymentGrnDtlResponseDto responseDto = GlPettyCashPaymentGrnDtlResponseDto.builder()
-                            .transactionPoid(dtl.getTransactionPoid())
-                            .detRowId(dtl.getDetRowId())
-                            .grnPoid(dtl.getGrnPoid())
-                            .checkAll(dtl.getCheckAll())
-                            .amount(dtl.getAmount())
-                            .remarks(dtl.getRemarks())
-                            .refDocId(dtl.getRefDocId())
-                            .refDocPoid(dtl.getRefDocPoid())
-                            .refDetRowId(dtl.getRefDetRowId())
-                            .createdBy(dtl.getCreatedBy())
-                            .createdDate(dtl.getCreatedDate())
-                            .lastModifiedBy(dtl.getLastModifiedBy())
-                            .lastModifiedDate(dtl.getLastModifiedDate())
-                            .build();
-                    // Enrich grnPoidDtl (LOV: GRN_JOBS_FOR_PETTY_CASH)
-                    if (dtl.getGrnPoid() != null) {
-                        LovGetListDto grnLov = lovService.getDetailsByPoidAndLovName(dtl.getGrnPoid(), "GRN_JOBS_FOR_PETTY_CASH");
-                        if (grnLov != null && grnLov.getPoid() != null) {
-                            responseDto.setGrnPoidDtl(new DetailsDto(
-                                    grnLov.getPoid(), grnLov.getCode(), grnLov.getLabel(),
-                                    grnLov.getValue(), grnLov.getDescription(), grnLov.getSeqNo()
-                            ));
-                        }
-                    }
-                    // TODO: Enrich locationPoidDtl (LOV: LOCATION) — locationPoid is not stored
-                    //       in GL_PETTY_CASH_PAYMENT_GRN_DTL. Derive from GRN source document
-                    //       once a GRN header repository is available in this module.
-                    return responseDto;
-                })
-                .collect(Collectors.toList());
-    }
-
     private GlPettyCashPaymentHdr buildPettyCashHeader(PettyCashRequestBase requestDto) {
 
         return GlPettyCashPaymentHdr.builder()
@@ -2436,12 +2369,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                             .detRowId(detRowId)  // Use auto-generated or provided detRowId
                             .type(dtl.getType())
                             .companyPoid(dtl.getCompanyPoid())
-                            .glMaster(dtl.getGlPoid() != null ? GLMaster.builder()
-                                    .glPoid(dtl.getGlPoid())
-                                    .build() : null)
-                            .chargeMaster(dtl.getChargePoid() != null ? ShipChargeEntity.builder()
-                                    .chargePoid(dtl.getChargePoid())
-                                    .build() : null)
+                            .glPoid(dtl.getGlPoid())
+                            .chargePoid(dtl.getChargePoid())
                             .drAmt(dtl.getDrAmt())
                             .crAmt(dtl.getCrAmt())
                             .vatAmount(dtl.getVatAmount())
@@ -2484,9 +2413,11 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                         detRowId = detRowIdCounter[0]++;
                     }
 
-                    GLPettyCashItemDtl.GLPettyCashItemDtlBuilder builder = GLPettyCashItemDtl.builder()
+                    return GLPettyCashItemDtl.builder()
                             .transactionPoid(hdrPoid)
                             .detRowId(detRowId)
+                            .stockPoid(dtl.getStockPoid())
+                            .stockUnitPoid(dtl.getStockUnitPoid())
                             .poQty(dtl.getPoQty())
                             .dnQty(dtl.getDnQty())
                             .qtyReceived(dtl.getQtyReceived())
@@ -2501,15 +2432,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                             .vatPartyName(dtl.getVatPartyName())
                             .partyInvNumber(dtl.getPartyInvNumber())
                             .partyInvDate(dtl.getPartyInvDate())
-                            .taxPoid(dtl.getTaxPoid());
-
-                    GLPettyCashItemDtl entity = builder.build();
-
-                    // Set stockPoid and stockUnitPoid directly on the entity
-                    entity.setStockPoid(dtl.getStockPoid());
-                    entity.setStockUnitPoid(dtl.getStockUnitPoid());
-
-                    return entity;
+                            .taxPoid(dtl.getTaxPoid())
+                            .build();
                 })
                 .collect(Collectors.toList());
     }
@@ -2567,8 +2491,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             GlPettyCashPaymentHdr savedHeader,
             List<GlPettyCashPaymentDtlResponseDto> paymentDtls,
             List<GlPettyCashChargeDtlResponseDto> chargeDtls,
-            List<GLPettyCashItemDtlResponseDto> itemDtls,
-            List<GlPettyCashPaymentGrnDtlResponseDto> grnDtls) {
+            List<GLPettyCashItemDtlResponseDto> itemDtls) {
 
         PettyCashResponseDto.PettyCashResponseDtoBuilder builder = PettyCashResponseDto.builder()
                 .transactionPoid(savedHeader.getTransactionPoid())
@@ -2577,10 +2500,10 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                 .groupPoid(savedHeader.getGroupPoid())
                 .companyPoid(savedHeader.getCompanyPoid())
                 .currencyCode(savedHeader.getCurrencyCode())
-                .currencyRate(savedHeader.getCurrencyRate())
+                .currencyRate(scale3(savedHeader.getCurrencyRate()))
                 .pettyCashGlPoid(savedHeader.getPettyCashGlPoid())
-                .balance(savedHeader.getBalance())
-                .amount(savedHeader.getAmount())
+                .balance(scale3(savedHeader.getBalance()))
+                .amount(scale3(savedHeader.getAmount()))
                 .payingTo(savedHeader.getPayingTo())
                 .narration(savedHeader.getNarration())
                 .advance(savedHeader.getAdvance())
@@ -2589,32 +2512,31 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                 .ffRef(savedHeader.getFfRef())
                 .settledDate(savedHeader.getSettledDate())
                 .remarks(savedHeader.getRemarks())
-                .settledTotal(savedHeader.getSettledTotal())
+                .settledTotal(scale3(savedHeader.getSettledTotal()))
                 .createdBy(savedHeader.getCreatedBy())
                 .createdDate(savedHeader.getCreatedDate())
                 .lastModifiedBy(savedHeader.getLastModifiedBy())
                 .lastModifiedDate(savedHeader.getLastModifiedDate())
                 .deleted(savedHeader.getDeleted())
                 .status(savedHeader.getStatus())
-                .grandTotal(savedHeader.getGrandTotal())
+                .grandTotal(scale3(savedHeader.getGrandTotal()))
                 .mtaRef(savedHeader.getMtaRef())
                 .multiCompany(savedHeader.getMultiCompany())
                 .poRef(savedHeader.getPoRef())
                 .salesQtnRef(savedHeader.getSalesQtnRef())
-                .crTotal(savedHeader.getCrTotal())
-                .drTotal(savedHeader.getDrTotal())
-                .roundingAmount(savedHeader.getRoundingAmount())
+                .crTotal(scale3(savedHeader.getCrTotal()))
+                .drTotal(scale3(savedHeader.getDrTotal()))
+                .roundingAmount(scale3(savedHeader.getRoundingAmount()))
                 .grnSupplierPoid(savedHeader.getGrnSupplierPoid())
                 .supplierGlPoid(savedHeader.getSupplierGlPoid())
                 .customerGlPoid(savedHeader.getCustomerGlPoid())
                 .advancePettyCashPoid(savedHeader.getAdvancePettyCashPoid())
                 .advanceStatus(savedHeader.getAdvanceStatus())
-                .advanceAmount(savedHeader.getAdvanceAmount())
+                .advanceAmount(scale3(savedHeader.getAdvanceAmount()))
                 .companyDivPoid(savedHeader.getCompanyDivPoid())
                 .paymentDtls(paymentDtls)
                 .chargeDtls(chargeDtls)
-                .itemDtls(itemDtls)
-                .grnDtls(grnDtls);
+                .itemDtls(itemDtls);
 
         if (savedHeader.getPettyCashGlPoid() != null) {
             Optional<GLMaster> pettyCashGlPoidOp =
@@ -2668,15 +2590,13 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
         }
 
         if (savedHeader.getAdvancePettyCashPoid() != null) {
-            advancePettyCashHdrRepository.findByTransactionPoid(savedHeader.getAdvancePettyCashPoid())
-                    .ifPresent(adv -> builder.advancePettyCashPoidDtl(new DetailsDto(
-                            adv.getTransactionPoid(),
-                            adv.getDocRef(),
-                            adv.getDocRef(),
-                            adv.getGroupPoid(),
-                            null,
-                            null
-                    )));
+            LovGetListDto advLov = lovService.getDetailsByPoidAndLovName(savedHeader.getAdvancePettyCashPoid(), "ADVANCE_PETTY_CASH_PENDING");
+            if (advLov != null && advLov.getPoid() != null) {
+                builder.advancePettyCashPoidDtl(new DetailsDto(
+                        advLov.getPoid(), advLov.getCode(), advLov.getLabel(),
+                        advLov.getValue(), advLov.getDescription(), advLov.getSeqNo()
+                ));
+            }
         }
 
         if (savedHeader.getFfRef() != null && !savedHeader.getFfRef().isBlank()) {
@@ -2709,6 +2629,21 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             }
         }
 
+        if (savedHeader.getSalesQtnRef() != null && !savedHeader.getSalesQtnRef().isBlank()) {
+            try {
+                Long salesQtnPoid = Long.parseLong(savedHeader.getSalesQtnRef().trim());
+                LovGetListDto lov = lovService.getDetailsByPoidAndLovName(salesQtnPoid, "PETTY_MTA_BASED_RFQ");
+                if (lov != null && lov.getPoid() != null) {
+                    builder.salesQtnRefDtl(new DetailsDto(
+                            lov.getPoid(), lov.getCode(), lov.getLabel(),
+                            lov.getValue(), lov.getDescription(), lov.getSeqNo()
+                    ));
+                }
+            } catch (NumberFormatException ignored) {
+                // salesQtnRef is not a numeric POID — skip enrichment
+            }
+        }
+
         return builder.build();
     }
 
@@ -2721,26 +2656,26 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                                     .detRowId(dtl.getDetRowId())
                                     .type(dtl.getType())
                                     .companyPoid(dtl.getCompanyPoid())
-                                    .glPoid(dtl.getGlMaster() != null ? dtl.getGlMaster().getGlPoid() : null)
-                                    .chargePoid(dtl.getChargeMaster() != null ? dtl.getChargeMaster().getChargePoid() : null)
-                                    .drAmt(dtl.getDrAmt())
-                                    .crAmt(dtl.getCrAmt())
+                                    .glPoid(dtl.getGlPoid())
+                                    .chargePoid(dtl.getChargePoid())
+                                    .drAmt(scale3(dtl.getDrAmt()))
+                                    .crAmt(scale3(dtl.getCrAmt()))
                                     .remarks(dtl.getRemarks())
                                     .createdBy(dtl.getCreatedBy())
                                     .createdDate(dtl.getCreatedDate())
                                     .lastModifiedBy(dtl.getLastModifiedBy())
                                     .lastModifiedDate(dtl.getLastModifiedDate())
-                                    .vatAmount(dtl.getVatAmount())
-                                    .totalAmount(dtl.getTotalAmount())
+                                    .vatAmount(scale3(dtl.getVatAmount()))
+                                    .totalAmount(scale3(dtl.getTotalAmount()))
                                     .vatSupplier(dtl.getVatSupplier())
                                     .inputVatNumber(dtl.getInputVatNumber())
                                     .supplierInvDate(dtl.getSupplierInvDate())
                                     .taxPoid(dtl.getTaxPoid())
-                                    .taxPercentage(dtl.getTaxPercentage())
+                                    .taxPercentage(scale3(dtl.getTaxPercentage()))
                                     .vatPartyName(dtl.getVatPartyName());
 
-                    if (dtl.getGlMaster() != null && dtl.getGlMaster().getGlPoid() != null) {
-                        glMasterRepository.findByGlPoid(dtl.getGlMaster().getGlPoid())
+                    if (dtl.getGlPoid() != null) {
+                        glMasterRepository.findByGlPoid(dtl.getGlPoid())
                                 .ifPresent(glMaster -> {
                                     DetailsDto glDetails = new DetailsDto(
                                             glMaster.getGlPoid(),
@@ -2754,8 +2689,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                                 });
                     }
 
-                    if (dtl.getChargeMaster() != null && dtl.getChargeMaster().getChargePoid() != null) {
-                        shipChargeRepository.findByChargePoid(dtl.getChargeMaster().getChargePoid())
+                    if (dtl.getChargePoid() != null) {
+                        shipChargeRepository.findByChargePoid(dtl.getChargePoid())
                                 .ifPresent(charge -> {
                                     DetailsDto chargeDetails = new DetailsDto(
                                             charge.getChargePoid(),
@@ -2824,7 +2759,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                                     .transactionPoid(dtl.getTransactionPoid())
                                     .detRowId(dtl.getDetRowId())
                                     .chargePoid(dtl.getChargePoid())
-                                    .chargeAmount(dtl.getChargeAmount())
+                                    .chargeAmount(scale3(dtl.getChargeAmount()))
                                     .description(dtl.getDescription())
                                     .remarks(dtl.getRemarks())
                                     .createdBy(dtl.getCreatedBy())
@@ -2835,8 +2770,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                                     .refDocPoid(dtl.getRefDocPoid())
                                     .fdaDetRowId(dtl.getFdaDetRowId())
                                     .checkAll(dtl.getCheckAll())
-                                    .pdaAmount(dtl.getPdaAmount())
-                                    .ffAmount(dtl.getFfAmount())
+                                    .pdaAmount(scale3(dtl.getPdaAmount()))
+                                    .ffAmount(scale3(dtl.getFfAmount()))
                                     .chargeFrom(dtl.getChargeFrom())
                                     .vatPartyName(dtl.getVatPartyName())
                                     .partyInvNumber(dtl.getPartyInvNumber())
@@ -2902,12 +2837,12 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                                     .detRowId(dtl.getDetRowId())
                                     .stockPoid(dtl.getStockPoid())
                                     .stockUnitPoid(dtl.getStockUnitPoid())
-                                    .poQty(dtl.getPoQty())
-                                    .dnQty(dtl.getDnQty())
-                                    .qtyReceived(dtl.getQtyReceived())
-                                    .price(dtl.getPrice())
-                                    .discount(dtl.getDiscount())
-                                    .total(dtl.getTotal())
+                                    .poQty(scale3(dtl.getPoQty()))
+                                    .dnQty(scale3(dtl.getDnQty()))
+                                    .qtyReceived(scale3(dtl.getQtyReceived()))
+                                    .price(scale3(dtl.getPrice()))
+                                    .discount(scale3(dtl.getDiscount()))
+                                    .total(scale3(dtl.getTotal()))
                                     .remarks(dtl.getRemarks())
                                     .createdBy(dtl.getCreatedBy())
                                     .createdDate(dtl.getCreatedDate())

@@ -7,20 +7,7 @@ import lombok.*;
 
 import java.time.LocalDate;
 @Entity
-@Table(
-        name = "GL_PDC_CHQ_BATCH_HDR",
-        uniqueConstraints = {
-                @UniqueConstraint(
-                        name = "GL_PDC_CHQ_BATCH_HDR_UK1",
-                        columnNames = {"DOC_REF"}
-                ),
-                @UniqueConstraint(
-                        name = "GL_PDC_CHQ_BATCH_HDR_UK2",
-                        columnNames = {"TRANSACTION_DATE", "GROUP_POID", "COMPANY_POID",
-                                "DIVISION_CODE", "BANK_POID", "CHQ_START_NO"}
-                )
-        }
-)
+@Table(name = "GL_PDC_CHQ_BATCH_HDR")
 @Getter
 @Setter
 @NoArgsConstructor

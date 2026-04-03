@@ -1,7 +1,6 @@
 package com.asg.finance.entity;
 
 import com.asg.common.lib.entity.BaseEntity;
-import com.asg.finance.entity.master.UnitMaster;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -11,7 +10,6 @@ import lombok.NoArgsConstructor;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "GL_PETTY_CASH_ITEM_DTL")
@@ -34,14 +32,6 @@ public class GLPettyCashItemDtl extends BaseEntity {
 
     @Column(name = "STOCK_UNIT_POID")
     private Long stockUnitPoid;
-
-    @ManyToOne
-    @JoinColumn(name = "STOCK_POID", referencedColumnName = "STOCK_POID", insertable = false, updatable = false)
-    private StockMasterEntity stockMaster;
-
-    @ManyToOne
-    @JoinColumn(name = "STOCK_UNIT_POID", referencedColumnName = "STOCK_UNIT_POID", insertable = false, updatable = false)
-    private UnitMaster stockUnitMaster;
 
     @Column(name = "PO_QTY")
     private BigDecimal poQty;

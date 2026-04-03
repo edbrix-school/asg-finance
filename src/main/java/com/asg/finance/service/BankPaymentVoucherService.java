@@ -46,5 +46,7 @@ public interface BankPaymentVoucherService {
     Map<String, Object> listBankPaymentVouchers(String documentId, FilterRequestDto filters, java.time.LocalDate startDateValue, java.time.LocalDate endDateValue, Pageable pageable);
 
     byte[] print(Long transactionPoid) throws Exception;
+    
+    byte[] printchequeLeaf(Long transactionPoid) throws Exception;
 
 }

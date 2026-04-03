@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -32,11 +32,11 @@ public interface GlobalTaxSubmissionHdrRepository extends JpaRepository<GlobalTa
             "ORDER BY h.transactionDate DESC, h.transactionPoid DESC")
     List<GlobalTaxSubmissionHdr> findWithFilters(
             @Param("groupPoid") Long groupPoid,
-            @Param("dateFrom") Timestamp dateFrom,
-            @Param("dateTo") Timestamp dateTo,
+            @Param("dateFrom") LocalDateTime dateFrom,
+            @Param("dateTo") LocalDateTime dateTo,
             @Param("docRef") String docRef,
-            @Param("periodFrom") Timestamp periodFrom,
-            @Param("periodTo") Timestamp periodTo,
+            @Param("periodFrom") LocalDateTime periodFrom,
+            @Param("periodTo") LocalDateTime periodTo,
             @Param("companyId") Long companyId);
 
     @Query("SELECT h FROM GlobalTaxSubmissionHdr h WHERE h.companyPoid = :companyId " +
@@ -46,8 +46,8 @@ public interface GlobalTaxSubmissionHdrRepository extends JpaRepository<GlobalTa
     List<GlobalTaxSubmissionHdr> findOverlappingPeriods(
             @Param("companyId") Long companyId,
             @Param("groupPoid") Long groupPoid,
-            @Param("periodFrom") Timestamp periodFrom,
-            @Param("periodTo") Timestamp periodTo);
+            @Param("periodFrom") LocalDateTime periodFrom,
+            @Param("periodTo") LocalDateTime periodTo);
 
     @Query("SELECT h FROM GlobalTaxSubmissionHdr h WHERE h.companyPoid = :companyId " +
             "AND h.groupPoid = :groupPoid " +
@@ -57,8 +57,8 @@ public interface GlobalTaxSubmissionHdrRepository extends JpaRepository<GlobalTa
     List<GlobalTaxSubmissionHdr> findOverlappingPeriodsExcluding(
             @Param("companyId") Long companyId,
             @Param("groupPoid") Long groupPoid,
-            @Param("periodFrom") Timestamp periodFrom,
-            @Param("periodTo") Timestamp periodTo,
+            @Param("periodFrom") LocalDateTime periodFrom,
+            @Param("periodTo") LocalDateTime periodTo,
             @Param("excludeTransactionPoid") Long excludeTransactionPoid);
 }
 

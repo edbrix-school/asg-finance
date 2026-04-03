@@ -6,7 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
@@ -16,10 +16,10 @@ public class CreateTaxSubmissionRequest {
     private Long companyId; // Optional, defaults to session company (read-only)
 
     @NotNull(message = "Period From is required")
-    private Timestamp periodFrom;
+    private LocalDateTime periodFrom;
 
     @NotNull(message = "Period To is required")
-    private Timestamp periodTo;
+    private LocalDateTime periodTo;
 
     @Size(max = 1000, message = "Remarks must not exceed 1000 characters")
     private String remarks;

@@ -187,7 +187,7 @@ class TaxSubmissionServiceImplTest {
             userContext.when(UserContext::getUserId).thenReturn("tester");
             userContext.when(UserContext::getDocumentId).thenReturn("400-118");
 
-            when(hdrRepository.findByTransactionPoidAndGroupPoid(10L, 1L)).thenReturn(Optional.of(header));
+            when(hdrRepository.findByTransactionPoid(10L)).thenReturn(Optional.of(header));
             when(companyServiceClient.findById(2L)).thenReturn(company);
             when(periodValidationHelper.validatePeriodRules(any(), any(), eq(1))).thenReturn(List.of());
             when(hdrRepository.findOverlappingPeriodsExcluding(anyLong(), anyLong(), any(), any(), anyLong())).thenReturn(List.of());
@@ -216,7 +216,7 @@ class TaxSubmissionServiceImplTest {
             userContext.when(UserContext::getGroupPoid).thenReturn(1L);
             userContext.when(UserContext::getDocumentId).thenReturn("400-118");
 
-            when(hdrRepository.findByTransactionPoidAndGroupPoid(12L, 1L)).thenReturn(Optional.of(header));
+            when(hdrRepository.findByTransactionPoid(12L)).thenReturn(Optional.of(header));
 
             service.deleteTaxSubmission(12L, new DeleteReasonDto());
 
@@ -481,7 +481,7 @@ class TaxSubmissionServiceImplTest {
         try (MockedStatic<UserContext> userContext = mockStatic(UserContext.class)) {
             userContext.when(UserContext::getGroupPoid).thenReturn(1L);
             userContext.when(UserContext::getUserId).thenReturn("tester");
-            when(hdrRepository.findByTransactionPoidAndGroupPoid(60L, 1L)).thenReturn(Optional.of(header));
+            when(hdrRepository.findByTransactionPoid(60L)).thenReturn(Optional.of(header));
 
             assertThrows(ValidationException.class, () -> service.updateTaxSubmission(60L, request));
         }

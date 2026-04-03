@@ -254,6 +254,11 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
         Long userId = UserContext.getUserPoid() != null ? UserContext.getUserPoid() : 1L;
         return bankFileBatchService.createBankFileBatch(transactionPoid, userId);
     }
+    
+    @Override
+    public String checkBankBalance(Long transactionPoid) {
+        return procRepository.checkOverdraft(transactionPoid);
+    }
 
     private GlBankFileDtl convertToDetailEntity(TelexFileDtlDto dto, Long transactionPoid) {
         return GlBankFileDtl.builder()

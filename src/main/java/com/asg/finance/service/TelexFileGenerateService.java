@@ -20,4 +20,5 @@ public interface TelexFileGenerateService {
     List<TelexFileDtlDto> loadTelexTransferData(String bankList);
     String regenerateTelexFile(Long debitVoucherPoid);
     String generateBankFileButton(Long transactionPoid);
+    String checkBankBalance(Long transactionPoid);
 }

@@ -279,4 +279,22 @@ public class TelexFileGenerateController {
         }
     }
 
+    @Operation(
+            summary = "Check Bank Balance",
+            description = "Check if sufficient bank balance is available for the telex transfer using PROC_BANK_FILE_CHECK_OD_V2"
+    )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
+    @GetMapping("/{transactionPoid}/check-balance")
+    public ResponseEntity<?> checkBankBalance(
+            @Parameter(description = "Transaction POID", required = true)
+            @PathVariable Long transactionPoid
+    ) {
+        try {
+            String result = service.checkBankBalance(transactionPoid);
+            return success("Balance check completed", result);
+        } catch (Exception ex) {
+            return internalServerError("Failed to check bank balance: " + ex.getMessage());
+        }
+    }
+
 }

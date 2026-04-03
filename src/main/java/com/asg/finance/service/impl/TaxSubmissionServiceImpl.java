@@ -163,7 +163,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         String userId = UserContext.getUserId();
         log.info("updateTaxSubmission started for transactionPoid={} groupPoid={} userId={}", transactionPoid, groupPoid, userId);
 
-        GlobalTaxSubmissionHdr header = hdrRepository.findByTransactionPoidAndGroupPoid(transactionPoid, groupPoid)
+        GlobalTaxSubmissionHdr header = hdrRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Tax Submission", "transactionPoid", transactionPoid));
 
         // Create a copy of the existing entity for logging
@@ -249,7 +249,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         Long groupPoid = UserContext.getGroupPoid();
         log.info("deleteTaxSubmission started for transactionPoid={} groupPoid={}", transactionPoid, groupPoid);
 
-        GlobalTaxSubmissionHdr header = hdrRepository.findByTransactionPoidAndGroupPoid(transactionPoid, groupPoid)
+        GlobalTaxSubmissionHdr header = hdrRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Tax Submission", "transactionPoid", transactionPoid));
 
         // Check if can be deleted

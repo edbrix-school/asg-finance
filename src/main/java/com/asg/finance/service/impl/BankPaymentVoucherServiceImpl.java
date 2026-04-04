@@ -510,6 +510,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                 if (isEmpty(req.getChargeDetailRequests())) {
                     throw new ValidationException("No Details in this Transaction...");
                 }
+                validateChargePoid(req.getChargeDetailRequests());
             }
             case "MTA RFQ" -> {
                 if (isEmpty(req.getItemDetailRequests())) {
@@ -520,6 +521,17 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                 if (isEmpty(req.getGlDetails())) {
                     throw new ValidationException("No Details in this Transaction...");
                 }
+            }
+        }
+    }
+
+    private void validateChargePoid(List<BankPaymentChargeDetailRequest> chargeDetails) {
+        if (chargeDetails == null) return;
+        for (int i = 0; i < chargeDetails.size(); i++) {
+            BankPaymentChargeDetailRequest detail = chargeDetails.get(i);            
+            if (detail.getChargePoid() == null) {
+                throw new ValidationException(
+                        "Charge is required for row " + (i + 1) + " in Charge Details.");
             }
         }
     }

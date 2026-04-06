@@ -17,17 +17,17 @@ import java.util.List;
 public class RecurringJvDetailRequest {
     @NotBlank(message = "Type is mandatory")
     private String type;
-    
-    private Long companyId;
-    
-    @NotNull(message = "GL ID is mandatory")
-    private Long glId;
-    
+
+    private Long companyPoid;
+
+    @NotNull(message = "GL Poid is mandatory")
+    private Long glPoid;
+
     private BigDecimal drAmt;
     private BigDecimal crAmt;
     private String remarks;
-    private Long lineId;
     private String actionType;
+    private Long detRowId;
 
     private List<CostCenterBreakupPopupRequestDto> costCenter;
     private List<BillwiseBreakupPopupRequestDto> billWiseBreakup;

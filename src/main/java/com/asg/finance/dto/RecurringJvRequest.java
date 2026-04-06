@@ -27,13 +27,12 @@ public class RecurringJvRequest {
     @NotBlank(message = "Ref type is mandatory")
     private String refType;
     
-    private Long employeeId;
-    private Long assetId;
+    private Long employeePoid;
+    private Long assetPoid;
     private String policyNumber;
     private String remarks;
-    private String docRef;
+    private Long monthWiseAmount;
     
     @NotEmpty(message = "At least one detail line is required")
     private List<RecurringJvDetailRequest> details;
-    
 }

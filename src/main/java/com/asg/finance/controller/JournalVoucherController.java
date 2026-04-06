@@ -301,7 +301,6 @@ public class JournalVoucherController {
                         @ApiResponse(responseCode = "404", description = "Asset not found"),
                         @ApiResponse(responseCode = "500", description = "Database error")
         })
-        @AllowedAction(UserRolesRightsEnum.VIEW)
         @GetMapping("/asset-capitalization-details/{faPoid}")
         public ResponseEntity<?> getAssetCapitalizationDetails(
                         @Parameter(description = "Fixed Asset POID", required = true) @PathVariable Long faPoid) {

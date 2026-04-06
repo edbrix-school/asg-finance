@@ -7,7 +7,6 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "AP_PAYMENT_REQUEST_HDR")
@@ -19,8 +18,7 @@ import java.time.LocalDateTime;
 public class ApPaymentRequestHdr extends BaseEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "ap_payment_request_hdr_seq")
-    @SequenceGenerator(name = "ap_payment_request_hdr_seq", sequenceName = "AP_PAYMENT_REQUEST_HDR_SEQ", allocationSize = 1)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "TRANSACTION_POID", nullable = false)
     private Long transactionPoid;
 

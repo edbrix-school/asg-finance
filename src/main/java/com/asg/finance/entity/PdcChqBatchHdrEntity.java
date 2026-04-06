@@ -6,6 +6,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "GL_PDC_CHQ_BATCH_HDR")
 @Getter
@@ -21,7 +23,7 @@ public class PdcChqBatchHdrEntity extends BaseEntity {
 
 
     @Column(name = "TRANSACTION_DATE")
-    private LocalDate transactionDate;
+    private LocalDateTime transactionDate;
 
     @Column(name = "GROUP_POID")
     private Long groupPoid;

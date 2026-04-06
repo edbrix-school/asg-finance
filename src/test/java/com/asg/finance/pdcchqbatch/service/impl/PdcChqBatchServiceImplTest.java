@@ -38,6 +38,7 @@ import org.springframework.mock.web.MockMultipartFile;
 
 import java.io.ByteArrayOutputStream;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -132,7 +133,7 @@ class PdcChqBatchServiceImplTest {
                 .build();
 
         requestDto = PdcChqBatchHdrRequestDto.builder()
-                .transactionDate(LocalDate.of(2026, 4, 1))
+                .transactionDate(LocalDate.of(2026, 4, 1).atStartOfDay())
                 .groupPoid(1L)
                 .companyPoid(2L)
                 .payGlPoid(101L)
@@ -157,7 +158,7 @@ class PdcChqBatchServiceImplTest {
 
         hdrEntity = PdcChqBatchHdrEntity.builder()
                 .transactionPoid(999L)
-                .transactionDate(LocalDate.of(2026, 4, 1))
+                .transactionDate(LocalDate.of(2026, 4, 1).atStartOfDay())
                 .groupPoid(1L)
                 .companyPoid(2L)
                 .docRef("PDC-001")

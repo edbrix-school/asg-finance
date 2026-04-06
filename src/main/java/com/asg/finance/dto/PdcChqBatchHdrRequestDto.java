@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
@@ -13,7 +14,7 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class PdcChqBatchHdrRequestDto {
-    private LocalDate transactionDate;
+    private LocalDateTime transactionDate;
     private Long groupPoid;
     private Long companyPoid;
     @NotNull(message = "payGlPoid is mandatory")

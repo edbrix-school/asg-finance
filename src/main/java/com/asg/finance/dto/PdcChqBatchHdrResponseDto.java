@@ -14,7 +14,7 @@ import java.util.List;
 public class PdcChqBatchHdrResponseDto {
 
     private Long transactionPoid;
-    private LocalDate transactionDate;
+    private LocalDateTime transactionDate;
     private Long groupPoid;
     private Long companyPoid;
     private String docRef;

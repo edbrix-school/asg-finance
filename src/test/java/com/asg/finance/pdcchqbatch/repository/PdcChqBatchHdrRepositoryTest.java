@@ -27,7 +27,7 @@ class PdcChqBatchHdrRepositoryTest {
     void setUp() {
         entity = PdcChqBatchHdrEntity.builder()
                 .transactionPoid(999L)
-                .transactionDate(LocalDate.of(2026, 4, 1))
+                .transactionDate(LocalDate.of(2026, 4, 1).atStartOfDay())
                 .docRef("PDC-001")
                 .payGlPoid(101L)
                 .payingTo("Vendor A")

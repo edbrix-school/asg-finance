@@ -7,7 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.List;
 
 @Data
@@ -24,9 +24,9 @@ public class CreateExpenseReallocationRequest {
     @Size(max = 1000, message = "Narration must not exceed 1000 characters")
     private String narration;
 
-    private LocalDateTime fromDate;
+    private LocalDate fromDate;
 
-    private LocalDateTime toDate;
+    private LocalDate toDate;
 
     @Size(max = 100, message = "Allocation Type must not exceed 100 characters")
     private String allocationType;

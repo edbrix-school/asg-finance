@@ -41,8 +41,6 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
-import static com.asg.finance.utility.DateTimeHandler.convertDate;
-
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -70,7 +68,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         GlExpenseReallocationHdr header = GlExpenseReallocationHdr.builder()
                 .transactionDate(DateUtil.getCurrentDateInUserTimeZone()).groupPoid(groupPoid).companyPoid(companyPoid)
                 .expenseGroupGl(request.getExpenseGroupGlId()).fromCompany(request.getFromCompanyId())
-                .fromDate(convertDate(request.getFromDate())).toDate(convertDate(request.getToDate())).allocationType(request.getAllocationType())
+                .fromDate(request.getFromDate()).toDate(request.getToDate()).allocationType(request.getAllocationType())
                 .costPoid(request.getCostPoid()).remarks(request.getRemarks())
                 .deleted("N").reportGeneration("N").build();
 
@@ -163,8 +161,8 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         header.setNarration(request.getNarration());
         header.setExpenseGroupGl(request.getExpenseGroupGlId());
         header.setFromCompany(request.getFromCompanyId());
-        header.setFromDate(convertDate(request.getFromDate().atStartOfDay()));
-        header.setToDate(convertDate(request.getToDate().atStartOfDay()));
+        header.setFromDate(request.getFromDate());
+        header.setToDate(request.getToDate());
         header.setAllocationType(request.getAllocationType());
         header.setCostPoid(request.getCostPoid());
         header.setRemarks(request.getRemarks());
@@ -471,7 +469,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 
         Object[][] data = {{"ASG", 10, 15, 5, 5, 10, 0, 0, 0, "", "", ""},
                 {"NSA", 15, 8, 0, 0, 0, 0, 0, 0, "", "", ""}, {"DSA", 10, 10, 0, 0, 0, 0, 0, 0, "", "", ""},
-                {"FAL", 5, 7, 0, 0, 0, 0, 0, 0, "", "", ""}};
+                {"FSL", 5, 7, 0, 0, 0, 0, 0, 0, "", "", ""}};
 
         int rowIdx = 3;
 

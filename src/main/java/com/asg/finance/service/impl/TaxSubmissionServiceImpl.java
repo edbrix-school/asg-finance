@@ -304,7 +304,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         // Use custom search method
         // Note: GROUP_POID column is NULL in all records in GLOBAL_TAX_SUBMISSION_HDR table,
         // so we pass null for groupPoid to skip GROUP_POID filtering entirely
-        RawSearchResult raw = searchTaxSubmissions(filterList, operator, pageable, isDeleted, null, periodFrom, periodTo);
+        RawSearchResult raw = searchTaxSubmissions(filterList, operator, pageable, isDeleted, null);
 
         Page<Map<String, Object>> page = new PageImpl<>(raw.records(), pageable, raw.totalRecords());
 
@@ -508,8 +508,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
      * Custom search method for tax submissions that handles GROUP_POID with exact numeric match
      */
     private RawSearchResult searchTaxSubmissions(List<FilterDto> filters, String operator, Pageable pageable, 
-                                                 String isDeleted, @Nullable Long groupPoid, 
-                                                 @Nullable LocalDate periodFrom, @Nullable LocalDate periodTo) {
+                                                 String isDeleted, @Nullable Long groupPoid) {
         // Base SQL query
         String baseSql = "SELECT * FROM GLOBAL_TAX_SUBMISSION_HDR";
         
@@ -518,7 +517,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         
         // Build WHERE clause with proper GROUP_POID handling
         WhereClauseResult whereClause = buildTaxSubmissionWhereClause(columnNames, filters, operator, isDeleted, 
-                                                                       groupPoid, periodFrom, periodTo);
+                                                                       groupPoid);
         
         // Apply sorting
         String sortedSql = applyTaxSubmissionSorting(baseSql, pageable, columnNames, whereClause.sql());
@@ -560,9 +559,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
      */
     private WhereClauseResult buildTaxSubmissionWhereClause(List<String> fields, List<FilterDto> filters, 
                                                             String operator, String isDeleted, 
-                                                            @Nullable Long groupPoid,
-                                                            @Nullable LocalDate periodFrom, 
-                                                            @Nullable LocalDate periodTo) {
+                                                            @Nullable Long groupPoid) {
         StringBuilder sql = new StringBuilder(" WHERE 1=1 ");
         List<Object> params = new ArrayList<>();
         

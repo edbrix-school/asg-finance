@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -26,7 +27,7 @@ public interface ExpenseReallocationService {
 	ExpenseReallocationResponse updateExpenseReallocation(Long transactionPoid,
 			UpdateExpenseReallocationRequest request, Long groupPoid, String userId);
 
-	void deleteExpenseReallocation(Long transactionPoid, Long groupPoid);
+	void deleteExpenseReallocation(Long transactionPoid, DeleteReasonDto deleteReasonDto);
 
 	Map<String, Object> listOfRecordsAndGenericSearch(String documentId, FilterRequestDto filters, LocalDate startDate,
 			LocalDate endDate, Pageable pageable);

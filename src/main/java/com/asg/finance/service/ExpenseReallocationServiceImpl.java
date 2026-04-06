@@ -6,6 +6,7 @@ import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.LovDataService;
@@ -51,10 +52,14 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
     private final GlExpenseReallocationXlDtlRepository xlDtlRepository;
     private final ExpenseReallocationStoredProcedure storedProcedureHelper;
     private final DocumentSearchService documentService;
+    private final DocumentDeleteService documentDeleteService;
     private final CompanyServiceClient companyServiceClient;
     private final CostCenterRepository costCenterRepository;
     private final LovDataService lovService;
     private final LoggingService loggingService;
+
+    private static final String TRANSACTION_POID = "TRANSACTION_POID";
+    private static final String COMPANYCODE = "Company Code";
 
     @Override
     @Transactional
@@ -187,15 +192,19 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 
     @Override
     @Transactional
-    public void deleteExpenseReallocation(Long transactionPoid, Long groupPoid) {
-        log.info("deleteExpenseReallocation started for transactionPoid={} groupPoid={}", transactionPoid, groupPoid);
+    public void deleteExpenseReallocation(Long transactionPoid, DeleteReasonDto deleteReasonDto) {
+        log.info("deleteExpenseReallocation started for transactionPoid={}", transactionPoid);
 
-        GlExpenseReallocationHdr header = hdrRepository.findByTransactionPoidAndGroupPoid(transactionPoid, groupPoid)
-                .orElseThrow(() -> new ResourceNotFoundException("Expense Reallocation", "transactionPoid",
-                        transactionPoid));
+        hdrRepository.findByTransactionPoid(transactionPoid).orElseThrow(() -> new ResourceNotFoundException("Expense Reallocation", "transactionPoid",
+                transactionPoid));
 
-        header.setDeleted("Y");
-        hdrRepository.save(header);
+        documentDeleteService.deleteDocument(
+                transactionPoid,
+                "GL_EXPENSE_REALLOCATION_HDR",
+                TRANSACTION_POID,
+                deleteReasonDto,
+                null
+        );
 
         log.info("deleteExpenseReallocation completed for transactionPoid={}", transactionPoid);
     }
@@ -213,7 +222,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
                 endDate);
 
         RawSearchResult raw = documentService.search(documentId, filterList, operator, pageable, isDeleted, "NARRATION",
-                "TRANSACTION_POID");
+                TRANSACTION_POID);
 
         Page<Map<String, Object>> page = new PageImpl<>(raw.records(), pageable, raw.totalRecords());
         log.info("getExpenseReallocations completed for docId={} count={}", documentId, page.getNumber());
@@ -290,7 +299,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
                     continue;
                 }
 
-                if ("Company Code".equalsIgnoreCase(costCenterCode) ||
+                if (COMPANYCODE.equalsIgnoreCase(costCenterCode) ||
                         "TOTAL".equalsIgnoreCase(costCenterCode)) {
 
                     headers.add(costCenterCode);
@@ -329,7 +338,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
                         continue;
                     }
 
-                    if ("Company Code".equalsIgnoreCase(key)) {
+                    if (COMPANYCODE.equalsIgnoreCase(key)) {
 
                         String companyCodeValue = StringUtils.trimToNull(getStringCell(cell));
 
@@ -449,7 +458,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         // HEADER ROW
         Row headerRow = sheet.createRow(2);
         List<String> headers = new ArrayList<>();
-        headers.add("Company Code");
+        headers.add(COMPANYCODE);
         headers.addAll(allocationKeys()); // dynamic allocation columns
         headers.add(null);
         headers.add(null);
@@ -915,7 +924,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         return Arrays.stream(GlExpenseReallocationDtl.class.getDeclaredFields())
                 .filter(field -> field.isAnnotationPresent(Column.class))
                 .map(field -> field.getAnnotation(Column.class)).map(Column::name)
-                .filter(name -> !List.of("TRANSACTION_POID", "DET_ROW_ID", "COMPANY", "COMPANY_NAME", "TOTAL",
+                .filter(name -> !List.of(TRANSACTION_POID, "DET_ROW_ID", "COMPANY", "COMPANY_NAME", "TOTAL",
                         "REMARKS", "CREATED_BY", "CREATED_DATE", "LASTMODIFIED_BY", "LASTMODIFIED_DATE").contains(name))
                 .toList();
     }

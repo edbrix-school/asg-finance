@@ -1,6 +1,7 @@
 package com.asg.finance.aspect;
 
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.ApprovalService;
 import com.asg.finance.annotation.PerformGlPosting;
 import com.asg.finance.service.GlPostingService;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,7 @@ import java.lang.reflect.Method;
 public class GlPostingAspect {
 
     private final GlPostingService glPostingService;
+    private final ApprovalService approvalService;
 
     @AfterReturning(pointcut = "@annotation(performGlPosting)", returning = "result")
     public void performGlPosting(JoinPoint joinPoint, PerformGlPosting performGlPosting, Object result) {
@@ -57,7 +59,10 @@ public class GlPostingAspect {
                             @Override
                             public void afterCommit() {
                                 try {
-                                    glPostingService.performGlPosting(finalDocId, finalTransactionPoid, finalDocRef);
+                                    String approvalStatus = approvalService.getApprovalStatus(finalDocId, finalTransactionPoid);
+                                    if ("APPROVAL_NOT_APPLICABLE".equalsIgnoreCase(approvalStatus)) {
+                                        glPostingService.performGlPosting(finalDocId, finalTransactionPoid, finalDocRef);
+                                    }
                                 } catch (Exception e) {
                                     log.error("Error during GL Posting after commit: {}", e.getMessage(), e);
                                     UserContext.setGlPostingError(e.getMessage());
@@ -67,7 +72,10 @@ public class GlPostingAspect {
                 );
             } else {
                 // fallback if no transaction
-                glPostingService.performGlPosting(docId, transactionPoid, docRef);
+                String approvalStatus = approvalService.getApprovalStatus(docId, transactionPoid);
+                if ("APPROVAL_NOT_APPLICABLE".equalsIgnoreCase(approvalStatus)) {
+                        glPostingService.performGlPosting(docId, transactionPoid, docRef);
+                }
             }
 
         } catch (Exception e) {

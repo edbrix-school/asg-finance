@@ -15,7 +15,7 @@ import com.asg.finance.entity.GlExpenseReallocationDtl;
 public interface GlExpenseReallocationDtlRepository
 		extends JpaRepository<GlExpenseReallocationDtl, GlExpenseReallocationDtl.CompositeKey> {
 
-	List<GlExpenseReallocationDtl> findByTransactionPoid(Long transactionPoid);
+	Optional<List<GlExpenseReallocationDtl>> findByTransactionPoid(Long transactionPoid);
 	
 	Optional<GlExpenseReallocationDtl> findByTransactionPoidAndDetRowId(Long transactionPoid, Long detRowId);
 

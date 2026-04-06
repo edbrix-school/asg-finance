@@ -510,6 +510,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                 if (isEmpty(req.getChargeDetailRequests())) {
                     throw new ValidationException("No Details in this Transaction...");
                 }
+                validateChargePoid(req.getChargeDetailRequests());
             }
             case "MTA RFQ" -> {
                 if (isEmpty(req.getItemDetailRequests())) {
@@ -520,6 +521,17 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                 if (isEmpty(req.getGlDetails())) {
                     throw new ValidationException("No Details in this Transaction...");
                 }
+            }
+        }
+    }
+
+    private void validateChargePoid(List<BankPaymentChargeDetailRequest> chargeDetails) {
+        if (chargeDetails == null) return;
+        for (int i = 0; i < chargeDetails.size(); i++) {
+            BankPaymentChargeDetailRequest detail = chargeDetails.get(i);            
+            if (detail.getChargePoid() == null) {
+                throw new ValidationException(
+                        "Charge is required for row " + (i + 1) + " in Charge Details.");
             }
         }
     }
@@ -1594,6 +1606,21 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         }
         return printService.fillReportToPdf(mainReport, params, dataSource);
     }
+    @Override
+    public byte[] printchequeLeaf(Long transactionPoid) throws Exception {
+        GLPaymentVoucherHDREntity header = paymentVoucherRepository.findById(transactionPoid)
+                .orElseThrow(() -> new ValidationException("Voucher not found with ID: " + transactionPoid));
+    
+        Map<String, Object> params = printService.buildBaseParams(transactionPoid, UserContext.getDocumentId());
+        params.put("BANK_POID", header.getBankPoid());
+        params.put("ACCOUNT_PAYEE_IMG", "jasper/Finance/BankPayments/AccountsPayeeOnly.png");
+        JasperReport mainReport = null;
+        if (null != header.getPrePrinted() && header.getPrePrinted().contains("Y")) {
+            mainReport = printService.load("Finance/BankPayments/BankPaymentVoucherChequeLeaf.jrxml");
+        }
+        return printService.fillReportToPdf(mainReport, params, dataSource);
+    }
+
 
     @Override
     public ReconcileResultDto getReconciledDate(String documentId, Long transactionPoid) {

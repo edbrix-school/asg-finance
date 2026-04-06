@@ -6,7 +6,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.sql.Timestamp;
 import java.time.LocalDateTime;
 
 @Entity
@@ -25,10 +24,10 @@ public class GlobalTaxSubmissionHdr extends BaseEntity {
     private Long companyPoid;
 
     @Column(name = "PERIOD_FROM", nullable = false)
-    private Timestamp periodFrom;
+    private LocalDateTime periodFrom;
 
     @Column(name = "PERIOD_TO", nullable = false)
-    private Timestamp periodTo;
+    private LocalDateTime periodTo;
 
     @Column(name = "REMARKS", length = 1000)
     private String remarks;
@@ -37,7 +36,7 @@ public class GlobalTaxSubmissionHdr extends BaseEntity {
     private String periodClosedBy;
 
     @Column(name = "PERIOD_CLOSED_DATE")
-    private Timestamp periodClosedDate;
+    private LocalDateTime periodClosedDate;
 
     @Column(name = "DOC_REF", length = 100)
     private String docRef;

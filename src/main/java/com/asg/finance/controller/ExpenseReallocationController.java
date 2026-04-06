@@ -85,11 +85,12 @@ public class ExpenseReallocationController {
 
 		log.info("getExpenseReallocationById started for transactionPoid={} groupPoid={}", transactionPoid,
 				UserContext.getGroupPoid());
-		loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(),
-				transactionPoid.toString());
 
 		ExpenseReallocationResponse response = expenseReallocationService.getExpenseReallocationById(transactionPoid,
 				UserContext.getGroupPoid());
+
+		loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(),
+				transactionPoid.toString());
 
 		log.info("getExpenseReallocationById completed for transactionPoid={}", transactionPoid);
 

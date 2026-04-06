@@ -9,4 +9,5 @@ public interface BankDepositVoucherProcRepository {
     void callChequeStatusValidation(String refDocRef, Long refDocPoid);
     List<BankDepositVoucherDtlDto> loadPendingPayments(Long bankPoid, String type, String bankFilter);
     void markPaymentsCompleted(Long transactionPoid, String paymentType);
+    void callApprovalProcedure(Long companyPoid, Long userPoid, Long transactionPoid, String docRef, java.time.LocalDate transactionDate);
 }

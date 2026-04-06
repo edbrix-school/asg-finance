@@ -58,8 +58,10 @@ public class TelexFileGenerateProcRepositoryImpl implements TelexFileGeneratePro
                 .getResultList();
 
         List<TelexFileDtlDto> dtoList = new ArrayList<>();
+        long rowId = 1;
         for (Object[] row : results) {
             TelexFileDtlDto dto = TelexFileDtlDto.builder()
+                    .detRowId(rowId++)
                     .debitTransactionPoid(((BigDecimal) row[0]).longValue())
                     .debitTransactionDate(row[1] != null ? ((java.sql.Timestamp) row[1]).toLocalDateTime().toLocalDate() : null)
                     .debitCompanyPoid(row[2] != null ? ((BigDecimal) row[2]).longValue() : null)
@@ -133,12 +135,12 @@ public class TelexFileGenerateProcRepositoryImpl implements TelexFileGeneratePro
 
     @Override
     public String checkOverdraft(Long transactionPoid) {
-        return callProcBankFileCheckOd(transactionPoid);
+        return callProcBankFileCheckOdV2(transactionPoid);
     }
-    
-    private String callProcBankFileCheckOd(Long transactionPoid) {
+
+    private String callProcBankFileCheckOdV2(Long transactionPoid) {
         try {
-            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("PROC_BANK_FILE_CHECK_OD");
+            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("PROC_BANK_FILE_CHECK_OD_V2");
             query.registerStoredProcedureParameter(1, BigDecimal.class, ParameterMode.IN);
             query.registerStoredProcedureParameter(2, String.class, ParameterMode.OUT);
 

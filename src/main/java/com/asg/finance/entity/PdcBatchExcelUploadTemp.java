@@ -15,6 +15,9 @@ public class PdcBatchExcelUploadTemp {
     @Column(name = "CHEQUE_NUMBER")
     private String chequeNumber;
 
+    @Column(name = "SN", length = 100)
+    private String sn;
+
     @Column(name = "CHEQUE_DATE")
     private String chequeDate;
 

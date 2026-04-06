@@ -1,7 +1,6 @@
 package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.*;
-import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
 import com.asg.common.lib.dto.request.GlobalTermsInsertRequestDto;
 import com.asg.common.lib.dto.request.LogRequestDto;
@@ -18,8 +17,6 @@ import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.finance.annotation.PerformGlPosting;
 import com.asg.finance.client.GlobalTermsServiceClient;
-import com.asg.finance.repository.GLMasterRepository;
-import com.asg.finance.repository.TaxMasterRepository;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.finance.dto.*;
@@ -36,7 +33,6 @@ import com.asg.finance.service.GlPostingService;
 import com.asg.finance.service.BillwiseBreakupService;
 import com.asg.finance.service.CostCenterBreakupService;
 import com.asg.finance.validator.BankDebitVoucherValidator;
-import com.asg.finance.repository.GlChequeCashConvertRepository;
 import com.nimbusds.oauth2.sdk.util.CollectionUtils;
 import jakarta.persistence.ParameterMode;
 import jakarta.persistence.StoredProcedureQuery;
@@ -54,6 +50,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import jakarta.persistence.EntityManager;
 
@@ -109,6 +107,8 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
 
     @Override
+    @PerformGlPosting
+    @Transactional
     public BankDebitVoucherResponse createBankDebitVoucher(BankDebitVoucherRequest request, String documentId) {
         // Step 1: Get self-reference to enable proxy interception for @Transactional
         BankDebitVoucherServiceImpl self = applicationContext.getBean(BankDebitVoucherServiceImpl.class);
@@ -120,8 +120,18 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
         // Step 3: Call GL posting procedure OUTSIDE any transaction
         // The procedure can now see the committed data
-        completeGlPosting(documentId, header);
-
+        entityManager.flush();
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    completePostSaveUpdates(documentId, header);
+                }
+            });
+        } else {
+            completePostSaveUpdates(documentId, header);
+        }
+        
         return header;
 
     }
@@ -187,12 +197,11 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         return response;
     }
 
-    private void completeGlPosting(String documentId, BankDebitVoucherResponse savedHeader) {
+    private void completePostSaveUpdates(String documentId, BankDebitVoucherResponse savedHeader) {
         publishJobCostUpdateEvent(savedHeader, null, null);
-        handleApprovalOrGlPosting(documentId, savedHeader);
     }
 
-    private void completeGlPostingForUpdate(String documentId, BankDebitVoucherResponse savedHeader, String oldRefType, String oldRef) {
+    private void completePostSaveUpdatesForUpdate(String documentId, BankDebitVoucherResponse savedHeader, String oldRefType, String oldRef) {
         // Release old job cost association when the reference has changed (mirrors legacy OldRef handling)
         String newRef = null;
         if ("FDA JOBS".equalsIgnoreCase(savedHeader.getRefType())) {
@@ -215,20 +224,6 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         }
 
         publishJobCostUpdateEvent(savedHeader, oldRefType, oldRef);
-        handleApprovalOrGlPosting(documentId, savedHeader);
-    }
-
-    private void handleApprovalOrGlPosting(String documentId, BankDebitVoucherResponse savedHeader) {
-        String approvalStatus = approvalService.getApprovalStatus(documentId, savedHeader.getTransactionPoid());
-        if ("APPROVAL_NOT_APPLICABLE".equalsIgnoreCase(approvalStatus)) {
-            glPostingService.performGlPosting(documentId, savedHeader.getTransactionPoid(), savedHeader.getDocRef());
-        } else if (!"SUBMIT_FOR_APPROVAL".equalsIgnoreCase(approvalStatus)) {
-            String result = bankDebitVoucherProcedureRepository.callApprovalAction(
-                    savedHeader.getCompanyPoid(), UserContext.getUserPoid(),
-                    savedHeader.getTransactionPoid(), documentId,
-                    savedHeader.getDocRef(), savedHeader.getTransactionDate());
-            log.info("Approval submit result: {}", result);
-        }
     }
 
     @Override
@@ -276,6 +271,8 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
     }
 
     @Override
+    @Transactional
+    @PerformGlPosting
     public BankDebitVoucherResponse updateBankDebitVoucher(Long transactionPoid, BankDebitVoucherRequest request, String documentId) {
         BankDebitVoucherServiceImpl self = applicationContext.getBean(BankDebitVoucherServiceImpl.class);
 
@@ -286,8 +283,17 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
         log.info("Update transaction committed. Data is now visible in database.");
 
-        completeGlPostingForUpdate(documentId, response, oldRefType, oldRef);
-
+        entityManager.flush();
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    completePostSaveUpdatesForUpdate(documentId, response, oldRefType, oldRef);
+                }
+            });
+        } else {
+            completePostSaveUpdatesForUpdate(documentId, response, oldRefType, oldRef);
+        }
         return response;
     }
 

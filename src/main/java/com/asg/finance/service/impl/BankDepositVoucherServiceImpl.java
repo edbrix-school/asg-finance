@@ -8,14 +8,10 @@ import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.security.util.UserContext;
-import com.asg.common.lib.service.DocumentDeleteService;
-import com.asg.common.lib.service.DocumentSearchService;
-import com.asg.common.lib.service.PrintService;
-import com.asg.common.lib.service.LovDataService;
-import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.service.*;
 import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.utility.DateUtil;
 import com.asg.common.lib.utility.PaginationUtil;
-import com.asg.finance.annotation.PerformGlPosting;
 import com.asg.finance.dto.BankDepositVoucherDtlDto;
 import com.asg.finance.dto.BankDepositVoucherRequestDto;
 import com.asg.finance.dto.BankDepositVoucherResponseDto;
@@ -24,12 +20,13 @@ import com.asg.finance.entity.GlBankDepositVoucherHdr;
 import com.asg.finance.repository.GlBankDepositVoucherDtlRepository;
 import com.asg.finance.repository.GlBankDepositVoucherHdrRepository;
 import com.asg.finance.service.BankDepositVoucherService;
+import com.asg.finance.service.GlPostingService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -50,6 +47,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class BankDepositVoucherServiceImpl implements BankDepositVoucherService {
 
     private final GlBankDepositVoucherHdrRepository hdrRepository;
@@ -61,6 +59,11 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
     private final LovDataService lovService;
     private final LoggingService loggingService;
     private final PlatformTransactionManager transactionManager;
+    private final ApprovalService approvalService;
+    private final GlPostingService glPostingService;
+    private final GlobalParameterService globalParameterService;
+    
+    private static final String DOC_ID = "300-111";
     private static final String SCREEN_NAME= "Bank Deposit Voucher";
     private static final String TRANSACTION_POID = "transactionPoid";
 
@@ -68,7 +71,6 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
     private EntityManager entityManager;
 
     @Override
-    @PerformGlPosting
     @Transactional
     public BankDepositVoucherResponseDto createBankDepositVoucher(BankDepositVoucherRequestDto request) {
         TransactionTemplate tx = new TransactionTemplate(transactionManager);
@@ -76,21 +78,22 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
         Long transactionPoid = tx.execute(status -> createHeaderAndDetails(request));
         callUpdatePaymentProcedure(transactionPoid, request.getType());
 
-        // Log the creation
         String key = transactionPoid != null ? transactionPoid.toString() : null;
         loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), key);
         
-        return getBankDepositVoucherById(transactionPoid);
+        BankDepositVoucherResponseDto response = getBankDepositVoucherById(transactionPoid);
+        handlePostSaveWorkflow(transactionPoid, response.getDocRef(), response.getTransactionDate());
+        
+        return response;
     }
 
     private Long createHeaderAndDetails(BankDepositVoucherRequestDto request) {
         Long companyPoid = UserContext.getCompanyPoid() != null ? UserContext.getCompanyPoid() : request.getCompanyPoid();
         Long groupPoid = UserContext.getGroupPoid() != null ? UserContext.getGroupPoid() : request.getGroupPoid();
-
         hdrRepository.callBeforeSaveValidation(companyPoid, request.getBankPoid());
 
         GlBankDepositVoucherHdr hdr = GlBankDepositVoucherHdr.builder()
-                .transactionDate(LocalDate.now())
+                .transactionDate(request.getTransactionDate() != null ? request.getTransactionDate() : DateUtil.getCurrentDateInUserTimeZone())
                 .groupPoid(groupPoid)
                 .companyPoid(companyPoid)
                 .bankPoid(request.getBankPoid())
@@ -136,14 +139,16 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
     }
 
     @Override
-    @PerformGlPosting
     @Transactional
     public BankDepositVoucherResponseDto updateBankDepositVoucher(Long transactionPoid, BankDepositVoucherRequestDto request) {
         TransactionTemplate tx = new TransactionTemplate(transactionManager);
         tx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         tx.executeWithoutResult(status -> updateHeaderAndDetails(transactionPoid, request));
         callUpdatePaymentProcedure(transactionPoid, request.getType());
-        return getBankDepositVoucherById(transactionPoid);
+        BankDepositVoucherResponseDto response = getBankDepositVoucherById(transactionPoid);
+        handlePostSaveWorkflow(transactionPoid, response.getDocRef(), response.getTransactionDate());
+        
+        return response;
     }
 
     private void updateHeaderAndDetails(Long transactionPoid, BankDepositVoucherRequestDto request) {
@@ -164,14 +169,18 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
     }
 
     private void validateUpdateState(Long transactionPoid, BankDepositVoucherRequestDto request) {
+        GlBankDepositVoucherHdr hdr = getGlBankDepositVoucherHdr(transactionPoid);
+        hdrRepository.callChequeStatusValidation(hdr.getDocRef(), transactionPoid);
+        
         dtlRepository.findByTransactionPoid(transactionPoid).forEach(detail -> 
             hdrRepository.callChequeStatusValidation(detail.getRefDocRef(), detail.getRefDocPoid())
         );
         hdrRepository.callBeforeSaveValidation(UserContext.getCompanyPoid(), request.getBankPoid());
     }
 
+
     private void updateHeaderFromRequest(GlBankDepositVoucherHdr hdr, BankDepositVoucherRequestDto request) {
-        hdr.setTransactionDate(request.getTransactionDate());
+        hdr.setTransactionDate(request.getTransactionDate() != null ? request.getTransactionDate() : DateUtil.getCurrentDateInUserTimeZone());
         hdr.setBankPoid(request.getBankPoid());
         hdr.setPostingNarration(request.getPostingNarration());
         hdr.setRemarks(request.getRemarks());
@@ -300,7 +309,7 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
                 .lastModifiedDate(hdr.getLastModifiedDate())
                 .refType(hdr.getRefType())
                 .bankFilter(hdr.getBankFilter())
-                .details(details.stream().map(this::convertToDetailDto).collect(Collectors.toList()))
+                .details(details.stream().map(this::convertToDetailDto).toList())
                 .build();
     }
 
@@ -419,5 +428,33 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
         params.put("SUB_CASH", printService.load("Finance/GL/BankDepositVoucherGL_subreport1.jrxml"));
         JasperReport mainReport = printService.load("Finance/GL/BankDepositVoucherReport.jrxml");
         return printService.fillReportToPdf(mainReport, params, dataSource);
+    }
+
+    private void handlePostSaveWorkflow(Long transactionPoid, String docRef, LocalDate transactionDate) {
+        try {
+            Long groupPoid = UserContext.getGroupPoid();
+            String approvalSubmission = globalParameterService.getParameterValue(
+                    "BANK_DEPOSIT_APPROVAL_SUBMISSION", "GROUP", groupPoid != null ? groupPoid.toString() : "1", "FALSE");
+
+            if ("TRUE".equalsIgnoreCase(approvalSubmission)) {
+                String docId = UserContext.getDocumentId() != null ? UserContext.getDocumentId() : DOC_ID;
+                String approvalStatus = approvalService.getApprovalStatus(docId, transactionPoid);
+                log.info("Approval check for BDV {}: status={}, parameter={}", docRef, approvalStatus, approvalSubmission);
+
+                if ("APPROVAL_NOT_APPLICABLE".equalsIgnoreCase(approvalStatus)) {
+                    glPostingService.performGlPosting(docId, transactionPoid, docRef);
+                } else if (approvalStatus == null || approvalStatus.isEmpty() || 
+                           "NOT_SUBMITTED".equalsIgnoreCase(approvalStatus) ||
+                           "RETURN_FOR_CORRECTION".equalsIgnoreCase(approvalStatus)) {
+                    hdrRepository.callApprovalProcedure(UserContext.getCompanyPoid(), UserContext.getUserPoid(), 
+                            transactionPoid, docRef, transactionDate);
+                }
+            } else {
+                String docId = UserContext.getDocumentId() != null ? UserContext.getDocumentId() : DOC_ID;
+                glPostingService.performGlPosting(docId, transactionPoid, docRef);
+            }
+        } catch (Exception e) {
+            log.error("Post-save workflow failed for BDV {}, but data is saved", docRef, e);
+        }
     }
 }

@@ -5,18 +5,27 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.ParameterMode;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.StoredProcedureQuery;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import oracle.jdbc.OracleTypes;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
+import java.sql.ResultSet;
+import java.sql.Types;
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
 @Repository
+@RequiredArgsConstructor
 public class PettyCashPaymentVoucherCustomRepositoryImpl implements PettyCashPaymentVoucherCustomRepository{
 
     @PersistenceContext
     private EntityManager entityManager;
+
+    private final JdbcTemplate jdbcTemplate;
 
     @Override
     public void validateGlVouchers(Long loginGroupPoid, Long loginUserPoid, Long loginCompanyPoid,
@@ -410,50 +419,37 @@ public class PettyCashPaymentVoucherCustomRepositoryImpl implements PettyCashPay
             StringBuilder result,
             List<AdvanceDetailDto> outData
     ) {
-        try {
-            // Create a stored procedure query for the PROC_GL_PETTY_ADVANCE_DTLLOAD procedure
-            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("PROC_GL_PETTY_ADVANCE_DTLLOAD");
-
-            // Register input parameters
-            query.registerStoredProcedureParameter("P_LOGIN_GROUP_POID", Long.class, ParameterMode.IN);
-            query.registerStoredProcedureParameter("P_LOGIN_COMPANY_POID", Long.class, ParameterMode.IN);
-            query.registerStoredProcedureParameter("P_LOGIN_USER_POID", Long.class, ParameterMode.IN);
-            query.registerStoredProcedureParameter("P_AMOUNT", BigDecimal.class, ParameterMode.IN);
-            query.registerStoredProcedureParameter("P_ADVANCE_POID", String.class, ParameterMode.IN);
-
-            // Register output parameters
-            query.registerStoredProcedureParameter("P_RESULT", String.class, ParameterMode.OUT);
-            query.registerStoredProcedureParameter("OUTDATA", void.class, ParameterMode.OUT);  // Cursor
-
-            // Set input parameters
-            query.setParameter("P_LOGIN_GROUP_POID", loginGroupPoid);
-            query.setParameter("P_LOGIN_COMPANY_POID", loginCompanyPoid);
-            query.setParameter("P_LOGIN_USER_POID", loginUserPoid);
-            query.setParameter("P_AMOUNT", amount);
-            query.setParameter("P_ADVANCE_POID", advancePoid);
-
-            // Execute the stored procedure
-            query.execute();
-
-            // Get output parameters
-            String resultOut = (String) query.getOutputParameterValue("P_RESULT");
-            result.append(resultOut);
-
-            // Get the cursor (OUTDATA)
-            List<Object[]> resultList = query.getResultList();
-
-            // Process the cursor result and map to AdvanceDetail objects
-            for (Object[] row : resultList) {
-                AdvanceDetailDto advanceDetail = new AdvanceDetailDto();
-                advanceDetail.setAdvanceAmount((BigDecimal) row[0]);
-                advanceDetail.setAdvanceStatus((String) row[1]);
-                outData.add(advanceDetail);
-            }
-
-        } catch (Exception e) {
-
-            throw new RuntimeException("Error executing PROC_GL_PETTY_ADVANCE_DTLLOAD", e);
-        }
+        jdbcTemplate.execute(
+                con -> {
+                    java.sql.CallableStatement cs = con.prepareCall("BEGIN PROC_GL_PETTY_ADVANCE_DTLLOAD(?,?,?,?,?,?,?); END;");
+                    cs.setObject(1, loginGroupPoid);
+                    cs.setObject(2, loginCompanyPoid);
+                    cs.setObject(3, loginUserPoid);
+                    cs.setObject(4, amount);
+                    cs.setObject(5, advancePoid);
+                    cs.registerOutParameter(6, Types.VARCHAR);
+                    cs.registerOutParameter(7, OracleTypes.CURSOR);
+                    return cs;
+                },
+                (org.springframework.jdbc.core.CallableStatementCallback<Void>) cs -> {
+                    cs.execute();
+                    String resultOut = cs.getString(6);
+                    if (resultOut != null) {
+                        result.append(resultOut);
+                    }
+                    try (ResultSet rs = (ResultSet) cs.getObject(7)) {
+                        if (rs != null) {
+                            while (rs.next()) {
+                                AdvanceDetailDto advanceDetail = new AdvanceDetailDto();
+                                advanceDetail.setAdvanceAmount(rs.getBigDecimal("ADVANCE_AMOUNT"));
+                                advanceDetail.setAdvanceStatus(rs.getString("ADVANCE_STATUS"));
+                                outData.add(advanceDetail);
+                            }
+                        }
+                    }
+                    return null;
+                }
+        );
     }
 
     @Override

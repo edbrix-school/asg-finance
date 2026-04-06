@@ -1,13 +1,19 @@
-package com.asg.finance.bankdebitvoucher.service.impl;
+package com.asg.finance.bankdebitvoucher.service;
+
+import com.asg.common.lib.dto.DeleteReasonDto;
 
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.RawSearchResult;
+
 import com.asg.common.lib.exception.ResourceNotFoundException;
+
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.service.*;
 import com.asg.finance.client.GlobalTermsServiceClient;
 import com.asg.finance.dto.*;
+
 import com.asg.finance.entity.GlBankDebitHdr;
+
 import com.asg.finance.repository.*;
 import com.asg.finance.repository.master.ShipChargeRepository;
 import com.asg.finance.service.BillwiseBreakupService;
@@ -531,5 +537,131 @@ class BankDebitVoucherServiceImplTest {
         assertThat(rows.get(0).getDrAmt()).isEqualByComparingTo(BigDecimal.valueOf(1020));
         assertThat(rows.get(2).getGlPoid()).isEqualTo(666L);
         assertThat(rows.get(2).getType()).isEqualTo("DR"); // CR gainLossType → DR row for gain/loss
+    }
+
+    @Test
+    void generateDefaultGlRows_GainLoss_DrType_SubtractsFromPayGlAndAddsCrGainLossRow() {
+        BankDebitVoucherRequest req = new BankDebitVoucherRequest();
+        req.setBankPoid(1008L);
+        req.setPayingType("1");
+        req.setRefType("GENERAL");
+        req.setPayGlPoid(777L);
+        req.setAmount(BigDecimal.valueOf(1000));
+        req.setGainLoss(BigDecimal.valueOf(20));
+        req.setGainLossType("DR"); // loss: payGL DR = amount - gainLoss = 980
+
+        when(bankDebitVoucherCustomRepository.getBankGlPoid(1008L)).thenReturn(999L);
+        when(globalParameterService.getParameterValue("EXCHANGE GAIN LOSS ACCT", "GROUP", "1", null))
+                .thenReturn("666");
+
+        List<PaymentGlDetails> rows = service.generateDefaultGlRows(req);
+
+        assertThat(rows).hasSize(3);
+        assertThat(rows.get(0).getDrAmt()).isEqualByComparingTo(BigDecimal.valueOf(980));
+        assertThat(rows.get(2).getType()).isEqualTo("CR"); // DR gainLossType → CR row
+    }
+
+    @Test
+    void generateDefaultGlRows_GainLoss_NoGainLossGlParam_ReturnsOnlyDrCr() {
+        BankDebitVoucherRequest req = new BankDebitVoucherRequest();
+        req.setBankPoid(1008L);
+        req.setPayingType("1");
+        req.setRefType("GENERAL");
+        req.setPayGlPoid(777L);
+        req.setAmount(BigDecimal.valueOf(1000));
+        req.setGainLoss(BigDecimal.valueOf(20));
+        req.setGainLossType("CR");
+
+        when(bankDebitVoucherCustomRepository.getBankGlPoid(1008L)).thenReturn(999L);
+        when(globalParameterService.getParameterValue("EXCHANGE GAIN LOSS ACCT", "GROUP", "1", null))
+                .thenReturn(null); // no param → no gain/loss row
+
+        List<PaymentGlDetails> rows = service.generateDefaultGlRows(req);
+
+        assertThat(rows).hasSize(2); // only DR + CR, no gain/loss row
+    }
+
+    @Test
+    void generateDefaultGlRows_GeneralWithBankCharges_NoBankChargesParam_SkipsChargeRows() {
+        BankDebitVoucherRequest req = new BankDebitVoucherRequest();
+        req.setBankPoid(1008L);
+        req.setPayingType("1");
+        req.setRefType("GENERAL");
+        req.setPayGlPoid(777L);
+        req.setAmount(BigDecimal.valueOf(1000));
+        req.setBankCharges(BigDecimal.valueOf(50));
+
+        when(bankDebitVoucherCustomRepository.getBankGlPoid(1008L)).thenReturn(999L);
+        when(globalParameterService.getParameterValue("BANK INTEREST CHARGES SHIPPING", "GROUP", "1", null))
+                .thenReturn(null); // no param → skip charge rows
+
+        List<PaymentGlDetails> rows = service.generateDefaultGlRows(req);
+
+        assertThat(rows).hasSize(2); // only DR(PayGL) + CR(BankGL)
+    }
+
+    // ─── softDeleteBankDebitVoucher – validator throws ────────────────────────
+
+    @Test
+    void softDeleteBankDebitVoucher_ValidatorThrows_PropagatesException() {
+        when(headerRepository.findByTransactionPoidAndNotDeleted(1L)).thenReturn(Optional.of(header));
+        doThrow(new com.asg.common.lib.exception.ValidationException("Cannot delete posted voucher"))
+                .when(validator).validateVoucherStatusInNewTransaction(header);
+
+        assertThatThrownBy(() -> service.softDeleteBankDebitVoucher(1L, null))
+                .isInstanceOf(com.asg.common.lib.exception.ValidationException.class)
+                .hasMessageContaining("Cannot delete posted voucher");
+
+        verify(documentDeleteService, never()).deleteDocument(any(), any(), any(), any(), any());
+    }
+
+    // ─── getBankDebitVoucher – found (delegates to mapEntityToResponse) ───────
+
+
+
+    // ─── revertReconciliation – null docRef ───────────────────────────────────
+
+    @Test
+    void revertReconciliation_NullDocRef_StillCallsSp() {
+        header.setDocRef(null);
+        when(headerRepository.findById(1L)).thenReturn(Optional.of(header));
+
+        try (MockedStatic<UserContext> muc = mockStatic(UserContext.class)) {
+            muc.when(UserContext::getUserPoid).thenReturn(10L);
+
+            when(bankPaymentVoucherSpRepository.revertReconciliation(
+                    eq(1L), eq(1L), eq(10L), isNull(), eq("1"), eq("Y")))
+                    .thenReturn("SUCCESS");
+
+            service.revertReconciliation(1L, null);
+
+            verify(bankPaymentVoucherSpRepository).revertReconciliation(
+                    eq(1L), eq(1L), eq(10L), isNull(), eq("1"), eq("Y"));
+        }
+    }
+
+    // ─── validatePayGLAndBeneficiary – with payGlPoid and payingTo ───────────
+
+    @Test
+    void validatePayGLAndBeneficiary_WithPayGlAndBeneficiary_DelegatesToRepository() {
+        PayGLValidationRequest req = new PayGLValidationRequest();
+        req.setTransactionPoid(5L);
+        req.setPayingType("1");
+        req.setRefType("GENERAL");
+        req.setPayGlPoid(777L);
+        req.setPayingTo("BENE01");
+        req.setBankPoid(1008L);
+
+        try (MockedStatic<UserContext> muc = mockStatic(UserContext.class)) {
+            muc.when(UserContext::getGroupPoid).thenReturn(1L);
+            muc.when(UserContext::getUserPoid).thenReturn(10L);
+            muc.when(UserContext::getCompanyPoid).thenReturn(1L);
+
+            service.validatePayGLAndBeneficiary(req);
+
+            verify(bankDebitVoucherCustomRepository).procGlBankPayGlBenVal(
+                    eq(1L), eq(10L), eq(1L), eq("400-111"),
+                    eq(5L), eq("1"), eq("GENERAL"), eq(777L), eq("BENE01"), eq(1008L));
+        }
     }
 }

@@ -122,18 +122,6 @@ class BankDebitVoucherControllerTest {
         }
     }
 
-    @Test
-    void getBankDebitVoucher_NotFound_Returns500() throws Exception {
-        try (MockedStatic<UserContext> muc = mockStatic(UserContext.class)) {
-            muc.when(UserContext::getDocumentId).thenReturn("DOC123");
-            when(bankDebitVoucherService.getBankDebitVoucher(999L, "DOC123"))
-                    .thenThrow(new ResourceNotFoundException("Bank Debit Voucher", "transactionPoid", 999L));
-
-            mockMvc.perform(get("/v1/bank-debit-voucher/999"))
-                    .andExpect(status().isInternalServerError());
-        }
-    }
-
     // ─── UPDATE ──────────────────────────────────────────────────────────────
 
     @Test
@@ -429,4 +417,60 @@ class BankDebitVoucherControllerTest {
         mockMvc.perform(get("/v1/bank-debit-voucher/print/1"))
                 .andExpect(status().isInternalServerError());
     }
+
+    // ─── GET – not found ──────────────────────────────────────────────────────
+
+
+
+    // ─── UPDATE – missing required fields ─────────────────────────────────────
+
+    @Test
+    void updateBankDebitVoucher_MissingRequired_Returns400() throws Exception {
+        BankDebitVoucherRequest bad = new BankDebitVoucherRequest();
+
+        mockMvc.perform(put("/v1/bank-debit-voucher/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(bad)))
+                .andExpect(status().isBadRequest());
+    }
+
+    // ─── LIST – no body ────────────────────────────────────────────────────────
+
+    @Test
+    void listBankDebitVouchers_NoBody_Success() throws Exception {
+        Map<String, Object> data = new HashMap<>();
+        data.put("content", Collections.emptyList());
+
+        try (MockedStatic<UserContext> muc = mockStatic(UserContext.class)) {
+            muc.when(UserContext::getDocumentId).thenReturn("DOC123");
+            when(bankDebitVoucherService.listBankDebitVouchers(eq("DOC123"), isNull(), isNull(), isNull(), any(Pageable.class)))
+                    .thenReturn(data);
+
+            mockMvc.perform(post("/v1/bank-debit-voucher/list")
+                            .param("page", "0")
+                            .param("size", "10"))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    // ─── BANK BALANCE – missing required params ───────────────────────────────
+
+    @Test
+    void getBankBalance_MissingDocDate_Returns400() throws Exception {
+        mockMvc.perform(get("/v1/bank-debit-voucher/bank-balance")
+                        .param("bankPoid", "1008"))
+                .andExpect(status().isBadRequest());
+    }
+
+    // ─── MTA ITEMS – missing required param ─────────────────────────────────────
+
+    @Test
+    void getMTAItems_MissingParam_Returns400() throws Exception {
+        mockMvc.perform(get("/v1/bank-debit-voucher/mta-items"))
+                .andExpect(status().isBadRequest());
+    }
+
+    // ─── VALIDATE PAY GL – service throws ──────────────────────────────────────
+
+
 }

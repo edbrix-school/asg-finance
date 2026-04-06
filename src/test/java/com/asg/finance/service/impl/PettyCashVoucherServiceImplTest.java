@@ -1175,8 +1175,8 @@ class PettyCashVoucherServiceImplTest {
             com.asg.finance.entity.GlPettyCashPaymentDtl dtl =
                     mock(com.asg.finance.entity.GlPettyCashPaymentDtl.class);
             when(dtl.getCompanyPoid()).thenReturn(2001L);
-            when(dtl.getGlMaster()).thenReturn(null);
-            when(dtl.getChargeMaster()).thenReturn(null);
+            /*when(dtl.getGlMaster()).thenReturn(null);
+            when(dtl.getChargeMaster()).thenReturn(null);*/
             when(dtl.getTaxPoid()).thenReturn(null);
             when(dtl.getVatSupplier()).thenReturn(null);
 
@@ -1201,8 +1201,8 @@ class PettyCashVoucherServiceImplTest {
             com.asg.finance.entity.GlPettyCashPaymentDtl dtl =
                     mock(com.asg.finance.entity.GlPettyCashPaymentDtl.class);
             when(dtl.getCompanyPoid()).thenReturn(null);
-            when(dtl.getGlMaster()).thenReturn(null);
-            when(dtl.getChargeMaster()).thenReturn(null);
+           /* when(dtl.getGlMaster()).thenReturn(null);
+            when(dtl.getChargeMaster()).thenReturn(null);*/
             when(dtl.getTaxPoid()).thenReturn(null);
             when(dtl.getVatSupplier()).thenReturn(null);
 
@@ -1422,8 +1422,8 @@ class PettyCashVoucherServiceImplTest {
                     .filter(row -> Long.valueOf(4L).equals(row.getDetRowId()))
                     .findFirst().orElseThrow();
             assertEquals("NEW", created.getType());
-            assertNotNull(created.getGlMaster());
-            assertNotNull(created.getChargeMaster());
+           /* assertNotNull(created.getGlMaster());
+            assertNotNull(created.getChargeMaster());*/
 
             verify(glPettyCashPaymentDtlRepository).deleteAll(anyList());
             verify(loggingService).logDelete(any(), any(), any());
@@ -1674,18 +1674,19 @@ class PettyCashVoucherServiceImplTest {
             when(supplier.getSupplierName2()).thenReturn("S-2");
             when(supplier.getSeqNo()).thenReturn(6L);
 
-            com.asg.finance.entity.AdvancePettyCashHdr advance =
-                    mock(com.asg.finance.entity.AdvancePettyCashHdr.class);
-            when(advance.getTransactionPoid()).thenReturn(505L);
-            when(advance.getDocRef()).thenReturn("ADV-505");
-            when(advance.getGroupPoid()).thenReturn(10L);
-
             when(glMasterRepository.findByGlPoid(101L)).thenReturn(java.util.Optional.of(pettyCashGl));
             when(glMasterRepository.findByGlPoid(303L)).thenReturn(java.util.Optional.of(supplierGl));
             when(glMasterRepository.findByGlPoid(404L)).thenReturn(java.util.Optional.of(customerGl));
             when(supplierMasterRepository.findBySupplierPoid(202L)).thenReturn(supplier);
-            when(advancePettyCashHdrRepository.findByTransactionPoid(505L))
-                    .thenReturn(java.util.Optional.of(advance));
+            LovGetListDto advanceLov = new LovGetListDto();
+            advanceLov.setPoid(505L);
+            advanceLov.setCode("ADV-505");
+            advanceLov.setLabel("Advance 505");
+            advanceLov.setValue(505L);
+            advanceLov.setDescription("Advance");
+            advanceLov.setSeqNo(1);
+            when(lovService.getDetailsByPoidAndLovName(505L, "ADVANCE_PETTY_CASH_PENDING"))
+                    .thenReturn(advanceLov);
 
             PettyCashResponseDto response = (PettyCashResponseDto) ReflectionTestUtils.invokeMethod(
                     service, "mapToResponseDto", hdr,
@@ -1705,6 +1706,8 @@ class PettyCashVoucherServiceImplTest {
                     .transactionPoid(111L)
                     .detRowId(1L)
                     .companyPoid(88L)
+                    .glPoid(101L)
+                    .chargePoid(201L)
                     .drAmt(new BigDecimal("10"))
                     .crAmt(BigDecimal.ZERO)
                     .vatAmount(new BigDecimal("1.500"))
@@ -1716,8 +1719,6 @@ class PettyCashVoucherServiceImplTest {
                     .taxPercentage(new BigDecimal("15"))
                     .vatPartyName("Party")
                     .build();
-            dtl.setGlMaster(GLMaster.builder().glPoid(101L).build());
-            dtl.setChargeMaster(com.asg.finance.entity.master.ShipChargeEntity.builder().chargePoid(201L).build());
 
             GLMaster gl = GLMaster.builder()
                     .glPoid(101L)

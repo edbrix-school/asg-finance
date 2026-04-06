@@ -35,6 +35,7 @@ import com.asg.finance.service.BillwiseBreakupService;
 import com.asg.finance.service.CostCenterBreakupService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.sf.jasperreports.engine.JasperReport;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
@@ -1144,6 +1145,21 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         dto.setAmount(popup.getAmount());
         dto.setLoginUserPoid(context.userPoid());
         return dto;
+    }
+
+    @Override
+    public byte[] print(Long transactionPoid) {
+        log.info(LOG_MESSAGE_GENERATING_PDF, transactionPoid);
+        try {
+            Map<String, Object> params = printService.buildBaseParams(transactionPoid, DOC_ID_AP_PURCHASE_CN);
+            params.put("SUBREPORT_GL", printService.load("Finance/AP/PurchaseInvoiceReportGlSubreport1.jrxml"));
+            params.put("SUBREPORT_CHARGE", printService.load("Finance/AP/PurchaseInvoiceChargeSubReport.jrxml"));
+            JasperReport mainReport = printService.load("Finance/AP/PurchaseInvoiceReport_2.jrxml");
+            return printService.fillReportToPdf(mainReport, params, dataSource);
+        } catch (Exception e) {
+            log.error(ERROR_MESSAGE_CREATING_PDF, e.getMessage(), e);
+            throw new DataAccessException("Failed to generate PDF for transaction: " + transactionPoid, e);
+        }
     }
 
     private ApPurchaseCnHdr mapToEntity(ApPurchaseCnHdrDto dto) {

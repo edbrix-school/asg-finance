@@ -31,6 +31,7 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import net.sf.jasperreports.engine.JasperReport;
 
 import javax.sql.DataSource;
 import java.math.BigDecimal;
@@ -47,6 +48,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
@@ -495,5 +497,106 @@ class ApPurchaseCnServiceImplTest {
         RuntimeException exception = assertThrows(RuntimeException.class, 
                 () -> service.list("200-103", null, null, null, PageRequest.of(0, 10)));
         assertThat(exception.getMessage()).contains("Search error");
+    }
+
+    @Test
+    void print_Success() throws Exception {
+        Long transactionPoid = 100L;
+        byte[] expectedPdf = "PDF content".getBytes();
+        Map<String, Object> baseParams = new HashMap<>();
+        baseParams.put("transactionPoid", transactionPoid);
+        
+        JasperReport glSubreport = org.mockito.Mockito.mock(JasperReport.class);
+        JasperReport chargeSubreport = org.mockito.Mockito.mock(JasperReport.class);
+        JasperReport mainReport = org.mockito.Mockito.mock(JasperReport.class);
+        
+        when(printService.buildBaseParams(transactionPoid, "200-103")).thenReturn(baseParams);
+        when(printService.load("Finance/AP/PurchaseInvoiceReportGlSubreport1.jrxml")).thenReturn(glSubreport);
+        when(printService.load("Finance/AP/PurchaseInvoiceChargeSubReport.jrxml")).thenReturn(chargeSubreport);
+        when(printService.load("Finance/AP/PurchaseInvoiceReport_2.jrxml")).thenReturn(mainReport);
+        when(printService.fillReportToPdf(eq(mainReport), any(Map.class), eq(dataSource))).thenReturn(expectedPdf);
+        
+        byte[] result = service.print(transactionPoid);
+        
+        assertThat(result).isEqualTo(expectedPdf);
+        verify(printService).buildBaseParams(transactionPoid, "200-103");
+        verify(printService).load("Finance/AP/PurchaseInvoiceReportGlSubreport1.jrxml");
+        verify(printService).load("Finance/AP/PurchaseInvoiceChargeSubReport.jrxml");
+        verify(printService).load("Finance/AP/PurchaseInvoiceReport_2.jrxml");
+        verify(printService).fillReportToPdf(eq(mainReport), any(Map.class), eq(dataSource));
+    }
+    
+    @Test
+    void print_BuildBaseParamsException() throws Exception {
+        Long transactionPoid = 100L;
+        
+        when(printService.buildBaseParams(transactionPoid, "200-103"))
+                .thenThrow(new RuntimeException("Failed to build base parameters"));
+        
+        DataAccessException exception = assertThrows(DataAccessException.class, () -> service.print(transactionPoid));
+        
+        assertThat(exception.getMessage()).contains("Failed to generate PDF for transaction: " + transactionPoid);
+        assertThat(exception.getCause()).isInstanceOf(RuntimeException.class);
+        assertThat(exception.getCause().getMessage()).contains("Failed to build base parameters");
+    }
+    
+    @Test
+    void print_LoadSubreportException() throws Exception {
+        Long transactionPoid = 100L;
+        Map<String, Object> baseParams = new HashMap<>();
+        
+        when(printService.buildBaseParams(transactionPoid, "200-103")).thenReturn(baseParams);
+        when(printService.load("Finance/AP/PurchaseInvoiceReportGlSubreport1.jrxml"))
+                .thenThrow(new RuntimeException("Failed to load GL subreport"));
+        
+        DataAccessException exception = assertThrows(DataAccessException.class, () -> service.print(transactionPoid));
+        
+        assertThat(exception.getMessage()).contains("Failed to generate PDF for transaction: " + transactionPoid);
+        assertThat(exception.getCause()).isInstanceOf(RuntimeException.class);
+        assertThat(exception.getCause().getMessage()).contains("Failed to load GL subreport");
+    }
+    
+    @Test
+    void print_LoadMainReportException() throws Exception {
+        Long transactionPoid = 100L;
+        Map<String, Object> baseParams = new HashMap<>();
+        
+        JasperReport glSubreport = org.mockito.Mockito.mock(JasperReport.class);
+        JasperReport chargeSubreport = org.mockito.Mockito.mock(JasperReport.class);
+        
+        when(printService.buildBaseParams(transactionPoid, "200-103")).thenReturn(baseParams);
+        when(printService.load("Finance/AP/PurchaseInvoiceReportGlSubreport1.jrxml")).thenReturn(glSubreport);
+        when(printService.load("Finance/AP/PurchaseInvoiceChargeSubReport.jrxml")).thenReturn(chargeSubreport);
+        when(printService.load("Finance/AP/PurchaseInvoiceReport_2.jrxml"))
+                .thenThrow(new RuntimeException("Failed to load main report"));
+        
+        DataAccessException exception = assertThrows(DataAccessException.class, () -> service.print(transactionPoid));
+        
+        assertThat(exception.getMessage()).contains("Failed to generate PDF for transaction: " + transactionPoid);
+        assertThat(exception.getCause()).isInstanceOf(RuntimeException.class);
+        assertThat(exception.getCause().getMessage()).contains("Failed to load main report");
+    }
+    
+    @Test
+    void print_FillReportToPdfException() throws Exception {
+        Long transactionPoid = 100L;
+        Map<String, Object> baseParams = new HashMap<>();
+        
+        JasperReport glSubreport = org.mockito.Mockito.mock(JasperReport.class);
+        JasperReport chargeSubreport = org.mockito.Mockito.mock(JasperReport.class);
+        JasperReport mainReport = org.mockito.Mockito.mock(JasperReport.class);
+        
+        when(printService.buildBaseParams(transactionPoid, "200-103")).thenReturn(baseParams);
+        when(printService.load("Finance/AP/PurchaseInvoiceReportGlSubreport1.jrxml")).thenReturn(glSubreport);
+        when(printService.load("Finance/AP/PurchaseInvoiceChargeSubReport.jrxml")).thenReturn(chargeSubreport);
+        when(printService.load("Finance/AP/PurchaseInvoiceReport_2.jrxml")).thenReturn(mainReport);
+        when(printService.fillReportToPdf(eq(mainReport), any(Map.class), eq(dataSource)))
+                .thenThrow(new RuntimeException("Failed to fill report to PDF"));
+        
+        DataAccessException exception = assertThrows(DataAccessException.class, () -> service.print(transactionPoid));
+        
+        assertThat(exception.getMessage()).contains("Failed to generate PDF for transaction: " + transactionPoid);
+        assertThat(exception.getCause()).isInstanceOf(RuntimeException.class);
+        assertThat(exception.getCause().getMessage()).contains("Failed to fill report to PDF");
     }
 }

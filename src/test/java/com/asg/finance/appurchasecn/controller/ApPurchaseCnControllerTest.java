@@ -9,6 +9,7 @@ import com.asg.common.lib.service.LoggingService;
 import com.asg.finance.controller.ApPurchaseCnController;
 import com.asg.finance.dto.ApPurchaseCnGlDtlDto;
 import com.asg.finance.dto.ApPurchaseCnHdrDto;
+import com.asg.finance.exception.DataAccessException;
 import com.asg.finance.service.ApPurchaseCnService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,6 +45,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -208,25 +211,52 @@ class ApPurchaseCnControllerTest {
                 .andExpect(jsonPath("$.result.data.NAME").value("ABC"));
     }
 
-    /*@Test
+    @Test
     void print_Success() throws Exception {
-        byte[] pdf = "pdf".getBytes();
+        byte[] pdf = "PDF content".getBytes();
         when(service.print(10L)).thenReturn(pdf);
 
         mockMvc.perform(get("/v1/supplier-credit-note/print/10"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_PDF))
                 .andExpect(header().string("Content-Disposition", containsString("purchase-journal-10.pdf")));
-    }*/
+    }
 
-    /*@Test
-    void print_Exception() throws Exception {
-        when(service.print(anyLong())).thenThrow(new RuntimeException("print failure"));
+    @Test
+    void print_PrintException() throws Exception {
+        when(service.print(10L)).thenThrow(new DataAccessException("Failed to generate PDF for transaction: 10"));
 
         mockMvc.perform(get("/v1/supplier-credit-note/print/10"))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.message").value(containsString("Failed to generate PDF")));
-    }*/
+    }
+
+    @Test
+    void print_GenericException() throws Exception {
+        when(service.print(10L)).thenThrow(new RuntimeException("Unexpected error"));
+
+        mockMvc.perform(get("/v1/supplier-credit-note/print/10"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.message").value(containsString("Failed to generate PDF")));
+    }
+
+    @Test
+    void print_InvalidTransactionId() throws Exception {
+        when(service.print(999L)).thenThrow(new DataAccessException("Transaction not found: 999"));
+
+        mockMvc.perform(get("/v1/supplier-credit-note/print/999"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.message").value(containsString("Failed to generate PDF")));
+    }
+
+    @Test
+    void print_NullResponse() throws Exception {
+        when(service.print(10L)).thenReturn(null);
+
+        mockMvc.perform(get("/v1/supplier-credit-note/print/10"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_PDF));
+    }
 
     @Test
     void delete_ServiceValidationException() throws Exception {

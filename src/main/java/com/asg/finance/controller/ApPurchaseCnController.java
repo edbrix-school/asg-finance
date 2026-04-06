@@ -21,8 +21,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -305,33 +303,5 @@ public class ApPurchaseCnController {
             @PathVariable Long partyPoid) {
         Map<String, Object> result = service.getPartyDetails(partyType, partyPoid);
         return success("Party details fetched successfully", result);
-    }
-
-    @AllowedAction(UserRolesRightsEnum.PRINT)
-    @Operation(
-            summary = "Generate PDF for Purchase Journal",
-            description = "Generate PDF report for a specific Purchase Journal transaction",
-            responses = {
-                    @ApiResponse(responseCode = "200", description = "PDF generated successfully",
-                            content = @Content(mediaType = "application/pdf")),
-                    @ApiResponse(responseCode = "404", description = "Purchase Journal not found"),
-                    @ApiResponse(responseCode = "500", description = "Failed to generate PDF")
-            }
-    )
-    @GetMapping("/print/{transactionPoid}")
-    public ResponseEntity<?> print(
-            @Parameter(description = "Transaction POID", example = "71031")
-            @PathVariable Long transactionPoid) {
-        try {
-            byte[] pdf = service.print(transactionPoid);
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=purchase-journal-" + transactionPoid + ".pdf")
-                    .contentType(MediaType.APPLICATION_PDF)
-                    .body(pdf);
-        } catch (Exception e) {
-            log.error("Failed to generate PDF for Purchase Journal: {}", transactionPoid, e);
-            return internalServerError("Failed to generate PDF: " + e.getMessage());
-        }
     }
 }

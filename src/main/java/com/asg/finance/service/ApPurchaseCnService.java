@@ -15,5 +15,4 @@ public interface ApPurchaseCnService {
     Map<String, Object> list(String documentId, FilterRequestDto filters, LocalDate startDate, LocalDate endDate, Pageable pageable);
     Map<String, Object> getPjRefDetails(Long pjPoid);
     Map<String, Object> getPartyDetails(String partyType, Long partyPoid);
-    byte[] print(Long transactionPoid) throws Exception;
 }

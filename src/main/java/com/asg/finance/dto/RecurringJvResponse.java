@@ -19,7 +19,7 @@ public class RecurringJvResponse {
     private LocalDate startDate;
     private BigDecimal totalAmount;
     private Integer noOfMonths;
-    private BigDecimal monthWiseAmt;
+    private Long monthWiseAmt;
     private String refType;
     private Long employeeId;
     private Long assetId;
@@ -43,4 +43,3 @@ public class RecurringJvResponse {
 
     private List<RecurringJvScheduleDetailResponse> scheduleDetails;
 }
-

@@ -18,5 +18,8 @@ public interface GlJournalVoucherDtlRepository extends JpaRepository<GlJournalVo
     @Query("SELECT COALESCE(SUM(d.crAmt), 0) FROM GlJournalVoucherDtl d WHERE d.transactionPoid = :transactionPoid")
     BigDecimal sumCrAmtByTransactionPoid(@Param("transactionPoid") Long transactionPoid);
     
+    @Query("SELECT COALESCE(MAX(d.detRowId), 0) FROM GlJournalVoucherDtl d WHERE d.transactionPoid = :transactionPoid")
+    Long getMaxDetRowIdByTransactionPoid(@Param("transactionPoid") Long transactionPoid);
+
     List<GlJournalVoucherDtl> findByTransactionPoid(Long transactionPoid);
 }

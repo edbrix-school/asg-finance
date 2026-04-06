@@ -582,14 +582,6 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
             params.add(groupPoid);
         }
         
-        // Date filters for periodFrom/periodTo (if provided)
-        if (periodFrom != null && periodTo != null) {
-            sql.append(" AND TRANSACTION_DATE >= DATE ?");
-            params.add(java.sql.Date.valueOf(periodFrom));
-            sql.append(" AND TRANSACTION_DATE <= DATE ?");
-            params.add(java.sql.Date.valueOf(periodTo));
-        }
-        
         // Handle other filters
         boolean hasOrGroup = "OR".equalsIgnoreCase(operator);
         boolean groupStarted = false;

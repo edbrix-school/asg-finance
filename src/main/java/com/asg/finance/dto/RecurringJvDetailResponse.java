@@ -13,7 +13,7 @@ import java.util.List;
 @AllArgsConstructor
 public class RecurringJvDetailResponse {
 
-    private Long lineId;
+    private Long detRowId;
     private String type;
     private Long companyId;
     private Long glId;
@@ -27,4 +27,3 @@ public class RecurringJvDetailResponse {
     private List<BillwiseBreakupPopupRequestDto> billWiseBreakup;
 
 }
-

@@ -24,6 +24,8 @@ public interface GlRecurringJvDtlRepository extends JpaRepository<GlRecurringJvD
     @Query("SELECT COALESCE(SUM(d.crAmt), 0) FROM GlRecurringJvDtl d WHERE d.transactionPoid = :transactionPoid")
     BigDecimal getCrTotalByTransactionPoid(@Param("transactionPoid") Long transactionPoid);
 
+    @Query("SELECT COALESCE(MAX(d.detRowId), 0) FROM GlRecurringJvDtl d WHERE d.transactionPoid = :transactionPoid")
+    Long getMaxDetRowIdByTransactionPoid(@Param("transactionPoid") Long transactionPoid);
+
     void deleteByTransactionPoid(Long transactionPoid);
 }
-

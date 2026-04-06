@@ -45,7 +45,7 @@ public class JournalVoucherDetailResponse {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class GlDetailResponse {
-        private Long sn;
+        private Long detRowId;
         private String type;
         private String companyPoid;
         private String glPoid;

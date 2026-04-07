@@ -28,6 +28,9 @@ public class JournalVoucherAssetDetailDto {
     private BigDecimal assetValue;
     private BigDecimal depreciatedAmt;
     private BigDecimal wdvValue;
+    private String faDescription;
+    private Long faCategory;
+    private String assetType;
     private LocalDate scrapSoldDate;
     private BigDecimal scrapSoldValue;
     private String remarks;

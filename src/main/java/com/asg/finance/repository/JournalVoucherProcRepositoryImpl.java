@@ -1,5 +1,6 @@
 package com.asg.finance.repository;
 
+import com.asg.common.lib.utility.DateUtil;
 import com.asg.finance.dto.JournalVoucherAssetDetailDto;
 
 import com.asg.common.lib.exception.AsgException;
@@ -48,22 +49,21 @@ public class JournalVoucherProcRepositoryImpl implements JournalVoucherProcRepos
 
         query.registerStoredProcedureParameter("P_COMPANY_POID", Long.class, ParameterMode.IN);
         query.registerStoredProcedureParameter("P_DEP_YEAR", Date.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter(P_FA_POID, String.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(P_FA_POID, Long.class, ParameterMode.IN);
         query.registerStoredProcedureParameter(OUTDATA, void.class, ParameterMode.REF_CURSOR);
 
         query.setParameter("P_COMPANY_POID", getCompanyId());
-        LocalDate currentMonth = LocalDate.now().withDayOfMonth(1);
+        LocalDate currentDate = DateUtil.getCurrentDateInUserTimeZone();
 
-        query.setParameter("P_DEP_YEAR", java.sql.Date.valueOf(currentMonth));
-        query.setParameter(P_FA_POID, faPoid.toString());
+        query.setParameter("P_DEP_YEAR", java.sql.Date.valueOf(currentDate));
+        query.setParameter(P_FA_POID, faPoid);
 
         query.execute();
 
-        ResultSet rs = (ResultSet) query.getOutputParameterValue(OUTDATA);
-        log.info("Result Set: {}", rs);
-        List<JournalVoucherAssetDetailDto> resultList = new ArrayList<>();
+        try (ResultSet rs = (ResultSet) query.getOutputParameterValue(OUTDATA)) {
+            log.info("Result Set: {}", rs);
+            List<JournalVoucherAssetDetailDto> resultList = new ArrayList<>();
 
-        try {
             while (rs != null && rs.next()) {
                 JournalVoucherAssetDetailDto dto = JournalVoucherAssetDetailDto.builder()
                         .faPoid(faPoid)
@@ -73,14 +73,17 @@ public class JournalVoucherProcRepositoryImpl implements JournalVoucherProcRepos
                         .assetValue(rs.getBigDecimal("GROSS_BLOCK_START"))
                         .depreciatedAmt(rs.getBigDecimal("ACCUM_DEPRICIATION"))
                         .wdvValue(rs.getBigDecimal("WDV_VALUE"))
+                        .faDescription(rs.getString("DESCRIPTION"))
+                        .faCategory(rs.getLong("FA_CATEGORY_POID"))
+                        .assetType(rs.getString("ASSET_TYPE"))
+                        .scrapSoldDate(LocalDate.now())
                         .build();
                 resultList.add(dto);
             }
+            return resultList;
         } catch (Exception e) {
             throw new AsgException("Error fetching asset depreciation details: " + e.getMessage(), e);
         }
-
-        return resultList;
     }
 
     @Override
@@ -93,27 +96,28 @@ public class JournalVoucherProcRepositoryImpl implements JournalVoucherProcRepos
             query.registerStoredProcedureParameter(P_LOGIN_GROUP_POID, Long.class, ParameterMode.IN);
             query.registerStoredProcedureParameter(P_LOGIN_COMPANY_POID, Long.class, ParameterMode.IN);
             query.registerStoredProcedureParameter(P_LOGIN_USER_POID, Long.class, ParameterMode.IN);
-            query.registerStoredProcedureParameter(P_FA_POID, String.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter(P_FA_POID, Long.class, ParameterMode.IN);
             query.registerStoredProcedureParameter(OUTDATA, void.class, ParameterMode.REF_CURSOR);
 
             query.setParameter(P_LOGIN_GROUP_POID, getGroupId());
             query.setParameter(P_LOGIN_COMPANY_POID, getCompanyId());
             query.setParameter(P_LOGIN_USER_POID, getUserPoid());
-            query.setParameter(P_FA_POID, faPoid.toString());
+            query.setParameter(P_FA_POID, faPoid);
 
             query.execute();
 
-            ResultSet rs = (ResultSet) query.getOutputParameterValue(OUTDATA);
             List<JournalVoucherCapitalizationDto> list = new ArrayList<>();
 
-            while (rs != null && rs.next()) {
-                list.add(JournalVoucherCapitalizationDto.builder()
-                        .faPoid(faPoid)
-                        .faDescription(rs.getString("FA_DESCRIPTION"))
-                        .faCategory(rs.getLong("FA_CATEGORY_POID"))
-                        .assetType(rs.getString("ASSET_TYPE"))
-                        .assetValue(rs.getBigDecimal("GROSS_VALUE"))
-                        .build());
+            try (ResultSet rs = (ResultSet) query.getOutputParameterValue(OUTDATA)) {
+                while (rs != null && rs.next()) {
+                    list.add(JournalVoucherCapitalizationDto.builder()
+                            .faPoid(faPoid)
+                            .faDescription(rs.getString("FA_DESCRIPTION"))
+                            .faCategory(rs.getLong("FA_CATEGORY_POID"))
+                            .assetType(rs.getString("ASSET_TYPE"))
+                            .assetValue(rs.getBigDecimal("GROSS_VALUE"))
+                            .build());
+                }
             }
 
             return list;
@@ -130,13 +134,13 @@ public class JournalVoucherProcRepositoryImpl implements JournalVoucherProcRepos
         query.registerStoredProcedureParameter(P_LOGIN_GROUP_POID, Long.class, ParameterMode.IN);
         query.registerStoredProcedureParameter(P_LOGIN_COMPANY_POID, Long.class, ParameterMode.IN);
         query.registerStoredProcedureParameter(P_LOGIN_USER_POID, Long.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_TRANSACTION_POID", String.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("P_TRANSACTION_POID", Long.class, ParameterMode.IN);
         query.registerStoredProcedureParameter("P_RESULT", String.class, ParameterMode.OUT);
 
         query.setParameter(P_LOGIN_GROUP_POID, getGroupId());
         query.setParameter(P_LOGIN_COMPANY_POID, getCompanyId());
         query.setParameter(P_LOGIN_USER_POID, getUserPoid());
-        query.setParameter("P_TRANSACTION_POID", transactionPoid.toString());
+        query.setParameter("P_TRANSACTION_POID", transactionPoid);
 
         query.execute();
 

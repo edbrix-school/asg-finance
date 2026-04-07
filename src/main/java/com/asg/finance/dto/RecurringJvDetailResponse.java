@@ -15,8 +15,8 @@ public class RecurringJvDetailResponse {
 
     private Long detRowId;
     private String type;
-    private Long companyId;
-    private Long glId;
+    private Long companyPoid;
+    private Long glPoid;
     private BigDecimal drAmt;
     private BigDecimal crAmt;
     private String remarks;

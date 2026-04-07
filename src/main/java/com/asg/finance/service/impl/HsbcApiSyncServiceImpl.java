@@ -33,16 +33,11 @@ public class HsbcApiSyncServiceImpl implements HsbcApiSyncService {
     
     @Override
     @Transactional
-    public String syncHsbcApiData(String accountNumber, LocalDate date) {
+    public String syncHsbcApiData(String accountNumber, LocalDate date) throws Exception {
         validateInput(accountNumber, date);
-        try {
-            String formattedDate = date.format(DateTimeFormatter.ofPattern("dd-MMM-yyyy")).toUpperCase();
-            hsbcApiClient.syncHsbcData(accountNumber, formattedDate);
-            return "HSBC data synced successfully";
-        } catch (Exception e) {
-            log.error("Error syncing HSBC data: {}", e.getMessage(), e);
-            throw new AsgException(e.getMessage());
-        }
+        String formattedDate = date.format(DateTimeFormatter.ofPattern("dd-MMM-yyyy")).toUpperCase();
+        hsbcApiClient.syncHsbcData(accountNumber, formattedDate);
+        return "HSBC data synced successfully";
     }
     
     private void validateInput(String accountNumber, LocalDate date) {

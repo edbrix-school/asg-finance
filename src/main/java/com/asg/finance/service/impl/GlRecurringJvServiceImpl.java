@@ -585,12 +585,40 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
         hdrRepository.save(header);
 
         saveDetails(transactionPoid, request.getDetails(), header, false);
+        updateScheduleDetails(transactionPoid, request.getScheduleWiseDetails());
         // Log the update
         String key = transactionPoid.toString();
         loggingService.logChanges(oldEntity, header, GlRecurringJvHdr.class,
                 docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
         return new RecurringJvCreateResponse(transactionPoid, "Recurring JV updated successfully");
+    }
+
+    private void updateScheduleDetails(Long transactionPoid, List<RecurringJVScheduleWiseDetailsDto> scheduleDetailsRequest) {
+        if (scheduleDetailsRequest == null || scheduleDetailsRequest.isEmpty()) {
+            return;
+        }
+
+        List<GlRecurringJvMonthDtl> currentSchedules = monthDtlRepository.findByTransactionPoid(transactionPoid);
+        Map<Long, GlRecurringJvMonthDtl> scheduleMap = currentSchedules.stream()
+                .collect(java.util.stream.Collectors.toMap(GlRecurringJvMonthDtl::getDetRowId, dt -> dt));
+
+        List<GlRecurringJvMonthDtl> detailsToPersist = new ArrayList<>();
+
+        for (RecurringJVScheduleWiseDetailsDto dto : scheduleDetailsRequest) {
+            if ("ISUPDATED".equalsIgnoreCase(dto.getActionType())) {
+                GlRecurringJvMonthDtl existing = scheduleMap.get(dto.getDetRowId());
+                if (existing != null) {
+                    existing.setMonthWiseDate(dto.getMonthWiseDate());
+                    existing.setRemarks(dto.getRemarks());
+                    detailsToPersist.add(existing);
+                }
+            }
+        }
+
+        if (!detailsToPersist.isEmpty()) {
+            monthDtlRepository.saveAll(detailsToPersist);
+        }
     }
 
     @Override

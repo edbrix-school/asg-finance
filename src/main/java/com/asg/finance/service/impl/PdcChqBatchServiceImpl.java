@@ -258,8 +258,15 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
                     }
                     break;
 
+                case "NOCHANGE":
                 default:
-                    throw new IllegalArgumentException("Unknown action type: " + action);
+                    if (dto.getDetRowId() != null) {
+                        PdcChqBatchDtlEntity unchanged = existingMap.get(dto.getDetRowId());
+                        if (unchanged != null) {
+                            responseList.add(mapDtlEntityToResponseDto(unchanged));
+                        }
+                    }
+                    break;
             }
         }
 

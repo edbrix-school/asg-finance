@@ -35,4 +35,6 @@ public class RecurringJvRequest {
     
     @NotEmpty(message = "At least one detail line is required")
     private List<RecurringJvDetailRequest> details;
+
+    private List<RecurringJVScheduleWiseDetailsDto> scheduleWiseDetails;
 }

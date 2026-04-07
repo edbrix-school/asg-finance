@@ -14,6 +14,7 @@ import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.utility.DateUtil;
 import com.asg.finance.repository.GLMasterRepository;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
@@ -33,6 +34,7 @@ import com.asg.finance.service.GlRecurringJvService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -43,7 +45,6 @@ import org.springframework.transaction.annotation.Transactional;
 import javax.sql.DataSource;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -152,8 +153,8 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
         response.setNoOfMonths(header.getNoOfMonths());
         response.setMonthWiseAmt(header.getMonthWiseAmt());
         response.setRefType(header.getRefType());
-        response.setEmployeeId(header.getEmployeePoid());
-        response.setAssetId(header.getFaPoid());
+        response.setEmployeePoid(header.getEmployeePoid());
+        response.setAssetPoid(header.getFaPoid());
         response.setPolicyNumber(header.getPolicyNumber());
         response.setRemarks(header.getRemarks());
         response.setGroupPoid(header.getGroupPoid());
@@ -161,6 +162,10 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
         response.setDrTotal(drTotal);
         response.setCrTotal(crTotal);
         response.setGlPosting(false);
+        response.setCreatedBy(header.getCreatedBy());
+        response.setCreatedDate(header.getCreatedDate());
+        response.setLastModifiedBy(header.getLastModifiedBy());
+        response.setLastModifiedDate(header.getLastModifiedDate());
 
         boolean hasBillWiseCapable = details.stream()
                 .anyMatch(dtl -> dtl.getGlPoid() != null &&
@@ -221,8 +226,8 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
         RecurringJvDetailResponse response = new RecurringJvDetailResponse();
         response.setDetRowId(dtl.getDetRowId());
         response.setType(dtl.getType());
-        response.setCompanyId(dtl.getCompanyPoid());
-        response.setGlId(dtl.getGlPoid());
+        response.setCompanyPoid(dtl.getCompanyPoid());
+        response.setGlPoid(dtl.getGlPoid());
         response.setDrAmt(dtl.getDrAmt());
         response.setCrAmt(dtl.getCrAmt());
         response.setRemarks(dtl.getRemarks());
@@ -252,6 +257,14 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
                     dto.setCostGroup(cc.getCostGroup());
                     dto.setCostPoid(cc.getCostPoid());
                     dto.setAmount(cc.getAmount());
+                    if (StringUtils.isNotEmpty(cc.getCostPoid()) && StringUtils.isNotEmpty(cc.getCostGroup())) {
+                        try {
+                            Long poid = Long.parseLong(cc.getCostPoid());
+                            dto.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(poid, cc.getCostGroup()));
+                        } catch (NumberFormatException e) {
+                            dto.setCostCenterDetails(lovService.getDetailsByCodeAndLovName(cc.getCostPoid(), cc.getCostGroup()));
+                        }
+                    }
                     return dto;
                 })
                 .toList();
@@ -284,9 +297,7 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
     private RecurringJvScheduleDetailResponse convertScheduleToResponse(GlRecurringJvMonthDtl schedule) {
         RecurringJvScheduleDetailResponse response = new RecurringJvScheduleDetailResponse();
         response.setScheduleId(schedule.getDetRowId());
-        response.setMonthWiseDate(
-                schedule.getMonthWiseDate() != null ? Timestamp.valueOf(schedule.getMonthWiseDate().atStartOfDay())
-                        : null);
+        response.setMonthWiseDate(schedule.getMonthWiseDate() != null ? schedule.getMonthWiseDate() : DateUtil.getCurrentDateInUserTimeZone());
         response.setJv(schedule.getJvPoid());
         response.setAmount(schedule.getAmount());
         response.setStatus(schedule.getStatus());
@@ -299,7 +310,6 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
     @Transactional
     public RecurringJvCreateResponse createRecurringJv(RecurringJvRequest request) {
         validateRequest(request);
-
 
         GlRecurringJvHdr header = GlRecurringJvHdr.builder()
                 .transactionDate(LocalDate.now())
@@ -417,7 +427,7 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
             dtlRepository.saveAll(detailsToPersist);
         }
 
-        finalizeBatchSaves(logRequests, costCenterList, billwiseList);
+        finalizeBatchSaves(logRequests, costCenterList, billwiseList, isNewRecord);
     }
 
     private String resolveAction(String actionType) {
@@ -524,15 +534,23 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
 
     private void finalizeBatchSaves(List<LogRequestDto<GlRecurringJvDtl>> logRequests,
             List<CostCenterBreakupRequestDto> costCenterList,
-            List<BillwiseBreakupRequestDto> billwiseList) {
+            List<BillwiseBreakupRequestDto> billwiseList, boolean isNewRecord) {
         if (!logRequests.isEmpty()) {
             loggingService.createLogBatch(logRequests);
         }
         if (!costCenterList.isEmpty()) {
-            costCenterBreakupService.updateCostCenterBreakups(costCenterList, getUserPoid());
+            if(isNewRecord){
+                 costCenterBreakupService.saveCostCenterBreakups(costCenterList);
+            } else {
+                 costCenterBreakupService.updateCostCenterBreakups(costCenterList, getUserPoid());
+            }
         }
         if (!billwiseList.isEmpty()) {
-            billwiseBreakupService.updateBillwiseBreakups(billwiseList, getUserPoid());
+            if(isNewRecord){
+                 billwiseBreakupService.insertBillwiseBreakup(billwiseList);
+            } else {
+                 billwiseBreakupService.updateBillwiseBreakups(billwiseList, getUserPoid());
+            }
         }
     }
 
@@ -694,6 +712,7 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
             Long glPoid,
             List<CostCenterBreakupPopupRequestDto> costCenterBreakups) {
         return costCenterBreakups.stream()
+                .filter(dto -> dto.getActionType() == null || !"NOCHANGES".equalsIgnoreCase(dto.getActionType()))
                 .map(dto -> CostCenterBreakupRequestDto.builder()
                         .groupPoid(getGroupId())
                         .companyPoid(getCompanyId())
@@ -714,6 +733,7 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
             Long glPoid, Long glCompanyPoid,
             List<BillwiseBreakupPopupRequestDto> billwiseBreakups) {
         return billwiseBreakups.stream()
+                .filter(dto -> dto.getActionType() == null || !"NOCHANGES".equalsIgnoreCase(dto.getActionType()))
                 .map(dto -> BillwiseBreakupRequestDto.builder()
                         .groupPoid(getGroupId())
                         .companyPoid(getCompanyId())
@@ -723,8 +743,8 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
                         .glPoid(glPoid)
                         .glCompanyPoid(glCompanyPoid)
                         .billDetRowId(dto.getBillDetRowId())
-                        .drAmt(TYPE_DEBIT.equalsIgnoreCase(dto.getType()) ? dto.getAmount() : BigDecimal.ZERO)
-                        .crAmt(TYPE_CREDIT.equalsIgnoreCase(dto.getType()) ? dto.getAmount() : BigDecimal.ZERO)
+                        .drAmt(TYPE_DEBIT.equalsIgnoreCase(dto.getType()) ? (dto.getAmount() == null ? BigDecimal.ZERO : dto.getAmount()) : BigDecimal.ZERO)
+                        .crAmt(TYPE_CREDIT.equalsIgnoreCase(dto.getType()) ? (dto.getAmount() == null ? BigDecimal.ZERO : dto.getAmount()) : BigDecimal.ZERO)
                         .billRefType(dto.getBillRefType())
                         .billRef(dto.getBillRef())
                         .billDueDate(dto.getBillDueDate())

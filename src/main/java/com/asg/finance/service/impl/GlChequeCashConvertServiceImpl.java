@@ -33,6 +33,7 @@ import com.asg.finance.repository.GlChequeCashConvertRepository;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.GlChequeCashConvertService;
 import com.asg.finance.service.GlPostingService;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -80,6 +81,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
     private final GlobalParameterService globalParameterService;
     private final GlPostingService glPostingService;
     private final ApplicationEventPublisher eventPublisher;
+    private final EntityManager entityManager;
 
     @Override
     public GlChequeCashConvertValidateEditResponseDto validateForEdit(Long transactionPoid) {
@@ -253,6 +255,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         hdrEntity.setDeleted("N");
 
         GlChequeCashConvertHdrEntity savedHdr = glChequeCashConvertHdrRepository.save(hdrEntity);
+        entityManager.flush();
 
         if (dto.getInDtls() != null && !dto.getInDtls().isEmpty()) {
             Long transactionPoid = savedHdr.getTransactionPoid();
@@ -340,9 +343,8 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
 
         String docId = UserContext.getDocumentId();
         String docKeyPoid = savedHdr.getTransactionPoid().toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, docKeyPoid);
-        glChequeCashConvertInDtlRepository.flush();
-        glChequeCashConvertOutDtlRepository.flush();
+        //loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, docKeyPoid);
+        loggingService.createLogSummaryEntry("400-110", docKeyPoid, String.format("%s %s", LogDetailsEnum.CREATED, savedHdr.getDocRef()));
         eventPublisher.publishEvent(new GlChequeCashConvertSaveEvent(
                 this,
                 savedHdr,

@@ -125,7 +125,7 @@ public class TelexFileGenerateController {
             @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto
     ) {
         service.softDeleteTelexFile(transactionPoid, deleteReasonDto);
-        return success("Telex File has been soft deleted successfully");
+        return success("SUCCESS =: Record is Marked as deleted and deactivated");
     }
 
     @Operation(

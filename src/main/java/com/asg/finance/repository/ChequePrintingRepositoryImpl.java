@@ -1,10 +1,13 @@
 package com.asg.finance.repository;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
+import org.apache.commons.lang3.StringUtils;
 
 import com.asg.finance.dto.ChequeStockResponse;
 import com.asg.finance.dto.PendingChequeResponse;
@@ -50,6 +53,65 @@ public class ChequePrintingRepositoryImpl implements ChequePrintingRepository {
 	}
 
 	@Override
+	public Map<String, String> validateBeforeChequePrint(Long groupPoid, Long loginUserPoid, String companyPoid, Long bankPoid,
+			String chqSignType, Long transactionPoid, String suppressBalanceCheck) {
+		StoredProcedureQuery query = em.createStoredProcedureQuery("PROC_GL_BANK_BEFORE_CHEQ_PRINT");
+
+		query.registerStoredProcedureParameter(1, Long.class, ParameterMode.IN);
+		query.registerStoredProcedureParameter(2, Long.class, ParameterMode.IN);
+		query.registerStoredProcedureParameter(3, String.class, ParameterMode.IN);
+		query.registerStoredProcedureParameter(4, Long.class, ParameterMode.IN);
+		query.registerStoredProcedureParameter(5, String.class, ParameterMode.IN);
+		query.registerStoredProcedureParameter(6, Long.class, ParameterMode.IN);
+		query.registerStoredProcedureParameter(7, String.class, ParameterMode.IN);
+		query.registerStoredProcedureParameter(8, String.class, ParameterMode.OUT);
+		query.registerStoredProcedureParameter(9, String.class, ParameterMode.OUT);
+		query.registerStoredProcedureParameter(10, String.class, ParameterMode.OUT);
+
+		query.setParameter(1, groupPoid);
+		query.setParameter(2, loginUserPoid);
+		query.setParameter(3, companyPoid);
+		query.setParameter(4, bankPoid);
+		query.setParameter(5, chqSignType);
+		query.setParameter(6, transactionPoid);
+		query.setParameter(7, suppressBalanceCheck);
+
+		query.execute();
+
+		Map<String, String> result = new HashMap<>();
+		result.put("result", (String) query.getOutputParameterValue(8));
+		result.put("nextChequeNumber", (String) query.getOutputParameterValue(9));
+		result.put("defaultPrinter", (String) query.getOutputParameterValue(10));
+		return result;
+	}
+
+	@Override
+	public String afterChequePrint(Long groupPoid, String loginUser, Long companyPoid, Long transactionPoid, Long bankPoid,
+			String chqSignType, Long userPoid) {
+		StoredProcedureQuery query = em.createStoredProcedureQuery("PROC_GL_BANK_AFTER_CHEQ_PRINT");
+
+		query.registerStoredProcedureParameter(1, Long.class, ParameterMode.IN);
+		query.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+		query.registerStoredProcedureParameter(3, Long.class, ParameterMode.IN);
+		query.registerStoredProcedureParameter(4, Long.class, ParameterMode.IN);
+		query.registerStoredProcedureParameter(5, Long.class, ParameterMode.IN);
+		query.registerStoredProcedureParameter(6, String.class, ParameterMode.IN);
+		query.registerStoredProcedureParameter(7, Long.class, ParameterMode.IN);
+		query.registerStoredProcedureParameter(8, String.class, ParameterMode.OUT);
+
+		query.setParameter(1, groupPoid);
+		query.setParameter(2, loginUser);
+		query.setParameter(3, companyPoid);
+		query.setParameter(4, transactionPoid);
+		query.setParameter(5, bankPoid);
+		query.setParameter(6, chqSignType);
+		query.setParameter(7, userPoid);
+
+		query.execute();
+		return  (String) query.getOutputParameterValue(8);
+	}
+
+	@Override
 	@SuppressWarnings("unchecked")
 	public List<ChequeStockResponse> fetchChequeStock(String bankCode, String signType) {
 		StoredProcedureQuery sp = em.createStoredProcedureQuery("PROC_CHEQUE_STOCK_DETAIL_VIEW");
@@ -57,20 +119,16 @@ public class ChequePrintingRepositoryImpl implements ChequePrintingRepository {
 		sp.registerStoredProcedureParameter("P_SIGN_TYPE", String.class, ParameterMode.IN);
 		sp.registerStoredProcedureParameter("OUTDATA", void.class, ParameterMode.REF_CURSOR);
 
-		if (bankCode != null)
-			sp.setParameter("P_BANK_CODE", bankCode);
-		else
-			sp.setParameter("P_BANK_CODE", null);
+		String normalizedBankCode = StringUtils.defaultIfBlank(StringUtils.trimToNull(bankCode), "HSBC");
+		String normalizedSignType = StringUtils.defaultIfBlank(StringUtils.trimToNull(signType), "NOT_SIGNED");
 
-		if (signType != null)
-			sp.setParameter("P_SIGN_TYPE", signType);
-		else
-			sp.setParameter("P_SIGN_TYPE", null);
+		sp.setParameter("P_BANK_CODE", normalizedBankCode);
+		sp.setParameter("P_SIGN_TYPE", normalizedSignType);
 
 		sp.execute();
 		List<Object[]> rows = sp.getResultList();
 		List<ChequeStockResponse> out = new ArrayList<>();
-		rows.stream().filter(row -> getString(row, 2).equalsIgnoreCase(signType)).forEach(row -> {
+		rows.forEach(row -> {
 			ChequeStockResponse dto = new ChequeStockResponse();
 			dto.setCompany(getString(row, 0));
 			dto.setBank(getString(row, 1));
@@ -87,7 +145,6 @@ public class ChequePrintingRepositoryImpl implements ChequePrintingRepository {
 			dto.setChqCount(getInt(row, 12));
 			out.add(dto);
 		});
-		;
 		return out;
 	}
 

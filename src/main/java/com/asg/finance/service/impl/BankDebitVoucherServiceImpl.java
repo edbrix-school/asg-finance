@@ -32,6 +32,7 @@ import com.asg.finance.service.BankDebitVoucherService;
 import com.asg.finance.service.GlPostingService;
 import com.asg.finance.service.BillwiseBreakupService;
 import com.asg.finance.service.CostCenterBreakupService;
+import com.asg.finance.service.TelexFileGenerateService;
 import com.asg.finance.validator.BankDebitVoucherValidator;
 import com.nimbusds.oauth2.sdk.util.CollectionUtils;
 import jakarta.persistence.ParameterMode;
@@ -885,7 +886,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         entity.setTtSpecialRate(request.getTtSpecialRate());
         entity.setRateDealNo(request.getRateDealNo());
 //        entity.setDocRef(request.getDocRef());
-        entity.setFileGenerated(request.getFileGenerated());
+        entity.setFileGenerated(request.getFileGenerated() != null ? request.getFileGenerated() : "N");
         entity.setFileName(request.getFileName());
         entity.setFileGeneratedDate(request.getFileGeneratedDate());
         entity.setFileGeneratedBy(request.getFileGeneratedBy());

@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -19,10 +20,10 @@ public class RecurringJvResponse {
     private LocalDate startDate;
     private BigDecimal totalAmount;
     private Integer noOfMonths;
-    private BigDecimal monthWiseAmt;
+    private Long monthWiseAmt;
     private String refType;
-    private Long employeeId;
-    private Long assetId;
+    private Long employeePoid;
+    private Long assetPoid;
     private LovGetListDto employeeDet;
     private LovGetListDto assetDet;
     private LovGetListDto companyDet;
@@ -38,9 +39,12 @@ public class RecurringJvResponse {
     private Boolean glPosting;
     private BigDecimal drTotal;
     private BigDecimal crTotal;
+    private String createdBy;
+    private LocalDateTime createdDate;
+    private String lastModifiedBy;
+    private LocalDateTime lastModifiedDate;
 
     private List<RecurringJvDetailResponse> details;
 
     private List<RecurringJvScheduleDetailResponse> scheduleDetails;
 }
-

@@ -1,5 +1,6 @@
 package com.asg.finance.dto;
 
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -12,13 +13,16 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 public class JournalVoucherCapitalizationDto {
-    private Long sn;
-    private String actionType;
+    @NotNull(message = "Asset poid is required")
     private Long faPoid;
+
+    @NotNull(message = "Asset value is required")
+    private BigDecimal assetValue;
+
+    private Long detRowId;
+    private String actionType;
     private String faDescription;
     private Long faCategory;
     private String assetType;
-    private BigDecimal assetValue;
     private String remarks;
-
 }

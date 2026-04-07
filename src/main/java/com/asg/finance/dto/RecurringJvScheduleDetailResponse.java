@@ -3,9 +3,8 @@ package com.asg.finance.dto;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
 import java.math.BigDecimal;
-import java.sql.Timestamp;
+import java.time.LocalDate;
 
 @Data
 @NoArgsConstructor
@@ -13,7 +12,7 @@ import java.sql.Timestamp;
 public class RecurringJvScheduleDetailResponse {
 
     private Long scheduleId;
-    private Timestamp monthWiseDate;
+    private LocalDate monthWiseDate;
     private String jv;
     private BigDecimal amount;
     private String status;

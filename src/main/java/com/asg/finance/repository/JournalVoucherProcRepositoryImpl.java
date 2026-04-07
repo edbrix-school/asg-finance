@@ -1,9 +1,10 @@
 package com.asg.finance.repository;
 
+import com.asg.common.lib.utility.DateUtil;
 import com.asg.finance.dto.JournalVoucherAssetDetailDto;
+
+import com.asg.common.lib.exception.AsgException;
 import com.asg.finance.dto.JournalVoucherCapitalizationDto;
-import com.asg.finance.entity.GlJournalVoucherHdr;
-import com.asg.finance.exception.DataAccessException;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.ParameterMode;
 import jakarta.persistence.PersistenceContext;
@@ -27,72 +28,42 @@ import static com.asg.common.lib.utility.ASGHelperUtils.getGroupId;
 @Repository
 public class JournalVoucherProcRepositoryImpl implements JournalVoucherProcRepository {
 
+    private static final String PROC_FA_DEPRE_DTL = "PROC_FA_DEPRE_DTL_FOR_DIS_JV";
+    private static final String PROC_FA_DEFAULT_DTLS = "PROC_AP_PI_FA_DEFAULT_DTLS";
+    private static final String PROC_UPDATE_ASSET_DTL = "PROC_JV_UPDATE_ASSET_DTL";
+
+    private static final String P_LOGIN_GROUP_POID = "P_LOGIN_GROUP_POID";
+    private static final String P_LOGIN_COMPANY_POID = "P_LOGIN_COMPANY_POID";
+    private static final String P_LOGIN_USER_POID = "P_LOGIN_USER_POID";
+    private static final String P_FA_POID = "P_FA_POID";
+    private static final String OUTDATA = "OUTDATA";
+
     @PersistenceContext
     private EntityManager entityManager;
 
     @Override
-    public String postJournalVoucher(Long transactionPoid,GlJournalVoucherHdr glJournalVoucherHdr,String documentId) {
-
-        StoredProcedureQuery query = entityManager
-                .createStoredProcedureQuery("PROC_GL_LEDGER_POSTING_JV");
-
-        query.registerStoredProcedureParameter("P_LOGIN_GROUP_POID", Long.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_LOGIN_COMPANY_POID", Long.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_LOGIN_USER_POID", Long.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_DOC_ID", String.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_TRANSACTION_POID", Long.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_DOC_REF", String.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_STATUS", String.class, ParameterMode.OUT);
-
-        query.setParameter("P_LOGIN_GROUP_POID", glJournalVoucherHdr.getGroupPoid());
-        query.setParameter("P_LOGIN_COMPANY_POID", glJournalVoucherHdr.getCompanyPoid());
-        query.setParameter("P_LOGIN_USER_POID", getUserPoid());
-        query.setParameter("P_DOC_ID", documentId);
-        query.setParameter("P_TRANSACTION_POID", transactionPoid);
-        query.setParameter("P_DOC_REF", glJournalVoucherHdr.getDocRef());
-
-        query.execute();
-
-        String result = (String) query.getOutputParameterValue("P_STATUS");
-        log.info("Result: {}", result);
-
-        if (result != null && result.contains("ERROR")) {
-            handlePostingError(result);
-        }
-
-        return result;
-    }
-
-
-    @Override
     public List<JournalVoucherAssetDetailDto> fetchAssetDepreciationDetails(Long faPoid) {
 
-
         StoredProcedureQuery query = entityManager
-                .createStoredProcedureQuery("PROC_FA_DEPRE_DTL_FOR_DIS_JV");
+                .createStoredProcedureQuery(PROC_FA_DEPRE_DTL);
 
         query.registerStoredProcedureParameter("P_COMPANY_POID", Long.class, ParameterMode.IN);
         query.registerStoredProcedureParameter("P_DEP_YEAR", Date.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_FA_POID", String.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter("OUTDATA", void.class, ParameterMode.REF_CURSOR);
+        query.registerStoredProcedureParameter(P_FA_POID, Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(OUTDATA, void.class, ParameterMode.REF_CURSOR);
 
         query.setParameter("P_COMPANY_POID", getCompanyId());
-        LocalDate currentMonth = LocalDate.now().withDayOfMonth(1);
+        LocalDate currentDate = DateUtil.getCurrentDateInUserTimeZone();
 
-        query.setParameter(
-                "P_DEP_YEAR",
-                java.sql.Date.valueOf(currentMonth)
-        );
-
-        query.setParameter("P_FA_POID", faPoid.toString());
+        query.setParameter("P_DEP_YEAR", java.sql.Date.valueOf(currentDate));
+        query.setParameter(P_FA_POID, faPoid);
 
         query.execute();
 
-        ResultSet rs = (ResultSet) query.getOutputParameterValue("OUTDATA");
-        log.info("Result Set: {}", rs);
-        List<JournalVoucherAssetDetailDto> resultList = new ArrayList<>();
+        try (ResultSet rs = (ResultSet) query.getOutputParameterValue(OUTDATA)) {
+            log.info("Result Set: {}", rs);
+            List<JournalVoucherAssetDetailDto> resultList = new ArrayList<>();
 
-        try {
             while (rs != null && rs.next()) {
                 JournalVoucherAssetDetailDto dto = JournalVoucherAssetDetailDto.builder()
                         .faPoid(faPoid)
@@ -102,83 +73,80 @@ public class JournalVoucherProcRepositoryImpl implements JournalVoucherProcRepos
                         .assetValue(rs.getBigDecimal("GROSS_BLOCK_START"))
                         .depreciatedAmt(rs.getBigDecimal("ACCUM_DEPRICIATION"))
                         .wdvValue(rs.getBigDecimal("WDV_VALUE"))
+                        .faDescription(rs.getString("DESCRIPTION"))
+                        .faCategory(rs.getLong("FA_CATEGORY_POID"))
+                        .assetType(rs.getString("ASSET_TYPE"))
+                        .scrapSoldDate(LocalDate.now())
                         .build();
                 resultList.add(dto);
             }
+            return resultList;
         } catch (Exception e) {
-            throw new RuntimeException("Error fetching asset depreciation details: " + e.getMessage(), e);
+            throw new AsgException("Error fetching asset depreciation details: " + e.getMessage(), e);
         }
-
-        return resultList;
     }
 
     @Override
-    public List<JournalVoucherCapitalizationDto> fetchFixedAssetDetails(Long faPoid) throws SQLException {
+    public List<JournalVoucherCapitalizationDto> fetchFixedAssetDetails(Long faPoid) {
 
-        StoredProcedureQuery query = entityManager
-                .createStoredProcedureQuery("PROC_AP_PI_FA_DEFAULT_DTLS");
+        try {
+            StoredProcedureQuery query = entityManager
+                    .createStoredProcedureQuery(PROC_FA_DEFAULT_DTLS);
 
-        query.registerStoredProcedureParameter("P_LOGIN_GROUP_POID", Long.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_LOGIN_COMPANY_POID", Long.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_LOGIN_USER_POID", Long.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_FA_POID", String.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter("OUTDATA", void.class, ParameterMode.REF_CURSOR);
+            query.registerStoredProcedureParameter(P_LOGIN_GROUP_POID, Long.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter(P_LOGIN_COMPANY_POID, Long.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter(P_LOGIN_USER_POID, Long.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter(P_FA_POID, Long.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter(OUTDATA, void.class, ParameterMode.REF_CURSOR);
 
-        query.setParameter("P_LOGIN_GROUP_POID", getGroupId());
-        query.setParameter("P_LOGIN_COMPANY_POID", getCompanyId());
-        query.setParameter("P_LOGIN_USER_POID", getUserPoid());
-        query.setParameter("P_FA_POID", faPoid.toString());
+            query.setParameter(P_LOGIN_GROUP_POID, getGroupId());
+            query.setParameter(P_LOGIN_COMPANY_POID, getCompanyId());
+            query.setParameter(P_LOGIN_USER_POID, getUserPoid());
+            query.setParameter(P_FA_POID, faPoid);
 
-        query.execute();
+            query.execute();
 
-        ResultSet rs = (ResultSet) query.getOutputParameterValue("OUTDATA");
-        List<JournalVoucherCapitalizationDto> list = new ArrayList<>();
+            List<JournalVoucherCapitalizationDto> list = new ArrayList<>();
 
-        while (rs != null && rs.next()) {
-            list.add(JournalVoucherCapitalizationDto.builder()
-                    .faPoid(faPoid)
-                    .faDescription(rs.getString("FA_DESCRIPTION"))
-                    .faCategory(rs.getLong("FA_CATEGORY_POID"))
-                    .assetType(rs.getString("ASSET_TYPE"))
-                    .assetValue(rs.getBigDecimal("GROSS_VALUE"))
-                    .build()
-            );
+            try (ResultSet rs = (ResultSet) query.getOutputParameterValue(OUTDATA)) {
+                while (rs != null && rs.next()) {
+                    list.add(JournalVoucherCapitalizationDto.builder()
+                            .faPoid(faPoid)
+                            .faDescription(rs.getString("FA_DESCRIPTION"))
+                            .faCategory(rs.getLong("FA_CATEGORY_POID"))
+                            .assetType(rs.getString("ASSET_TYPE"))
+                            .assetValue(rs.getBigDecimal("GROSS_VALUE"))
+                            .build());
+                }
+            }
+
+            return list;
+        } catch (SQLException e) {
+            throw new AsgException("Error fetching fixed asset details: " + e.getMessage(), e);
         }
-
-        return list;
-    }
-
-    private void handlePostingError(String errorMessage) {
-        if (errorMessage.contains("ORA-20001")) {
-            throw new DataAccessException("Changes allowed only within current Financial Period");
-        }
-        if (errorMessage.contains("ORA-20002")) {
-            throw new DataAccessException("Changes allowed only within current Transaction Period");
-        }
-        throw new DataAccessException(errorMessage);
     }
 
     @Override
     public void updateAssetDetail(Long transactionPoid) {
         StoredProcedureQuery query = entityManager
-                .createStoredProcedureQuery("PROC_JV_UPDATE_ASSET_DTL");
+                .createStoredProcedureQuery(PROC_UPDATE_ASSET_DTL);
 
-        query.registerStoredProcedureParameter("P_LOGIN_GROUP_POID", Long.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_LOGIN_COMPANY_POID", Long.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_LOGIN_USER_POID", Long.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_TRANSACTION_POID", String.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(P_LOGIN_GROUP_POID, Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(P_LOGIN_COMPANY_POID, Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(P_LOGIN_USER_POID, Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("P_TRANSACTION_POID", Long.class, ParameterMode.IN);
         query.registerStoredProcedureParameter("P_RESULT", String.class, ParameterMode.OUT);
 
-        query.setParameter("P_LOGIN_GROUP_POID", getGroupId());
-        query.setParameter("P_LOGIN_COMPANY_POID", getCompanyId());
-        query.setParameter("P_LOGIN_USER_POID", getUserPoid());
-        query.setParameter("P_TRANSACTION_POID", transactionPoid.toString());
+        query.setParameter(P_LOGIN_GROUP_POID, getGroupId());
+        query.setParameter(P_LOGIN_COMPANY_POID, getCompanyId());
+        query.setParameter(P_LOGIN_USER_POID, getUserPoid());
+        query.setParameter("P_TRANSACTION_POID", transactionPoid);
 
         query.execute();
 
         String result = (String) query.getOutputParameterValue("P_RESULT");
         if (result != null && result.contains("ERROR")) {
-            throw new RuntimeException(result);
+            throw new AsgException(result);
         }
     }
 }

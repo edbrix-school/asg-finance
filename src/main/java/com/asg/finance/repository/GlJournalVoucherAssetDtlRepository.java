@@ -4,10 +4,15 @@ import com.asg.finance.entity.GlJournalVoucherAssetDtl;
 import com.asg.finance.entity.key.TransactionDetailKey;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
 public interface GlJournalVoucherAssetDtlRepository extends JpaRepository<GlJournalVoucherAssetDtl, TransactionDetailKey>, JpaSpecificationExecutor<GlJournalVoucherAssetDtl> {
     List<GlJournalVoucherAssetDtl> findByTransactionPoid(Long transactionPoid);
     void deleteByTransactionPoid(Long transactionPoid);
+
+    @Query("SELECT COALESCE(MAX(d.detRowId), 0) FROM GlJournalVoucherAssetDtl d WHERE d.transactionPoid = :transactionPoid")
+    Long getMaxDetRowIdByTransactionPoid(@Param("transactionPoid") Long transactionPoid);
 }

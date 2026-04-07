@@ -7,11 +7,14 @@ import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
 import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
+import com.asg.common.lib.exception.AsgException;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.utility.DateUtil;
 import com.asg.finance.repository.GLMasterRepository;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
@@ -31,6 +34,7 @@ import com.asg.finance.service.GlRecurringJvService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -41,14 +45,11 @@ import org.springframework.transaction.annotation.Transactional;
 import javax.sql.DataSource;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
-
 import static com.asg.common.lib.utility.ASGHelperUtils.*;
 import static com.asg.finance.utility.Constants.*;
 
@@ -71,15 +72,32 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
     private final LoggingService loggingService;
     private final DocumentDeleteService documentDeleteService;
 
+    private static final String RESOURCE_NAME = "Recurring JV";
+    private static final String FIELD_TRANSACTION_POID = "transactionPoid";
+    private static final String DB_COLUMN_TRANSACTION_POID = "TRANSACTION_POID";
+    private static final String DB_COLUMN_TRANSACTION_DATE = "TRANSACTION_DATE";
+    private static final String DB_COLUMN_NARRATION = "NARRATION";
+    private static final String DOC_ID_RECURRING_JV = "400-102";
+    private static final String TABLE_RECURRING_JV_HDR = "GL_RECURRING_JV_HDR";
+    private static final String LOV_GL_MASTER_LEDGERS = "GL_MASTER_LEDGERS";
+    private static final String LOV_RJV_EMPLOYEE_DTLS = "RJV_EMPLOYEE_DTLS";
+    private static final String LOV_RJV_FIXED_ASSET_DTLS = "RJV_FIXED_ASSET_DTLS";
+    private static final String LOV_COMPANY = "COMPANY";
+    private static final String REPORT_MAIN = "Finance/GL/RecurringJVReport.jrxml";
+    private static final String REPORT_SUB_GL = "Finance/GL/RecurringJVGLSubreport1.jrxml";
+    private static final String REPORT_SUB_SCHEDULE = "Finance/GL/RecurringJVScheduleWiseSubreport2.jrxml";
+
     @Override
-    public Map<String, Object> listRecurringJvs(String documentId, FilterRequestDto filters, LocalDate startDate, LocalDate endDate, Pageable pageable) {
+    public Map<String, Object> listRecurringJvs(String documentId, FilterRequestDto filters, LocalDate startDate,
+            LocalDate endDate, Pageable pageable) {
         String operator = documentService.resolveOperator(filters);
         String isDeleted = documentService.resolveIsDeleted(filters);
-        List<FilterDto> filterList = documentService.resolveDateFilters(filters, "TRANSACTION_DATE", startDate, endDate);
+        List<FilterDto> filterList = documentService.resolveDateFilters(filters, DB_COLUMN_TRANSACTION_DATE, startDate,
+                endDate);
 
         RawSearchResult raw = documentService.search(documentId, filterList, operator, pageable, isDeleted,
-                "NARRATION",
-                "TRANSACTION_POID");
+                DB_COLUMN_NARRATION,
+                DB_COLUMN_TRANSACTION_POID);
 
         Page<Map<String, Object>> page = new PageImpl<>(raw.records(), pageable, raw.totalRecords());
         return PaginationUtil.wrapPage(page, raw.displayFields());
@@ -90,8 +108,8 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
     public RecurringJvResponse getRecurringJvById(Long transactionPoid) {
 
         GlRecurringJvHdr header = hdrRepository.findByTransactionPoid(transactionPoid)
-                .orElseThrow(() -> new ResourceNotFoundException("Recurring JV", "transactionPoid", transactionPoid));
-
+                .orElseThrow(
+                        () -> new ResourceNotFoundException(RESOURCE_NAME, FIELD_TRANSACTION_POID, transactionPoid));
 
         List<GlRecurringJvDtl> details = dtlRepository.findByTransactionPoid(transactionPoid);
         List<GlRecurringJvMonthDtl> scheduleDetails = monthDtlRepository.findByTransactionPoid(transactionPoid);
@@ -106,12 +124,12 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
 
     private BigDecimal calculateDrTotal(Long transactionPoid) {
         BigDecimal total = dtlRepository.getDrTotalByTransactionPoid(transactionPoid);
-        return total != null ? total : BigDecimal.ZERO.setScale(3);
+        return total != null ? total : BigDecimal.ZERO.setScale(3, RoundingMode.HALF_UP);
     }
 
     private BigDecimal calculateCrTotal(Long transactionPoid) {
         BigDecimal total = dtlRepository.getCrTotalByTransactionPoid(transactionPoid);
-        return total != null ? total : BigDecimal.ZERO.setScale(3);
+        return total != null ? total : BigDecimal.ZERO.setScale(3, RoundingMode.HALF_UP);
     }
 
     private RecurringJvResponse buildResponse(
@@ -135,8 +153,8 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
         response.setNoOfMonths(header.getNoOfMonths());
         response.setMonthWiseAmt(header.getMonthWiseAmt());
         response.setRefType(header.getRefType());
-        response.setEmployeeId(header.getEmployeePoid());
-        response.setAssetId(header.getFaPoid());
+        response.setEmployeePoid(header.getEmployeePoid());
+        response.setAssetPoid(header.getFaPoid());
         response.setPolicyNumber(header.getPolicyNumber());
         response.setRemarks(header.getRemarks());
         response.setGroupPoid(header.getGroupPoid());
@@ -144,32 +162,37 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
         response.setDrTotal(drTotal);
         response.setCrTotal(crTotal);
         response.setGlPosting(false);
+        response.setCreatedBy(header.getCreatedBy());
+        response.setCreatedDate(header.getCreatedDate());
+        response.setLastModifiedBy(header.getLastModifiedBy());
+        response.setLastModifiedDate(header.getLastModifiedDate());
 
         boolean hasBillWiseCapable = details.stream()
                 .anyMatch(dtl -> dtl.getGlPoid() != null &&
                         glMasterRepository.findById(dtl.getGlPoid())
-                                .map(gl -> "Y".equalsIgnoreCase(gl.getBillwise()))
+                                .map(gl -> FLAG_YES.equalsIgnoreCase(gl.getBillwise()))
                                 .orElse(false));
         response.setBillWiseCapable(hasBillWiseCapable);
 
         if (header.getEmployeePoid() != null) {
-            response.setEmployeeDet(lovService.getDetailsByPoidAndLovName(header.getEmployeePoid(), "RJV_EMPLOYEE_DTLS"));
+            response.setEmployeeDet(
+                    lovService.getDetailsByPoidAndLovName(header.getEmployeePoid(), LOV_RJV_EMPLOYEE_DTLS));
         }
         if (header.getFaPoid() != null) {
-            response.setAssetDet(lovService.getDetailsByPoidAndLovName(header.getFaPoid(), "RJV_FIXED_ASSET_DTLS"));
+            response.setAssetDet(lovService.getDetailsByPoidAndLovName(header.getFaPoid(), LOV_RJV_FIXED_ASSET_DTLS));
         }
         if (header.getCompanyPoid() != null) {
-            response.setCompanyDet(lovService.getDetailsByPoidAndLovName(header.getCompanyPoid(), "COMPANY"));
+            response.setCompanyDet(lovService.getDetailsByPoidAndLovName(header.getCompanyPoid(), LOV_COMPANY));
         }
 
         List<RecurringJvDetailResponse> detailResponses = details.stream()
-                .map(dtl -> convertDetailToResponseWithBreakups(dtl, header.getEmployeePoid(), header.getFaPoid(), costCenterResponse, billwiseResponse))
-                .collect(Collectors.toList());
+                .map(dtl -> convertDetailToResponseWithBreakups(dtl, costCenterResponse, billwiseResponse))
+                .toList();
         response.setDetails(detailResponses);
 
         List<RecurringJvScheduleDetailResponse> scheduleResponses = scheduleDetails.stream()
-                .map(schedule -> convertScheduleToResponse(schedule, header.getDocRef()))
-                .collect(Collectors.toList());
+                .map(this::convertScheduleToResponse)
+                .toList();
         response.setScheduleDetails(scheduleResponses);
 
         return response;
@@ -178,7 +201,7 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
     private GlVoucherCostCenterBreakupResponseDto loadAllCostCenterData(Long transactionPoid) {
         try {
             return costCenterBreakupService.loadCostCenterData(
-                    "400-102", transactionPoid, getGroupId(), getCompanyId(), getUserPoid());
+                    DOC_ID_RECURRING_JV, transactionPoid, getGroupId(), getCompanyId(), getUserPoid());
         } catch (Exception e) {
             log.warn("Failed to load cost center breakup for transaction: {}", transactionPoid, e);
             return null;
@@ -188,7 +211,7 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
     private GlVoucherLoadBillwiseBreakupResponseDto loadAllBillwiseData(Long transactionPoid) {
         try {
             return billwiseBreakupService.loadBillwiseBreakup(
-                    getGroupId(), getCompanyId(), "400-102", transactionPoid);
+                    getGroupId(), getCompanyId(), DOC_ID_RECURRING_JV, transactionPoid);
         } catch (Exception e) {
             log.warn("Failed to load billwise breakup for transaction: {}", transactionPoid, e);
             return null;
@@ -197,22 +220,20 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
 
     private RecurringJvDetailResponse convertDetailToResponseWithBreakups(
             GlRecurringJvDtl dtl,
-            Long employeePoid,
-            Long FaPoid,
             GlVoucherCostCenterBreakupResponseDto costCenterResponse,
             GlVoucherLoadBillwiseBreakupResponseDto billwiseResponse) {
 
         RecurringJvDetailResponse response = new RecurringJvDetailResponse();
-        response.setLineId(dtl.getDetRowId());
+        response.setDetRowId(dtl.getDetRowId());
         response.setType(dtl.getType());
-        response.setCompanyId(dtl.getCompanyPoid());
-        response.setGlId(dtl.getGlPoid());
+        response.setCompanyPoid(dtl.getCompanyPoid());
+        response.setGlPoid(dtl.getGlPoid());
         response.setDrAmt(dtl.getDrAmt());
         response.setCrAmt(dtl.getCrAmt());
         response.setRemarks(dtl.getRemarks());
 
         if (dtl.getGlPoid() != null) {
-            response.setGlDet(lovService.getDetailsByPoidAndLovName(dtl.getGlPoid(), "GL_MASTER_LEDGERS"));
+            response.setGlDet(lovService.getDetailsByPoidAndLovName(dtl.getGlPoid(), LOV_GL_MASTER_LEDGERS));
         }
 
         response.setCostCenter(filterCostCenterBreakup(costCenterResponse, dtl.getDetRowId()));
@@ -236,9 +257,17 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
                     dto.setCostGroup(cc.getCostGroup());
                     dto.setCostPoid(cc.getCostPoid());
                     dto.setAmount(cc.getAmount());
+                    if (StringUtils.isNotEmpty(cc.getCostPoid()) && StringUtils.isNotEmpty(cc.getCostGroup())) {
+                        try {
+                            Long poid = Long.parseLong(cc.getCostPoid());
+                            dto.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(poid, cc.getCostGroup()));
+                        } catch (NumberFormatException e) {
+                            dto.setCostCenterDetails(lovService.getDetailsByCodeAndLovName(cc.getCostPoid(), cc.getCostGroup()));
+                        }
+                    }
                     return dto;
                 })
-                .collect(Collectors.toList());
+                .toList();
     }
 
     private List<BillwiseBreakupPopupRequestDto> filterBillwiseBreakup(
@@ -257,18 +286,19 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
                     dto.setBillRef(bw.getBillRef());
                     dto.setBillDueDate(bw.getBillDueDate());
                     dto.setAmount(bw.getDrAmt() != null ? bw.getDrAmt() : bw.getCrAmt());
-                    dto.setType(bw.getDrAmt() != null && bw.getDrAmt().compareTo(BigDecimal.ZERO) > 0 ? "Dr" : "Cr");
+                    dto.setType(bw.getDrAmt() != null && bw.getDrAmt().compareTo(BigDecimal.ZERO) > 0 ? TYPE_DEBIT
+                            : TYPE_CREDIT);
                     dto.setBillRemarks(bw.getBillRemarks());
                     return dto;
                 })
-                .collect(Collectors.toList());
+                .toList();
     }
 
-    private RecurringJvScheduleDetailResponse convertScheduleToResponse(GlRecurringJvMonthDtl schedule, String docRef) {
+    private RecurringJvScheduleDetailResponse convertScheduleToResponse(GlRecurringJvMonthDtl schedule) {
         RecurringJvScheduleDetailResponse response = new RecurringJvScheduleDetailResponse();
         response.setScheduleId(schedule.getDetRowId());
-        response.setMonthWiseDate(schedule.getMonthWiseDate() != null ? Timestamp.valueOf(schedule.getMonthWiseDate().atStartOfDay()) : null);
-        response.setJv(docRef);
+        response.setMonthWiseDate(schedule.getMonthWiseDate() != null ? schedule.getMonthWiseDate() : DateUtil.getCurrentDateInUserTimeZone());
+        response.setJv(schedule.getJvPoid());
         response.setAmount(schedule.getAmount());
         response.setStatus(schedule.getStatus());
         response.setRemarks(schedule.getRemarks());
@@ -278,11 +308,8 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
 
     @Override
     @Transactional
-    public RecurringJvCreateResponse createRecurringJv(RecurringJvRequest request, String docId) {
+    public RecurringJvCreateResponse createRecurringJv(RecurringJvRequest request) {
         validateRequest(request);
-
-        BigDecimal monthWiseAmt = request.getTotalAmount()
-                .divide(BigDecimal.valueOf(request.getNoOfMonths()), 3, RoundingMode.HALF_UP);
 
         GlRecurringJvHdr header = GlRecurringJvHdr.builder()
                 .transactionDate(LocalDate.now())
@@ -292,30 +319,31 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
                 .startDate(request.getStartDate())
                 .totalAmount(request.getTotalAmount())
                 .noOfMonths(request.getNoOfMonths())
-                .monthWiseAmt(monthWiseAmt)
+                .monthWiseAmt(request.getMonthWiseAmount())
                 .refType(request.getRefType())
-                .employeePoid(request.getEmployeeId())
-                .faPoid(request.getAssetId())
+                .employeePoid(request.getEmployeePoid())
+                .faPoid(request.getAssetPoid())
                 .policyNumber(request.getPolicyNumber())
                 .remarks(request.getRemarks())
-                .docRef(request.getDocRef())
                 .deleted(FLAG_NO)
                 .build();
 
         header = hdrRepository.save(header);
 
-
         Long transactionPoid = header.getTransactionPoid();
-        saveDetails(transactionPoid, request.getDetails(), header, docId);
+        saveDetails(transactionPoid, request.getDetails(), header, true);
 
         // Log the creation
         String key = transactionPoid.toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, key);
+        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), key);
 
         return new RecurringJvCreateResponse(transactionPoid, "Recurring JV created successfully");
     }
 
     private void validateRequest(RecurringJvRequest request) {
+        BigDecimal monthWiseAmount = request.getTotalAmount()
+                .divide(BigDecimal.valueOf(request.getNoOfMonths()), 3, RoundingMode.HALF_UP);
+
         BigDecimal drTotal = request.getDetails().stream()
                 .map(d -> d.getDrAmt() != null ? d.getDrAmt() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -328,129 +356,201 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
             throw new IllegalArgumentException("DR Total must equal CR Total");
         }
 
-        for (RecurringJvDetailRequest detail : request.getDetails()) {
-            if ("Dr".equalsIgnoreCase(detail.getType())) {
-                if (detail.getDrAmt() == null || detail.getDrAmt().compareTo(BigDecimal.ZERO) <= 0) {
-                    throw new IllegalArgumentException("DrAmt must be greater than 0 for Type=Dr");
-                }
-            } else if ("Cr".equalsIgnoreCase(detail.getType())) {
-                if (detail.getCrAmt() == null || detail.getCrAmt().compareTo(BigDecimal.ZERO) <= 0) {
-                    throw new IllegalArgumentException("CrAmt must be greater than 0 for Type=Cr");
-                }
-            }
+        if (drTotal.setScale(3, RoundingMode.HALF_UP).compareTo(monthWiseAmount) != 0) {
+            throw new IllegalArgumentException(String.format("Monthly amount (%s) must equal Dr Total (%s)", monthWiseAmount, drTotal));
+        }
 
-            if (!glMasterRepository.existsByGlPoid(detail.getGlId())) {
-                throw new ResourceNotFoundException("GL Master", "glId", detail.getGlId());
-            }
+        for (RecurringJvDetailRequest detail : request.getDetails()) {
+            validateDetailLine(detail);
         }
     }
 
-    private void saveDetails(Long transactionPoid, List<RecurringJvDetailRequest> details, GlRecurringJvHdr header, String docId) {
-        Long headerCompanyPoid = header.getCompanyPoid();
-        String currentUser = getCurrentUser();
-        List<CostCenterBreakupRequestDto> costCenterRequestDtoList = new ArrayList<>();
-        List<BillwiseBreakupRequestDto> billwiseRequestDtoList = new ArrayList<>();
+    private void validateDetailLine(RecurringJvDetailRequest detail) {
+        if (TYPE_DEBIT.equalsIgnoreCase(detail.getType())) {
+            validateDebitAmount(detail.getDrAmt());
+            if (detail.getCrAmt() != null && detail.getCrAmt().compareTo(BigDecimal.ZERO) != 0) {
+                throw new IllegalArgumentException("CrAmt must be 0 for Type=Dr");
+            }
+        } else if (TYPE_CREDIT.equalsIgnoreCase(detail.getType())) {
+            validateCreditAmount(detail.getCrAmt());
+            if (detail.getDrAmt() != null && detail.getDrAmt().compareTo(BigDecimal.ZERO) != 0) {
+                throw new IllegalArgumentException("DrAmt must be 0 for Type=Cr");
+            }
+        } else {
+            throw new IllegalArgumentException("Invalid Type: Must be 'Dr' or 'Cr'");
+        }
+
+        if (!glMasterRepository.existsByGlPoid(detail.getGlPoid())) {
+            throw new ResourceNotFoundException("GL Master", "glId", detail.getGlPoid());
+        }
+    }
+
+    private void validateDebitAmount(BigDecimal drAmt) {
+        if (drAmt == null || drAmt.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("DrAmt must be greater than 0 for Type=Dr");
+        }
+    }
+
+    private void validateCreditAmount(BigDecimal crAmt) {
+        if (crAmt == null || crAmt.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("CrAmt must be greater than 0 for Type=Cr");
+        }
+    }
+
+    private void saveDetails(Long transactionPoid, List<RecurringJvDetailRequest> details, GlRecurringJvHdr header,
+            boolean isNewRecord) {
+        List<CostCenterBreakupRequestDto> costCenterList = new ArrayList<>();
+        List<BillwiseBreakupRequestDto> billwiseList = new ArrayList<>();
         List<LogRequestDto<GlRecurringJvDtl>> logRequests = new ArrayList<>();
+        List<GlRecurringJvDtl> detailsToPersist = new ArrayList<>();
+
+        long nextDetRowId = isNewRecord ? 1L : getNextDetRowIdForRecurring(transactionPoid);
 
         for (RecurringJvDetailRequest detail : details) {
-            String rawAction = detail.getActionType();
-            String action = (rawAction == null || rawAction.trim().isEmpty())
-                    ? "NOCHANGES"
-                    : rawAction.trim().toUpperCase();
+            String action = isNewRecord ? ACTION_ISCREATED : resolveAction(detail.getActionType());
+            
+            if (ACTION_ISCREATED.equals(action) && detail.getDetRowId() == null) {
+                detail.setDetRowId(nextDetRowId++);
+            }
 
-            action = switch (action) {
-                case "ISCREATED", "CREATED", "NEW" -> "ISCREATED";
-                case "ISUPDATED", "UPDATED" -> "ISUPDATED";
-                case "ISDELETED", "DELETED" -> "ISDELETED";
-                default -> "NOCHANGES";
-            };
-
-            Long companyPoid = detail.getCompanyId() != null ? detail.getCompanyId() : headerCompanyPoid;
+            Long companyPoid = detail.getCompanyPoid() != null ? detail.getCompanyPoid() : header.getCompanyPoid();
 
             if (companyPoid == null) {
                 throw new IllegalArgumentException("Company ID is required");
             }
 
-            switch (action) {
-                case ACTION_NOCHANGES -> {
-                }
-                case ACTION_ISDELETED -> {
-                    if (detail.getLineId() != null) {
-                        dtlRepository.deleteById(new TransactionDetailKey(transactionPoid, detail.getLineId()));
-                        // Log child record deletion
-                        loggingService.logDelete(detail, docId, transactionPoid.toString());
-                    }
-                }
-                case ACTION_ISCREATED -> {
-                    Long detRowId = detail.getLineId() != null ? detail.getLineId() : getNextDetRowIdForRecurring(transactionPoid);
-                    GlRecurringJvDtl dtl = new GlRecurringJvDtl();
-                    dtl.setTransactionPoid(transactionPoid);
-                    dtl.setDetRowId(detRowId);
-                    dtl.setType(detail.getType());
-                    dtl.setCompanyPoid(companyPoid);
-                    dtl.setGlPoid(detail.getGlId());
-                    dtl.setDrAmt(detail.getDrAmt());
-                    dtl.setCrAmt(detail.getCrAmt());
-                    dtl.setRemarks(detail.getRemarks());
-                    dtlRepository.save(dtl);
-
-                    // Log child record creation
-                    String logDetail = String.format("Row Created on Recurring JV Detail with detRowId: %s", detRowId);
-                    loggingService.createLogSummaryEntry(docId, transactionPoid.toString(), logDetail);
-
-                    if (detail.getCostCenter() != null && !detail.getCostCenter().isEmpty()) {
-                        costCenterRequestDtoList.addAll(buildCostCenterBreakups(transactionPoid, detRowId, docId, detail.getGlId(), detail.getCostCenter()));
-                    }
-                    if (detail.getBillWiseBreakup() != null && !detail.getBillWiseBreakup().isEmpty()) {
-                        billwiseRequestDtoList.addAll(buildBillwiseBreakups(transactionPoid, detRowId, docId, detail.getGlId(), detail.getBillWiseBreakup()));
-                    }
-                }
-                case ACTION_ISUPDATED -> {
-
-                    if (!glMasterRepository.existsByGlPoid(detail.getGlId())) {
-                        throw new ResourceNotFoundException("GL Master", "glId", detail.getGlId());
-                    }
-
-                    GlRecurringJvDtl dtl = dtlRepository.findById(new TransactionDetailKey(transactionPoid, detail.getLineId()))
-                            .orElseThrow(() -> new ResourceNotFoundException("Recurring JV Detail", "lineId", detail.getLineId()));
-
-                    // Create a copy of the existing detail for logging
-                    GlRecurringJvDtl oldDetail = new GlRecurringJvDtl();
-                    BeanUtils.copyProperties(dtl, oldDetail);
-
-                    dtl.setType(detail.getType());
-                    dtl.setCompanyPoid(companyPoid);
-                    dtl.setGlPoid(detail.getGlId());
-                    dtl.setDrAmt(detail.getDrAmt());
-                    dtl.setCrAmt(detail.getCrAmt());
-                    dtl.setRemarks(detail.getRemarks());
-                    dtlRepository.save(dtl);
-
-                    // Collect log request for batch processing
-                    String logDetailForUpdate = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", transactionPoid, detail.getLineId());
-                    logRequests.add(new LogRequestDto<>(oldDetail, dtl, GlRecurringJvDtl.class,
-                            docId, transactionPoid.toString(), logDetailForUpdate));
-
-                    if (detail.getCostCenter() != null && !detail.getCostCenter().isEmpty()) {
-                        costCenterRequestDtoList.addAll(buildCostCenterBreakups(transactionPoid, detail.getLineId(), docId, detail.getGlId(), detail.getCostCenter()));
-                    }
-                    if (detail.getBillWiseBreakup() != null && !detail.getBillWiseBreakup().isEmpty()) {
-                        billwiseRequestDtoList.addAll(buildBillwiseBreakups(transactionPoid, detail.getLineId(), docId, detail.getGlId(), detail.getBillWiseBreakup()));
-                    }
-                }
-            }
+            processDetailAction(transactionPoid, detail, action, companyPoid, costCenterList, billwiseList,
+                    logRequests, detailsToPersist);
         }
 
-        // Batch process all update logs
+        if (!detailsToPersist.isEmpty()) {
+            dtlRepository.saveAll(detailsToPersist);
+        }
+
+        finalizeBatchSaves(logRequests, costCenterList, billwiseList, isNewRecord);
+    }
+
+    private String resolveAction(String actionType) {
+        String action = (actionType == null || actionType.trim().isEmpty())
+                ? ACTION_NOCHANGES
+                : actionType.trim().toUpperCase();
+
+        return switch (action) {
+            case "ISCREATED", "CREATED", "NEW" -> ACTION_ISCREATED;
+            case "ISUPDATED", "UPDATED" -> ACTION_ISUPDATED;
+            case "ISDELETED", "DELETED" -> ACTION_ISDELETED;
+            default -> ACTION_NOCHANGES;
+        };
+    }
+
+    private void processDetailAction(Long transactionPoid, RecurringJvDetailRequest detail, String action,
+            Long companyPoid,
+            List<CostCenterBreakupRequestDto> costCenterList, List<BillwiseBreakupRequestDto> billwiseList,
+            List<LogRequestDto<GlRecurringJvDtl>> logRequests, List<GlRecurringJvDtl> detailsToPersist) {
+        String docId = UserContext.getDocumentId();
+        switch (action) {
+            case ACTION_ISDELETED -> handleDeletedDetail(transactionPoid, detail, docId);
+            case ACTION_ISCREATED ->
+                handleCreatedDetail(transactionPoid, detail, companyPoid, docId, costCenterList, billwiseList,
+                        detailsToPersist);
+            case ACTION_ISUPDATED ->
+                handleUpdatedDetail(transactionPoid, detail, companyPoid, docId, costCenterList, billwiseList,
+                        logRequests, detailsToPersist);
+            default -> {
+                /* No changes needed */ }
+        }
+    }
+
+    private void handleDeletedDetail(Long transactionPoid, RecurringJvDetailRequest detail, String docId) {
+        if (detail.getDetRowId() != null) {
+            dtlRepository.deleteById(new TransactionDetailKey(transactionPoid, detail.getDetRowId()));
+            loggingService.logDelete(detail, docId, transactionPoid.toString());
+        }
+    }
+
+    private void handleCreatedDetail(Long transactionPoid, RecurringJvDetailRequest detail, Long companyPoid,
+            String docId,
+            List<CostCenterBreakupRequestDto> costCenterList, List<BillwiseBreakupRequestDto> billwiseList,
+            List<GlRecurringJvDtl> detailsToPersist) {
+        Long detRowId = detail.getDetRowId();
+        GlRecurringJvDtl dtl = new GlRecurringJvDtl();
+        mapDetailToEntity(dtl, transactionPoid, detRowId, detail, companyPoid);
+        detailsToPersist.add(dtl);
+
+        loggingService.createLogSummaryEntry(docId, transactionPoid.toString(),
+                String.format("Row Created on Recurring JV Detail with detRowId: %s", detRowId));
+
+        if (detail.getCostCenter() != null && !detail.getCostCenter().isEmpty()) {
+            costCenterList.addAll(buildCostCenterBreakups(transactionPoid, detRowId, docId, detail.getGlPoid(),
+                    detail.getCostCenter()));
+        }
+        if (detail.getBillWiseBreakup() != null && !detail.getBillWiseBreakup().isEmpty()) {
+            billwiseList.addAll(buildBillwiseBreakups(transactionPoid, detRowId, docId, detail.getGlPoid(),
+                    companyPoid, detail.getBillWiseBreakup()));
+        }
+    }
+
+    private void handleUpdatedDetail(Long transactionPoid, RecurringJvDetailRequest detail, Long companyPoid,
+            String docId,
+            List<CostCenterBreakupRequestDto> costCenterList, List<BillwiseBreakupRequestDto> billwiseList,
+            List<LogRequestDto<GlRecurringJvDtl>> logRequests, List<GlRecurringJvDtl> detailsToPersist) {
+        if (!glMasterRepository.existsByGlPoid(detail.getGlPoid())) {
+            throw new ResourceNotFoundException("GL Master", "glId", detail.getGlPoid());
+        }
+
+        GlRecurringJvDtl dtl = dtlRepository.findById(new TransactionDetailKey(transactionPoid, detail.getDetRowId()))
+                .orElseThrow(() -> new ResourceNotFoundException("Recurring JV Detail", "detRowId", detail.getDetRowId()));
+
+        GlRecurringJvDtl oldDetail = new GlRecurringJvDtl();
+        BeanUtils.copyProperties(dtl, oldDetail);
+
+        mapDetailToEntity(dtl, transactionPoid, detail.getDetRowId(), detail, companyPoid);
+        detailsToPersist.add(dtl);
+
+        logRequests.add(new LogRequestDto<>(oldDetail, dtl, GlRecurringJvDtl.class, docId, transactionPoid.toString(),
+                String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", transactionPoid, detail.getDetRowId())));
+
+        if (detail.getCostCenter() != null && !detail.getCostCenter().isEmpty()) {
+            costCenterList.addAll(buildCostCenterBreakups(transactionPoid, detail.getDetRowId(), docId, detail.getGlPoid(),
+                    detail.getCostCenter()));
+        }
+        if (detail.getBillWiseBreakup() != null && !detail.getBillWiseBreakup().isEmpty()) {
+            billwiseList.addAll(buildBillwiseBreakups(transactionPoid, detail.getDetRowId(), docId, detail.getGlPoid(),
+                    companyPoid, detail.getBillWiseBreakup()));
+        }
+    }
+
+    private void mapDetailToEntity(GlRecurringJvDtl dtl, Long transactionPoid, Long detRowId,
+            RecurringJvDetailRequest detail, Long companyPoid) {
+        dtl.setTransactionPoid(transactionPoid);
+        dtl.setDetRowId(detRowId);
+        dtl.setType(detail.getType());
+        dtl.setCompanyPoid(companyPoid);
+        dtl.setGlPoid(detail.getGlPoid());
+        dtl.setDrAmt(detail.getDrAmt());
+        dtl.setCrAmt(detail.getCrAmt());
+        dtl.setRemarks(detail.getRemarks());
+    }
+
+    private void finalizeBatchSaves(List<LogRequestDto<GlRecurringJvDtl>> logRequests,
+            List<CostCenterBreakupRequestDto> costCenterList,
+            List<BillwiseBreakupRequestDto> billwiseList, boolean isNewRecord) {
         if (!logRequests.isEmpty()) {
             loggingService.createLogBatch(logRequests);
         }
-
-        if (!costCenterRequestDtoList.isEmpty()) {
-            costCenterBreakupService.updateCostCenterBreakups(costCenterRequestDtoList, getUserPoid());
+        if (!costCenterList.isEmpty()) {
+            if(isNewRecord){
+                 costCenterBreakupService.saveCostCenterBreakups(costCenterList);
+            } else {
+                 costCenterBreakupService.updateCostCenterBreakups(costCenterList, getUserPoid());
+            }
         }
-        if (!billwiseRequestDtoList.isEmpty()) {
-            billwiseBreakupService.updateBillwiseBreakups(billwiseRequestDtoList, getUserPoid());
+        if (!billwiseList.isEmpty()) {
+            if(isNewRecord){
+                 billwiseBreakupService.insertBillwiseBreakup(billwiseList);
+            } else {
+                 billwiseBreakupService.updateBillwiseBreakups(billwiseList, getUserPoid());
+            }
         }
     }
 
@@ -458,7 +558,8 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
     @Transactional
     public RecurringJvCreateResponse updateRecurringJv(Long transactionPoid, RecurringJvRequest request, String docId) {
         GlRecurringJvHdr header = hdrRepository.findById(transactionPoid)
-                .orElseThrow(() -> new ResourceNotFoundException("Recurring JV", "transactionPoid", transactionPoid));
+                .orElseThrow(
+                        () -> new ResourceNotFoundException(RESOURCE_NAME, FIELD_TRANSACTION_POID, transactionPoid));
 
         // Create a copy of the existing entity for logging
         GlRecurringJvHdr oldEntity = new GlRecurringJvHdr();
@@ -471,26 +572,19 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
 
         validateRequest(request);
 
-        BigDecimal newMonthWiseAmt = request.getTotalAmount()
-                .divide(BigDecimal.valueOf(request.getNoOfMonths()), 3, java.math.RoundingMode.HALF_UP);
-
         header.setNarration(request.getNarration());
         header.setStartDate(request.getStartDate());
         header.setTotalAmount(request.getTotalAmount());
         header.setNoOfMonths(request.getNoOfMonths());
-        header.setMonthWiseAmt(newMonthWiseAmt);
+        header.setMonthWiseAmt(request.getMonthWiseAmount());
         header.setRefType(request.getRefType());
-        header.setEmployeePoid(request.getEmployeeId());
-        header.setFaPoid(request.getAssetId());
+        header.setEmployeePoid(request.getEmployeePoid());
+        header.setFaPoid(request.getAssetPoid());
         header.setPolicyNumber(request.getPolicyNumber());
         header.setRemarks(request.getRemarks());
-        header.setDocRef(request.getDocRef());
-
         hdrRepository.save(header);
 
-        dtlRepository.deleteByTransactionPoid(transactionPoid);
-        saveDetails(transactionPoid, request.getDetails(), header, docId);
-
+        saveDetails(transactionPoid, request.getDetails(), header, false);
         // Log the update
         String key = transactionPoid.toString();
         loggingService.logChanges(oldEntity, header, GlRecurringJvHdr.class,
@@ -503,7 +597,8 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
     @Transactional
     public void deleteRecurringJv(Long transactionPoid, DeleteReasonDto deleteReasonDto) {
         GlRecurringJvHdr header = hdrRepository.findById(transactionPoid)
-                .orElseThrow(() -> new ResourceNotFoundException("Recurring JV", "transactionPoid", transactionPoid));
+                .orElseThrow(
+                        () -> new ResourceNotFoundException(RESOURCE_NAME, FIELD_TRANSACTION_POID, transactionPoid));
 
         Long createdScheduleCount = monthDtlRepository.countCreatedSchedulesByTransactionPoid(transactionPoid);
         if (createdScheduleCount > 0) {
@@ -512,14 +607,13 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
 
         documentDeleteService.deleteDocument(
                 transactionPoid,
-                "GL_RECURRING_JV_HDR",
-                "TRANSACTION_POID",
+                TABLE_RECURRING_JV_HDR,
+                DB_COLUMN_TRANSACTION_POID,
                 deleteReasonDto,
-                header.getTransactionDate()
-        );
+                header.getTransactionDate());
 
         // Log the deletion
-        loggingService.createLogSummaryEntry(LogDetailsEnum.DELETED, "400-102", transactionPoid.toString());
+        loggingService.createLogSummaryEntry(LogDetailsEnum.DELETED, DOC_ID_RECURRING_JV, transactionPoid.toString());
     }
 
     @Override
@@ -527,9 +621,10 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
     public CreateScheduleResponse createSchedule(Long transactionPoid, CreateScheduleRequest request) {
 
         GlRecurringJvHdr header = hdrRepository.findById(transactionPoid)
-                .orElseThrow(() -> new ResourceNotFoundException("Recurring JV", "transactionPoid", transactionPoid));
+                .orElseThrow(
+                        () -> new ResourceNotFoundException(RESOURCE_NAME, FIELD_TRANSACTION_POID, transactionPoid));
 
-        if ("Y".equals(header.getDeleted())) {
+        if (FLAG_YES.equals(header.getDeleted())) {
             throw new IllegalStateException("Cannot create schedule for deleted recurring JV");
         }
 
@@ -538,8 +633,10 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
             throw new IllegalStateException("No detail lines exist for this recurring JV");
         }
 
-        boolean hasDebit = details.stream().anyMatch(d -> d.getDrAmt() != null && d.getDrAmt().compareTo(BigDecimal.ZERO) > 0);
-        boolean hasCredit = details.stream().anyMatch(d -> d.getCrAmt() != null && d.getCrAmt().compareTo(BigDecimal.ZERO) > 0);
+        boolean hasDebit = details.stream()
+                .anyMatch(d -> d.getDrAmt() != null && d.getDrAmt().compareTo(BigDecimal.ZERO) > 0);
+        boolean hasCredit = details.stream()
+                .anyMatch(d -> d.getCrAmt() != null && d.getCrAmt().compareTo(BigDecimal.ZERO) > 0);
 
         if (!hasDebit || !hasCredit) {
             throw new IllegalStateException("Recurring JV must have both debit and credit entries");
@@ -562,10 +659,11 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
         }
 
         try {
-            procRepository.createSchedule(header.getGroupPoid(), getUserPoid(), header.getCompanyPoid(), transactionPoid);
+            procRepository.createSchedule(header.getGroupPoid(), getUserPoid(), header.getCompanyPoid(),
+                    transactionPoid);
         } catch (Exception e) {
             log.error("Error calling stored procedure PROC_GL_RJV_CREATE_SCHEDULE: {}", e.getMessage(), e);
-            throw new RuntimeException("Failed to create schedule: " + e.getMessage(), e);
+            throw new AsgException("Failed to create schedule: " + e.getMessage(), e);
         }
 
         List<GlRecurringJvMonthDtl> scheduleDetails = monthDtlRepository.findByTransactionPoid(transactionPoid);
@@ -574,8 +672,8 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
         response.setStatus("SUCCESS");
         response.setMessage("Schedule created successfully");
         response.setScheduleDetails(scheduleDetails.stream()
-                .map(schedule -> convertScheduleToResponse(schedule, header.getDocRef()))
-                .collect(Collectors.toList()));
+                .map(this::convertScheduleToResponse)
+                .toList());
 
         return response;
     }
@@ -585,34 +683,36 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
     public void deleteSchedule(Long transactionPoid) {
 
         GlRecurringJvHdr header = hdrRepository.findById(transactionPoid)
-                .orElseThrow(() -> new ResourceNotFoundException("Recurring JV", "transactionPoid", transactionPoid));
+                .orElseThrow(
+                        () -> new ResourceNotFoundException(RESOURCE_NAME, FIELD_TRANSACTION_POID, transactionPoid));
 
-        if ("Y".equals(header.getDeleted())) {
+        if (FLAG_YES.equals(header.getDeleted())) {
             throw new IllegalStateException("Cannot delete schedule for deleted recurring JV");
         }
 
         try {
-            procRepository.deleteSchedule(header.getGroupPoid(), getUserPoid(), header.getCompanyPoid(), transactionPoid);
+            procRepository.deleteSchedule(header.getGroupPoid(), getUserPoid(), header.getCompanyPoid(),
+                    transactionPoid);
         } catch (Exception e) {
             log.error("Error calling stored procedure PROC_GL_RJV_DELETE_SCHEDULE: {}", e.getMessage(), e);
-            throw new RuntimeException("Failed to delete schedule: " + e.getMessage(), e);
+            throw new AsgException("Failed to delete schedule: " + e.getMessage(), e);
         }
 
         log.info("Schedule deleted successfully for recurring JV: {}", transactionPoid);
     }
 
     private Long getNextDetRowIdForRecurring(Long transactionPoid) {
-        Long maxId = dtlRepository.findByTransactionPoid(transactionPoid)
-                .stream()
-                .map(GlRecurringJvDtl::getDetRowId)
-                .max(Long::compareTo)
-                .orElse(0L);
-        return maxId + 1;
+        if (transactionPoid == null) {
+            return 1L;
+        }
+        return dtlRepository.getMaxDetRowIdByTransactionPoid(transactionPoid) + 1;
     }
 
-    private List<CostCenterBreakupRequestDto> buildCostCenterBreakups(Long transactionPoid, Long detRowId, String docId, Long glPoid,
-                                                                      List<CostCenterBreakupPopupRequestDto> costCenterBreakups) {
+    private List<CostCenterBreakupRequestDto> buildCostCenterBreakups(Long transactionPoid, Long detRowId, String docId,
+            Long glPoid,
+            List<CostCenterBreakupPopupRequestDto> costCenterBreakups) {
         return costCenterBreakups.stream()
+                .filter(dto -> dto.getActionType() == null || !"NOCHANGES".equalsIgnoreCase(dto.getActionType()))
                 .map(dto -> CostCenterBreakupRequestDto.builder()
                         .groupPoid(getGroupId())
                         .companyPoid(getCompanyId())
@@ -626,12 +726,14 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
                         .amount(dto.getAmount())
                         .loginUserPoid(getUserPoid())
                         .build())
-                .collect(Collectors.toList());
+                .toList();
     }
 
-    private List<BillwiseBreakupRequestDto> buildBillwiseBreakups(Long transactionPoid, Long detRowId, String docId, Long glPoid,
-                                                                  List<BillwiseBreakupPopupRequestDto> billwiseBreakups) {
+    private List<BillwiseBreakupRequestDto> buildBillwiseBreakups(Long transactionPoid, Long detRowId, String docId,
+            Long glPoid, Long glCompanyPoid,
+            List<BillwiseBreakupPopupRequestDto> billwiseBreakups) {
         return billwiseBreakups.stream()
+                .filter(dto -> dto.getActionType() == null || !"NOCHANGES".equalsIgnoreCase(dto.getActionType()))
                 .map(dto -> BillwiseBreakupRequestDto.builder()
                         .groupPoid(getGroupId())
                         .companyPoid(getCompanyId())
@@ -639,77 +741,26 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
                         .transactionPoid(transactionPoid)
                         .mainDetRowId(detRowId)
                         .glPoid(glPoid)
+                        .glCompanyPoid(glCompanyPoid)
                         .billDetRowId(dto.getBillDetRowId())
+                        .drAmt(TYPE_DEBIT.equalsIgnoreCase(dto.getType()) ? (dto.getAmount() == null ? BigDecimal.ZERO : dto.getAmount()) : BigDecimal.ZERO)
+                        .crAmt(TYPE_CREDIT.equalsIgnoreCase(dto.getType()) ? (dto.getAmount() == null ? BigDecimal.ZERO : dto.getAmount()) : BigDecimal.ZERO)
                         .billRefType(dto.getBillRefType())
                         .billRef(dto.getBillRef())
                         .billDueDate(dto.getBillDueDate())
-                        .drAmt("Dr".equals(dto.getType()) ? dto.getAmount() : BigDecimal.ZERO)
-                        .crAmt("Cr".equals(dto.getType()) ? dto.getAmount() : BigDecimal.ZERO)
                         .billRemarks(dto.getBillRemarks())
                         .loginUserPoid(getUserPoid())
                         .build())
-                .collect(Collectors.toList());
-    }
-
-    private List<CostCenterBreakupPopupRequestDto> loadCostCenterBreakup(Long transactionPoid, Long detRowId) {
-        try {
-            GlVoucherCostCenterBreakupResponseDto response = costCenterBreakupService.loadCostCenterData(
-                    "400-102", transactionPoid, getGroupId(), getCompanyId(), getUserPoid());
-
-            if (response != null && response.getCostBreakupList() != null) {
-                return response.getCostBreakupList().stream()
-                        .filter(cc -> cc.getMainDetRowId().equals(detRowId))
-                        .map(cc -> {
-                            CostCenterBreakupPopupRequestDto dto = new CostCenterBreakupPopupRequestDto();
-                            dto.setCostDetRowId(cc.getCostDetRowId());
-                            dto.setCostGroup(cc.getCostGroup());
-                            dto.setCostPoid(cc.getCostPoid());
-                            dto.setAmount(cc.getAmount());
-                            return dto;
-                        })
-                        .collect(Collectors.toList());
-            }
-        } catch (Exception e) {
-            log.warn("Failed to load cost center breakup for transaction: {}, detRowId: {}", transactionPoid, detRowId, e);
-        }
-        return Collections.emptyList();
-    }
-
-    private List<BillwiseBreakupPopupRequestDto> loadBillWiseBreakup(Long transactionPoid, Long detRowId) {
-        try {
-            GlVoucherLoadBillwiseBreakupResponseDto response = billwiseBreakupService.loadBillwiseBreakup(
-                    getGroupId(), getCompanyId(), "400-102", transactionPoid);
-
-            if (response != null && response.getLoadBillwiseBreakupResponseDtoList() != null) {
-                return response.getLoadBillwiseBreakupResponseDtoList().stream()
-                        .filter(bw -> bw.getMainDetRowId().equals(detRowId))
-                        .map(bw -> {
-                            BillwiseBreakupPopupRequestDto dto = new BillwiseBreakupPopupRequestDto();
-                            dto.setBillDetRowId(bw.getBillDetRowId());
-                            dto.setBillRefType(bw.getBillRefType());
-                            dto.setBillRef(bw.getBillRef());
-                            dto.setBillDueDate(bw.getBillDueDate());
-                            dto.setAmount(bw.getDrAmt() != null ? bw.getDrAmt() : bw.getCrAmt());
-                            dto.setType(bw.getDrAmt() != null && bw.getDrAmt().compareTo(BigDecimal.ZERO) > 0 ? "Dr" : "Cr");
-                            dto.setBillRemarks(bw.getBillRemarks());
-                            return dto;
-                        })
-                        .collect(Collectors.toList());
-            }
-        } catch (Exception e) {
-            log.warn("Failed to load billwise breakup for transaction: {}, detRowId: {}", transactionPoid, detRowId, e);
-        }
-        return Collections.emptyList();
+                .toList();
     }
 
     @Override
     public byte[] print(Long transactionPoid) throws Exception {
-        Map<String, Object> params = printService.buildBaseParams(transactionPoid, "400-102");
-        params.put("SUB_GL", printService.load("Finance/GL/RecurringJVGLSubreport1.jrxml"));
-        params.put("SUB_SCHEDULE", printService.load("Finance/GL/RecurringJVScheduleWiseSubreport2.jrxml"));
-        JasperReport mainReport = printService.load("Finance/GL/RecurringJVReport.jrxml");
+        Map<String, Object> params = printService.buildBaseParams(transactionPoid, DOC_ID_RECURRING_JV);
+        params.put("SUB_GL", printService.load(REPORT_SUB_GL));
+        params.put("SUB_SCHEDULE", printService.load(REPORT_SUB_SCHEDULE));
+        JasperReport mainReport = printService.load(REPORT_MAIN);
         return printService.fillReportToPdf(mainReport, params, dataSource);
     }
-
 
 }

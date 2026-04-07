@@ -19,35 +19,43 @@ import java.util.Map;
 @Repository
 public class ApPurchaseCnProcRepositoryImpl implements ApPurchaseCnProcRepository {
 
+    private static final String P_LOGIN_GROUP_POID = "P_LOGIN_GROUP_POID";
+    private static final String P_LOGIN_COMPANY_POID = "P_LOGIN_COMPANY_POID";
+    private static final String P_LOGIN_USER_POID = "P_LOGIN_USER_POID";
+    private static final String P_RESULT = "P_RESULT";
+    private static final String OUTDATA = "OUTDATA";
+    private static final String P_PJ_POID = "P_PJ_POID";
+    private static final String P_PJ_REF_TYPE = "P_PJ_REF_TYPE";
+    private static final String P_PJ_REF_DETAILS = "P_PJ_REF_DETAILS";
+    private static final String P_CN_PJ_PARTY_TYPE = "P_CN_PJ_PARTY_TYPE";
+    private static final String P_CN_PJ_PARTY_POID = "P_CN_PJ_PARTY_POID";
+    private static final String P_CN_PJ_REF_TYPE = "P_CN_PJ_REF_TYPE";
+    private static final String ERROR = "ERROR";
+
     @PersistenceContext
     private EntityManager entityManager;
 
     @Override
     public Map<String, Object> getPjRefDetails(Long pjPoid) {
         StoredProcedureQuery query = entityManager.createStoredProcedureQuery("PROC_AP_CN_PJ_REF_DETAILS");
-        query.registerStoredProcedureParameter("P_LOGIN_GROUP_POID", Long.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_LOGIN_COMPANY_POID", Long.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_LOGIN_USER_POID", Long.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_PJ_POID", String.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_PJ_REF_TYPE", String.class, ParameterMode.OUT);
-        query.registerStoredProcedureParameter("P_PJ_REF_DETAILS", String.class, ParameterMode.OUT);
-        query.registerStoredProcedureParameter("P_RESULT", String.class, ParameterMode.OUT);
-        query.registerStoredProcedureParameter("OUTDATA", void.class, ParameterMode.REF_CURSOR);
-
-        query.setParameter("P_LOGIN_GROUP_POID", UserContext.getGroupPoid());
-        query.setParameter("P_LOGIN_COMPANY_POID", UserContext.getCompanyPoid());
-        query.setParameter("P_LOGIN_USER_POID", UserContext.getUserPoid());
-        query.setParameter("P_PJ_POID", String.valueOf(pjPoid));
+        query.registerStoredProcedureParameter(P_LOGIN_GROUP_POID, Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(P_LOGIN_COMPANY_POID, Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(P_LOGIN_USER_POID, Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(P_PJ_POID, String.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(P_PJ_REF_TYPE, String.class, ParameterMode.OUT);
+        query.registerStoredProcedureParameter(P_PJ_REF_DETAILS, String.class, ParameterMode.OUT);
+        query.registerStoredProcedureParameter(P_RESULT, String.class, ParameterMode.OUT);
+        query.registerStoredProcedureParameter(OUTDATA, void.class, ParameterMode.REF_CURSOR);
+        
+        setBaseParameters(query);
+        query.setParameter(P_PJ_POID, String.valueOf(pjPoid));
         query.execute();
 
-        String result = (String) query.getOutputParameterValue("P_RESULT");
-        if (result != null && result.contains("ERROR")) {
-            throw new ValidationException(result);
-        }
+        validateResult(query);
 
-        String pjRefType = (String) query.getOutputParameterValue("P_PJ_REF_TYPE");
-        String pjRefDetails = (String) query.getOutputParameterValue("P_PJ_REF_DETAILS");
-        ResultSet rs = (ResultSet) query.getOutputParameterValue("OUTDATA");
+        String pjRefType = (String) query.getOutputParameterValue(P_PJ_REF_TYPE);
+        String pjRefDetails = (String) query.getOutputParameterValue(P_PJ_REF_DETAILS);
+        ResultSet rs = (ResultSet) query.getOutputParameterValue(OUTDATA);
 
         Map<String, Object> response = new HashMap<>();
         response.put("pjRefType", pjRefType);
@@ -60,27 +68,22 @@ public class ApPurchaseCnProcRepositoryImpl implements ApPurchaseCnProcRepositor
     @Override
     public Map<String, Object> getPartyDetails(String partyType, Long partyPoid) {
         StoredProcedureQuery query = entityManager.createStoredProcedureQuery("PROC_AP_CN_PJ_PARTY_DTLS");
-        query.registerStoredProcedureParameter("P_LOGIN_GROUP_POID", Long.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_LOGIN_COMPANY_POID", Long.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_LOGIN_USER_POID", Long.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_CN_PJ_PARTY_TYPE", String.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_CN_PJ_PARTY_POID", String.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_RESULT", String.class, ParameterMode.OUT);
-        query.registerStoredProcedureParameter("OUTDATA", void.class, ParameterMode.REF_CURSOR);
+        query.registerStoredProcedureParameter(P_LOGIN_GROUP_POID, Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(P_LOGIN_COMPANY_POID, Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(P_LOGIN_USER_POID, Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(P_CN_PJ_PARTY_TYPE, String.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(P_CN_PJ_PARTY_POID, String.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(P_RESULT, String.class, ParameterMode.OUT);
+        query.registerStoredProcedureParameter(OUTDATA, void.class, ParameterMode.REF_CURSOR);
 
-        query.setParameter("P_LOGIN_GROUP_POID", UserContext.getGroupPoid());
-        query.setParameter("P_LOGIN_COMPANY_POID", UserContext.getCompanyPoid());
-        query.setParameter("P_LOGIN_USER_POID", UserContext.getUserPoid());
-        query.setParameter("P_CN_PJ_PARTY_TYPE", partyType);
-        query.setParameter("P_CN_PJ_PARTY_POID", String.valueOf(partyPoid));
+        setBaseParameters(query);
+        query.setParameter(P_CN_PJ_PARTY_TYPE, partyType);
+        query.setParameter(P_CN_PJ_PARTY_POID, String.valueOf(partyPoid));
         query.execute();
 
-        String result = (String) query.getOutputParameterValue("P_RESULT");
-        if (result != null && result.contains("ERROR")) {
-            throw new ValidationException(result);
-        }
+        validateResult(query);
 
-        ResultSet rs = (ResultSet) query.getOutputParameterValue("OUTDATA");
+        ResultSet rs = (ResultSet) query.getOutputParameterValue(OUTDATA);
         List<Map<String, Object>> data = parseResultSet(rs);
 
         Map<String, Object> response = new HashMap<>();
@@ -93,27 +96,45 @@ public class ApPurchaseCnProcRepositoryImpl implements ApPurchaseCnProcRepositor
     @Override
     public void beforeSaveValidation(String partyType, Long partyPoid, String refType, Long pjPoid) {
         StoredProcedureQuery query = entityManager.createStoredProcedureQuery("PROC_AP_CN_PJ_BEFORE_SAVE");
-        query.registerStoredProcedureParameter("P_LOGIN_GROUP_POID", Long.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_LOGIN_COMPANY_POID", Long.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_LOGIN_USER_POID", Long.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_CN_PJ_PARTY_TYPE", String.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_CN_PJ_PARTY_POID", String.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_CN_PJ_REF_TYPE", String.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_PJ_POID", String.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter("P_RESULT", String.class, ParameterMode.OUT);
-        query.registerStoredProcedureParameter("OUTDATA", void.class, ParameterMode.REF_CURSOR);
+        query.registerStoredProcedureParameter(P_LOGIN_GROUP_POID, Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(P_LOGIN_COMPANY_POID, Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(P_LOGIN_USER_POID, Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(P_CN_PJ_PARTY_TYPE, String.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(P_CN_PJ_PARTY_POID, String.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(P_CN_PJ_REF_TYPE, String.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(P_PJ_POID, String.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(P_RESULT, String.class, ParameterMode.OUT);
+        query.registerStoredProcedureParameter(OUTDATA, void.class, ParameterMode.REF_CURSOR);
 
-        query.setParameter("P_LOGIN_GROUP_POID", UserContext.getGroupPoid());
-        query.setParameter("P_LOGIN_COMPANY_POID", UserContext.getCompanyPoid());
-        query.setParameter("P_LOGIN_USER_POID", UserContext.getUserPoid());
-        query.setParameter("P_CN_PJ_PARTY_TYPE", partyType);
-        query.setParameter("P_CN_PJ_PARTY_POID", partyPoid != null ? String.valueOf(partyPoid) : null);
-        query.setParameter("P_CN_PJ_REF_TYPE", refType);
-        query.setParameter("P_PJ_POID", pjPoid != null ? String.valueOf(pjPoid) : null);
+        setBaseParameters(query);
+        query.setParameter(P_CN_PJ_PARTY_TYPE, partyType);
+        query.setParameter(P_CN_PJ_PARTY_POID, partyPoid != null ? String.valueOf(partyPoid) : null);
+        query.setParameter(P_CN_PJ_REF_TYPE, refType);
+        query.setParameter(P_PJ_POID, pjPoid != null ? String.valueOf(pjPoid) : null);
         query.execute();
 
-        String result = (String) query.getOutputParameterValue("P_RESULT");
-        if (result != null && result.contains("ERROR")) {
+        validateResult(query);
+    }
+
+    private StoredProcedureQuery createBaseQuery(String procedureName) {
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery(procedureName);
+        query.registerStoredProcedureParameter(P_LOGIN_GROUP_POID, Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(P_LOGIN_COMPANY_POID, Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(P_LOGIN_USER_POID, Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(P_RESULT, String.class, ParameterMode.OUT);
+        query.registerStoredProcedureParameter(OUTDATA, void.class, ParameterMode.REF_CURSOR);
+        return query;
+    }
+
+    private void setBaseParameters(StoredProcedureQuery query) {
+        query.setParameter(P_LOGIN_GROUP_POID, UserContext.getGroupPoid());
+        query.setParameter(P_LOGIN_COMPANY_POID, UserContext.getCompanyPoid());
+        query.setParameter(P_LOGIN_USER_POID, UserContext.getUserPoid());
+    }
+
+    private void validateResult(StoredProcedureQuery query) {
+        String result = (String) query.getOutputParameterValue(P_RESULT);
+        if (result != null && result.contains(ERROR)) {
             throw new ValidationException(result);
         }
     }

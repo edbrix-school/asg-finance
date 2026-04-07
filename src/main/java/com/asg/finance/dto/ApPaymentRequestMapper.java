@@ -1,18 +1,17 @@
 package com.asg.finance.dto;
 
+import com.asg.common.lib.utility.DateUtil;
 import com.asg.finance.entity.ApPaymentRequestDtl;
 import com.asg.finance.entity.ApPaymentRequestDtlId;
 import com.asg.finance.entity.ApPaymentRequestHdr;
 import com.asg.finance.entity.ApPaymentRequestStockDtl;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.asg.finance.utility.DateTimeHandler.convertDate;
-
 public class ApPaymentRequestMapper {
 
+    private ApPaymentRequestMapper(){}
 
     public static ApPaymentRequestHdr toEntity(
             ApPaymentRequestHdrRequestDto dto,
@@ -22,8 +21,7 @@ public class ApPaymentRequestMapper {
                 .transactionPoid(transactionPoid)
                 .groupPoid(dto.getGroupPoid())
                 .companyPoid(dto.getCompanyPoid())
-                .transactionDate(convertDate(LocalDateTime.from(dto.getTransactionDate())))
-                .docRef(dto.getDocRef())
+                .transactionDate(dto.getTransactionDate() != null ? dto.getTransactionDate() : DateUtil.getCurrentDateInUserTimeZone())
                 .refType(dto.getRefType())
                 .docReferencePoid(dto.getDocReferencePoid())
                 .currencyCode(dto.getCurrencyCode())

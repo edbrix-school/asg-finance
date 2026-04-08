@@ -1,69 +1,59 @@
 package com.asg.finance.service.impl;
 
-import java.math.BigDecimal;
+import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.service.PrintService;
+import com.asg.finance.dto.*;
+import com.asg.finance.repository.BankReconciliationRepository;
+import com.asg.finance.service.BankReconciliationService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import net.sf.jasperreports.engine.JasperReport;
+import org.springframework.stereotype.Service;
+
+import javax.sql.DataSource;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
-
-import com.asg.common.lib.service.PrintService;
-import com.asg.common.lib.service.LoggingService;
-import com.asg.common.lib.enums.LogDetailsEnum;
-import com.asg.common.lib.security.util.UserContext;
-import com.asg.finance.entity.BankReconciliation;
-import com.asg.finance.service.BankReconciliationService;
-import net.sf.jasperreports.engine.JasperReport;
-import org.springframework.stereotype.Service;
-
-import com.asg.finance.dto.BankReconcHoldAndUholdRequest;
-import com.asg.finance.dto.BankReconcileReportRequest;
-import com.asg.finance.dto.BankReconcileReportResponse;
-import com.asg.finance.dto.BankReconciliationRequest;
-import com.asg.finance.dto.BankReconciliationResponse;
-import com.asg.finance.dto.BankRenconciliationBankInfoDTO;
-import com.asg.finance.repository.BankReconciliationRepository;
-
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-
-import javax.sql.DataSource;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class BankReconciliationServiceImpl implements BankReconciliationService {
 
-	private final BankReconciliationRepository repository;
+    private final BankReconciliationRepository repository;
     private final PrintService printService;
     private final DataSource dataSource;
     private final LoggingService loggingService;
 
-	@Override
-	public List<BankReconciliationResponse> getReconciliationView(Long groupPoid, Long companyPoid, Long bankPoid,
-			LocalDate dateFrom, LocalDate dateTill, String chequeNo, String reconcileCheque, String brType) {
-		return repository.callReconcileView(groupPoid, companyPoid, bankPoid, dateFrom, dateTill, chequeNo,
-				reconcileCheque, brType);
-	}
+    @Override
+    public List<BankReconciliationResponse> getReconciliationView(Long groupPoid, Long companyPoid, Long bankPoid,
+                                                                  LocalDate dateFrom, LocalDate dateTill, String chequeNo, String reconcileCheque, String brType) {
+        return repository.callReconcileView(groupPoid, companyPoid, bankPoid, dateFrom, dateTill, chequeNo,
+                reconcileCheque, brType);
+    }
 
-	@Override
-	public BankRenconciliationBankInfoDTO getBankInfo(Long glPoid) {
-		return repository.getBankPoid(glPoid);
-	}
+    @Override
+    public BankRenconciliationBankInfoDTO getBankInfo(Long glPoid) {
+        return repository.getBankPoid(glPoid);
+    }
 
-	@Override
-	public String saveReconciliation(List<BankReconciliationRequest> dto) {
-		String result = repository.saveReconciliation(dto);
-		
-		// Log the creation if successful
-		if (result != null && !result.toLowerCase().startsWith("error")) {
-			for (BankReconciliationRequest req : dto) {
-				String key = req.getTransactionPoid() != null ? req.getTransactionPoid().toString() : "unknown";
-				loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), key);
-			}
-		}
-		
-		return result;
-	}
+    @Override
+    public String saveReconciliation(List<BankReconciliationRequest> dto) {
+        String result = repository.saveReconciliation(dto);
+
+        // Log the creation if successful
+        if (result != null && !result.toLowerCase().startsWith("error")) {
+            for (BankReconciliationRequest req : dto) {
+                String key = req.getTransactionPoid() != null ? req.getTransactionPoid().toString() : "unknown";
+                loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), key);
+            }
+        }
+
+        return result;
+    }
 
     @Override
     public String holdCheque(List<BankReconcHoldAndUholdRequest> req) {
@@ -91,23 +81,21 @@ public class BankReconciliationServiceImpl implements BankReconciliationService 
     }
 
     @Override
-	public String pollAutoRefresh(String userId, Long companyPoid, String loginUrl) {
-		String result = repository.pollAutoRefresh(userId, companyPoid, loginUrl);
-		
-		return result;
-	}
+    public String pollAutoRefresh(String userId, Long companyPoid, String loginUrl) {
+        return repository.pollAutoRefresh(userId, companyPoid, loginUrl);
+    }
 
-	@Override
-	public String revertReconciliation(String docId, String transactionPoid, Long loginUserPoid, Long loginGroupPoid,
-			Long loginCompanyPoid, String mailAlert) {
-		return repository.revertReconciliation(docId, transactionPoid, loginUserPoid, loginGroupPoid, loginCompanyPoid,
-				mailAlert);
-	}
+    @Override
+    public String revertReconciliation(String docId, String transactionPoid, Long loginUserPoid, Long loginGroupPoid,
+                                       Long loginCompanyPoid, String mailAlert) {
+        return repository.revertReconciliation(docId, transactionPoid, loginUserPoid, loginGroupPoid, loginCompanyPoid,
+                mailAlert);
+    }
 
-	@Override
-	public BankReconcileReportResponse fetchReport(BankReconcileReportRequest request) {
-		return repository.getBankReconcileReport(request);
-	}
+    @Override
+    public BankReconcileReportResponse fetchReport(BankReconcileReportRequest request) {
+        return repository.getBankReconcileReport(request);
+    }
 
     @Override
     public byte[] print(Long transactionPoid, Long bankPoid, LocalDate dateFrom, LocalDate dateTill, String balanceAsPerBank) throws Exception {

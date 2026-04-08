@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="BankPaymentVoucher" language="groovy" columnCount="2" pageWidth="595" pageHeight="792" columnWidth="297" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="51f26c1c-332c-43f0-beb9-5722768520c7">
     <property name="ireport.zoom" value="1.771561000000001"/>
     <property name="ireport.x" value="26"/>
@@ -156,6 +156,7 @@
     </parameter>
     <parameter name="CURRENT_CHEQUE_NO" class="java.lang.String"/>
     <parameter name="BANK_POID" class="java.lang.String"/>
+    <parameter name="ACCOUNT_PAYEE_IMG" class="java.lang.String"/>
     <queryString>
         <![CDATA[select distinct TRANSACTION_POID, paying_to,doc_ref,to_char(transaction_date,'DD-MON-YYYY') transaction_date,TO_CHAR(CHQ_DATE,'DD-MON-YYYY')CHQ_DATE,
 CURRENCY_AMOUNT,regexp_replace(to_char(CHQ_DATE,'DDMMYYYY'), '(.)', '\1    ' )CHQ_DATE_FRT,
@@ -459,7 +460,7 @@ WHERE TRANSACTION_POID = $P{DOC_KEY_POID}]]>
                 <reportElement x="109" y="134" width="432" height="55" uuid="b970be75-445a-499b-bbae-ea4f22264bad">
                     <printWhenExpression><![CDATA[$F{ACCOUNT_PAYEE}.equals( "Y" ) && $V{PAGE_NUMBER} == 1]]></printWhenExpression>
                 </reportElement>
-                <imageExpression><![CDATA[$P{SUBREPORT_DIR} + "BankPayments//AccountsPayeeOnly (002).png"]]></imageExpression>
+                <imageExpression><![CDATA[$P{ACCOUNT_PAYEE_IMG}]]></imageExpression>
             </image>
         </band>
     </pageFooter>

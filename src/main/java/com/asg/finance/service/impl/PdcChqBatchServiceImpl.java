@@ -111,7 +111,6 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
         hdr.setAccountPayee(dto.getAccountPayee());
         hdrRepo.save(hdr);
 
-        dtlRepo.deleteByTransactionPoid(transactionPoid);
         List<PdcChqBatchDtlResponseDto> dtls =
                 saveDetailRows(dto.getChequeDetails(), transactionPoid);
 
@@ -258,8 +257,15 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
                     }
                     break;
 
+                case "NOCHANGE":
                 default:
-                    throw new IllegalArgumentException("Unknown action type: " + action);
+                    if (dto.getDetRowId() != null) {
+                        PdcChqBatchDtlEntity unchanged = existingMap.get(dto.getDetRowId());
+                        if (unchanged != null) {
+                            responseList.add(mapDtlEntityToResponseDto(unchanged));
+                        }
+                    }
+                    break;
             }
         }
 
@@ -342,6 +348,8 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
                 .crAmt(e.getCrAmt())
                 .createdBy(e.getCreatedBy())
                 .createdDate(e.getCreatedDate())
+                .lastModifiedBy(e.getLastModifiedBy())
+                .lastModifiedDate(e.getLastModifiedDate())
                 .build();
     }
 

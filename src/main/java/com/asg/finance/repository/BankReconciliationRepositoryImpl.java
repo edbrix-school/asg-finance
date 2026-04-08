@@ -127,16 +127,6 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
         String response = "Successfully Updated.";
 
         for (BankReconciliationRequest dto : req) {
-
-            if (!existsByTransactionPoid(dto.getTransactionPoid())) {
-                throw new ResourceNotFoundException("Bank Reconciliation", "transaction poid",
-                        dto.getTransactionPoid());
-            }
-
-            if (!existsByDocref(dto.getTransactionPoid(), dto.getDocRef())) {
-                throw new ResourceNotFoundException("Document Reference", "docRef", dto.getDocRef());
-            }
-
             set(sp, P_TRANSACTION_GROUP_POID, dto.getTransactionGroupPoid());
             set(sp, P_TRANSACTION_COMPANY_POID, dto.getTransactionCompanyPoid());
             set(sp, P_DOC_ID, dto.getDocId());
@@ -166,14 +156,6 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
     @Override
     public String holdCheque(List<BankReconcHoldAndUholdRequest> reqList) {
         for (BankReconcHoldAndUholdRequest req : reqList) {
-
-            if (!existsByTransactionPoid(req.getTransactionPoid())) {
-                throw new ResourceNotFoundException("Bank Reconciliation", "transaction poid",
-                        req.getTransactionPoid());
-            }
-            if (!existsByDocref(req.getTransactionPoid(), req.getDocRef())) {
-                throw new ResourceNotFoundException("Document Reference", "docRef", req.getDocRef());
-            }
 
             StoredProcedureQuery sp = createSP("PROC_GL_BANK_RECONCILE_HOLD");
 

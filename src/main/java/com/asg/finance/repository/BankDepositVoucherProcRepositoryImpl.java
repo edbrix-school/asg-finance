@@ -1,6 +1,7 @@
 package com.asg.finance.repository;
 
 
+import com.asg.common.lib.exception.AsgException;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.util.UserContext;
@@ -108,14 +109,21 @@ public class BankDepositVoucherProcRepositoryImpl implements BankDepositVoucherP
         handleProcedureResult((String) query.getOutputParameterValue(P_RESULT), bankPoid);
 
         ResultSet rs = (ResultSet) query.getOutputParameterValue(OUTDATA);
+
         if (rs == null) {
-            log.info("No pending payments found");
-            throw new ValidationException("No pending payments found");
+            throw new ResourceNotFoundException("Pending payments", "bankPoid", bankPoid);
         }
 
         try {
-            return processResultSet(rs);
-        } catch (Exception e) {
+            List<BankDepositVoucherDtlDto> results = processResultSet(rs);
+            if (results.isEmpty()) {
+                throw new AsgException("No Pending Payments");}
+            return results;
+        }
+        catch (AsgException e){
+            throw e;
+        }
+        catch (Exception e) {
             log.error("Error reading result set: {}", e.getMessage(), e);
             throw new ValidationException("Error loading pending payments: " + e.getMessage());
         }

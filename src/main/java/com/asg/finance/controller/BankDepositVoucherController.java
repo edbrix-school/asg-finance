@@ -218,7 +218,7 @@ public class BankDepositVoucherController {
             @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto
     ) {
         service.softDeleteBankDepositVoucher(transactionPoid, deleteReasonDto);
-        return success("Bank Deposit Voucher has been soft deleted successfully");
+        return success("Bank Deposit Voucher has been  deleted successfully");
     }
 
     @Operation(

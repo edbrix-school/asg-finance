@@ -441,13 +441,13 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                             String.format("Row Created on %s GL Detail with detRowId: %s", RES_JOURNAL_VOUCHER,
                                     maxDetRowId));
 
-                    if (dto.getCostCenterList() != null && !dto.getCostCenterList().isEmpty()) {
+                    if (dto.getCostCenterBreakup() != null && !dto.getCostCenterBreakup().isEmpty()) {
                         costCenterRequestDtoList.addAll(buildCostCenterBreakups(transactionPoid, maxDetRowId, docId,
-                                dto.getGlPoid(), dto.getCostCenterList(), isNew, costCenterCounter));
+                                dto.getGlPoid(), dto.getCostCenterBreakup(), isNew, costCenterCounter));
                     }
-                    if (dto.getBreakupList() != null && !dto.getBreakupList().isEmpty()) {
+                    if (dto.getBillWiseBreakup() != null && !dto.getBillWiseBreakup().isEmpty()) {
                         billwiseRequestDtoList.addAll(buildBillwiseBreakups(transactionPoid, maxDetRowId, docId,
-                                dto.getGlPoid(), companyPoid, dto.getBreakupList(), isNew, billwiseCounter));
+                                dto.getGlPoid(), companyPoid, dto.getBillWiseBreakup(), isNew, billwiseCounter));
                     }
                 }
                 case ACTION_ISUPDATED -> {
@@ -468,13 +468,13 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                     logRequests.add(new LogRequestDto<>(oldDetail, detail, GlJournalVoucherDtl.class, docId,
                             transactionPoid.toString(), logDetail));
 
-                    if (dto.getCostCenterList() != null && !dto.getCostCenterList().isEmpty()) {
+                    if (dto.getCostCenterBreakup() != null && !dto.getCostCenterBreakup().isEmpty()) {
                         costCenterRequestDtoList.addAll(buildCostCenterBreakups(transactionPoid, dto.getDetRowId(),
-                                docId, dto.getGlPoid(), dto.getCostCenterList(), isNew, costCenterCounter));
+                                docId, dto.getGlPoid(), dto.getCostCenterBreakup(), isNew, costCenterCounter));
                     }
-                    if (dto.getBreakupList() != null && !dto.getBreakupList().isEmpty()) {
+                    if (dto.getBillWiseBreakup() != null && !dto.getBillWiseBreakup().isEmpty()) {
                         billwiseRequestDtoList.addAll(buildBillwiseBreakups(transactionPoid, dto.getDetRowId(), docId,
-                                dto.getGlPoid(), companyPoid, dto.getBreakupList(), isNew, billwiseCounter));
+                                dto.getGlPoid(), companyPoid, dto.getBillWiseBreakup(), isNew, billwiseCounter));
                     }
                 }
                 case ACTION_ISDELETED -> {

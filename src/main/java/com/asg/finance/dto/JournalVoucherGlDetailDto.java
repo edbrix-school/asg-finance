@@ -31,6 +31,6 @@ public class JournalVoucherGlDetailDto {
     private String actionType;
     private Long companyPoid;
     private String remarks;
-    private List<CostCenterBreakupPopupRequestDto> costCenterList;
-    private List<BillwiseBreakupPopupRequestDto> breakupList;
+    private List<CostCenterBreakupPopupRequestDto> costCenterBreakup;
+    private List<BillwiseBreakupPopupRequestDto> billWiseBreakup;
 }

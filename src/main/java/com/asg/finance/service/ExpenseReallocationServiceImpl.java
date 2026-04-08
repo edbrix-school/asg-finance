@@ -353,8 +353,9 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
                         if (dto == null || dto.getPoid() == null) {
                             throw new ValidationException("Please check Cost center or Company code and upload again");
                         }
-
-                        rowMap.put(key, companyCodeValue);
+                        rowMap.put("company", dto.getPoid());
+                        rowMap.put("companyName", dto.getDescription());
+                        rowMap.put("companyCode", companyCodeValue);
                         continue;
                     }
 

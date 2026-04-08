@@ -159,7 +159,7 @@ public class ChequePrintingServiceImpl implements ChequePrintingService {
 				UserContext.getUserPoid()
 		);
 		if (StringUtils.isNotBlank(afterStatus) && afterStatus.contains(STATUS_ERROR)) {
-			throw new ValidationException("Some error occured after check print: pv_no" + pvNo + afterStatus);
+			throw new ValidationException("Some error occured after check print: pv_no " + pvNo + " " + afterStatus);
 		}
 		if (StringUtils.isNotBlank(afterStatus) && afterStatus.contains(STATUS_INFO)) {
 			return PrintOneResult.withInfo(afterStatus);

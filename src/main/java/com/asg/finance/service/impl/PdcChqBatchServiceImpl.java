@@ -71,7 +71,7 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
 
         // Log the creation
         String key = transactionPoid.toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED,  DOC_ID, key);
+        loggingService.createLogSummaryEntry( DOC_ID, key, String.format("%s %s", LogDetailsEnum.CREATED, hdr.getDocRef()));
 
         return mapHeaderEntityToResponseDto(hdr, dtlResponses);
     }

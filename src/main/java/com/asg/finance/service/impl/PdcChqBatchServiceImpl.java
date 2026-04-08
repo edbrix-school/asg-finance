@@ -220,6 +220,12 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
                 .max(Long::compareTo)
                 .orElse(0L)};
 
+        // Collect all detRowIds present in the request to clean up removed rows
+        Set<Long> requestedDetRowIds = dtos.stream()
+                .filter(d -> d.getDetRowId() != null && !"ISDELETED".equalsIgnoreCase(d.getActionType()))
+                .map(PdcChqBatchDtlRequestDto::getDetRowId)
+                .collect(Collectors.toSet());
+
         List<PdcChqBatchDtlResponseDto> responseList = new ArrayList<>();
         List<LogRequestDto<PdcChqBatchDtlEntity>> logRequests = new ArrayList<>();
 
@@ -228,7 +234,7 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
             
             switch (action) {
                 case "ISCREATED":
-                    Long detRowId = ++maxDetRowId[0];
+                    Long detRowId = dto.getDetRowId() != null ? dto.getDetRowId() : ++maxDetRowId[0];
                     PdcChqBatchDtlEntity newEntity = mapDtlDtoToEntity(dto, transactionPoid, detRowId);
                     newEntity = dtlRepo.save(newEntity);
                     responseList.add(mapDtlEntityToResponseDto(newEntity));
@@ -271,6 +277,13 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
 
         if (!logRequests.isEmpty()) {
             loggingService.createLogBatch(logRequests);
+        }
+
+        // Delete rows that exist in DB but were not included in the request
+        if (!requestedDetRowIds.isEmpty()) {
+            dtlRepo.deleteByTransactionPoidAndDetRowIdNotIn(transactionPoid, requestedDetRowIds);
+        } else {
+            dtlRepo.deleteByTransactionPoid(transactionPoid);
         }
 
         return responseList;

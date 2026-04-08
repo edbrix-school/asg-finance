@@ -1,6 +1,5 @@
 package com.asg.finance.service.impl;
 
-import com.asg.common.lib.client.ParameterServiceClient;
 import com.asg.finance.dto.BankFileDetailProjection;
 import com.asg.finance.repository.TelexFileGenerateProcRepository;
 import com.asg.finance.service.BankFileAubService;
@@ -29,21 +28,17 @@ public class BankFileBatchServiceImpl implements BankFileBatchService {
     private final TelexFileGenerateProcRepository procRepository;
     private final JdbcTemplate jdbcTemplate;
     private final BankFileAubService aubService;
-    private final ParameterServiceClient parameterServiceClient;
-    
-    @Value("${bank.file.directory.parameter.name:AUB_FTP_FILE_LOAD}")
-    private String bankFileDirectoryParameterName;
+
+    @Value("${bank.file.pp.directory:FAX_EMAIL}")
+    private String ppFileDirectoryName;
 
     @Override
     @Transactional
     public String createBankFileBatch(Long transactionPoid, Long userPoid) {
         try {
+            // Gap 1+5: DISTINCT added; fetched before branching only
             String bankList = jdbcTemplate.queryForObject(
-                "SELECT NVL(BANK_LIST, 'Y') FROM GL_BANK_FILE_HDR WHERE TRANSACTION_POID = ?",
-                String.class, transactionPoid);
-            
-            String ttSuppressBalanceCheck = jdbcTemplate.queryForObject(
-                "SELECT NVL(TT_SUPPRESS_BALANCE_CHECK, 'N') FROM GL_BANK_FILE_HDR WHERE TRANSACTION_POID = ? AND NVL(DELETED, 'N') = 'N'",
+                "SELECT DISTINCT NVL(BANK_LIST, 'Y') FROM GL_BANK_FILE_HDR WHERE TRANSACTION_POID = ?",
                 String.class, transactionPoid);
 
             // Handle AUB file generation
@@ -55,6 +50,11 @@ public class BankFileBatchServiceImpl implements BankFileBatchService {
             if ("B".equals(bankList)) {
                 return processNbbFiles(transactionPoid, userPoid);
             }
+
+            // Gap 5: fetch only after AUB/NBB branch (matches proc flow)
+            String ttSuppressBalanceCheck = jdbcTemplate.queryForObject(
+                "SELECT NVL(TT_SUPPRESS_BALANCE_CHECK, 'N') FROM GL_BANK_FILE_HDR WHERE TRANSACTION_POID = ? AND NVL(DELETED, 'N') = 'N'",
+                String.class, transactionPoid);
 
             // Check overdraft if not suppressed
             if ("N".equals(ttSuppressBalanceCheck)) {
@@ -68,9 +68,12 @@ public class BankFileBatchServiceImpl implements BankFileBatchService {
             List<BankFileDetailProjection> details = fetchBankFileDetails(transactionPoid);
             List<String> statusMessages = new ArrayList<>();
             int seqNo = 0;
+            // Gap 3: track last onlyApproval to match proc's post-loop early return
+            String lastOnlyApproval = "N";
 
             for (BankFileDetailProjection detail : details) {
                 String onlyApproval = detail.getOnlyApproval() != null ? detail.getOnlyApproval() : "N";
+                lastOnlyApproval = onlyApproval;
 
                 if ("Y".equals(onlyApproval)) {
                     String approvalStatus = procRepository.linkBankApproval(
@@ -102,6 +105,11 @@ public class BankFileBatchServiceImpl implements BankFileBatchService {
 
             // Delete non-deleted details
             jdbcTemplate.update("DELETE FROM GL_BANK_FILE_DTL WHERE TRANSACTION_POID = ? AND DELETED = 'N'", transactionPoid);
+
+            // Gap 3: skip file generation and email for approval-only batches (mirrors proc line 427-430)
+            if ("Y".equals(lastOnlyApproval)) {
+                return String.join(",", statusMessages);
+            }
 
             // Generate and send file
             generateAndSendFile(transactionPoid, userPoid);
@@ -149,19 +157,27 @@ public class BankFileBatchServiceImpl implements BankFileBatchService {
     }
 
     private String processAubFiles(Long transactionPoid, Long userPoid) {
-        List<Long> companyPoids = fetchDistinctCompanyPoids(transactionPoid);
-        for (Long companyPoid : companyPoids) {
-            aubService.createBankFileBatchAub(transactionPoid, userPoid, companyPoid);
+        try {
+            List<Long> companyPoids = fetchDistinctCompanyPoids(transactionPoid);
+            for (Long companyPoid : companyPoids) {
+                aubService.createBankFileBatchAub(transactionPoid, userPoid, companyPoid);
+            }
+            return "SUCCESS: FILE Generated....";
+        } catch (Exception e) {
+            return "ERROR: Aub File Generation-->" + e.getMessage();
         }
-        return "SUCCESS: FILE Generated....";
     }
 
     private String processNbbFiles(Long transactionPoid, Long userPoid) {
-        List<Long> companyPoids = fetchDistinctCompanyPoids(transactionPoid);
-        for (Long companyPoid : companyPoids) {
-            procRepository.createBankFileBatchNbb(transactionPoid, userPoid, companyPoid);
+        try {
+            List<Long> companyPoids = fetchDistinctCompanyPoids(transactionPoid);
+            for (Long companyPoid : companyPoids) {
+                procRepository.createBankFileBatchNbb(transactionPoid, userPoid, companyPoid);
+            }
+            return "SUCCESS: FILE Generated....";
+        } catch (Exception e) {
+            return "ERROR: NBB File Generation-->" + e.getMessage();
         }
-        return "SUCCESS: FILE Generated....";
     }
 
     private String validatePaymentDetails(BankFileDetailProjection detail) {
@@ -241,7 +257,9 @@ public class BankFileBatchServiceImpl implements BankFileBatchService {
             String random = String.valueOf(Math.round(Math.random() * 1000));
             String filename = "PPFILE" + transactionPoid + random + timestamp + ".TXT";
 
-            final String directory = parameterServiceClient.findParameterValueByName(bankFileDirectoryParameterName).orElseThrow();
+            final String directory = jdbcTemplate.queryForObject(
+                "SELECT DIRECTORY_PATH FROM ALL_DIRECTORIES WHERE DIRECTORY_NAME = ?",
+                String.class, ppFileDirectoryName);
 
             Path directoryPath = Paths.get(directory);
             if (!Files.exists(directoryPath)) {

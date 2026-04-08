@@ -353,6 +353,11 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                 : null;
 
         mapRequestToEntity(request, header);
+        if (request.getTransactionDate() != null) {
+            header.setTransactionDate(request.getTransactionDate());
+        } else {
+            header.setTransactionDate(oldEntity.getTransactionDate());
+        }
         validateTriggerRulesForUpdate(oldEntity, header);
 
         validator.validateVoucherStatusInNewTransaction(header);

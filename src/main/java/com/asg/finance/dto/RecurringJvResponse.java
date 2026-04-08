@@ -20,7 +20,7 @@ public class RecurringJvResponse {
     private LocalDate startDate;
     private BigDecimal totalAmount;
     private Integer noOfMonths;
-    private Long monthWiseAmt;
+    private BigDecimal monthWiseAmt;
     private String refType;
     private Long employeePoid;
     private Long assetPoid;

@@ -117,10 +117,10 @@ public class BankDepositVoucherProcRepositoryImpl implements BankDepositVoucherP
         try {
             List<BankDepositVoucherDtlDto> results = processResultSet(rs);
             if (results.isEmpty()) {
-                throw new AsgException("No Pending Payments");}
+                throw new ValidationException("No Pending Payments");}
             return results;
         }
-        catch (AsgException e){
+        catch (ValidationException e){
             throw e;
         }
         catch (Exception e) {

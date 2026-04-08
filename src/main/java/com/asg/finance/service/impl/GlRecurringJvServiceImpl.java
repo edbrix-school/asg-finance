@@ -314,8 +314,9 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
     @Override
     @Transactional
     public RecurringJvCreateResponse createRecurringJv(RecurringJvRequest request) {
-        validateRequest(request);
-
+        if (request.getDetails() != null && !request.getDetails().isEmpty()) {
+            validateRequest(request);
+        }
         GlRecurringJvHdr header = GlRecurringJvHdr.builder()
                 .transactionDate(request.getTransactionDate() != null ? request.getTransactionDate() : DateUtil.getCurrentDateInUserTimeZone())
                 .groupPoid(getGroupId())
@@ -574,8 +575,9 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
         if (createdScheduleCount > 0) {
             throw new IllegalStateException("Cannot update recurring JV with created JVs in schedule");
         }
-
-        validateRequest(request);
+        if (request.getDetails() != null && !request.getDetails().isEmpty()) {
+            validateRequest(request);
+        }
 
         header.setTransactionDate(request.getTransactionDate() != null ? request.getTransactionDate() : DateUtil.getCurrentDateInUserTimeZone());
         header.setNarration(request.getNarration());

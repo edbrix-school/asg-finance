@@ -35,7 +35,6 @@ public class RecurringJvRequest {
     private String remarks;
     private BigDecimal monthWiseAmount;
 
-    @NotEmpty(message = "At least one detail line is required")
     private List<RecurringJvDetailRequest> details;
 
     private List<RecurringJVScheduleWiseDetailsDto> scheduleDetails;

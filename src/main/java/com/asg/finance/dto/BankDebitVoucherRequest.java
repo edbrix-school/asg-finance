@@ -19,6 +19,8 @@ public class BankDebitVoucherRequest {
 
     private Long transactionPoid;
 
+    private LocalDateTime transactionDate;
+
     @NotNull(message = "Bank POID is required")
     private Long bankPoid;
 

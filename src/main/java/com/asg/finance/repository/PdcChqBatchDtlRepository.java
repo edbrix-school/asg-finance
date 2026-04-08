@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Set;
 
 @Repository
 public interface PdcChqBatchDtlRepository extends JpaRepository<PdcChqBatchDtlEntity, PdcChqBatchDtlId> {
@@ -21,4 +22,7 @@ public interface PdcChqBatchDtlRepository extends JpaRepository<PdcChqBatchDtlEn
     @Modifying
     @Query("DELETE FROM PdcChqBatchDtlEntity d WHERE d.transactionPoid = :transactionPoid AND d.detRowId = :detRowId")
     void deleteByTransactionPoidAndDetRowId(@Param("transactionPoid") Long transactionPoid, @Param("detRowId") Long detRowId);
+    @Modifying
+    @Query("DELETE FROM PdcChqBatchDtlEntity d WHERE d.transactionPoid = :transactionPoid AND d.detRowId NOT IN :detRowIds")
+    void deleteByTransactionPoidAndDetRowIdNotIn(@Param("transactionPoid") Long transactionPoid, @Param("detRowIds") Set<Long> detRowIds);
 }

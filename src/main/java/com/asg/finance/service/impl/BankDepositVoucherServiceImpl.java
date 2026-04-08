@@ -43,6 +43,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Locale;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 @Service
@@ -200,10 +201,10 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
         Map<Long, GlBankDepositVoucherDtl> existingMap = existingDetailsList.stream()
                 .collect(Collectors.toMap(GlBankDepositVoucherDtl::getDetRowId, d -> d));
 
-        long[] nextIdArr = { dtlRepository.getMaxDetRowIdByTransactionPoid(transactionPoid) };
+        AtomicLong nextId = new AtomicLong(dtlRepository.getMaxDetRowIdByTransactionPoid(transactionPoid));
 
         for (BankDepositVoucherDtlDto dto : details) {
-            applyDetailChange(dto, transactionPoid, nextIdArr, existingMap, toSave, toUpdate, toDelete, logRequests);
+            applyDetailChange(dto, transactionPoid, nextId, existingMap, toSave, toUpdate, toDelete, logRequests);
         }
 
         saveNewDetails(transactionPoid, toSave);
@@ -211,14 +212,14 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
         deleteDetails(toDelete, existingDetailsList);
     }
 
-    private void applyDetailChange(BankDepositVoucherDtlDto dto, Long transactionPoid, long[] nextIdArr,
+    private void applyDetailChange(BankDepositVoucherDtlDto dto, Long transactionPoid, AtomicLong nextId,
                                   Map<Long, GlBankDepositVoucherDtl> existingMap, List<GlBankDepositVoucherDtl> toSave,
                                   List<GlBankDepositVoucherDtl> toUpdate, List<Long> toDelete,
                                   List<LogRequestDto<GlBankDepositVoucherDtl>> logRequests) {
         String action = dto.getActionType() != null ? dto.getActionType().toUpperCase() : "ISCREATED";
         switch (action) {
             case "ISCREATED":
-                Long detId = ++nextIdArr[0];
+                Long detId = nextId.incrementAndGet();
                 GlBankDepositVoucherDtl newDetail = convertToDetailEntity(dto, transactionPoid);
                 newDetail.setDetRowId(detId);
                 toSave.add(newDetail);

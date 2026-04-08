@@ -1,6 +1,5 @@
 package com.asg.finance.service.impl;
 
-import com.asg.common.lib.client.ParameterServiceClient;
 import com.asg.finance.dto.BankFileDetailProjection;
 import com.asg.finance.repository.TelexFileGenerateProcRepository;
 import com.asg.finance.service.BankFileAubService;
@@ -29,10 +28,9 @@ public class BankFileBatchServiceImpl implements BankFileBatchService {
     private final TelexFileGenerateProcRepository procRepository;
     private final JdbcTemplate jdbcTemplate;
     private final BankFileAubService aubService;
-    private final ParameterServiceClient parameterServiceClient;
-    
+
     @Value("${bank.file.pp.directory:FAX_EMAIL}")
-    private String ppFileDirectoryParameterName;
+    private String ppFileDirectoryName;
 
     @Override
     @Transactional
@@ -259,7 +257,9 @@ public class BankFileBatchServiceImpl implements BankFileBatchService {
             String random = String.valueOf(Math.round(Math.random() * 1000));
             String filename = "PPFILE" + transactionPoid + random + timestamp + ".TXT";
 
-            final String directory = parameterServiceClient.findParameterValueByName(ppFileDirectoryParameterName).orElseThrow();
+            final String directory = jdbcTemplate.queryForObject(
+                "SELECT DIRECTORY_PATH FROM ALL_DIRECTORIES WHERE DIRECTORY_NAME = ?",
+                String.class, ppFileDirectoryName);
 
             Path directoryPath = Paths.get(directory);
             if (!Files.exists(directoryPath)) {

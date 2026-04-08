@@ -46,10 +46,8 @@ import javax.sql.DataSource;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+
 import static com.asg.common.lib.utility.ASGHelperUtils.*;
 import static com.asg.finance.utility.Constants.*;
 
@@ -249,54 +247,61 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
             return Collections.emptyList();
         }
 
-        return response.getCostBreakupList().stream()
-                .filter(cc -> cc.getMainDetRowId().equals(detRowId))
-                .map(cc -> {
-                    CostCenterBreakupPopupRequestDto dto = new CostCenterBreakupPopupRequestDto();
-                    dto.setCostDetRowId(cc.getCostDetRowId());
-                    dto.setCostGroup(cc.getCostGroup());
-                    dto.setCostPoid(cc.getCostPoid());
-                    dto.setAmount(cc.getAmount());
-                    if (StringUtils.isNotEmpty(cc.getCostPoid()) && StringUtils.isNotEmpty(cc.getCostGroup())) {
-                        try {
-                            Long poid = Long.parseLong(cc.getCostPoid());
-                            dto.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(poid, cc.getCostGroup()));
-                        } catch (NumberFormatException e) {
-                            dto.setCostCenterDetails(lovService.getDetailsByCodeAndLovName(cc.getCostPoid(), cc.getCostGroup()));
+            return response.getCostBreakupList().stream()
+                    .filter(cc -> Objects.equals(cc.getMainDetRowId(), detRowId))
+                    .map(cc -> {
+                        CostCenterBreakupPopupRequestDto dto = new CostCenterBreakupPopupRequestDto();
+
+                        dto.setCostDetRowId(cc.getCostDetRowId());
+                        dto.setCostGroup(cc.getCostGroup());
+                        dto.setCostPoid(cc.getCostPoid() != null ? cc.getCostPoid() : null);
+                        dto.setAmount(cc.getAmount() != null ? cc.getAmount() : BigDecimal.ZERO);
+
+                        if (StringUtils.isNotEmpty(cc.getCostPoid()) && StringUtils.isNotEmpty(cc.getCostGroup())) {
+                            try {
+                                Long poid = Long.parseLong(cc.getCostPoid());
+                                dto.setCostCenterDetails(
+                                        lovService.getDetailsByPoidAndLovName(poid, cc.getCostGroup())
+                                );
+                            } catch (NumberFormatException e) {
+                                dto.setCostCenterDetails(
+                                        lovService.getDetailsByCodeAndLovName(cc.getCostPoid(), cc.getCostGroup())
+                                );
+                            }
                         }
-                    }
-                    return dto;
-                })
-                .toList();
-    }
 
-    private List<BillwiseBreakupPopupRequestDto> filterBillwiseBreakup(
-            GlVoucherLoadBillwiseBreakupResponseDto response, Long detRowId) {
-
-        if (response == null || response.getLoadBillwiseBreakupResponseDtoList() == null) {
-            return Collections.emptyList();
+                        return dto;
+                    })
+                    .toList();
         }
 
-        return response.getLoadBillwiseBreakupResponseDtoList().stream()
-                .filter(bw -> bw.getMainDetRowId().equals(detRowId))
-                .map(bw -> {
-                    BillwiseBreakupPopupRequestDto dto = new BillwiseBreakupPopupRequestDto();
-                    dto.setBillDetRowId(bw.getBillDetRowId());
-                    dto.setBillRefType(bw.getBillRefType());
-                    dto.setBillRef(bw.getBillRef());
-                    dto.setBillDueDate(bw.getBillDueDate());
-                    dto.setAmount(bw.getDrAmt() != null ? bw.getDrAmt() : bw.getCrAmt());
-                    dto.setType(bw.getDrAmt() != null && bw.getDrAmt().compareTo(BigDecimal.ZERO) > 0 ? TYPE_DEBIT
-                            : TYPE_CREDIT);
-                    dto.setBillRemarks(bw.getBillRemarks());
-                    return dto;
-                })
-                .toList();
-    }
+        private List<BillwiseBreakupPopupRequestDto> filterBillwiseBreakup(
+                GlVoucherLoadBillwiseBreakupResponseDto response, Long detRowId) {
 
+            if (response == null || response.getLoadBillwiseBreakupResponseDtoList() == null) {
+                return List.of();
+            }
+
+            return response.getLoadBillwiseBreakupResponseDtoList().stream()
+                    .filter(bw -> bw.getMainDetRowId().equals(detRowId))
+                    .map(bw -> {
+                        BillwiseBreakupPopupRequestDto dto = new BillwiseBreakupPopupRequestDto();
+                        dto.setBillDetRowId(bw.getBillDetRowId());
+                        dto.setBillRefType(bw.getBillRefType());
+                        dto.setBillRef(bw.getBillRef());
+                        dto.setBillDueDate(bw.getBillDueDate());
+                        BigDecimal drAmt = bw.getDrAmt() != null ? bw.getDrAmt() : BigDecimal.ZERO;
+                        BigDecimal crAmt = bw.getCrAmt() != null ? bw.getCrAmt() : BigDecimal.ZERO;
+                        dto.setType(drAmt.compareTo(BigDecimal.ZERO) > 0 ? "DR" : "CR");
+                        dto.setAmount(drAmt.compareTo(BigDecimal.ZERO) > 0 ? drAmt : crAmt);
+                        dto.setBillRemarks(bw.getBillRemarks());
+                        return dto;
+                    })
+                    .toList();
+        }
     private RecurringJvScheduleDetailResponse convertScheduleToResponse(GlRecurringJvMonthDtl schedule) {
         RecurringJvScheduleDetailResponse response = new RecurringJvScheduleDetailResponse();
-        response.setScheduleId(schedule.getDetRowId());
+        response.setDetRowId(schedule.getDetRowId());
         response.setMonthWiseDate(schedule.getMonthWiseDate() != null ? schedule.getMonthWiseDate() : DateUtil.getCurrentDateInUserTimeZone());
         response.setJv(schedule.getJvPoid());
         response.setAmount(schedule.getAmount());
@@ -312,7 +317,7 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
         validateRequest(request);
 
         GlRecurringJvHdr header = GlRecurringJvHdr.builder()
-                .transactionDate(LocalDate.now())
+                .transactionDate(request.getTransactionDate() != null ? request.getTransactionDate() : DateUtil.getCurrentDateInUserTimeZone())
                 .groupPoid(getGroupId())
                 .companyPoid(getCompanyId())
                 .narration(request.getNarration())
@@ -572,6 +577,7 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
 
         validateRequest(request);
 
+        header.setTransactionDate(request.getTransactionDate() != null ? request.getTransactionDate() : DateUtil.getCurrentDateInUserTimeZone());
         header.setNarration(request.getNarration());
         header.setStartDate(request.getStartDate());
         header.setTotalAmount(request.getTotalAmount());
@@ -585,7 +591,7 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
         hdrRepository.save(header);
 
         saveDetails(transactionPoid, request.getDetails(), header, false);
-        updateScheduleDetails(transactionPoid, request.getScheduleWiseDetails());
+        updateScheduleDetails(transactionPoid, request.getScheduleDetails());
         // Log the update
         String key = transactionPoid.toString();
         loggingService.logChanges(oldEntity, header, GlRecurringJvHdr.class,
@@ -599,20 +605,17 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
             return;
         }
 
-        List<GlRecurringJvMonthDtl> currentSchedules = monthDtlRepository.findByTransactionPoid(transactionPoid);
-        Map<Long, GlRecurringJvMonthDtl> scheduleMap = currentSchedules.stream()
-                .collect(java.util.stream.Collectors.toMap(GlRecurringJvMonthDtl::getDetRowId, dt -> dt));
-
         List<GlRecurringJvMonthDtl> detailsToPersist = new ArrayList<>();
 
         for (RecurringJVScheduleWiseDetailsDto dto : scheduleDetailsRequest) {
-            if ("ISUPDATED".equalsIgnoreCase(dto.getActionType())) {
-                GlRecurringJvMonthDtl existing = scheduleMap.get(dto.getDetRowId());
-                if (existing != null) {
-                    existing.setMonthWiseDate(dto.getMonthWiseDate());
-                    existing.setRemarks(dto.getRemarks());
-                    detailsToPersist.add(existing);
-                }
+            String action = dto.getActionType() != null ? dto.getActionType().toUpperCase() : "";
+            if ("ISUPDATED".equalsIgnoreCase(action)) {
+                monthDtlRepository.findById(new TransactionDetailKey(transactionPoid, dto.getDetRowId()))
+                    .ifPresent(existing -> {
+                        existing.setMonthWiseDate(dto.getMonthWiseDate());
+                        existing.setRemarks(dto.getRemarks());
+                        detailsToPersist.add(existing);
+                    });
             }
         }
 

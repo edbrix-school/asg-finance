@@ -4,7 +4,6 @@ import com.asg.common.lib.dto.*;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
 import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
-import com.asg.common.lib.dto.response.LoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.exception.AsgException;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.security.util.UserContext;
@@ -36,13 +35,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.math.BigDecimal;
-import java.util.Map;
-import java.util.Optional;
 import java.util.function.Function;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.StringUtils;
 
 import static com.asg.common.lib.utility.ASGHelperUtils.*;
 import static com.asg.finance.utility.Constants.*;
@@ -180,7 +178,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         if (request.getGlDetails() != null) {
             log.debug("Saving {} GL detail lines", request.getGlDetails().size());
             request.getGlDetails().forEach(detail -> detail.setActionType(ACTION_ISCREATED));
-            saveGlDetails(header, request.getGlDetails(), isMultiCompany, docId);
+            saveGlDetails(header, request.getGlDetails(), isMultiCompany, docId, true);
         }
     }
 
@@ -206,7 +204,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
             request.getAssetCapitalization().forEach(detail -> detail.setActionType(ACTION_ISCREATED));
             saveCapitalizationDetails(header.getTransactionPoid(), request.getAssetCapitalization());
             if (request.getGlDetails() != null) {
-                saveGlDetails(header, request.getGlDetails(), isMultiCompany, docId);
+                saveGlDetails(header, request.getGlDetails(), isMultiCompany, docId, true);
             }
         }
     }
@@ -413,7 +411,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
     }
 
     private void saveGlDetails(GlJournalVoucherHdr header, List<JournalVoucherGlDetailDto> glDetails,
-            boolean multiCompany, String docId) {
+            boolean multiCompany, String docId, boolean isNew) {
         Long transactionPoid = header.getTransactionPoid();
         Long headerCompanyPoid = header.getCompanyPoid();
 
@@ -422,6 +420,8 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         List<CostCenterBreakupRequestDto> costCenterRequestDtoList = new ArrayList<>();
         List<BillwiseBreakupRequestDto> billwiseRequestDtoList = new ArrayList<>();
         List<LogRequestDto<GlJournalVoucherDtl>> logRequests = new ArrayList<>();
+        AtomicLong costCenterCounter = new AtomicLong(1);
+        AtomicLong billwiseCounter = new AtomicLong(1);
 
         for (JournalVoucherGlDetailDto dto : glDetails) {
             String action = resolveAction(dto.getActionType());
@@ -441,13 +441,13 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                             String.format("Row Created on %s GL Detail with detRowId: %s", RES_JOURNAL_VOUCHER,
                                     maxDetRowId));
 
-                    if (dto.getCostCenterBreakup() != null && !dto.getCostCenterBreakup().isEmpty()) {
+                    if (dto.getCostCenterList() != null && !dto.getCostCenterList().isEmpty()) {
                         costCenterRequestDtoList.addAll(buildCostCenterBreakups(transactionPoid, maxDetRowId, docId,
-                                dto.getGlPoid(), dto.getCostCenterBreakup()));
+                                dto.getGlPoid(), dto.getCostCenterList(), isNew, costCenterCounter));
                     }
-                    if (dto.getBillWiseBreakup() != null && !dto.getBillWiseBreakup().isEmpty()) {
+                    if (dto.getBreakupList() != null && !dto.getBreakupList().isEmpty()) {
                         billwiseRequestDtoList.addAll(buildBillwiseBreakups(transactionPoid, maxDetRowId, docId,
-                                dto.getGlPoid(), companyPoid, dto.getBillWiseBreakup()));
+                                dto.getGlPoid(), companyPoid, dto.getBreakupList(), isNew, billwiseCounter));
                     }
                 }
                 case ACTION_ISUPDATED -> {
@@ -468,13 +468,13 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                     logRequests.add(new LogRequestDto<>(oldDetail, detail, GlJournalVoucherDtl.class, docId,
                             transactionPoid.toString(), logDetail));
 
-                    if (dto.getCostCenterBreakup() != null && !dto.getCostCenterBreakup().isEmpty()) {
+                    if (dto.getCostCenterList() != null && !dto.getCostCenterList().isEmpty()) {
                         costCenterRequestDtoList.addAll(buildCostCenterBreakups(transactionPoid, dto.getDetRowId(),
-                                docId, dto.getGlPoid(), dto.getCostCenterBreakup()));
+                                docId, dto.getGlPoid(), dto.getCostCenterList(), isNew, costCenterCounter));
                     }
-                    if (dto.getBillWiseBreakup() != null && !dto.getBillWiseBreakup().isEmpty()) {
+                    if (dto.getBreakupList() != null && !dto.getBreakupList().isEmpty()) {
                         billwiseRequestDtoList.addAll(buildBillwiseBreakups(transactionPoid, dto.getDetRowId(), docId,
-                                dto.getGlPoid(), companyPoid, dto.getBillWiseBreakup()));
+                                dto.getGlPoid(), companyPoid, dto.getBreakupList(), isNew, billwiseCounter));
                     }
                 }
                 case ACTION_ISDELETED -> {
@@ -489,17 +489,41 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
             loggingService.createLogBatch(logRequests);
         }
         if (!costCenterRequestDtoList.isEmpty()) {
-            costCenterBreakupService.updateCostCenterBreakups(costCenterRequestDtoList, getUserPoid());
+            if (isNew) {
+                costCenterBreakupService.saveCostCenterBreakups(costCenterRequestDtoList);
+            } else {
+                costCenterBreakupService.updateCostCenterBreakups(costCenterRequestDtoList, getUserPoid());
+            }
+        } else {
+            costCenterBreakupService.deleteCostCenterData(docId, transactionPoid, getGroupId(), getCompanyId(),
+                    getUserPoid());
         }
+
         if (!billwiseRequestDtoList.isEmpty()) {
-            billwiseBreakupService.updateBillwiseBreakups(billwiseRequestDtoList, getUserPoid());
+            if (isNew) {
+                billwiseBreakupService.insertBillwiseBreakup(billwiseRequestDtoList);
+            } else {
+                billwiseBreakupService.updateBillwiseBreakups(billwiseRequestDtoList, getUserPoid());
+            }
+        } else {
+            billwiseBreakupService.deleteBillwiseBreakup(getGroupId(), getCompanyId(), docId, transactionPoid,
+                    getUserPoid());
         }
     }
 
     private List<CostCenterBreakupRequestDto> buildCostCenterBreakups(Long transactionPoid, Long detRowId, String docId,
             Long glPoid,
-            List<CostCenterBreakupPopupRequestDto> costCenterBreakups) {
+            List<CostCenterBreakupPopupRequestDto> costCenterBreakups, boolean isNew, AtomicLong counter) {
         return costCenterBreakups.stream()
+                .filter(dto -> {
+                    String actionType = dto.getActionType();
+                    if (isNew) {
+                        return actionType == null || actionType.equalsIgnoreCase("ISCREATED");
+                    } else {
+                        return actionType == null ||
+                                (!actionType.equalsIgnoreCase("ISDELETED") && !actionType.equalsIgnoreCase("NOCHANGES"));
+                    }
+                })
                 .map(dto -> CostCenterBreakupRequestDto.builder()
                         .groupPoid(getGroupId())
                         .companyPoid(getCompanyId())
@@ -507,7 +531,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                         .transactionPoid(transactionPoid)
                         .mainDetRowId(detRowId)
                         .glPoid(glPoid)
-                        .costDetRowId(dto.getCostDetRowId())
+                        .costDetRowId(counter.getAndIncrement())
                         .costGroup(dto.getCostGroup())
                         .costPoid(dto.getCostPoid())
                         .amount(dto.getAmount())
@@ -518,8 +542,17 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
 
     private List<BillwiseBreakupRequestDto> buildBillwiseBreakups(Long transactionPoid, Long detRowId, String docId,
             Long glPoid, Long glCompanyPoid,
-            List<BillwiseBreakupPopupRequestDto> billwiseBreakups) {
+            List<BillwiseBreakupPopupRequestDto> billwiseBreakups, boolean isNew, AtomicLong counter) {
         return billwiseBreakups.stream()
+                .filter(dto -> {
+                    String actionType = dto.getActionType();
+                    if (isNew) {
+                        return actionType == null || actionType.equalsIgnoreCase("ISCREATED");
+                    } else {
+                        return actionType == null ||
+                                (!actionType.equalsIgnoreCase("ISDELETED") && !actionType.equalsIgnoreCase("NOCHANGES"));
+                    }
+                })
                 .map(dto -> BillwiseBreakupRequestDto.builder()
                         .groupPoid(getGroupId())
                         .companyPoid(getCompanyId())
@@ -528,7 +561,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                         .mainDetRowId(detRowId)
                         .glPoid(glPoid)
                         .glCompanyPoid(glCompanyPoid)
-                        .billDetRowId(dto.getBillDetRowId())
+                        .billDetRowId(counter.getAndIncrement())
                         .drAmt("Dr".equalsIgnoreCase(dto.getType()) ? dto.getAmount() : BigDecimal.ZERO)
                         .crAmt("Cr".equalsIgnoreCase(dto.getType()) ? dto.getAmount() : BigDecimal.ZERO)
                         .billRefType(dto.getBillRefType())
@@ -679,7 +712,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
 
         if (REF_TYPE_GENERAL.equalsIgnoreCase(request.getRefType())
                 && request.getGlDetails() != null) {
-            saveGlDetails(existing, request.getGlDetails(), isMultiCompany, docId);
+            saveGlDetails(existing, request.getGlDetails(), isMultiCompany, docId, false);
         } else if (REF_TYPE_ASSET_DISPOSAL.equalsIgnoreCase(request.getRefType())
                 && request.getAssetDetails() != null) {
             saveAssetDetails(existing.getTransactionPoid(), request.getAssetDetails());
@@ -692,7 +725,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                 && request.getAssetCapitalization() != null) {
             saveCapitalizationDetails(existing.getTransactionPoid(), request.getAssetCapitalization());
             if (request.getGlDetails() != null) {
-                saveGlDetails(existing, request.getGlDetails(), isMultiCompany, docId);
+                saveGlDetails(existing, request.getGlDetails(), isMultiCompany, docId, false);
             }
         }
 
@@ -887,30 +920,43 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                 .build();
     }
 
-    private List<CostCenterBreakupResponseDto> filterCostCenterBreakup(
+    private List<CostCenterBreakupPopupRequestDto> filterCostCenterBreakup(
             GlVoucherCostCenterBreakupResponseDto response, Long detRowId) {
 
         if (response == null || response.getCostBreakupList() == null) {
             return List.of();
         }
 
+
         return response.getCostBreakupList().stream()
-                .filter(cc -> cc.getMainDetRowId().equals(detRowId))
+                .filter(cc -> Objects.equals(cc.getMainDetRowId(), detRowId))
                 .map(cc -> {
-                    CostCenterBreakupResponseDto dto = new CostCenterBreakupResponseDto();
-                    dto.setAmount(cc.getAmount());
-                    dto.setGlPoid(cc.getGlPoid());
-                    dto.setDescription(cc.getDescription());
+                    CostCenterBreakupPopupRequestDto dto = new CostCenterBreakupPopupRequestDto();
+
                     dto.setCostDetRowId(cc.getCostDetRowId());
-                    dto.setMainDetRowId(cc.getMainDetRowId());
                     dto.setCostGroup(cc.getCostGroup());
-                    dto.setCostPoid(cc.getCostPoid());
+                    dto.setCostPoid(cc.getCostPoid() != null ? cc.getCostPoid() : null);
+                    dto.setAmount(cc.getAmount() != null ? cc.getAmount() : BigDecimal.ZERO);
+
+                    if (StringUtils.isNotEmpty(cc.getCostPoid()) && StringUtils.isNotEmpty(cc.getCostGroup())) {
+                        try {
+                            Long poid = Long.parseLong(cc.getCostPoid());
+                            dto.setCostCenterDetails(
+                                    lovDataService.getDetailsByPoidAndLovName(poid, cc.getCostGroup())
+                            );
+                        } catch (NumberFormatException e) {
+                            dto.setCostCenterDetails(
+                                    lovDataService.getDetailsByCodeAndLovName(cc.getCostPoid(), cc.getCostGroup())
+                            );
+                        }
+                    }
+
                     return dto;
                 })
                 .toList();
     }
 
-    private List<LoadBillwiseBreakupResponseDto> filterBillwiseBreakup(
+    private List<BillwiseBreakupPopupRequestDto> filterBillwiseBreakup(
             GlVoucherLoadBillwiseBreakupResponseDto response, Long detRowId) {
 
         if (response == null || response.getLoadBillwiseBreakupResponseDtoList() == null) {
@@ -920,15 +966,15 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         return response.getLoadBillwiseBreakupResponseDtoList().stream()
                 .filter(bw -> bw.getMainDetRowId().equals(detRowId))
                 .map(bw -> {
-                    LoadBillwiseBreakupResponseDto dto = new LoadBillwiseBreakupResponseDto();
-                    dto.setMainDetRowId(bw.getMainDetRowId());
+                    BillwiseBreakupPopupRequestDto dto = new BillwiseBreakupPopupRequestDto();
                     dto.setBillDetRowId(bw.getBillDetRowId());
-                    dto.setGlPoid(bw.getGlPoid());
                     dto.setBillRefType(bw.getBillRefType());
                     dto.setBillRef(bw.getBillRef());
                     dto.setBillDueDate(bw.getBillDueDate());
-                    dto.setDrAmt(bw.getDrAmt());
-                    dto.setCrAmt(bw.getCrAmt());
+                    BigDecimal drAmt = bw.getDrAmt() != null ? bw.getDrAmt() : BigDecimal.ZERO;
+                    BigDecimal crAmt = bw.getCrAmt() != null ? bw.getCrAmt() : BigDecimal.ZERO;
+                    dto.setType(drAmt.compareTo(BigDecimal.ZERO) > 0 ? "DR" : "CR");
+                    dto.setAmount(drAmt.compareTo(BigDecimal.ZERO) > 0 ? drAmt : crAmt);
                     dto.setBillRemarks(bw.getBillRemarks());
                     return dto;
                 })

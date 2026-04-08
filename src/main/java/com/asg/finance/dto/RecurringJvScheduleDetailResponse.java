@@ -11,7 +11,7 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class RecurringJvScheduleDetailResponse {
 
-    private Long scheduleId;
+    private Long detRowId;
     private LocalDate monthWiseDate;
     private String jv;
     private BigDecimal amount;

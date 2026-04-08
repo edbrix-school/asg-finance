@@ -12,6 +12,8 @@ public class RecurringJvRequest {
     
     @NotBlank(message = "Narration is mandatory")
     private String narration;
+
+    private LocalDate  transactionDate;
     
     @NotNull(message = "Start date is mandatory")
     private LocalDate startDate;
@@ -31,10 +33,10 @@ public class RecurringJvRequest {
     private Long assetPoid;
     private String policyNumber;
     private String remarks;
-    private Long monthWiseAmount;
-    
+    private BigDecimal monthWiseAmount;
+
     @NotEmpty(message = "At least one detail line is required")
     private List<RecurringJvDetailRequest> details;
 
-    private List<RecurringJVScheduleWiseDetailsDto> scheduleWiseDetails;
+    private List<RecurringJVScheduleWiseDetailsDto> scheduleDetails;
 }

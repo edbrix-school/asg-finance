@@ -69,7 +69,7 @@ public class JournalVoucherController {
                                               "drAmt": 1000.00,
                                               "crAmt": 0.00,
                                               "remarks": "Debit entry",
-                                              "costCenterBreakup": [
+                                              "costCenterList": [
                                                 {
                                                   "costGroup": "DEPT",
                                                   "costPoid": "CC001",
@@ -77,7 +77,7 @@ public class JournalVoucherController {
                                                   "actionType": "isCreated"
                                                 }
                                               ],
-                                              "billWiseBreakup": [
+                                              "breakupList": [
                                                 {
                                                   "billRefType": "INVOICE",
                                                   "billRef": "INV-001",

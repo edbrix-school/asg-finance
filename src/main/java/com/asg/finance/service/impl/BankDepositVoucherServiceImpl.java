@@ -200,7 +200,7 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
         Map<Long, GlBankDepositVoucherDtl> existingMap = existingDetailsList.stream()
                 .collect(Collectors.toMap(GlBankDepositVoucherDtl::getDetRowId, d -> d));
 
-        long[] nextIdArr = { existingDetailsList.stream().map(GlBankDepositVoucherDtl::getDetRowId).max(Long::compareTo).orElse(0L) };
+        long[] nextIdArr = { dtlRepository.getMaxDetRowIdByTransactionPoid(transactionPoid) };
 
         for (BankDepositVoucherDtlDto dto : details) {
             applyDetailChange(dto, transactionPoid, nextIdArr, existingMap, toSave, toUpdate, toDelete, logRequests);
@@ -218,7 +218,7 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
         String action = dto.getActionType() != null ? dto.getActionType().toUpperCase() : "ISCREATED";
         switch (action) {
             case "ISCREATED":
-                Long detId = dto.getDetRowId() != null ? dto.getDetRowId() : ++nextIdArr[0];
+                Long detId = ++nextIdArr[0];
                 GlBankDepositVoucherDtl newDetail = convertToDetailEntity(dto, transactionPoid);
                 newDetail.setDetRowId(detId);
                 toSave.add(newDetail);

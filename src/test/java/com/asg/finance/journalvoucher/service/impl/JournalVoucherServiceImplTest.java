@@ -240,8 +240,8 @@ class JournalVoucherServiceImplTest {
 
         journalVoucherService.createJournalVoucher(request, DOC_ID);
 
-        verify(costCenterBreakupService, atLeastOnce()).updateCostCenterBreakups(anyList(), any());
-        verify(billwiseBreakupService, atLeastOnce()).updateBillwiseBreakups(anyList(), any());
+        verify(costCenterBreakupService, atLeastOnce()).saveCostCenterBreakups(anyList());
+        verify(billwiseBreakupService, atLeastOnce()).insertBillwiseBreakup(anyList());
     }
 
     @Test

@@ -15,6 +15,9 @@
 	</style>
 	<subDataset name="DetailTable" uuid="969f79a2-7618-4167-b715-b1b98df4b6aa">
 		<parameter name="DOC_KEY_POID" class="java.lang.String"/>
+        <parameter name="SUB_FOOTER_ISO" class="java.lang.String"/>
+        <parameter name="SUB_HEADER" class="java.lang.String"/>
+
 		<queryString>
 			<![CDATA[SELECT TO_CHAR(TRANSACTION_DATE,'DD-MON-YYYY') TT_DATE, HDR.REMARKS,DR_AMT,'DR' DRCRTYPE
 FROM  GL_BANK_DEBIT_DTL_GL DTL
@@ -70,6 +73,9 @@ GROUP BY PHDR.DOC_REF,TO_CHAR(HDR.TRANSACTION_DATE,'DD-MON-YYYY')]]>
 	<parameter name="SUBREPORT_DIR" class="java.lang.String" isForPrompting="false">
         <defaultValueExpression><![CDATA[""]]></defaultValueExpression>
 	</parameter>
+	<parameter name="SUB_HEADER" class="net.sf.jasperreports.engine.JasperReport"/>
+	<parameter name="SUB_FOOTER" class="net.sf.jasperreports.engine.JasperReport"/>
+	<parameter name="SUB_FOOTER_ISO" class="net.sf.jasperreports.engine.JasperReport"/>
 	<queryString>
 		<![CDATA[select transaction_poid,doc_ref,BANK_DESCRIPTION bank,to_char(transaction_date,'DD-MON-YYYY')transaction_date,nvl(PAYING_TO_NAME,GL_DESCRIPTION) pay_to,long_narration,amount,
 'Bahraini Dinar:'||' '||FN_AMOUNT_IN_WORDS_COMMON(amount,'BHD') AMOUNT_IN_WORD,hdr.CREATED_BY from gl_bank_debit_hdr hdr
@@ -113,7 +119,7 @@ where paying_type ='3'  and  transaction_poid = $P{DOC_KEY_POID} and REF_TYPE !=
 				<textElement textAlignment="Center">
 					<font size="15" isBold="true" isUnderline="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
-				<text><![CDATA[CREDIT CARD VOUCHER]]></text>
+				<text><![CDATA[CREDIT CARD]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="0" y="68" width="49" height="18" uuid="c632a2c8-d600-4677-8e69-5f2d6bac84d8"/>

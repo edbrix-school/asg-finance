@@ -1,5 +1,6 @@
 package com.asg.finance.dto;
 
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
@@ -13,6 +14,7 @@ public class ChequePrintPendingRequest {
 
     private String pvNo;
 
+    @NotBlank(message = "accountPayee is required")
     private String accountPayee;
 
     @NotNull(message = "selected is required")

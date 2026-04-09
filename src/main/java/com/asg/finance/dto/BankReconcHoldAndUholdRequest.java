@@ -18,7 +18,6 @@ public class BankReconcHoldAndUholdRequest {
 	private Long transactionCompanyPoid;
 
 	@NotBlank(message = "Document ID is required")
-	@Pattern(regexp = "^400-107$", message = "Document ID must be exactly 400-107")
 	private String docId;
 
 	@NotNull(message = "Transaction POID is required")

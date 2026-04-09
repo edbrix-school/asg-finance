@@ -71,6 +71,7 @@ public class BankPaymentVoucherResponse {
     private String chqPrintedUserCode;
     private LocalDate chqPrintedDate;
     private Long salesQtnRef;
+    private LovGetListDto salesQtnDet;
     private Long availableBalance;
 
     // ===== Detail Sections =====

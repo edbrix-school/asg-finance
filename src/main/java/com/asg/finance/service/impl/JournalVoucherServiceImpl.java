@@ -380,7 +380,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         if (totalCr.compareTo(bhdAmount) != 0) {
             log.error("Detail total {} does not match header amount {}", totalCr, bhdAmount);
             throw new IllegalArgumentException(
-                    "Total detail amount (" + totalCr + ") does not match header amount (" + bhdAmount + ")");
+                    "BHD amount(" + bhdAmount + ") is not matching with the total credit amount(" + totalCr + ")");
         }
     }
 

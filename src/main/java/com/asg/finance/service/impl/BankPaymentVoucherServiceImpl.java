@@ -420,7 +420,8 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
             entity.setReleasedByUserCode(Objects.requireNonNull(UserContext.getCurrentUser()).getUserName());
             entity.setReleasedDate(LocalDate.now());
         }
-        entity.setSalesQtnRef(req.getSalesQtnRef());
+        entity.setSalesQtnRef(req.getSalesQtnRef() != null ? req.getSalesQtnRef() :
+                (StringUtils.isNumeric(req.getMtaRfqId()) ? Long.valueOf(req.getMtaRfqId()) : null));
     }
 
     private void validateRefType(BankPaymentVoucherRequest req) {
@@ -627,7 +628,8 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         entity.setFdaRef(req.getFdaRefId());
         entity.setFfRef(req.getFfRefId() != null ? String.valueOf(req.getFfRefId()) : null);
         entity.setMtaRef(req.getMtaRfqId());
-        entity.setSalesQtnRef(req.getSalesQtnRef());
+        entity.setSalesQtnRef(req.getSalesQtnRef() != null ? req.getSalesQtnRef() :
+                (StringUtils.isNumeric(req.getMtaRfqId()) ? Long.valueOf(req.getMtaRfqId()) : null));
 
         if (req.getChequeDate() != null && !req.getChequeDate().isEmpty()) {
             entity.setChqDate(LocalDate.parse(req.getChequeDate()));

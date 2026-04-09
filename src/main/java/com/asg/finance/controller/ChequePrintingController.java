@@ -6,6 +6,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.error;
 import static com.asg.common.lib.dto.response.ApiResponse.success;
 
 import java.util.List;
+import java.util.Map;
 
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
@@ -49,6 +50,14 @@ public class ChequePrintingController {
 			@Parameter(name = "signType", description = "Signature type filter", required = false, example = "Manual") @RequestParam(required = false) String signType) {
 		List<ChequeStockResponse> responses = service.getChequeStock(bankCode, signType);
 		return success("Cheque stocks fetched successfully", responses);
+	}
+
+	@AllowedAction(UserRolesRightsEnum.VIEW)
+	@Operation(summary = "Get default cheque print bank", description = "Returns default bank value from global parameters for cheque printing")
+	@GetMapping("/default-bank")
+	public ResponseEntity<?> getDefaultChequePrintBank() {
+		String defaultBank = service.getDefaultChequePrintBank();
+		return success("Default cheque print bank fetched successfully", Map.of("defaultBank", defaultBank));
 	}
 
 	@AllowedAction(UserRolesRightsEnum.PRINT)

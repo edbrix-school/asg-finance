@@ -14,8 +14,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -50,6 +52,17 @@ class ChequePrintingControllerTest {
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         verify(chequePrintingService).getChequeStock("HSBC", "NOT_SIGNED");
+    }
+
+    @Test
+    void getDefaultChequePrintBank_ReturnsOk() {
+        when(chequePrintingService.getDefaultChequePrintBank()).thenReturn("HSBC");
+
+        ResponseEntity<?> result = controller.getDefaultChequePrintBank();
+
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+        assertInstanceOf(Map.class, result.getBody());
+        verify(chequePrintingService).getDefaultChequePrintBank();
     }
 
     @Test

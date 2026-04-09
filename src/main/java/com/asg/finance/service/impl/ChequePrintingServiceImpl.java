@@ -5,6 +5,7 @@ import java.util.Map;
 
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.GlobalParameterService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.finance.dto.ChequePrintBatchRequest;
 import com.asg.finance.dto.ChequePrintBatchResponse;
@@ -30,10 +31,12 @@ public class ChequePrintingServiceImpl implements ChequePrintingService {
 	private static final String STATUS_SUCCESS = "SUCCESS";
 	private static final String STATUS_ERROR = "ERROR";
 	private static final String STATUS_INFO = "INFO:";
+	private static final String CHEQUE_PRINT_BANK = "CHEQUE_PRINT_BANK";
 
 	private final ChequePrintingRepository repo;
 	private final PrintService printService;
 	private final DataSource dataSource;
+	private final GlobalParameterService globalParameterService;
 
 	@Override
 	public List<PendingChequeResponse> getPendingCheques() {
@@ -42,7 +45,15 @@ public class ChequePrintingServiceImpl implements ChequePrintingService {
 
 	@Override
 	public List<ChequeStockResponse> getChequeStock(String bankCode, String signType) {
-		return repo.fetchChequeStock(bankCode, signType);
+		String normalizedBankCode = StringUtils.defaultIfBlank(
+				StringUtils.trimToNull(bankCode),
+				getDefaultChequePrintBank());
+		return repo.fetchChequeStock(normalizedBankCode, signType);
+	}
+
+	@Override
+	public String getDefaultChequePrintBank() {
+		return globalParameterService.getParameterValue(CHEQUE_PRINT_BANK, "GROUP", "-", "");
 	}
 
 

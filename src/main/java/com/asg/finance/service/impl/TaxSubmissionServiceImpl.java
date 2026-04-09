@@ -36,9 +36,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -84,8 +84,8 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         }
 
         // Normalize period dates to midnight to match legacy behavior / PL-SQL expectations
-        Timestamp normalizedPeriodFrom = normalizeToMidnight(request.getPeriodFrom());
-        Timestamp normalizedPeriodTo = normalizeToMidnight(request.getPeriodTo());
+        LocalDateTime normalizedPeriodFrom = normalizeToMidnight(request.getPeriodFrom());
+        LocalDateTime normalizedPeriodTo = normalizeToMidnight(request.getPeriodTo());
 
         // Get VAT filing period parameter
         Integer vatFilingPeriod = getVatFilingPeriod(finalCompanyId);
@@ -163,7 +163,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         String userId = UserContext.getUserId();
         log.info("updateTaxSubmission started for transactionPoid={} groupPoid={} userId={}", transactionPoid, groupPoid, userId);
 
-        GlobalTaxSubmissionHdr header = hdrRepository.findByTransactionPoidAndGroupPoid(transactionPoid, groupPoid)
+        GlobalTaxSubmissionHdr header = hdrRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Tax Submission", "transactionPoid", transactionPoid));
 
         // Create a copy of the existing entity for logging
@@ -187,8 +187,8 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         }
 
         // Normalize period dates to midnight to match legacy behavior / PL-SQL expectations
-        Timestamp normalizedPeriodFrom = normalizeToMidnight(request.getPeriodFrom());
-        Timestamp normalizedPeriodTo = normalizeToMidnight(request.getPeriodTo());
+        LocalDateTime normalizedPeriodFrom = normalizeToMidnight(request.getPeriodFrom());
+        LocalDateTime normalizedPeriodTo = normalizeToMidnight(request.getPeriodTo());
 
         // Get VAT filing period parameter
         Integer vatFilingPeriod = getVatFilingPeriod(header.getCompanyPoid());
@@ -249,7 +249,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         Long groupPoid = UserContext.getGroupPoid();
         log.info("deleteTaxSubmission started for transactionPoid={} groupPoid={}", transactionPoid, groupPoid);
 
-        GlobalTaxSubmissionHdr header = hdrRepository.findByTransactionPoidAndGroupPoid(transactionPoid, groupPoid)
+        GlobalTaxSubmissionHdr header = hdrRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Tax Submission", "transactionPoid", transactionPoid));
 
         // Check if can be deleted
@@ -304,7 +304,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         // Use custom search method
         // Note: GROUP_POID column is NULL in all records in GLOBAL_TAX_SUBMISSION_HDR table,
         // so we pass null for groupPoid to skip GROUP_POID filtering entirely
-        RawSearchResult raw = searchTaxSubmissions(filterList, operator, pageable, isDeleted, null, periodFrom, periodTo);
+        RawSearchResult raw = searchTaxSubmissions(filterList, operator, pageable, isDeleted, null);
 
         Page<Map<String, Object>> page = new PageImpl<>(raw.records(), pageable, raw.totalRecords());
 
@@ -338,7 +338,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         }
 
         // Validate period is 1 month duration
-        long daysBetween = (header.getPeriodTo().getTime() - header.getPeriodFrom().getTime()) / (1000 * 60 * 60 * 24) + 1;
+        long daysBetween = ChronoUnit.DAYS.between(header.getPeriodFrom(), header.getPeriodTo()) + 1;
         if (daysBetween > 31) {
             throw new ValidationException("Period must be 1 month duration (30 days max) to load VAT details");
         }
@@ -470,8 +470,8 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         List<String> errors = new ArrayList<>();
 
         // Normalize period dates to midnight to match legacy behavior / PL-SQL expectations
-        Timestamp normalizedPeriodFrom = normalizeToMidnight(request.getPeriodFrom());
-        Timestamp normalizedPeriodTo = normalizeToMidnight(request.getPeriodTo());
+        LocalDateTime normalizedPeriodFrom = normalizeToMidnight(request.getPeriodFrom());
+        LocalDateTime normalizedPeriodTo = normalizeToMidnight(request.getPeriodTo());
 
         // Get VAT filing period parameter
         Integer vatFilingPeriod = getVatFilingPeriod(request.getCompanyId());
@@ -508,8 +508,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
      * Custom search method for tax submissions that handles GROUP_POID with exact numeric match
      */
     private RawSearchResult searchTaxSubmissions(List<FilterDto> filters, String operator, Pageable pageable, 
-                                                 String isDeleted, @Nullable Long groupPoid, 
-                                                 @Nullable LocalDate periodFrom, @Nullable LocalDate periodTo) {
+                                                 String isDeleted, @Nullable Long groupPoid) {
         // Base SQL query
         String baseSql = "SELECT * FROM GLOBAL_TAX_SUBMISSION_HDR";
         
@@ -518,7 +517,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         
         // Build WHERE clause with proper GROUP_POID handling
         WhereClauseResult whereClause = buildTaxSubmissionWhereClause(columnNames, filters, operator, isDeleted, 
-                                                                       groupPoid, periodFrom, periodTo);
+                                                                       groupPoid);
         
         // Apply sorting
         String sortedSql = applyTaxSubmissionSorting(baseSql, pageable, columnNames, whereClause.sql());
@@ -560,9 +559,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
      */
     private WhereClauseResult buildTaxSubmissionWhereClause(List<String> fields, List<FilterDto> filters, 
                                                             String operator, String isDeleted, 
-                                                            @Nullable Long groupPoid,
-                                                            @Nullable LocalDate periodFrom, 
-                                                            @Nullable LocalDate periodTo) {
+                                                            @Nullable Long groupPoid) {
         StringBuilder sql = new StringBuilder(" WHERE 1=1 ");
         List<Object> params = new ArrayList<>();
         
@@ -580,14 +577,6 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         if (groupPoid != null) {
             sql.append(" AND GROUP_POID = ?");
             params.add(groupPoid);
-        }
-        
-        // Date filters for periodFrom/periodTo (if provided)
-        if (periodFrom != null && periodTo != null) {
-            sql.append(" AND TRANSACTION_DATE >= DATE ?");
-            params.add(java.sql.Date.valueOf(periodFrom));
-            sql.append(" AND TRANSACTION_DATE <= DATE ?");
-            params.add(java.sql.Date.valueOf(periodTo));
         }
         
         // Handle other filters
@@ -864,17 +853,15 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
     }
 
     /**
-     * Normalize a {@link Timestamp} to midnight (00:00:00) of its date component.
+     * Normalize a {@link LocalDateTime} to midnight (00:00:00) of its date component.
      * This mirrors the legacy ADF behavior where only the date part was sent to
      * PL/SQL procedures expecting DATE values that are compared using TRUNC.
      */
-    private Timestamp normalizeToMidnight(Timestamp timestamp) {
-        if (timestamp == null) {
+    private LocalDateTime normalizeToMidnight(LocalDateTime dateTime) {
+        if (dateTime == null) {
             return null;
         }
-        LocalDateTime ldt = timestamp.toLocalDateTime();
-        LocalDate localDate = ldt.toLocalDate();
-        return Timestamp.valueOf(localDate.atStartOfDay());
+        return dateTime.toLocalDate().atStartOfDay();
     }
 }
 

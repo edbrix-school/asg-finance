@@ -7,6 +7,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
+import com.asg.common.lib.dto.DeleteReasonDto;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
@@ -85,11 +86,12 @@ public class ExpenseReallocationController {
 
 		log.info("getExpenseReallocationById started for transactionPoid={} groupPoid={}", transactionPoid,
 				UserContext.getGroupPoid());
-		loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(),
-				transactionPoid.toString());
 
 		ExpenseReallocationResponse response = expenseReallocationService.getExpenseReallocationById(transactionPoid,
 				UserContext.getGroupPoid());
+
+		loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(),
+				transactionPoid.toString());
 
 		log.info("getExpenseReallocationById completed for transactionPoid={}", transactionPoid);
 
@@ -124,12 +126,12 @@ public class ExpenseReallocationController {
 	@DeleteMapping("/{transactionPoid}")
 	@AllowedAction(UserRolesRightsEnum.DELETE)
 	public ResponseEntity<?> deleteExpenseReallocation(
-			@Parameter(description = "Transaction POID", required = true) @PathVariable Long transactionPoid) {
+			@Parameter(description = "Transaction POID", required = true) @PathVariable Long transactionPoid,
+            @Valid @RequestBody(required = false) DeleteReasonDto deleteReasonDto) {
 
-		log.info("deleteExpenseReallocation started for transactionPoid={} groupPoid={}", transactionPoid,
-				UserContext.getGroupPoid());
+		log.info("deleteExpenseReallocation started for transactionPoid={}", transactionPoid);
 
-		expenseReallocationService.deleteExpenseReallocation(transactionPoid, UserContext.getGroupPoid());
+		expenseReallocationService.deleteExpenseReallocation(transactionPoid, deleteReasonDto);
 
 		log.info("deleteExpenseReallocation completed for transactionPoid={}", transactionPoid);
 		loggingService.createLogSummaryEntry(LogDetailsEnum.DELETED, UserContext.getDocumentId(),

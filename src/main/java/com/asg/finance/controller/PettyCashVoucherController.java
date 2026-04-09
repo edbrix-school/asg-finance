@@ -26,6 +26,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -538,6 +539,26 @@ public class PettyCashVoucherController {
                 pettyCashVoucherService.loadPettyCashFromCompletedPo(groupPoid, companyPoid, userPoid, poPoid);
         String message = response.getMessage() != null ? response.getMessage() : "Petty Cash from completed PO fetched successfully";
         return success(message, response.getResponseList());
+    }
+
+    @Operation(
+            summary = "Load Advance Details",
+            description = "Loads advance details for a given advance POID and amount by calling PROC_GL_PETTY_ADVANCE_DTLLOAD.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Advance details fetched successfully",
+                            content = @Content(schema = @Schema(implementation = AdvanceDetailDto.class))),
+                    @ApiResponse(responseCode = "400", description = "Invalid input parameters"),
+                    @ApiResponse(responseCode = "401", description = "Unauthorized")
+            },
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
+    @GetMapping("/load-advance-details")
+    public ResponseEntity<?> loadAdvanceDetails(
+            @Parameter(description = "Advance POID", required = true) @RequestParam String advancePoid,
+            @Parameter(description = "Amount", required = true) @RequestParam BigDecimal amount
+    ) {
+        return success("Advance details fetched successfully", pettyCashVoucherService.loadAdvanceDetails(amount, advancePoid));
     }
 
     @Operation(

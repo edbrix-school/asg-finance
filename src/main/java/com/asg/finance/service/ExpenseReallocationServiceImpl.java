@@ -1,27 +1,27 @@
 package com.asg.finance.service;
 
-import com.asg.common.lib.dto.FilterDto;
-import com.asg.common.lib.dto.FilterRequestDto;
-import com.asg.common.lib.dto.RawSearchResult;
+import com.asg.common.lib.dto.*;
 import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.utility.DateUtil;
 import com.asg.common.lib.utility.PaginationUtil;
+import com.asg.finance.client.CompanyServiceClient;
 import com.asg.finance.dto.*;
 import com.asg.finance.entity.GlExpenseReallocationDtl;
 import com.asg.finance.entity.GlExpenseReallocationHdr;
 import com.asg.finance.entity.GlExpenseReallocationXlDtl;
-import com.asg.finance.repository.ExpenseReallocationStoredProcedure;
-import com.asg.finance.repository.GlExpenseReallocationDtlRepository;
-import com.asg.finance.repository.GlExpenseReallocationHdrRepository;
-import com.asg.finance.repository.GlExpenseReallocationXlDtlRepository;
+import com.asg.finance.repository.*;
 import jakarta.persistence.Column;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -42,8 +42,6 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
-import static com.asg.finance.utility.DateTimeHandler.convertDate;
-
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -54,7 +52,14 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
     private final GlExpenseReallocationXlDtlRepository xlDtlRepository;
     private final ExpenseReallocationStoredProcedure storedProcedureHelper;
     private final DocumentSearchService documentService;
+    private final DocumentDeleteService documentDeleteService;
+    private final CompanyServiceClient companyServiceClient;
+    private final CostCenterRepository costCenterRepository;
+    private final LovDataService lovService;
     private final LoggingService loggingService;
+
+    private static final String TRANSACTION_POID = "TRANSACTION_POID";
+    private static final String COMPANYCODE = "Company Code";
 
     @Override
     @Transactional
@@ -68,7 +73,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         GlExpenseReallocationHdr header = GlExpenseReallocationHdr.builder()
                 .transactionDate(DateUtil.getCurrentDateInUserTimeZone()).groupPoid(groupPoid).companyPoid(companyPoid)
                 .expenseGroupGl(request.getExpenseGroupGlId()).fromCompany(request.getFromCompanyId())
-                .fromDate(convertDate(request.getFromDate())).toDate(convertDate(request.getToDate())).allocationType(request.getAllocationType())
+                .fromDate(request.getFromDate()).toDate(request.getToDate()).allocationType(request.getAllocationType())
                 .costPoid(request.getCostPoid()).remarks(request.getRemarks())
                 .deleted("N").reportGeneration("N").build();
 
@@ -161,8 +166,8 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         header.setNarration(request.getNarration());
         header.setExpenseGroupGl(request.getExpenseGroupGlId());
         header.setFromCompany(request.getFromCompanyId());
-        header.setFromDate(convertDate(request.getFromDate().atStartOfDay()));
-        header.setToDate(convertDate(request.getToDate().atStartOfDay()));
+        header.setFromDate(request.getFromDate());
+        header.setToDate(request.getToDate());
         header.setAllocationType(request.getAllocationType());
         header.setCostPoid(request.getCostPoid());
         header.setRemarks(request.getRemarks());
@@ -187,15 +192,19 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 
     @Override
     @Transactional
-    public void deleteExpenseReallocation(Long transactionPoid, Long groupPoid) {
-        log.info("deleteExpenseReallocation started for transactionPoid={} groupPoid={}", transactionPoid, groupPoid);
+    public void deleteExpenseReallocation(Long transactionPoid, DeleteReasonDto deleteReasonDto) {
+        log.info("deleteExpenseReallocation started for transactionPoid={}", transactionPoid);
 
-        GlExpenseReallocationHdr header = hdrRepository.findByTransactionPoidAndGroupPoid(transactionPoid, groupPoid)
-                .orElseThrow(() -> new ResourceNotFoundException("Expense Reallocation", "transactionPoid",
-                        transactionPoid));
+        hdrRepository.findByTransactionPoid(transactionPoid).orElseThrow(() -> new ResourceNotFoundException("Expense Reallocation", "transactionPoid",
+                transactionPoid));
 
-        header.setDeleted("Y");
-        hdrRepository.save(header);
+        documentDeleteService.deleteDocument(
+                transactionPoid,
+                "GL_EXPENSE_REALLOCATION_HDR",
+                TRANSACTION_POID,
+                deleteReasonDto,
+                null
+        );
 
         log.info("deleteExpenseReallocation completed for transactionPoid={}", transactionPoid);
     }
@@ -213,7 +222,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
                 endDate);
 
         RawSearchResult raw = documentService.search(documentId, filterList, operator, pageable, isDeleted, "NARRATION",
-                "TRANSACTION_POID");
+                TRANSACTION_POID);
 
         Page<Map<String, Object>> page = new PageImpl<>(raw.records(), pageable, raw.totalRecords());
         log.info("getExpenseReallocations completed for docId={} count={}", documentId, page.getNumber());
@@ -269,30 +278,51 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
             Sheet sheet = workbook.getSheetAt(0);
             List<String> headers = new ArrayList<>();
 
-            // -------- HEADER PARSING (ROW 1 + ROW 2) --------
             Row headerRow1 = sheet.getRow(1);
             Row headerRow2 = sheet.getRow(2);
 
             if (headerRow1 == null || headerRow2 == null) {
-                throw new RuntimeException("Invalid template: Header rows missing");
+                throw new ValidationException("Invalid template: Header rows missing");
             }
 
             int colIndex = 0;
             int span = getMergedColumnSpan(sheet, 1, 1);
 
             for (int i = 0; i < span + 1; i++) {
-                headers.add(getStringCell(headerRow2.getCell(colIndex++)));
+
+                String costCenterCode = StringUtils.trimToNull(
+                        getStringCell(headerRow2.getCell(colIndex++))
+                );
+
+                if (costCenterCode == null || costCenterCode.isBlank()) {
+                    headers.add(null); // mark as skip column
+                    continue;
+                }
+
+                if (COMPANYCODE.equalsIgnoreCase(costCenterCode) ||
+                        "TOTAL".equalsIgnoreCase(costCenterCode)) {
+
+                    headers.add(costCenterCode);
+                    continue;
+                }
+
+                boolean exists = costCenterRepository.existsByCostCenterCode(costCenterCode);
+
+                if (!exists) {
+                    throw new ValidationException("Please check Cost center or Company code and upload again");
+                }
+
+                headers.add(costCenterCode);
             }
 
-            // -------- DATA ROWS --------
             for (int r = 3; r <= sheet.getLastRowNum(); r++) {
 
                 Row row = sheet.getRow(r);
-                if (row == null)
-                    continue;
+                if (row == null) continue;
 
-                String companyCode = getStringCell(row.getCell(0));
-                if (companyCode == null || companyCode.equalsIgnoreCase("Totals")) {
+                String companyCode = StringUtils.trimToNull(getStringCell(row.getCell(0)));
+
+                if (companyCode == null || "Totals".equalsIgnoreCase(companyCode)) {
                     continue;
                 }
 
@@ -304,13 +334,34 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
                     String key = headers.get(c);
                     Cell cell = row.getCell(c);
 
-                    if ("Company Code".equalsIgnoreCase(key)) {
-                        rowMap.put(key, getStringCell(cell));
+                    if (key == null) {
+                        continue;
+                    }
+
+                    if (COMPANYCODE.equalsIgnoreCase(key)) {
+
+                        String companyCodeValue = StringUtils.trimToNull(getStringCell(cell));
+
+                        if (companyCodeValue == null) {
+                            throw new ValidationException(
+                                    "Company Code cannot be empty at row " + (r + 1)
+                            );
+                        }
+
+                        LovGetListDto dto = mapLovDetails(companyCodeValue, "COMPANY", false);
+
+                        if (dto == null || dto.getPoid() == null) {
+                            throw new ValidationException("Please check Cost center or Company code and upload again");
+                        }
+                        rowMap.put("company", dto.getPoid());
+                        rowMap.put("companyName", dto.getDescription());
+                        rowMap.put("companyCode", companyCodeValue);
                         continue;
                     }
 
                     BigDecimal value = getDecimal(cell);
                     value = value != null ? value : BigDecimal.ZERO;
+
                     rowMap.put(key, value);
 
                     if (!"TOTAL".equalsIgnoreCase(key)) {
@@ -318,12 +369,15 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
                     }
                 }
 
-                BigDecimal excelTotal = getDecimal(row.getCell(headers.size() - 1));
+                Cell totalCell = row.getCell(headers.size() - 1);
+                BigDecimal excelTotal = getDecimal(totalCell);
                 excelTotal = excelTotal != null ? excelTotal : BigDecimal.ZERO;
 
                 if (rowTotal.compareTo(excelTotal) != 0) {
                     throw new RuntimeException(
-                            "Invalid Total at row " + (r + 1) + ". Expected: " + rowTotal + " Found: " + excelTotal);
+                            "Invalid Total at row " + (r + 1) +
+                                    ". Expected: " + rowTotal + " Found: " + excelTotal
+                    );
                 }
 
                 grandTotal = grandTotal.add(rowTotal);
@@ -337,7 +391,9 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         }
 
         if (grandTotal.compareTo(BigDecimal.valueOf(100)) != 0) {
-            throw new IllegalArgumentException("Total allocation must be 100%, found: " + grandTotal);
+            throw new IllegalArgumentException(
+                    "Total allocation must be 100%, found: " + grandTotal
+            );
         }
 
         return result;
@@ -403,7 +459,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         // HEADER ROW
         Row headerRow = sheet.createRow(2);
         List<String> headers = new ArrayList<>();
-        headers.add("Company Code");
+        headers.add(COMPANYCODE);
         headers.addAll(allocationKeys()); // dynamic allocation columns
         headers.add(null);
         headers.add(null);
@@ -423,7 +479,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 
         Object[][] data = {{"ASG", 10, 15, 5, 5, 10, 0, 0, 0, "", "", ""},
                 {"NSA", 15, 8, 0, 0, 0, 0, 0, 0, "", "", ""}, {"DSA", 10, 10, 0, 0, 0, 0, 0, 0, "", "", ""},
-                {"FAL", 5, 7, 0, 0, 0, 0, 0, 0, "", "", ""}};
+                {"FSL", 5, 7, 0, 0, 0, 0, 0, 0, "", "", ""}};
 
         int rowIdx = 3;
 
@@ -510,7 +566,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         hdrRepository.findByTransactionPoidAndGroupPoid(transactionPoid, groupPoid).orElseThrow(
                 () -> new ResourceNotFoundException("Expense Reallocation", "transactionPoid", transactionPoid));
 
-        List<GlExpenseReallocationDtl> details = dtlRepository.findByTransactionPoid(transactionPoid);
+        List<GlExpenseReallocationDtl> details = dtlRepository.findByTransactionPoid(transactionPoid).orElse(null);
         List<String> errors = new ArrayList<>();
         List<String> warnings = new ArrayList<>();
 
@@ -627,29 +683,26 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
     }
 
     private void validateMandatoryFields(CreateExpenseReallocationRequest request) {
-        if (request.getTransactionDate() == null) {
-            throw new RuntimeException("Transaction Date is required");
-        }
         if (request.getExpenseGroupGlId() == null) {
-            throw new RuntimeException("Expense Group GL is required");
+            throw new ValidationException("Expense Group GL is required");
         }
         if (request.getFromCompanyId() == null) {
-            throw new RuntimeException("From Company is required");
+            throw new ValidationException("From Company is required");
         }
     }
 
     private void validateMandatoryFieldsForUpdate(UpdateExpenseReallocationRequest request) {
         if (request.getTransactionDate() == null) {
-            throw new RuntimeException("Transaction Date is required");
+            throw new ValidationException("Transaction Date is required");
         }
         if (request.getCompanyPoid() == null) {
-            throw new RuntimeException("Company POID is required");
+            throw new ValidationException("Company POID is required");
         }
         if (request.getExpenseGroupGlId() == null) {
-            throw new RuntimeException("Expense Group GL is required");
+            throw new ValidationException("Expense Group GL is required");
         }
         if (request.getFromCompanyId() == null) {
-            throw new RuntimeException("From Company is required");
+            throw new ValidationException("From Company is required");
         }
     }
 
@@ -657,10 +710,10 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         Set<Long> companySet = new HashSet<>();
         for (ExpenseReallocationDetailRequest detail : details) {
             if (detail.getCompany() == null) {
-                throw new RuntimeException("Company is required for all detail lines");
+                throw new ValidationException("Company is required for all detail lines");
             }
             if (companySet.contains(detail.getCompany())) {
-                throw new RuntimeException("Duplicate company found: " + detail.getCompany());
+                throw new IllegalStateException("Duplicate company found: " + detail.getCompany());
             }
             companySet.add(detail.getCompany());
 
@@ -692,14 +745,10 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         response.setTransactionPoid(header.getTransactionPoid());
         response.setTransactionDate(header.getTransactionDate());
         response.setGroupPoid(header.getGroupPoid());
-        response.setCompanyPoid(header.getCompanyPoid());
-        response.setCompanyName(null);
+
         response.setDocRef(header.getDocRef());
         response.setNarration(header.getNarration());
-        response.setExpenseGroupGlId(header.getExpenseGroupGl());
-        response.setExpenseGroupGlName(null);
-        response.setFromCompanyId(header.getFromCompany());
-        response.setFromCompanyName(null);
+
         response.setJvPoid(header.getJvPoid());
         response.setJvRef(header.getJvRef());
         response.setRemarks(header.getRemarks());
@@ -715,16 +764,63 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         response.setDeleted(header.getDeleted());
         response.setGlPosting(false);
 
-        List<GlExpenseReallocationDtl> details = dtlRepository.findByTransactionPoid(header.getTransactionPoid());
+        response.setCompanyPoid(header.getCompanyPoid());
+        response.setCompanyName(getCompanyInfo(header.getCompanyPoid()));
+
+        response.setFromCompanyId(header.getFromCompany());
+        response.setFromCompanyName(getCompanyInfo(header.getFromCompany()));
+
+        setExpenseGroupInfo(response, header.getExpenseGroupGl());
+
+        List<GlExpenseReallocationDtl> details = dtlRepository.findByTransactionPoid(header.getTransactionPoid()).orElse(new ArrayList<GlExpenseReallocationDtl>());
         response.setDetails(details.stream().map(this::convertDetailToResponse).collect(Collectors.toList()));
 
         ExpenseReallocationResponse.DetailTotals detailTotals = calculateTotals(header.getTransactionPoid());
         response.setDetailTotals(detailTotals);
 
-        List<GlExpenseReallocationXlDtl> xlDetails = xlDtlRepository.findByTransactionPoid(header.getTransactionPoid());
+        List<GlExpenseReallocationXlDtl> xlDetails = xlDtlRepository.findByTransactionPoid(header.getTransactionPoid()).orElse(new ArrayList<GlExpenseReallocationXlDtl>());
         response.setXlDetails(xlDetails.stream().map(this::convertXlDetailToResponse).collect(Collectors.toList()));
 
         return response;
+    }
+
+    private String getCompanyInfo(Long companyPoid) {
+        if (companyPoid == null) return null;
+
+        CompanyDto company = companyServiceClient.findById(companyPoid);
+        if (company != null) {
+            return company.getCompanyName();
+        }
+        return null;
+    }
+
+    private void setExpenseGroupInfo(ExpenseReallocationResponse response, Long expenseGroupGl) {
+        if (expenseGroupGl == null) return;
+
+        response.setExpenseGroupGlId(expenseGroupGl);
+
+
+        LovGetListDto gl = mapLovDetails(expenseGroupGl, "GL_MASTER_GROUPS", true);
+        if (gl != null) {
+            response.setExpenseGroupGlDtl(gl);
+        }
+    }
+
+    private LovGetListDto mapLovDetails(Object value, String lovName, boolean isPoid) {
+        if (value == null) return null;
+
+        try {
+            if (isPoid) {
+                Long poid = value instanceof Long ? (Long) value : Long.valueOf(value.toString());
+                return lovService.getDetailsByPoidAndLovName(poid, lovName);
+            } else {
+                String code = value.toString();
+                return lovService.getDetailsByCodeAndLovName(code, lovName);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to map LOV details for value: {}, lovName: {}, isPoid: {}", value, lovName, isPoid, e);
+            return null;
+        }
     }
 
     private ExpenseReallocationResponse.DetailTotals calculateTotals(Long transactionPoid) {
@@ -764,30 +860,72 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         response.setDetRowId(xlDetail.getDetRowId());
         response.setCompany(xlDetail.getCompany());
         response.setCompanyCode(xlDetail.getCompanyCode());
-        response.setCompanyName(null);
         response.setCostCentre(xlDetail.getCostCentre());
         response.setPercent(xlDetail.getPercent());
         response.setRemarks(xlDetail.getRemarks());
+        String companyName = getCompanyInfo(xlDetail.getCompany());
+        response.setCompanyName(companyName);
         return response;
     }
 
     private BigDecimal getDecimal(Cell cell) {
-        if (cell == null)
-            return BigDecimal.ZERO;
-        return BigDecimal.valueOf(cell.getNumericCellValue());
+        if (cell == null) return BigDecimal.ZERO;
+
+        try {
+            switch (cell.getCellType()) {
+
+                case NUMERIC:
+                    return BigDecimal.valueOf(cell.getNumericCellValue());
+
+                case STRING:
+                    String value = cell.getStringCellValue();
+                    if (value == null || value.trim().isEmpty()) {
+                        return BigDecimal.ZERO;
+                    }
+                    return new BigDecimal(value.trim());
+
+                case FORMULA:
+                    return BigDecimal.valueOf(cell.getNumericCellValue());
+
+                default:
+                    return BigDecimal.ZERO;
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private String getStringCell(Cell cell) {
-        if (cell == null)
-            return null;
-        return cell.getStringCellValue().trim();
+        if (cell == null) return null;
+
+        try {
+            switch (cell.getCellType()) {
+
+                case STRING:
+                    return cell.getStringCellValue().trim();
+
+                case NUMERIC:
+                    double num = cell.getNumericCellValue();
+                    return (num == (long) num)
+                            ? String.valueOf((long) num)
+                            : String.valueOf(num);
+
+                case FORMULA:
+                    return cell.getStringCellValue().trim();
+
+                default:
+                    return null;
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private List<String> allocationKeys() {
         return Arrays.stream(GlExpenseReallocationDtl.class.getDeclaredFields())
                 .filter(field -> field.isAnnotationPresent(Column.class))
                 .map(field -> field.getAnnotation(Column.class)).map(Column::name)
-                .filter(name -> !List.of("TRANSACTION_POID", "DET_ROW_ID", "COMPANY", "COMPANY_NAME", "TOTAL",
+                .filter(name -> !List.of(TRANSACTION_POID, "DET_ROW_ID", "COMPANY", "COMPANY_NAME", "TOTAL",
                         "REMARKS", "CREATED_BY", "CREATED_DATE", "LASTMODIFIED_BY", "LASTMODIFIED_DATE").contains(name))
                 .toList();
     }

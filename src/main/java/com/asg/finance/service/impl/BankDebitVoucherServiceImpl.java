@@ -32,6 +32,7 @@ import com.asg.finance.service.BankDebitVoucherService;
 import com.asg.finance.service.GlPostingService;
 import com.asg.finance.service.BillwiseBreakupService;
 import com.asg.finance.service.CostCenterBreakupService;
+import com.asg.finance.service.TelexFileGenerateService;
 import com.asg.finance.validator.BankDebitVoucherValidator;
 import com.nimbusds.oauth2.sdk.util.CollectionUtils;
 import jakarta.persistence.ParameterMode;
@@ -352,6 +353,11 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                 : null;
 
         mapRequestToEntity(request, header);
+        if (request.getTransactionDate() != null) {
+            header.setTransactionDate(request.getTransactionDate());
+        } else {
+            header.setTransactionDate(oldEntity.getTransactionDate());
+        }
         validateTriggerRulesForUpdate(oldEntity, header);
 
         validator.validateVoucherStatusInNewTransaction(header);
@@ -885,7 +891,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         entity.setTtSpecialRate(request.getTtSpecialRate());
         entity.setRateDealNo(request.getRateDealNo());
 //        entity.setDocRef(request.getDocRef());
-        entity.setFileGenerated(request.getFileGenerated());
+        entity.setFileGenerated(request.getFileGenerated() != null ? request.getFileGenerated() : "N");
         entity.setFileName(request.getFileName());
         entity.setFileGeneratedDate(request.getFileGeneratedDate());
         entity.setFileGeneratedBy(request.getFileGeneratedBy());
@@ -1523,16 +1529,12 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                 .orElseThrow(() -> new ResourceNotFoundException("Bank Debit Voucher", "transactionPoid", transactionPoid));
 
         Map<String, Object> params = printService.buildBaseParams(transactionPoid, "400-111");
-        JasperReport mainReport = null;
-        if (header.getPayingType() != null) {
-            String payingType = header.getPayingType();
-            if (payingType.contains("3")) {
-                mainReport = printService.load("Finance/BankPayments/BankDebitVouherCreditCard.jrxml");
-            } else if (payingType.contains("4")) {
-                mainReport = printService.load("Finance/BankPayments/BankDebitVouherBankCharges.jrxml");
-            } else {
-                mainReport = printService.load("Finance/BankPayments/BankDebitVoucher.jrxml");
-            }
+        JasperReport mainReport;
+        String payingType = header.getPayingType();
+        if (payingType != null && payingType.contains("3")) {
+            mainReport = printService.load("Finance/BankPayments/BankDebitVouherCreditCard.jrxml");
+        } else {
+            mainReport = printService.load("Finance/BankPayments/BankDebitVoucher.jrxml");
         }
         params.put("BANK_DEBIT_VOUCHER_SUBREPORT_1", printService.load("Finance/BankPayments/BankDebitVoucher_subreport1.jrxml"));
         return printService.fillReportToPdf(mainReport, params, dataSource);

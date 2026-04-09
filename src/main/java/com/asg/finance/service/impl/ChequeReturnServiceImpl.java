@@ -115,7 +115,7 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
         }
 
         String key = trnPoid.toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, DOC_ID_CHEQUE_RETURN, key);
+        loggingService.createLogSummaryEntry(DOC_ID_CHEQUE_RETURN, key, String.format("%s %s", LogDetailsEnum.CREATED, header.getDocRef()));
 
         return toResponse(header, request, "Cheque Return created successfully.");
     }

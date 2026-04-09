@@ -3,6 +3,8 @@ package com.asg.finance.service;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.finance.dto.*;
+
+import java.math.BigDecimal;
 import com.asg.finance.dto.PettyRefTypeResponse;
 import org.springframework.data.domain.Pageable;
 
@@ -71,6 +73,8 @@ public interface PettyCashVoucherService {
             Long loginUserPoid,
             String poPoid
     );
+
+    List<AdvanceDetailDto> loadAdvanceDetails(BigDecimal amount, String advancePoid);
 
     List<String> getAllowedRefTypes(Long userPoid);
 

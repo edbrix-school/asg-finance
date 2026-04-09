@@ -52,7 +52,7 @@ public class HsbcApiSyncController {
             @RequestParam String accountNumber,
 
             @Parameter(description = "Date in format yyyy-MM-dd", required = true, example = "2025-01-01")
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) throws Exception {
 
         String message = service.syncHsbcApiData(accountNumber, date);
         return success(message);

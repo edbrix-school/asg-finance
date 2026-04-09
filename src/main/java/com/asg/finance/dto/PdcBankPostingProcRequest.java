@@ -8,9 +8,9 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class PdcBankPostingProcRequest {
-    //private Long companyPoid;
+
     private Long transactionPoid;
-    //private Long groupPoid;
+
     private Long payGlPoid;
     private String payingTo;
     private Long bankPoid;
@@ -18,5 +18,5 @@ public class PdcBankPostingProcRequest {
     private Double chequeAmount;
     private String startChequeNo;
     private String startDate;    // VARCHAR2 date
-    //private String loginUser;
+
 }

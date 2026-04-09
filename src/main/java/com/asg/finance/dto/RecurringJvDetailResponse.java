@@ -13,10 +13,10 @@ import java.util.List;
 @AllArgsConstructor
 public class RecurringJvDetailResponse {
 
-    private Long lineId;
+    private Long detRowId;
     private String type;
-    private Long companyId;
-    private Long glId;
+    private Long companyPoid;
+    private Long glPoid;
     private BigDecimal drAmt;
     private BigDecimal crAmt;
     private String remarks;
@@ -27,4 +27,3 @@ public class RecurringJvDetailResponse {
     private List<BillwiseBreakupPopupRequestDto> billWiseBreakup;
 
 }
-

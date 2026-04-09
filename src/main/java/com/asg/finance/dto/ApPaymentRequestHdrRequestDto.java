@@ -31,8 +31,12 @@ public class ApPaymentRequestHdrRequestDto {
     private String requestedBy;
     private String remarks;
 
+    private String accResponseCategory;
+    private String accResponse;
+
     private BigDecimal totalAmount;
 
     /* Detail lines */
     private List<ApPaymentRequestDtlRequestDto> details;
+    private List<ApPaymentRequestStockDtlRequest> stockDetails;
 }

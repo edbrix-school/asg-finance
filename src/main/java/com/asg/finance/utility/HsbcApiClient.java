@@ -9,6 +9,7 @@ import java.sql.SQLException;
 import javax.sql.DataSource;
 
 import com.asg.common.lib.client.ParameterServiceClient;
+import com.asg.common.lib.exception.AsgException;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
@@ -41,12 +42,12 @@ public class HsbcApiClient {
     private final ParameterServiceClient parameterServiceClient;
 
     public void syncHsbcData(String accountNumber, String date) throws Exception {
-        String apiUrl = parameterServiceClient.findParameterValueByName("HSBC_URL_FOR_API").orElseThrow();
-        String profileId = parameterServiceClient.findParameterValueByName("HSBC_PROFILE_ID_FOR_API").orElseThrow();
-            String clientSecret = parameterServiceClient.findParameterValueByName("HSBC_CLIENT_SECRET_API").orElseThrow();
-        String bankPublicKeyPath = parameterServiceClient.findParameterValueByName("HSBC_PUBLIC_KEY_FOR_API").orElseThrow();
-        String asgPrivateKeyPath = parameterServiceClient.findParameterValueByName("HSBC_ASG_PRIV_KEY_FOR_API").orElseThrow();
-        String secretKey = parameterServiceClient.findParameterValueByName("HSBC_SECRET_KEY_API").orElseThrow();
+        String apiUrl = parameterServiceClient.findParameterValueByName("HSBC_URL_FOR_API").orElseThrow(() -> new AsgException("Missing parameter: HSBC_URL_FOR_API", 400));
+        String profileId = parameterServiceClient.findParameterValueByName("HSBC_PROFILE_ID_FOR_API").orElseThrow(() -> new AsgException("Missing parameter: HSBC_PROFILE_ID_FOR_API", 400));
+        String clientSecret = parameterServiceClient.findParameterValueByName("HSBC_CLIENT_SECRET_API").orElseThrow(() -> new AsgException("Missing parameter: HSBC_CLIENT_SECRET_API", 400));
+        String bankPublicKeyPath = parameterServiceClient.findParameterValueByName("HSBC_PUBLIC_KEY_FOR_API").orElseThrow(() -> new AsgException("Missing parameter: HSBC_PUBLIC_KEY_FOR_API", 400));
+        String asgPrivateKeyPath = parameterServiceClient.findParameterValueByName("HSBC_ASG_PRIV_KEY_FOR_API").orElseThrow(() -> new AsgException("Missing parameter: HSBC_ASG_PRIV_KEY_FOR_API", 400));
+        String secretKey = parameterServiceClient.findParameterValueByName("HSBC_SECRET_KEY_API").orElseThrow(() -> new AsgException("Missing parameter: HSBC_SECRET_KEY_API", 400));
         
         String requestBody = getApiRequestBody(accountNumber, date);
         
@@ -85,8 +86,12 @@ public class HsbcApiClient {
             stmt.setDate(5, null);
             stmt.registerOutParameter(6, OracleTypes.VARCHAR);
             stmt.execute();
-            
-            return stmt.getString(6);
+
+            String apiRequestBody = stmt.getString(6);
+            if (apiRequestBody != null && apiRequestBody.contains("ERROR")) {
+                throw new AsgException("HSBC API request body error: " + apiRequestBody, 400);
+            }
+            return apiRequestBody;
         }
     }
 
@@ -112,10 +117,14 @@ public class HsbcApiClient {
                                   PGPSecretKey secretKeyObj, String secretKey) throws Exception {
         JSONObject jsonResponse = JSON.parseObject(response);
         String statusCode = jsonResponse.getString("statusCode");
+        String error = jsonResponse.getString("error");
         String encryptedResponse = jsonResponse.getString("reportBase64");
         
-        if ("RJCT".equals(statusCode) || encryptedResponse == null || encryptedResponse.trim().isEmpty()) {
+        if ("RJCT".equals(statusCode) || "RJCT".equals(error) || encryptedResponse == null || encryptedResponse.trim().isEmpty()) {
             String statusDesc = jsonResponse.getString("statusDesc");
+            if (statusDesc == null) {
+                statusDesc = jsonResponse.getString("description");
+            }
             log.error("HSBC API request rejected - Status: {}, Description: {}, Response: {}", statusCode, statusDesc, response);
             throw new Exception("HSBC API request failed: " + statusDesc);
         }

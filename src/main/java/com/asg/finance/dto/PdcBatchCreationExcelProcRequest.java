@@ -3,6 +3,7 @@ package com.asg.finance.dto;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 @Data
 public class PdcBatchCreationExcelProcRequest {
@@ -11,7 +12,7 @@ public class PdcBatchCreationExcelProcRequest {
     private Integer noOfCheques;
     private BigDecimal chequeAmount;
     private String startChequeNo;
-    private String startDate;
+    private LocalDate startDate;
     private String prePrinted;
     private String narration;
     private String billRef;

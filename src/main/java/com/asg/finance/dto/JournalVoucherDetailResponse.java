@@ -1,6 +1,5 @@
 package com.asg.finance.dto;
 
-import com.asg.common.lib.dto.response.LoadBillwiseBreakupResponseDto;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -45,7 +44,7 @@ public class JournalVoucherDetailResponse {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class GlDetailResponse {
-        private Long sn;
+        private Long detRowId;
         private String type;
         private String companyPoid;
         private String glPoid;
@@ -54,7 +53,7 @@ public class JournalVoucherDetailResponse {
         private BigDecimal drAmt;
         private BigDecimal crAmt;
         private String remarks;
-        private List<CostCenterBreakupResponseDto> costCenterBreakup;
-        private List<LoadBillwiseBreakupResponseDto> billWiseBreakup;
+        private List<CostCenterBreakupPopupRequestDto> costCenterBreakup;
+        private List<BillwiseBreakupPopupRequestDto> billWiseBreakup;
     }
 }

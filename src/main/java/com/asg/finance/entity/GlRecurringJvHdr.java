@@ -62,7 +62,7 @@ public class GlRecurringJvHdr extends BaseEntity {
 
     @Column(name = "MONTH_WISE_AMT")
     private BigDecimal monthWiseAmt;
-
+    
     @Column(name = "REF_TYPE", length = 300)
     private String refType;
 

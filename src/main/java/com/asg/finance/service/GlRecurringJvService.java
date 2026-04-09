@@ -14,7 +14,7 @@ public interface GlRecurringJvService {
 
     RecurringJvResponse getRecurringJvById(Long transactionPoid);
 
-    RecurringJvCreateResponse createRecurringJv(RecurringJvRequest request, String docId);
+    RecurringJvCreateResponse createRecurringJv(RecurringJvRequest request);
 
     RecurringJvCreateResponse updateRecurringJv(Long transactionPoid, RecurringJvRequest request, String docId);
 

@@ -281,7 +281,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
             dto.setItemDetails(itemDtlRepository.findByTransactionPoid(transactionPoid).stream()
                     .map(this::mapItemToDto).toList());
             dto.setChargeDetails(chargeDtlRepository.findByTransactionPoid(transactionPoid).stream()
-                    .map(this::mapChargeToDto).toList());
+                    .map(charge -> mapChargeToDto(charge, hdr.getRefType())).toList());
             dto.setGlDetails(glDtlRepository.findByTransactionPoid(transactionPoid).stream()
                     .map(this::mapGlToDto).toList());
             
@@ -1393,15 +1393,14 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                 .build();
     }
 
-    private ApPurchaseCnChargeDtlDto mapChargeToDto(ApPurchaseCnChargeDtl entity) {
+    private ApPurchaseCnChargeDtlDto mapChargeToDto(ApPurchaseCnChargeDtl entity, String refType) {
         ApPurchaseCnChargeDtlDto dto = new ApPurchaseCnChargeDtlDto();
         dto.setDetRowId(entity.getDetRowId());
         dto.setChargePoid(entity.getChargePoid());
         if (entity.getChargePoid() != null) {
             // Use appropriate LOV based on charge context - FF vs FDA
-            // This should ideally be determined by the refType context, but for now using a generic LOV
-            // TODO: Implement dynamic LOV selection based on refType (FF_CHARGE_MASTER_PJ vs FDA_CHARGE_MASTER_PJ)
-            dto.setChargeDet(lovService.getDetailsByPoidAndLovName(entity.getChargePoid(), LOV_FF_CHARGE_MASTER_PJ));
+            String lovName = REF_TYPE_FF.equals(refType) ? LOV_FF_CHARGE_MASTER_PJ : LOV_FDA_CHARGE_MASTER_PJ;
+            dto.setChargeDet(lovService.getDetailsByPoidAndLovName(entity.getChargePoid(), lovName));
         }
         dto.setChargeAmount(entity.getChargeAmount());
         dto.setDescription(entity.getDescription());

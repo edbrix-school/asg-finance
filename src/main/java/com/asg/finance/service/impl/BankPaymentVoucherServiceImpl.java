@@ -169,13 +169,13 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         // Legacy DocumentBeforeSave validations
         validateBeforeSaveRequest(req);
         if ("FF JOBS".equalsIgnoreCase(req.getRefType()) && req.getFfRefId() != null) {
-            validateJobInNewTransaction(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), String.valueOf(req.getFfRefId()), "FF JOBS");
+            validateJobInNewTransaction(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), String.valueOf(req.getFfRefId()), "FF JOBS", documentId, UserContext.getUserPoid());
         }
         if ("FDA JOBS".equalsIgnoreCase(req.getRefType()) && req.getFdaRefId() != null) {
-            validateJobInNewTransaction(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), String.valueOf(req.getFdaRefId()), "FDA JOBS");
+            validateJobInNewTransaction(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), String.valueOf(req.getFdaRefId()), "FDA JOBS", documentId, UserContext.getUserPoid());
         }
         if ("MTA RFQ".equalsIgnoreCase(req.getRefType()) && req.getMtaRfqId() != null) {
-            validateJobInNewTransaction(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), String.valueOf(req.getMtaRfqId()), "MTA RFQ");
+            validateJobInNewTransaction(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), String.valueOf(req.getMtaRfqId()), "MTA RFQ", documentId, UserContext.getUserPoid());
         }
 
         GLPaymentVoucherHDREntity entity = mapHeaderFromRequest(req);
@@ -242,13 +242,13 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         // Legacy DocumentBeforeSave validations
         validateBeforeSaveRequest(req);
         if ("FF JOBS".equalsIgnoreCase(req.getRefType()) && req.getFfRefId() != null) {
-            validateJobInNewTransaction(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), String.valueOf(req.getFfRefId()), "FF JOBS");
+            validateJobInNewTransaction(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), String.valueOf(req.getFfRefId()), "FF JOBS", documentId, UserContext.getUserPoid());
         }
         if ("FDA JOBS".equalsIgnoreCase(req.getRefType()) && req.getFdaRefId() != null) {
-            validateJobInNewTransaction(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), String.valueOf(req.getFdaRefId()), "FDA JOBS");
+            validateJobInNewTransaction(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), String.valueOf(req.getFdaRefId()), "FDA JOBS", documentId, UserContext.getUserPoid());
         }
         if ("MTA RFQ".equalsIgnoreCase(req.getRefType()) && req.getMtaRfqId() != null) {
-            validateJobInNewTransaction(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), String.valueOf(req.getMtaRfqId()), "MTA RFQ");
+            validateJobInNewTransaction(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), String.valueOf(req.getMtaRfqId()), "MTA RFQ", documentId, UserContext.getUserPoid());
         }
 
         validateBeforeSaveInNewTransaction(existing);
@@ -420,6 +420,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
             entity.setReleasedByUserCode(Objects.requireNonNull(UserContext.getCurrentUser()).getUserName());
             entity.setReleasedDate(LocalDate.now());
         }
+        entity.setSalesQtnRef(req.getSalesQtnRef());
     }
 
     private void validateRefType(BankPaymentVoucherRequest req) {
@@ -437,7 +438,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                     throw new ValidationException("FDA Ref Id is mandatory for Ref Type = FDA JOBS.");
             }
             case "MTA RFQ" -> {
-                if (req.getMtaRfqId() == null)
+                if (req.getMtaRfqId() == null && req.getSalesQtnRef() == null)
                     throw new ValidationException("MTA RFQ Id is mandatory for Ref Type = MTA RFQ.");
             }
             case "CUSTOM" -> {
@@ -626,6 +627,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         entity.setFdaRef(req.getFdaRefId());
         entity.setFfRef(req.getFfRefId() != null ? String.valueOf(req.getFfRefId()) : null);
         entity.setMtaRef(req.getMtaRfqId());
+        entity.setSalesQtnRef(req.getSalesQtnRef());
 
         if (req.getChequeDate() != null && !req.getChequeDate().isEmpty()) {
             entity.setChqDate(LocalDate.parse(req.getChequeDate()));
@@ -1177,9 +1179,9 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    protected void validateJobInNewTransaction(Long groupPoid, Long companyPoid, String refPoid, String refType) {
+    protected void validateJobInNewTransaction(Long groupPoid, Long companyPoid, String refPoid, String refType, String docId, Long userPoid) {
         try {
-            String result = spRepository.validateJob(groupPoid, null, companyPoid, null, refType, refPoid);
+            String result = spRepository.validateJob(groupPoid, userPoid, companyPoid, docId, refType, refPoid);
             if (result != null && !result.equals("SUCCESS")) {
                 throw new ValidationException(result);
             }
@@ -1250,7 +1252,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                         header.getCompanyPoid(),
                         null,
                         header.getTransactionPoid(),
-                        header.getMtaRef()
+                        header.getSalesQtnRef() != null ? String.valueOf(header.getSalesQtnRef()) : header.getMtaRef()
                 );
             }
         } catch (Exception e) {
@@ -1262,7 +1264,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         return switch (refType != null ? refType.toUpperCase() : "") {
             case "FDA JOBS" -> entity.getFdaRef();
             case "FF JOBS" -> entity.getFfRef() != null ? Long.parseLong(entity.getFfRef()) : null;
-            case "MTA RFQ" -> entity.getMtaRef() != null ? Long.parseLong(entity.getMtaRef()) : null;
+            case "MTA RFQ" -> entity.getSalesQtnRef() != null ? entity.getSalesQtnRef() : (entity.getMtaRef() != null ? Long.parseLong(entity.getMtaRef()) : null);
             default -> null;
         };
     }

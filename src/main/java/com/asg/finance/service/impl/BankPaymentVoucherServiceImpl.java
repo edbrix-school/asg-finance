@@ -174,6 +174,9 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         if ("FDA JOBS".equalsIgnoreCase(req.getRefType()) && req.getFdaRefId() != null) {
             validateJobInNewTransaction(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), String.valueOf(req.getFdaRefId()), "FDA JOBS");
         }
+        if ("MTA RFQ".equalsIgnoreCase(req.getRefType()) && req.getMtaRfqId() != null) {
+            validateJobInNewTransaction(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), String.valueOf(req.getMtaRfqId()), "MTA RFQ");
+        }
 
         GLPaymentVoucherHDREntity entity = mapHeaderFromRequest(req);
 
@@ -243,6 +246,9 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         }
         if ("FDA JOBS".equalsIgnoreCase(req.getRefType()) && req.getFdaRefId() != null) {
             validateJobInNewTransaction(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), String.valueOf(req.getFdaRefId()), "FDA JOBS");
+        }
+        if ("MTA RFQ".equalsIgnoreCase(req.getRefType()) && req.getMtaRfqId() != null) {
+            validateJobInNewTransaction(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), String.valueOf(req.getMtaRfqId()), "MTA RFQ");
         }
 
         validateBeforeSaveInNewTransaction(existing);

@@ -27,7 +27,7 @@ public class ApPaymentRequestHdrRequestDto {
     private String currencyCode;
     private BigDecimal currencyRate;
 
-    private Long payeePoid;
+    private String payeeName;
     private String requestedBy;
     private String remarks;
 

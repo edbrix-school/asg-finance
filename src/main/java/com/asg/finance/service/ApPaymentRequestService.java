@@ -2,6 +2,7 @@ package com.asg.finance.service;
 
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
+import com.asg.finance.dto.ApPaymentRequestDetailResponse;
 import com.asg.finance.dto.ApPaymentRequestHdrRequestDto;
 import com.asg.finance.dto.ApPaymentRequestHdrResponseDto;
 import org.springframework.data.domain.Pageable;
@@ -17,6 +18,8 @@ public interface ApPaymentRequestService {
                                           ApPaymentRequestHdrRequestDto requestDto);
 
     ApPaymentRequestHdrResponseDto findById(Long transactionPoid);
+
+    ApPaymentRequestDetailResponse findDetailsByRefId(Long transactionPoid, String refType);
 
     void delete(Long transactionPoid, DeleteReasonDto deleteReasonDto);
 

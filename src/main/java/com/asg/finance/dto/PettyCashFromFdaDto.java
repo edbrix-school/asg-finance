@@ -21,5 +21,6 @@ public class PettyCashFromFdaDto {
     private String remarks;
     private String refDocId;
     private String refDocPoid;
+    private DetailsDto refDocPoidDtl;
     private Long fdaDetRowId;
 }

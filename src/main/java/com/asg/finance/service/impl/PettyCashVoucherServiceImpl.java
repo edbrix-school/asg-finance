@@ -1476,6 +1476,19 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                         row.setTaxPoidDtl(new DetailsDto(t.getTaxPoid(), t.getTaxCode(),
                                 t.getTaxName(), t.getGroupPoid(), t.getTaxName2(), t.getSeqNo())));
             }
+
+            if (row.getRefDocPoid() != null) {
+                try {
+                    LovGetListDto lov = lovService.getDetailsByPoidAndLovName(row.getRefDocPoid(), "FF_JOBNO");
+                    if (lov != null && lov.getPoid() != null) {
+                        row.setRefDocPoidDtl(new DetailsDto(
+                                lov.getPoid(), lov.getCode(), lov.getLabel(),
+                                lov.getValue(), lov.getDescription(), lov.getSeqNo()));
+                    }
+                } catch (NumberFormatException ignored) {
+                    // refDocPoid is not a numeric POID — skip enrichment
+                }
+            }
         });
     }
 
@@ -1491,6 +1504,19 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                 taxMasterRepository.findByTaxPoid(row.getTaxPoid()).ifPresent(t ->
                         row.setTaxPoidDtl(new DetailsDto(t.getTaxPoid(), t.getTaxCode(),
                                 t.getTaxName(), t.getGroupPoid(), t.getTaxName2(), t.getSeqNo())));
+            }
+            if (row.getRefDocPoid() != null && !row.getRefDocPoid().isBlank()) {
+                try {
+                    Long refDocPoid = Long.parseLong(row.getRefDocPoid().trim());
+                    LovGetListDto lov = lovService.getDetailsByPoidAndLovName(refDocPoid, "PROCESS_FDA_IN_PI");
+                    if (lov != null && lov.getPoid() != null) {
+                        row.setRefDocPoidDtl(new DetailsDto(
+                                lov.getPoid(), lov.getCode(), lov.getLabel(),
+                                lov.getValue(), lov.getDescription(), lov.getSeqNo()));
+                    }
+                } catch (NumberFormatException ignored) {
+                    // refDocPoid is not a numeric POID — skip enrichment
+                }
             }
         });
     }

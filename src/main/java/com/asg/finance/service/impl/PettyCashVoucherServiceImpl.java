@@ -1476,6 +1476,19 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                         row.setTaxPoidDtl(new DetailsDto(t.getTaxPoid(), t.getTaxCode(),
                                 t.getTaxName(), t.getGroupPoid(), t.getTaxName2(), t.getSeqNo())));
             }
+
+            if (row.getRefDocPoid() != null) {
+                try {
+                    LovGetListDto lov = lovService.getDetailsByPoidAndLovName(row.getRefDocPoid(), "FF_JOBNO");
+                    if (lov != null && lov.getPoid() != null) {
+                        row.setRefDocPoidDtl(new DetailsDto(
+                                lov.getPoid(), lov.getCode(), lov.getLabel(),
+                                lov.getValue(), lov.getDescription(), lov.getSeqNo()));
+                    }
+                } catch (NumberFormatException ignored) {
+                    // refDocPoid is not a numeric POID — skip enrichment
+                }
+            }
         });
     }
 

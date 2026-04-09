@@ -10,6 +10,6 @@ import com.asg.finance.dto.PendingChequeResponse;
 public interface ChequePrintingService {
 	List<PendingChequeResponse> getPendingCheques();
 	List<ChequeStockResponse> getChequeStock(String bankCode, String signType);
-
+	String getDefaultChequePrintBank();
 	ChequePrintBatchResponse print(ChequePrintBatchRequest request) throws Exception;
 }

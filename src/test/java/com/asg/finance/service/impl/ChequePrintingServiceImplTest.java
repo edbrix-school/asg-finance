@@ -2,6 +2,7 @@ package com.asg.finance.service.impl;
 
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.GlobalParameterService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.finance.dto.ChequePrintBatchRequest;
 import com.asg.finance.dto.ChequePrintBatchResponse;
@@ -47,9 +48,12 @@ class ChequePrintingServiceImplTest {
     @Mock
     private DataSource dataSource;
 
+    @Mock
+    private GlobalParameterService globalParameterService;
+
     @Test
     void getPendingCheques_DelegatesToRepository() {
-        ChequePrintingServiceImpl service = new ChequePrintingServiceImpl(repo, printService, dataSource);
+        ChequePrintingServiceImpl service = new ChequePrintingServiceImpl(repo, printService, dataSource, globalParameterService);
         when(repo.fetchPendingCheques()).thenReturn(List.of(new PendingChequeResponse()));
 
         List<PendingChequeResponse> result = service.getPendingCheques();
@@ -60,7 +64,7 @@ class ChequePrintingServiceImplTest {
 
     @Test
     void getChequeStock_DelegatesToRepository() {
-        ChequePrintingServiceImpl service = new ChequePrintingServiceImpl(repo, printService, dataSource);
+        ChequePrintingServiceImpl service = new ChequePrintingServiceImpl(repo, printService, dataSource, globalParameterService);
         when(repo.fetchChequeStock("HSBC", "NOT_SIGNED")).thenReturn(List.of());
 
         List<?> result = service.getChequeStock("HSBC", "NOT_SIGNED");
@@ -70,8 +74,32 @@ class ChequePrintingServiceImplTest {
     }
 
     @Test
+    void getChequeStock_UsesGlobalParamWhenBankCodeBlank() {
+        ChequePrintingServiceImpl service = new ChequePrintingServiceImpl(repo, printService, dataSource, globalParameterService);
+        when(globalParameterService.getParameterValue("CHEQUE_PRINT_BANK", "GROUP", "-", "")).thenReturn("HSBC");
+        when(repo.fetchChequeStock("HSBC", "NOT_SIGNED")).thenReturn(List.of());
+
+        List<?> result = service.getChequeStock("   ", "NOT_SIGNED");
+
+        assertEquals(0, result.size());
+        verify(globalParameterService).getParameterValue("CHEQUE_PRINT_BANK", "GROUP", "-", "");
+        verify(repo).fetchChequeStock("HSBC", "NOT_SIGNED");
+    }
+
+    @Test
+    void getDefaultChequePrintBank_DelegatesToGlobalParameterService() {
+        ChequePrintingServiceImpl service = new ChequePrintingServiceImpl(repo, printService, dataSource, globalParameterService);
+        when(globalParameterService.getParameterValue("CHEQUE_PRINT_BANK", "GROUP", "-", "")).thenReturn("HSBC");
+
+        String result = service.getDefaultChequePrintBank();
+
+        assertEquals("HSBC", result);
+        verify(globalParameterService).getParameterValue("CHEQUE_PRINT_BANK", "GROUP", "-", "");
+    }
+
+    @Test
     void print_ThrowsWhenStocksMissing() {
-        ChequePrintingServiceImpl service = new ChequePrintingServiceImpl(repo, printService, dataSource);
+        ChequePrintingServiceImpl service = new ChequePrintingServiceImpl(repo, printService, dataSource, globalParameterService);
         ChequePrintBatchRequest request = new ChequePrintBatchRequest();
         request.setPendingCheques(List.of());
         request.setStocks(List.of());
@@ -81,7 +109,7 @@ class ChequePrintingServiceImplTest {
 
     @Test
     void print_ThrowsWhenNoChequeSelected() {
-        ChequePrintingServiceImpl service = new ChequePrintingServiceImpl(repo, printService, dataSource);
+        ChequePrintingServiceImpl service = new ChequePrintingServiceImpl(repo, printService, dataSource, globalParameterService);
         ChequePrintBatchRequest request = new ChequePrintBatchRequest();
 
         ChequePrintStockRequest stock = new ChequePrintStockRequest();
@@ -102,7 +130,7 @@ class ChequePrintingServiceImplTest {
 
     @Test
     void print_ThrowsWhenAnyStockUnselected() {
-        ChequePrintingServiceImpl service = new ChequePrintingServiceImpl(repo, printService, dataSource);
+        ChequePrintingServiceImpl service = new ChequePrintingServiceImpl(repo, printService, dataSource, globalParameterService);
         ChequePrintBatchRequest request = new ChequePrintBatchRequest();
 
         ChequePrintStockRequest stock1 = new ChequePrintStockRequest();
@@ -128,7 +156,7 @@ class ChequePrintingServiceImplTest {
 
     @Test
     void print_ThrowsWhenNoMatchingStockForSelectedCheque() {
-        ChequePrintingServiceImpl service = new ChequePrintingServiceImpl(repo, printService, dataSource);
+        ChequePrintingServiceImpl service = new ChequePrintingServiceImpl(repo, printService, dataSource, globalParameterService);
         ChequePrintBatchRequest request = new ChequePrintBatchRequest();
 
         ChequePrintStockRequest stock = new ChequePrintStockRequest();
@@ -149,7 +177,7 @@ class ChequePrintingServiceImplTest {
 
     @Test
     void print_Success_PrintsAndReturnsCounts() throws Exception {
-        ChequePrintingServiceImpl service = new ChequePrintingServiceImpl(repo, printService, dataSource);
+        ChequePrintingServiceImpl service = new ChequePrintingServiceImpl(repo, printService, dataSource, globalParameterService);
         ChequePrintBatchRequest request = new ChequePrintBatchRequest();
         request.setSuppressBalanceCheck("N");
 
@@ -193,7 +221,7 @@ class ChequePrintingServiceImplTest {
 
     @Test
     void print_ThrowsWhenAfterPrintReturnsError() throws Exception {
-        ChequePrintingServiceImpl service = new ChequePrintingServiceImpl(repo, printService, dataSource);
+        ChequePrintingServiceImpl service = new ChequePrintingServiceImpl(repo, printService, dataSource, globalParameterService);
         ChequePrintBatchRequest request = new ChequePrintBatchRequest();
         request.setSuppressBalanceCheck("N");
 
@@ -232,7 +260,7 @@ class ChequePrintingServiceImplTest {
 
     @Test
     void print_ReturnsMessageWhenBeforeStatusIsInfo() throws Exception {
-        ChequePrintingServiceImpl service = new ChequePrintingServiceImpl(repo, printService, dataSource);
+        ChequePrintingServiceImpl service = new ChequePrintingServiceImpl(repo, printService, dataSource, globalParameterService);
         ChequePrintBatchRequest request = new ChequePrintBatchRequest();
         request.setSuppressBalanceCheck("N");
 
@@ -269,7 +297,7 @@ class ChequePrintingServiceImplTest {
     @ParameterizedTest
     @ValueSource(strings = {"", "ERROR : Insufficient balance.", "PENDING"})
     void print_ThrowsWhenBeforeStatusInvalid(String beforeStatus) {
-        ChequePrintingServiceImpl service = new ChequePrintingServiceImpl(repo, printService, dataSource);
+        ChequePrintingServiceImpl service = new ChequePrintingServiceImpl(repo, printService, dataSource, globalParameterService);
         ChequePrintBatchRequest request = new ChequePrintBatchRequest();
         request.setSuppressBalanceCheck("N");
 
@@ -301,7 +329,7 @@ class ChequePrintingServiceImplTest {
 
     @Test
     void print_ReturnsMessageWhenAfterStatusInfo() throws Exception {
-        ChequePrintingServiceImpl service = new ChequePrintingServiceImpl(repo, printService, dataSource);
+        ChequePrintingServiceImpl service = new ChequePrintingServiceImpl(repo, printService, dataSource, globalParameterService);
         ChequePrintBatchRequest request = new ChequePrintBatchRequest();
         request.setSuppressBalanceCheck("N");
 

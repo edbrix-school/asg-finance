@@ -70,6 +70,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
     private static final String FIELD_TRANSACTION_POID = "transactionPoid";
     private static final String TABLE_AP_PURCHASE_CN_HDR = "AP_PURCHASE_CN_HDR";
     private static final String COLUMN_TRANSACTION_POID = "TRANSACTION_POID";
+    // LOV Constants - Updated to match SRS specification
     private static final String LOV_COMPANY = "COMPANY";
     private static final String LOV_GL_MASTER_LEDGERS_PJ = "GL_MASTER_LEDGERS_PJ";
     private static final String LOV_ACC_TYPE_SHORT = "ACC_TYPE_SHORT";
@@ -79,7 +80,9 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
     private static final String LOV_FF_CHARGE_MASTER_PJ = "FF_CHARGE_MASTER_PJ";
     private static final String LOV_FF_JOBNO = "FF_JOBNO";
     private static final String LOV_STOCK_MASTER = "STOCK_MASTER";
-    private static final String LOV_STOCK_UNIT6 = "STOCK_UNIT6";
+    private static final String LOV_STOCK_UNIT = "STOCK_UNIT";
+    private static final String LOV_SUPPLIER_MASTER_FOR_PJ_CN = "SUPPLIER_MASTER_FOR_PJ_CN";
+    private static final String LOV_PRINCIPAL_MASTER_FOR_PJ_CN = "PRINCIPAL_MASTER_FOR_PJ_CN";
     private static final String PARTY_TYPE_SUPPLIER = "SUPPLIER";
     private static final String FILTER_TRANSACTION_DATE = "TRANSACTION_DATE";
     private static final String FILTER_LONG_NARRATION = "LONG_NARRATION";
@@ -1309,6 +1312,12 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         dto.setCreatedDate(entity.getCreatedDate());
         dto.setLastModifiedBy(entity.getLastModifiedBy());
         dto.setLastModifiedDate(entity.getLastModifiedDate());
+        
+        // Set party details based on party type
+        if (PARTY_TYPE_SUPPLIER.equals(entity.getPartyType()) && entity.getSupplierPoid() != null) {
+            dto.setPartyDet(lovService.getDetailsByPoidAndLovName(entity.getSupplierPoid(), LOV_SUPPLIER_MASTER_FOR_PJ_CN));
+        }
+        
         return dto;
     }
 
@@ -1337,7 +1346,13 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         ApPurchaseCnItemDtlDto dto = new ApPurchaseCnItemDtlDto();
         dto.setDetRowId(entity.getDetRowId());
         dto.setStockPoid(entity.getStockPoid());
+        if (entity.getStockPoid() != null) {
+            dto.setStockDet(lovService.getDetailsByPoidAndLovName(entity.getStockPoid(), LOV_STOCK_MASTER));
+        }
         dto.setStockUnitPoid(entity.getStockUnitPoid());
+        if (entity.getStockUnitPoid() != null) {
+            dto.setStockUnitDet(lovService.getDetailsByPoidAndLovName(entity.getStockUnitPoid(), LOV_STOCK_UNIT));
+        }
         dto.setQuantity(entity.getQuantity());
         dto.setPrice(entity.getPrice());
         dto.setDiscount(entity.getDiscount());
@@ -1348,6 +1363,9 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         dto.setCheckAll(entity.getCheckAll());
         dto.setRefDetRowId(entity.getRefDetRowId());
         dto.setTaxPoid(entity.getTaxPoid());
+        if (entity.getTaxPoid() != null) {
+            dto.setTaxDet(lovService.getDetailsByPoidAndLovName(entity.getTaxPoid(), LOV_INPUT_TAX_MASTER));
+        }
         dto.setTaxPercentage(entity.getTaxPercentage());
         dto.setTaxAmount(entity.getTaxAmount());
         dto.setAmount(entity.getAmount());
@@ -1379,14 +1397,27 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         ApPurchaseCnChargeDtlDto dto = new ApPurchaseCnChargeDtlDto();
         dto.setDetRowId(entity.getDetRowId());
         dto.setChargePoid(entity.getChargePoid());
+        if (entity.getChargePoid() != null) {
+            // Use appropriate LOV based on charge context - FF vs FDA
+            // This should ideally be determined by the refType context, but for now using a generic LOV
+            // TODO: Implement dynamic LOV selection based on refType (FF_CHARGE_MASTER_PJ vs FDA_CHARGE_MASTER_PJ)
+            dto.setChargeDet(lovService.getDetailsByPoidAndLovName(entity.getChargePoid(), LOV_FF_CHARGE_MASTER_PJ));
+        }
         dto.setChargeAmount(entity.getChargeAmount());
         dto.setDescription(entity.getDescription());
         dto.setRemarks(entity.getRemarks());
         dto.setRefDocId(entity.getRefDocId());
         dto.setRefDocPoid(entity.getRefDocPoid());
+        if (entity.getRefDocPoid() != null) {
+            // Use appropriate LOV based on refDocId - this might need refinement based on business logic
+            dto.setRefDocDet(lovService.getDetailsByPoidAndLovName(entity.getRefDocPoid(), LOV_FF_JOBNO));
+        }
         dto.setRefDetRowId(entity.getRefDetRowId());
         dto.setCheckAll(entity.getCheckAll());
         dto.setTaxPoid(entity.getTaxPoid());
+        if (entity.getTaxPoid() != null) {
+            dto.setTaxDet(lovService.getDetailsByPoidAndLovName(entity.getTaxPoid(), LOV_INPUT_TAX_MASTER));
+        }
         dto.setTaxPercentage(entity.getTaxPercentage());
         dto.setTaxAmount(entity.getTaxAmount());
         dto.setChargeBaseAmount(entity.getChargeBaseAmount());
@@ -1419,14 +1450,27 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         dto.setDetRowId(entity.getDetRowId());
         dto.setType(entity.getType());
         dto.setCompanyPoid(entity.getCompanyPoid());
+        if (entity.getCompanyPoid() != null) {
+            dto.setCompanyDet(lovService.getDetailsByPoidAndLovName(entity.getCompanyPoid(), LOV_COMPANY));
+        }
         dto.setGlPoid(entity.getGlPoid());
+        if (entity.getGlPoid() != null) {
+            dto.setGlDet(lovService.getDetailsByPoidAndLovName(entity.getGlPoid(), LOV_GL_MASTER_LEDGERS_PJ));
+        }
+        if (entity.getType() != null) {
+            dto.setTypeDet(lovService.getDetailsByCodeAndLovName(entity.getType(), LOV_ACC_TYPE_SHORT));
+        }
         dto.setDrAmount(entity.getDrAmount());
         dto.setCrAmount(entity.getCrAmount());
         dto.setRefDocId(entity.getRefDocId());
         dto.setRefDocPoid(entity.getRefDocPoid());
+        dto.setGlDescription(entity.getDescription());
         dto.setDescription(entity.getDescription());
         dto.setRemarks(entity.getRemarks());
         dto.setTaxPoid(entity.getTaxPoid());
+        if (entity.getTaxPoid() != null) {
+            dto.setTaxDet(lovService.getDetailsByPoidAndLovName(entity.getTaxPoid(), LOV_PJ_GL_INPUT_TAX));
+        }
         dto.setTaxPercentage(entity.getTaxPercentage());
         dto.setTaxAmount(entity.getTaxAmount());
         dto.setTotalAmount(entity.getTotalAmount());
@@ -1590,7 +1634,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
     private void mapMtaPoLineItems(List<Map<String, Object>> lineItems) {
         for (Map<String, Object> lineItem : lineItems) {
             putDetailByPoid(lineItem, FIELD_STOCK_POID, FIELD_STOCK_DET, LOV_STOCK_MASTER);
-            putDetailByPoid(lineItem, FIELD_STOCK_UNIT_POID, FIELD_STOCK_UNIT_DET, LOV_STOCK_UNIT6);
+            putDetailByPoid(lineItem, FIELD_STOCK_UNIT_POID, FIELD_STOCK_UNIT_DET, LOV_STOCK_UNIT);
             putTaxDetail(lineItem, LOV_INPUT_TAX_MASTER);
         }
     }

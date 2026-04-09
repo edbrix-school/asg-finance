@@ -1184,9 +1184,11 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     protected void validateJobInNewTransaction(Long groupPoid, Long companyPoid, String refPoid, String refType, String docId, Long userPoid) {
         try {
             String result = spRepository.validateJob(groupPoid, userPoid, companyPoid, docId, refType, refPoid);
-            if (result != null && !result.equals("SUCCESS")) {
+            if (result != null && (result.contains("CLOSED") || result.startsWith("ERROR") || result.startsWith("WARNING"))) {
                 throw new ValidationException(result);
             }
+        } catch (ValidationException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Job validation failed: {}", e.getMessage());
             throw new ValidationException("Job validation failed: " + e.getMessage());

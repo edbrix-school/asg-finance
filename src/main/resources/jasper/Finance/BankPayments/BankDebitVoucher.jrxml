@@ -41,7 +41,9 @@ WHERE  dtl.TERMS_POID = $P{TT_REMARKS}]]>
 	<parameter name="SUBREPORT_DIR" class="java.lang.String" isForPrompting="false">
         <defaultValueExpression><![CDATA[""]]></defaultValueExpression>
 	</parameter>
+    <parameter name="SUB_HEADER" class="net.sf.jasperreports.engine.JasperReport"/>
     <parameter name="SUB_FOOTER" class="net.sf.jasperreports.engine.JasperReport"/>
+    <parameter name="SUB_FOOTER_ISO" class="net.sf.jasperreports.engine.JasperReport"/>
     <parameter name="BANK_DEBIT_VOUCHER_SUBREPORT_1" class="net.sf.jasperreports.engine.JasperReport"/>
 	<queryString>
 		<![CDATA[SELECT TO_CHAR(HDR.TRANSACTION_DATE,'DD-MON-YYYY') TRANSACTION_DATE, DECODE(PAYING_TYPE,'1','Telex Transfer','2','Direct Transfer','3','Credit card')
@@ -204,7 +206,7 @@ WHERE HDR.TRANSACTION_POID = $P{DOC_KEY_POID}]]>
 			</textField>
 			<staticText>
 				<reportElement x="0" y="333" width="127" height="16" uuid="83fc4966-f47b-4d38-920b-1f99bd303720"/>
-				<text><![CDATA[Beneficiary Account Number]]></text>
+				<text><![CDATA[Beneficiary Account]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="0" y="352" width="127" height="16" uuid="3e2a0de0-8af4-44ba-ac93-6b1dfd172fe4"/>

@@ -12,8 +12,7 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ExpenseReallocationDetailRequest {
-	
-	@NotNull(message = "rowId is required")
+
 	private Long detRowId;
 
     @NotNull(message = "Company is required")

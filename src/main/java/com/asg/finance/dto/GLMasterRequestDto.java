@@ -1,5 +1,6 @@
 package com.asg.finance.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import lombok.Data;
 
 import java.util.List;
@@ -10,6 +11,7 @@ public class GLMasterRequestDto {
     private String description;
     private String description2;
     private String type;            // GL_TYPE
+    @JsonAlias("groupGlPoid")
     private Long subOf;              // parent GL_POID
     private String accountType;
     private String controlAcType;
@@ -25,5 +27,13 @@ public class GLMasterRequestDto {
 
     private List<PaymentDetailsDto> paymentDetails;
     private List<CompanyDetailsDto> companyDetails;
+
+    public Long getGroupGlPoid() {
+        return subOf;
+    }
+
+    public void setGroupGlPoid(Long groupGlPoid) {
+        this.subOf = groupGlPoid;
+    }
 }
 

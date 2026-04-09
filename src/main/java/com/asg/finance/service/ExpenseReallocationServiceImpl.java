@@ -968,6 +968,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
                     loggingService.createLogSummaryEntry(docId, transactionPoid.toString(), logDetail);
                 }
                 case "ISUPDATED" -> {
+                    validateDetRowID(detail.getDetRowId(), "detail");
                     GlExpenseReallocationDtl existing = dtlRepository.findByTransactionPoidAndDetRowId(transactionPoid, detail.getDetRowId())
                             .orElseThrow(() -> new ResourceNotFoundException("Expense Reallocation Detail", "detRowId", detail.getDetRowId()));
 
@@ -992,6 +993,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
                     logRequests.add(new LogRequestDto<>(oldEntity, existing, GlExpenseReallocationDtl.class, docId, transactionPoid.toString(), logDetailForUpdate));
                 }
                 case "ISDELETED" -> {
+                    validateDetRowID(detail.getDetRowId(), "detail");
                     dtlRepository.findByTransactionPoidAndDetRowId(transactionPoid, detail.getDetRowId())
                             .ifPresent(entity -> {
                                 dtlRepository.delete(entity);
@@ -1037,6 +1039,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
                     loggingService.createLogSummaryEntry(docId, transactionPoid.toString(), logDetail);
                 }
                 case "ISUPDATED" -> {
+                    validateDetRowID(xlDetail.getDetRowId(), "xlDetail");
                     GlExpenseReallocationXlDtl existing = xlDtlRepository.findByTransactionPoidAndDetRowId(transactionPoid, xlDetail.getDetRowId())
                             .orElseThrow(() -> new ResourceNotFoundException("Expense Reallocation XL Detail", "detRowId", xlDetail.getDetRowId()));
 
@@ -1054,6 +1057,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
                     logRequests.add(new LogRequestDto<>(oldEntity, existing, GlExpenseReallocationXlDtl.class, docId, transactionPoid.toString(), logDetailForUpdate));
                 }
                 case "ISDELETED" -> {
+                    validateDetRowID(xlDetail.getDetRowId(), "xlDetail");
                     xlDtlRepository.findByTransactionPoidAndDetRowId(transactionPoid, xlDetail.getDetRowId())
                             .ifPresent(entity -> {
                                 xlDtlRepository.delete(entity);
@@ -1066,5 +1070,9 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         if (!logRequests.isEmpty()) {
             loggingService.createLogBatch(logRequests);
         }
+    }
+
+    private void validateDetRowID(Long detRowId, String position ){
+        Optional.ofNullable(detRowId).orElseThrow(()-> new ValidationException(String.format("Validation Error on %s RowId is Required",position)));
     }
 }

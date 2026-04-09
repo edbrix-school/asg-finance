@@ -174,8 +174,11 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         if ("FDA JOBS".equalsIgnoreCase(req.getRefType()) && req.getFdaRefId() != null) {
             validateJobInNewTransaction(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), String.valueOf(req.getFdaRefId()), "FDA JOBS", documentId, UserContext.getUserPoid());
         }
-        if ("MTA RFQ".equalsIgnoreCase(req.getRefType()) && req.getMtaRfqId() != null) {
-            validateJobInNewTransaction(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), String.valueOf(req.getMtaRfqId()), "MTA RFQ", documentId, UserContext.getUserPoid());
+        if ("MTA RFQ".equalsIgnoreCase(req.getRefType())) {
+            String refPoid = req.getSalesQtnRef() != null ? String.valueOf(req.getSalesQtnRef()) : req.getMtaRfqId();
+            if (refPoid != null) {
+                validateJobInNewTransaction(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), refPoid, "MTA RFQ", documentId, UserContext.getUserPoid());
+            }
         }
 
         GLPaymentVoucherHDREntity entity = mapHeaderFromRequest(req);
@@ -247,8 +250,11 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         if ("FDA JOBS".equalsIgnoreCase(req.getRefType()) && req.getFdaRefId() != null) {
             validateJobInNewTransaction(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), String.valueOf(req.getFdaRefId()), "FDA JOBS", documentId, UserContext.getUserPoid());
         }
-        if ("MTA RFQ".equalsIgnoreCase(req.getRefType()) && req.getMtaRfqId() != null) {
-            validateJobInNewTransaction(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), String.valueOf(req.getMtaRfqId()), "MTA RFQ", documentId, UserContext.getUserPoid());
+        if ("MTA RFQ".equalsIgnoreCase(req.getRefType())) {
+            String refPoid = req.getSalesQtnRef() != null ? String.valueOf(req.getSalesQtnRef()) : req.getMtaRfqId();
+            if (refPoid != null) {
+                validateJobInNewTransaction(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), refPoid, "MTA RFQ", documentId, UserContext.getUserPoid());
+            }
         }
 
         validateBeforeSaveInNewTransaction(existing);
@@ -1184,8 +1190,13 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     protected void validateJobInNewTransaction(Long groupPoid, Long companyPoid, String refPoid, String refType, String docId, Long userPoid) {
         try {
             String result = spRepository.validateJob(groupPoid, userPoid, companyPoid, docId, refType, refPoid);
-            if (result != null && (result.contains("CLOSED") || result.startsWith("ERROR") || result.startsWith("WARNING"))) {
-                throw new ValidationException(result);
+            if (result != null) {
+                if (result.contains("CLOSED")) {
+                    throw new ValidationException("WARNING : Selected job is in closed status, could not save...");
+                }
+                if (result.startsWith("ERROR") || result.startsWith("WARNING")) {
+                    throw new ValidationException(result);
+                }
             }
         } catch (ValidationException e) {
             throw e;

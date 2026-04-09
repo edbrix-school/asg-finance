@@ -7,6 +7,7 @@ import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.service.LoggingService;
+import com.asg.finance.dto.ApPaymentRequestDetailResponse;
 import com.asg.finance.dto.ApPaymentRequestHdrRequestDto;
 import com.asg.finance.dto.ApPaymentRequestHdrResponseDto;
 import com.asg.finance.service.ApPaymentRequestService;
@@ -135,6 +136,41 @@ public class ApPaymentRequestHdrController {
         ApPaymentRequestHdrResponseDto response =
                 service.findById(transactionPoid);
         loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), transactionPoid.toString());
+        return success("AP Payment Request fetched successfully", response);
+    }
+
+
+    /*================== GET CHILD DETAILS===========     */
+
+    @Operation(
+            summary = "Get details document Reference",
+            description = "Fetches details by document reference",
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Successfully fetched details",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ApPaymentRequestHdrResponseDto.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "details not found",
+                            content = @Content(mediaType = "application/json")
+                    )
+            }
+    )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
+    @GetMapping("/details")
+    public ResponseEntity<?> getdetailsByRefId(
+            @Parameter(description = "Transaction POID", required = true)
+            @RequestParam(name = "transactionPoid") Long transactionPoid,
+            @RequestParam(name = "refType") String refType
+    ) {
+        ApPaymentRequestDetailResponse response =
+                service.findDetailsByRefId(transactionPoid,refType);
+
         return success("AP Payment Request fetched successfully", response);
     }
 

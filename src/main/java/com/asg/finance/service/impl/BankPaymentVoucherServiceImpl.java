@@ -1192,7 +1192,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
             String result = spRepository.validateJob(groupPoid, userPoid, companyPoid, docId, refType, refPoid);
             if (result != null) {
                 if (result.contains("CLOSED")) {
-                    throw new ValidationException("WARNING : Selected job is in closed status, could not save...");
+                    throw new ValidationException("WARNING : Selected MTA RFQ is in closed status,Unable to save...");
                 }
                 if (result.startsWith("ERROR") || result.startsWith("WARNING")) {
                     throw new ValidationException(result);

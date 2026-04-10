@@ -178,7 +178,7 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
 
             String result = outStr(sp, P_RESULT);
 
-            if (result != null && result.toLowerCase().startsWith("error")) {
+            if (isError(result)) {
                 return result;
             }
         }
@@ -202,9 +202,7 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
 
                 for (BankReconcHoldAndUholdRequest req : reqList) {
 
-                    validateRequest(req);  // 🔹 Extracted validation
-
-                    String result = executeUnhold(cs, req); // 🔹 Extracted execution
+                    String result = executeUnhold(cs, req);
 
                     if (isError(result)) {
                         return result;
@@ -219,25 +217,6 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
                 throw new IllegalStateException("Error calling PROC_GL_BANK_RECONCILE_UNHOLD", e);
             }
         });
-    }
-
-    private void validateRequest(BankReconcHoldAndUholdRequest req) {
-
-        if (!existsByTransactionPoid(req.getTransactionPoid())) {
-            throw new ResourceNotFoundException(
-                    "Bank Reconciliation",
-                    "transaction poid",
-                    req.getTransactionPoid()
-            );
-        }
-
-        if (!existsByDocref(req.getTransactionPoid(), req.getDocRef())) {
-            throw new ResourceNotFoundException(
-                    "Document Reference",
-                    "docRef",
-                    req.getDocRef()
-            );
-        }
     }
 
     private String executeUnhold(CallableStatement cs, BankReconcHoldAndUholdRequest req)

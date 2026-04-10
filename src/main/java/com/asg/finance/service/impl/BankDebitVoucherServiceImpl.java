@@ -182,7 +182,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         populateCreateAudit(header);
 
         GlBankDebitHdr savedHeader = headerRepository.save(header);
-        entityManager.flush();
+        entityManager.refresh(header);
 
         // Post-save job cost updates (mirrors legacy DocumentAfterSave)
 
@@ -190,7 +190,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
         // Log the creation
         String key = savedHeader.getTransactionPoid().toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, documentId, key);
+        loggingService.createLogSummaryEntry(documentId, key, String.format("%s %s", LogDetailsEnum.CREATED, savedHeader.getDocRef()));
 
         BankDebitVoucherResponse response = mapEntityToResponse(savedHeader);
 

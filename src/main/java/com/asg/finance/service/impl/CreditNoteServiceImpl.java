@@ -196,7 +196,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             result.setChargeDetails(chargeDetails.stream().map(charge -> mapChargeToDto(charge, result.getRefType())).collect(Collectors.toList()));
 
             // Log the creation
-            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), transactionPoid.toString());
+            loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString(), String.format("%s %s", LogDetailsEnum.CREATED, reloadedHeader.getDocRef()));
             List<GlobalLogSummary> detailCreateLogs = buildCreateDetailSummaryLogs(creditNoteDto, transactionPoid);
             if (!detailCreateLogs.isEmpty()) {
                 globalLogSummaryRepository.saveAll(detailCreateLogs);

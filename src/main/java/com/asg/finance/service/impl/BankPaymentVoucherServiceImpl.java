@@ -194,6 +194,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         }
 
         GLPaymentVoucherHDREntity savedHeader = paymentVoucherRepository.save(entity);
+        entityManager.refresh(entity);
 
         /*savedHeader.setDocRef("BPV-" + savedHeader.getTransactionPoid());*/
         savedHeader = paymentVoucherRepository.save(savedHeader);
@@ -223,7 +224,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         // Log the creation
         String key = savedHeader.getTransactionPoid().toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, documentId, key);
+        loggingService.createLogSummaryEntry(documentId, key, String.format("%s %s", LogDetailsEnum.CREATED, savedHeader.getDocRef()));
 
         return getVoucherById(savedHeader.getTransactionPoid(), documentId);
     }

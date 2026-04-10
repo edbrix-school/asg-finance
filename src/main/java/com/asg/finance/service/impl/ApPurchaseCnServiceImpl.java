@@ -33,6 +33,7 @@ import com.asg.finance.repository.TaxMasterRepository;
 import com.asg.finance.service.ApPurchaseCnService;
 import com.asg.finance.service.BillwiseBreakupService;
 import com.asg.finance.service.CostCenterBreakupService;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;
@@ -230,6 +231,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
     private final LoggingService loggingService;
     private final DocumentDeleteService documentDeleteService;
     private final LovDataService lovService;
+    private final EntityManager entityManager;
 
     @Override
     @Transactional
@@ -248,13 +250,18 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
             hdr.setDeleted(DEFAULT_NO_VALUE);
             
             ApPurchaseCnHdr savedHdr = hdrRepository.save(hdr);
+            entityManager.refresh(hdr);
             log.info(LOG_MESSAGE_SAVED_HEADER, savedHdr.getTransactionPoid());
             
             saveDetails(savedHdr.getTransactionPoid(), dto);
             log.info(LOG_MESSAGE_CREATED_SUCCESS, savedHdr.getTransactionPoid());
             
-            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), 
-                    savedHdr.getTransactionPoid().toString());
+            loggingService.createLogSummaryEntry(
+                UserContext.getDocumentId(), 
+                savedHdr.getTransactionPoid().toString(), 
+                String.format("%s %s", LogDetailsEnum.CREATED, savedHdr.getDocRef())
+            );
+            log.info("logging Succeessfully", savedHdr.getDocRef());
             
             return fetchById(savedHdr.getTransactionPoid());
         } catch (Exception e) {

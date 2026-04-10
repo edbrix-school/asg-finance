@@ -28,6 +28,7 @@ import com.asg.finance.repository.PettyCashPaymentVoucherCustomRepository;
 import com.asg.finance.entity.AdvancePettyCashDtl;
 
 import com.asg.finance.service.AdvancePettyCashHdrService;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,6 +54,7 @@ public class AdvancePettyCashHdrServiceImpl implements AdvancePettyCashHdrServic
     private final GLMasterRepository glMasterRepository;
     private final LoggingService loggingService;
     private final PettyCashPaymentVoucherCustomRepository pettyCashCustomRepository;
+    private final EntityManager entityManager;
     
     @Autowired
     private final DocumentSearchService documentService;
@@ -65,10 +67,15 @@ public class AdvancePettyCashHdrServiceImpl implements AdvancePettyCashHdrServic
         try {
             AdvancePettyCashHdr entity = convertFromDtoToEntity(request);
             AdvancePettyCashHdr saved = repository.save(entity);
+            entityManager.refresh(entity);
             String key = saved.getTransactionPoid().toString();
             
             // Log the creation
-            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), key);
+            loggingService.createLogSummaryEntry(
+                UserContext.getDocumentId(), 
+                key, 
+                String.format("%s %s", LogDetailsEnum.CREATED, saved.getDocRef())
+            );
             
             return convertFromEntityToDto(saved);
         } catch (Exception ex) {

@@ -11,8 +11,8 @@ public class GLMasterRequestDto {
     private String description;
     private String description2;
     private String type;            // GL_TYPE
-    @JsonAlias("groupGlPoid")
-    private Long subOf;              // parent GL_POID
+    @JsonAlias({"groupGlPoid"})
+    private Long subOf;
     private String accountType;
     private String controlAcType;
     private String costGroup;
@@ -27,13 +27,5 @@ public class GLMasterRequestDto {
 
     private List<PaymentDetailsDto> paymentDetails;
     private List<CompanyDetailsDto> companyDetails;
-
-    public Long getGroupGlPoid() {
-        return subOf;
-    }
-
-    public void setGroupGlPoid(Long groupGlPoid) {
-        this.subOf = groupGlPoid;
-    }
 }
 

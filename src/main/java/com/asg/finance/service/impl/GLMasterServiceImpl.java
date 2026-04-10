@@ -159,7 +159,7 @@ public class GLMasterServiceImpl implements GLMasterService {
         entity.setDescription(req.getDescription());
         entity.setDescription2(req.getDescription2());
         entity.setType(req.getType());
-        entity.setGroupGlPoid(subOf);
+        entity.setSubOf(subOf);
         entity.setAccountType(req.getAccountType());
         entity.setControlAcType(req.getControlAcType());
         entity.setCostGroup(req.getCostGroup());
@@ -301,7 +301,7 @@ public class GLMasterServiceImpl implements GLMasterService {
         entity.setDescription(req.getDescription());
         entity.setDescription2(req.getDescription2());
         entity.setType(req.getType());
-        entity.setGroupGlPoid(subOf);
+        entity.setSubOf(subOf);
         entity.setAccountType(req.getAccountType());
         entity.setControlAcType(req.getControlAcType());
         entity.setCostGroup(req.getCostGroup());
@@ -448,7 +448,7 @@ public class GLMasterServiceImpl implements GLMasterService {
     }
 
     private boolean hasActiveChildren(Long parentPoid) {
-        return glMasterRepo.existsByGroupGlPoidAndDeletedFlag(parentPoid, "N");
+        return glMasterRepo.existsBySubOfAndDeletedFlag(parentPoid, "N");
     }
 
     private boolean hasPostedEntriesForLedger(Long glPoid) {
@@ -466,7 +466,7 @@ public class GLMasterServiceImpl implements GLMasterService {
 
     private void propagateToChildren(GLMasterEntity parent) {
         GLMasterEntity probe = new GLMasterEntity();
-        probe.setGroupGlPoid(parent.getGlPoid());
+        probe.setSubOf(parent.getGlPoid());
         List<GLMasterEntity> children = glMasterRepo.findAll(Example.of(probe));
 
         if (children.isEmpty()) {
@@ -492,9 +492,9 @@ public class GLMasterServiceImpl implements GLMasterService {
         dto.setDescription(entity.getDescription());
         dto.setDescription2(entity.getDescription2());
         dto.setType(entity.getType());
-        dto.setSubOf(entity.getGroupGlPoid());
-        if (entity.getGroupGlPoid() != null) {
-            dto.setSubOfDet(lovService.getDetailsByPoidAndLovName(entity.getGroupGlPoid(), "GL_MASTER_GROUPS"));
+        dto.setSubOf(entity.getSubOf());
+        if (entity.getSubOf() != null) {
+            dto.setSubOfDet(lovService.getDetailsByPoidAndLovName(entity.getSubOf(), "GL_MASTER_GROUPS"));
         }
         dto.setAccountType(entity.getAccountType());
         dto.setControlAcType(entity.getControlAcType());
@@ -1032,7 +1032,7 @@ public class GLMasterServiceImpl implements GLMasterService {
             }
 
             // Determine level based on parent relationship
-            Integer level = (entity.getGroupGlPoid() == null) ? 0 : 1;
+            Integer level = (entity.getSubOf() == null) ? 0 : 1;
 
             GLMasterResponseDto dto = new GLMasterResponseDto();
             dto.setGlPoid(entity.getGlPoid());
@@ -1040,7 +1040,7 @@ public class GLMasterServiceImpl implements GLMasterService {
             dto.setDescription(entity.getDescription());
             dto.setType(entity.getType());
             dto.setAccountType(entity.getAccountType());
-            dto.setParentPoid(entity.getGroupGlPoid());
+            dto.setParentPoid(entity.getSubOf());
             dto.setLevel(level);
             dto.setActive("Y".equals(entity.getActiveFlag()));
             dto.setDeleted("Y".equals(entity.getDeletedFlag()));

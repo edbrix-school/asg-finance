@@ -27,4 +27,5 @@ public class BankReconcileReportRow {
 	private LocalDate clearanceDate;
 	private String chequeStatus;
 	private String docId1;
+    private String docTitle;
 }

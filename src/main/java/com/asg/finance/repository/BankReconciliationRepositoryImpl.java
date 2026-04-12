@@ -337,11 +337,11 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
         set(sp, P_BANK_POID, req.getBankPoid());
         set(sp, P_DATE_FROM, Optional.ofNullable(req.getDateFrom()).map(java.sql.Date::valueOf).orElse(null));
         set(sp, P_DATE_TILL, Optional.ofNullable(req.getDateTill()).map(java.sql.Date::valueOf).orElse(null));
-        set(sp, P_CHEQUE_NO, Optional.ofNullable(req.getChequeNo()).orElse(null));
-        set(sp, P_RECONCILE_CHEQUE, Optional.ofNullable(req.getReconcileCheque()).orElse(null));
-        set(sp, P_BR_TYPE, Optional.ofNullable(req.getBrType()).orElse(null));
-        set(sp, P_CHEQUE_TYPE, Optional.ofNullable(req.getChequeType()).orElse(null));
-        set(sp, P_CHEQUE_FILTER, Optional.ofNullable(req.getChequeFilter()).orElse(null));
+        set(sp, P_CHEQUE_NO, req.getChequeNo());
+        set(sp, P_RECONCILE_CHEQUE, req.getReconcileCheque());
+        set(sp, P_BR_TYPE, req.getBrType());
+        set(sp, P_CHEQUE_TYPE, req.getChequeType());
+        set(sp, P_CHEQUE_FILTER, Optional.ofNullable(req.getChequeFilter()).orElse("ALL"));
 
         sp.execute();
 

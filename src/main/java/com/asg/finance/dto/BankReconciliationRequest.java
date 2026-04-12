@@ -21,6 +21,8 @@ public class BankReconciliationRequest {
 	private Long transactionPoid;
 	@NotNull(message = "Transaction date is required")
 	private LocalDate transactionDate;
+    @NotNull(message = "Bank Statement Date is required")
+    private LocalDate bankStatementDate;
 	@NotNull(message = "DocRef is required")
 	private String docRef;
 	private String chequeRef;
@@ -35,6 +37,7 @@ public class BankReconciliationRequest {
 	private Double drAmt;
 	private Double crAmt;
 	private Long postedBy;
+    @NotNull(message = "Clearance Date is required")
 	private LocalDate clearanceDate;
 	private String userAuto;
 }

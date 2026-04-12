@@ -24,6 +24,7 @@ import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.BillwiseBreakupService;
 import com.asg.finance.service.CostCenterBreakupService;
 import com.asg.finance.service.JournalVoucherService;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import net.sf.jasperreports.engine.JasperReport;
 import org.springframework.beans.BeanUtils;
@@ -82,6 +83,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
     private final DataSource dataSource;
     private final LoggingService loggingService;
     private final ApplicationContext applicationContext;
+    private final EntityManager entityManager;
 
     @Override
     @Transactional
@@ -102,6 +104,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
 
             GlJournalVoucherHdr header = buildJournalVoucherHeader(request, bhdAmount, isMultiCompany);
             header = glJournalVoucherHdrRepository.save(header);
+            entityManager.refresh(header);
 
             log.info("Journal Voucher header saved - TransactionPoid: {}, DocRef: {}",
                     header.getTransactionPoid(), header.getDocRef());
@@ -112,7 +115,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                     RES_JOURNAL_VOUCHER, header.getTransactionPoid(), header.getDocRef(), request.getRefType());
 
             String key = header.getTransactionPoid().toString();
-            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, key);
+            loggingService.createLogSummaryEntry(docId, key, String.format("%s %s", LogDetailsEnum.CREATED, header.getDocRef()));
 
             return JournalVoucherResponse.builder()
                     .transactionPoid(header.getTransactionPoid())
@@ -380,7 +383,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         if (totalCr.compareTo(bhdAmount) != 0) {
             log.error("Detail total {} does not match header amount {}", totalCr, bhdAmount);
             throw new IllegalArgumentException(
-                    "Total detail amount (" + totalCr + ") does not match header amount (" + bhdAmount + ")");
+                    "BHD amount(" + bhdAmount + ") is not matching with the total credit amount(" + totalCr + ")");
         }
     }
 

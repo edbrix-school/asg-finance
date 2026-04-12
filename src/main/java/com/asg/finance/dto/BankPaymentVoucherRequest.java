@@ -33,6 +33,7 @@ public class BankPaymentVoucherRequest {
     private String contact;
     private String chqPrintedUserCode;
     private LocalDate chqPrintedDate;
+    private Long salesQtnRef;
     private Long availableBalance;
     private List<BankPaymentGLDetailRequest> glDetails;
     private List<BankPaymentChargeDetailRequest> chargeDetailRequests;

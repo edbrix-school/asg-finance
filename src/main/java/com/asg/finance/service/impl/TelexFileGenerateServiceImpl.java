@@ -25,6 +25,7 @@ import com.asg.finance.service.BankFileBatchService;
 import com.asg.finance.service.TelexFileGenerateService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.enums.LogDetailsEnum;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
@@ -55,6 +56,7 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
     private final BankFileBatchService bankFileBatchService;
     private final LoggingService loggingService;
     private final DocumentDeleteService documentDeleteService;
+    private final EntityManager entityManager;
 
     @Override
     @Transactional
@@ -81,6 +83,7 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
             hdr.setDeleted("N");
 
             GlBankFileHdr savedHdr = hdrRepository.saveAndFlush(hdr);
+            entityManager.refresh(hdr);
 
             if (request.getDetails() != null && !request.getDetails().isEmpty()) {
                 List<GlBankFileDtl> details = new ArrayList<>();
@@ -118,7 +121,11 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
 
             String key = savedHdr.getTransactionPoid().toString();
             String docId = UserContext.getDocumentId();
-            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, key);
+            loggingService.createLogSummaryEntry(
+                docId, 
+                key, 
+                String.format("%s %s", LogDetailsEnum.CREATED, savedHdr.getDocRef())
+            );
             
             return getTelexFileById(transactionPoid);
         } catch (Exception e) {

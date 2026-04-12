@@ -19,8 +19,7 @@ public class ExpenseReallocationXlDetailRequest {
     
     @NotNull(message = "CompanyCode is required")
     private String companyCode;
-    
-    @NotNull(message="detRowId is required")
+
     private Long detRowId;
 
     @NotBlank(message = "Cost Centre is required")

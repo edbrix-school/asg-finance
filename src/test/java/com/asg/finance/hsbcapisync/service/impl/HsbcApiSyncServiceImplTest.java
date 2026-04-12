@@ -18,7 +18,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -107,22 +107,22 @@ class HsbcApiSyncServiceImplTest {
 
     @Test
     void syncHsbcApiData_Success() throws Exception {
-        doNothing().when(hsbcApiClient).syncHsbcData(eq(accountNumber), any());
+        doNothing().when(hsbcApiClient).syncHsbcData(eq(accountNumber), any(), anyLong(), anyLong(), anyLong(), any());
 
         String result = service.syncHsbcApiData(accountNumber, validDate);
 
         assertEquals("HSBC data synced successfully", result);
-        verify(hsbcApiClient).syncHsbcData(eq(accountNumber), any());
+        verify(hsbcApiClient).syncHsbcData(eq(accountNumber), any(), anyLong(), anyLong(), anyLong(), any());
     }
 
     @Test
     void syncHsbcApiData_FormatsDateCorrectly() throws Exception {
         LocalDate date = LocalDate.of(2025, 3, 10);
-        doNothing().when(hsbcApiClient).syncHsbcData(eq(accountNumber), eq("10-MAR-2025"));
+        doNothing().when(hsbcApiClient).syncHsbcData(eq(accountNumber), eq("10-MAR-2025"), anyLong(), anyLong(), anyLong(), any());
 
         service.syncHsbcApiData(accountNumber, date);
 
-        verify(hsbcApiClient).syncHsbcData(accountNumber, "10-MAR-2025");
+        verify(hsbcApiClient).syncHsbcData(eq(accountNumber), eq("10-MAR-2025"), anyLong(), anyLong(), anyLong(), any());
     }
 
     @Test
@@ -145,10 +145,10 @@ class HsbcApiSyncServiceImplTest {
     }
 
     @Test
-    void syncHsbcApiData_ClientThrows_WrapsInAsgException() throws Exception {
-        doThrow(new Exception("Connection refused")).when(hsbcApiClient).syncHsbcData(any(), any());
+    void syncHsbcApiData_ClientThrows_PropagatesException() throws Exception {
+        doThrow(new Exception("Connection refused")).when(hsbcApiClient).syncHsbcData(any(), any(), anyLong(), anyLong(), anyLong(), any());
 
-        AsgException ex = assertThrows(AsgException.class, () -> service.syncHsbcApiData(accountNumber, validDate));
+        Exception ex = assertThrows(Exception.class, () -> service.syncHsbcApiData(accountNumber, validDate));
         assertEquals("Connection refused", ex.getMessage());
     }
 }

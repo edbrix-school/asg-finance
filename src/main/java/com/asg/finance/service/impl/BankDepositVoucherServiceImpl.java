@@ -80,7 +80,8 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
         callUpdatePaymentProcedure(transactionPoid, request.getType());
 
         String key = transactionPoid != null ? transactionPoid.toString() : null;
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), key);
+        GlBankDepositVoucherHdr hdr = getGlBankDepositVoucherHdr(transactionPoid);
+        loggingService.createLogSummaryEntry(UserContext.getDocumentId(), key, String.format("%s %s", LogDetailsEnum.CREATED, hdr.getDocRef()));
         
         BankDepositVoucherResponseDto response = getBankDepositVoucherById(transactionPoid);
         handlePostSaveWorkflow(transactionPoid, response.getDocRef(), response.getTransactionDate());

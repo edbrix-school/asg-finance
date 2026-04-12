@@ -31,6 +31,7 @@ import com.asg.common.lib.security.util.UserContext;
 
 import com.asg.finance.annotation.PerformGlPosting;
 import com.asg.finance.service.ContraVoucherService;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;
@@ -67,6 +68,7 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
     private final LovDataService lovService;
     private final PrintService printService;
     private final LoggingService loggingService;
+    private final EntityManager entityManager;
 
     @Override
     public Map<String, Object> listContraVouchers(String docId, FilterRequestDto request, Pageable pageable, LocalDate periodFrom, LocalDate periodTo) {
@@ -230,10 +232,11 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
         header.setCrTotal(request.getCrTotal());
 
         GlContraVoucherHdr savedHeader = hdrRepository.save(header);
+        entityManager.refresh(header);
 
         // Log the creation
         String key = savedHeader.getTransactionPoid().toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, "400-103", key);
+        loggingService.createLogSummaryEntry(UserContext.getDocumentId(), key, String.format("%s %s", LogDetailsEnum.CREATED, savedHeader.getDocRef()));
 
         // Process details from request
         if (request.getDetails() != null && !request.getDetails().isEmpty()) {

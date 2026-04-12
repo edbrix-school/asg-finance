@@ -119,7 +119,7 @@ public class ChequePrintingRepositoryImpl implements ChequePrintingRepository {
 		sp.registerStoredProcedureParameter("P_SIGN_TYPE", String.class, ParameterMode.IN);
 		sp.registerStoredProcedureParameter("OUTDATA", void.class, ParameterMode.REF_CURSOR);
 
-		String normalizedBankCode = StringUtils.defaultIfBlank(StringUtils.trimToNull(bankCode), "HSBC");
+		String normalizedBankCode = StringUtils.trimToNull(bankCode);
 		String normalizedSignType = StringUtils.defaultIfBlank(StringUtils.trimToNull(signType), "NOT_SIGNED");
 
 		sp.setParameter("P_BANK_CODE", normalizedBankCode);

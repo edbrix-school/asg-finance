@@ -136,7 +136,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         ArDebitNoteHdr refreshedEntity = debitNoteHdrRepository.findById(savedEntity.getTransactionPoid())
                 .orElseThrow(() -> new ResourceNotFoundException("DebitNote", "transactionPoid", savedEntity.getTransactionPoid()));
         // Log the creation
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), savedEntity.getTransactionPoid().toString());
+        loggingService.createLogSummaryEntry(UserContext.getDocumentId(), savedEntity.getTransactionPoid().toString(), String.format("%s %s", LogDetailsEnum.CREATED, refreshedEntity.getDocRef()));
 
         // Publish event for after-save processing (will run after transaction commit)
         publishAfterSaveEvent(refreshedEntity, null, null);

@@ -33,6 +33,7 @@ import com.asg.finance.repository.TaxMasterRepository;
 import com.asg.finance.service.ApPurchaseCnService;
 import com.asg.finance.service.BillwiseBreakupService;
 import com.asg.finance.service.CostCenterBreakupService;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;
@@ -230,6 +231,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
     private final LoggingService loggingService;
     private final DocumentDeleteService documentDeleteService;
     private final LovDataService lovService;
+    private final EntityManager entityManager;
 
     @Override
     @Transactional
@@ -248,13 +250,18 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
             hdr.setDeleted(DEFAULT_NO_VALUE);
             
             ApPurchaseCnHdr savedHdr = hdrRepository.save(hdr);
+            entityManager.refresh(hdr);
             log.info(LOG_MESSAGE_SAVED_HEADER, savedHdr.getTransactionPoid());
             
             saveDetails(savedHdr.getTransactionPoid(), dto);
             log.info(LOG_MESSAGE_CREATED_SUCCESS, savedHdr.getTransactionPoid());
             
-            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), 
-                    savedHdr.getTransactionPoid().toString());
+            loggingService.createLogSummaryEntry(
+                UserContext.getDocumentId(), 
+                savedHdr.getTransactionPoid().toString(), 
+                String.format("%s %s", LogDetailsEnum.CREATED, savedHdr.getDocRef())
+            );
+            log.info("logging Succeessfully", savedHdr.getDocRef());
             
             return fetchById(savedHdr.getTransactionPoid());
         } catch (Exception e) {
@@ -281,7 +288,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
             dto.setItemDetails(itemDtlRepository.findByTransactionPoid(transactionPoid).stream()
                     .map(this::mapItemToDto).toList());
             dto.setChargeDetails(chargeDtlRepository.findByTransactionPoid(transactionPoid).stream()
-                    .map(this::mapChargeToDto).toList());
+                    .map(charge -> mapChargeToDto(charge, hdr.getRefType())).toList());
             dto.setGlDetails(glDtlRepository.findByTransactionPoid(transactionPoid).stream()
                     .map(this::mapGlToDto).toList());
             
@@ -1393,15 +1400,14 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                 .build();
     }
 
-    private ApPurchaseCnChargeDtlDto mapChargeToDto(ApPurchaseCnChargeDtl entity) {
+    private ApPurchaseCnChargeDtlDto mapChargeToDto(ApPurchaseCnChargeDtl entity, String refType) {
         ApPurchaseCnChargeDtlDto dto = new ApPurchaseCnChargeDtlDto();
         dto.setDetRowId(entity.getDetRowId());
         dto.setChargePoid(entity.getChargePoid());
         if (entity.getChargePoid() != null) {
             // Use appropriate LOV based on charge context - FF vs FDA
-            // This should ideally be determined by the refType context, but for now using a generic LOV
-            // TODO: Implement dynamic LOV selection based on refType (FF_CHARGE_MASTER_PJ vs FDA_CHARGE_MASTER_PJ)
-            dto.setChargeDet(lovService.getDetailsByPoidAndLovName(entity.getChargePoid(), LOV_FF_CHARGE_MASTER_PJ));
+            String lovName = REF_TYPE_FF.equals(refType) ? LOV_FF_CHARGE_MASTER_PJ : LOV_FDA_CHARGE_MASTER_PJ;
+            dto.setChargeDet(lovService.getDetailsByPoidAndLovName(entity.getChargePoid(), lovName));
         }
         dto.setChargeAmount(entity.getChargeAmount());
         dto.setDescription(entity.getDescription());

@@ -4,10 +4,7 @@ import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.finance.dto.*;
 import com.asg.finance.entity.GlBankEntity;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.ParameterMode;
-import jakarta.persistence.PersistenceContext;
-import jakarta.persistence.StoredProcedureQuery;
+import jakarta.persistence.*;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.Session;
 import org.springframework.stereotype.Repository;
@@ -178,8 +175,8 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
 
             String result = outStr(sp, P_RESULT);
 
-            if (result != null && result.toLowerCase().startsWith("error")) {
-                return result;
+            if (isError(result)) {
+                throw new RuntimeException(result);
             }
         }
 
@@ -202,12 +199,10 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
 
                 for (BankReconcHoldAndUholdRequest req : reqList) {
 
-                    validateRequest(req);  // 🔹 Extracted validation
-
-                    String result = executeUnhold(cs, req); // 🔹 Extracted execution
+                    String result = executeUnhold(cs, req);
 
                     if (isError(result)) {
-                        return result;
+                        throw new RuntimeException(result);
                     }
                 }
 
@@ -219,25 +214,6 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
                 throw new IllegalStateException("Error calling PROC_GL_BANK_RECONCILE_UNHOLD", e);
             }
         });
-    }
-
-    private void validateRequest(BankReconcHoldAndUholdRequest req) {
-
-        if (!existsByTransactionPoid(req.getTransactionPoid())) {
-            throw new ResourceNotFoundException(
-                    "Bank Reconciliation",
-                    "transaction poid",
-                    req.getTransactionPoid()
-            );
-        }
-
-        if (!existsByDocref(req.getTransactionPoid(), req.getDocRef())) {
-            throw new ResourceNotFoundException(
-                    "Document Reference",
-                    "docRef",
-                    req.getDocRef()
-            );
-        }
     }
 
     private String executeUnhold(CallableStatement cs, BankReconcHoldAndUholdRequest req)
@@ -259,7 +235,7 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
     }
 
     private boolean isError(String result) {
-        return result != null && result.toLowerCase().startsWith("error");
+        return result != null && !result.toLowerCase().contains("success");
     }
 
     @Override
@@ -373,11 +349,13 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
 
         List<Object[]> cursorList = sp.getResultList();
         List<BankReconcileReportRow> reportRows = cursorList.stream()
-                .map(cursorData -> mapReportRow(cursorData, Optional.ofNullable(req.getChequeType()).orElse(null),
-                        Optional.ofNullable(req.getChequeFilter()).orElse(null)))
+                .map(cursorData -> mapReportRow(
+                        cursorData,
+                        req.getChequeType(),
+                        req.getChequeFilter()
+                ))
                 .toList();
 
-        resp.setReportData(reportRows);
         resp.setOpeningBalance((String) sp.getOutputParameterValue("OUTDATA1"));
         resp.setClosingBalance((String) sp.getOutputParameterValue("OUTDATA2"));
         resp.setCreditTotal((String) sp.getOutputParameterValue("OUTDATA3"));
@@ -386,7 +364,29 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
         resp.setDebitTotal2((String) sp.getOutputParameterValue("OUTDATA6"));
         resp.setExtraValue((String) sp.getOutputParameterValue("OUTDATA7"));
 
+        reportRows.forEach(row -> {
+            if (row.getDocId1() != null) {
+                row.setDocTitle(getDocumentTitle(row.getDocId1()));
+            }
+        });
+        resp.setReportData(reportRows);
+
         return resp;
+    }
+
+    private String getDocumentTitle(String docId) {
+        try {
+            return (String) em
+                    .createNativeQuery(
+                            "SELECT DOC_NAME FROM GLOBAL_DOC_MASTER " +
+                                    "WHERE DOC_ID = :docId " +
+                                    "AND ACTIVE = 'Y' " +
+                                    "AND (DELETED = 'N' OR DELETED IS NULL)")
+                    .setParameter("docId", docId)
+                    .getSingleResult();
+        } catch (NoResultException e) {
+            return "";
+        }
     }
 
     private boolean existsByTransactionPoid(Long transactionPoid) {
@@ -556,7 +556,7 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
         return new BankReconcileReportRow(getLong(row, 0), getLong(row, 1), getString(row, 2), getLong(row, 3),
                 getDate(row, 4), getString(row, 5), getString(row, 6), getLong(row, 7), getString(row, 8),
                 getLong(row, 9), getLong(row, 10), getBigDecimal(row, 11), isFiltered ? null : getBigDecimal(row, 12),
-                getDate(row, 13 - offset), getString(row, 14 - offset), getString(row, 15 - offset));
+                getDate(row, 13 - offset), getString(row, 14 - offset), getString(row, 15 - offset), null);
     }
 
     private boolean validateBank(Long bankPoid) {

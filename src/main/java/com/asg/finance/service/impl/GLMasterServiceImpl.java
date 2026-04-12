@@ -25,6 +25,8 @@ import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.GLMasterCustomService;
 import com.asg.finance.service.GLMasterService;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,6 +75,9 @@ public class GLMasterServiceImpl implements GLMasterService {
 
     @Autowired
     private DocumentDeleteService documentDeleteService;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     private String getCurrentUser() {
         return ASGHelperUtils.getCurrentUser(); // dynamically fetch current user
@@ -154,7 +159,7 @@ public class GLMasterServiceImpl implements GLMasterService {
         entity.setDescription(req.getDescription());
         entity.setDescription2(req.getDescription2());
         entity.setType(req.getType());
-        entity.setGroupGlPoid(subOf);
+        entity.setSubOf(subOf);
         entity.setAccountType(req.getAccountType());
         entity.setControlAcType(req.getControlAcType());
         entity.setCostGroup(req.getCostGroup());
@@ -257,6 +262,12 @@ public class GLMasterServiceImpl implements GLMasterService {
         GLMasterEntity entity = glMasterRepo.findById(glPoid)
                 .orElseThrow(() -> new RuntimeException("GL Master not found: " + glPoid));
 
+        String existingType = entity.getType();
+        String requestedType = req.getType();
+        if (isGroupType(existingType) && "LEDGER".equalsIgnoreCase(requestedType) && hasActiveChildren(glPoid)) {
+            throw new ValidationException("Cannot change GL Type to LEDGER because child GL accounts are already mapped under this group.");
+        }
+
         // Create a copy of the existing entity for logging
         GLMasterEntity oldEntity = new GLMasterEntity();
 
@@ -290,7 +301,7 @@ public class GLMasterServiceImpl implements GLMasterService {
         entity.setDescription(req.getDescription());
         entity.setDescription2(req.getDescription2());
         entity.setType(req.getType());
-        entity.setGroupGlPoid(subOf);
+        entity.setSubOf(subOf);
         entity.setAccountType(req.getAccountType());
         entity.setControlAcType(req.getControlAcType());
         entity.setCostGroup(req.getCostGroup());
@@ -417,6 +428,10 @@ public class GLMasterServiceImpl implements GLMasterService {
         GLMasterEntity entity = glMasterRepo.findById(glPoid)
                 .orElseThrow(() -> new RuntimeException("GL Master not found: " + glPoid));
 
+        if ("LEDGER".equalsIgnoreCase(entity.getType()) && hasPostedEntriesForLedger(glPoid)) {
+            throw new ValidationException("This ledger cannot be deleted because posting entries exist for this GL.");
+        }
+
         // Check if this GL Master has active children
         if (hasActiveChildren(glPoid)) {
             throw new ValidationException("This GL Master cannot be deleted as it has related child records.");
@@ -433,13 +448,25 @@ public class GLMasterServiceImpl implements GLMasterService {
     }
 
     private boolean hasActiveChildren(Long parentPoid) {
-        return glMasterRepo.existsByGroupGlPoidAndDeletedFlag(parentPoid, "N");
+        return glMasterRepo.existsBySubOfAndDeletedFlag(parentPoid, "N");
+    }
+
+    private boolean hasPostedEntriesForLedger(Long glPoid) {
+        Number count = (Number) entityManager.createNativeQuery(
+                        "SELECT COUNT(1) FROM GL_LEDGER WHERE GL_POID = :glPoid")
+                .setParameter("glPoid", glPoid)
+                .getSingleResult();
+        return count != null && count.longValue() > 0;
+    }
+
+    private boolean isGroupType(String type) {
+        return "MAIN_GROUP".equalsIgnoreCase(type) || "SUB_GROUP".equalsIgnoreCase(type);
     }
 
 
     private void propagateToChildren(GLMasterEntity parent) {
         GLMasterEntity probe = new GLMasterEntity();
-        probe.setGroupGlPoid(parent.getGlPoid());
+        probe.setSubOf(parent.getGlPoid());
         List<GLMasterEntity> children = glMasterRepo.findAll(Example.of(probe));
 
         if (children.isEmpty()) {
@@ -465,9 +492,9 @@ public class GLMasterServiceImpl implements GLMasterService {
         dto.setDescription(entity.getDescription());
         dto.setDescription2(entity.getDescription2());
         dto.setType(entity.getType());
-        dto.setSubOf(entity.getGroupGlPoid());
-        if (entity.getGroupGlPoid() != null) {
-            dto.setSubOfDet(lovService.getDetailsByPoidAndLovName(entity.getGroupGlPoid(), "GL_MASTER_GROUPS"));
+        dto.setSubOf(entity.getSubOf());
+        if (entity.getSubOf() != null) {
+            dto.setSubOfDet(lovService.getDetailsByPoidAndLovName(entity.getSubOf(), "GL_MASTER_GROUPS"));
         }
         dto.setAccountType(entity.getAccountType());
         dto.setControlAcType(entity.getControlAcType());
@@ -1005,7 +1032,7 @@ public class GLMasterServiceImpl implements GLMasterService {
             }
 
             // Determine level based on parent relationship
-            Integer level = (entity.getGroupGlPoid() == null) ? 0 : 1;
+            Integer level = (entity.getSubOf() == null) ? 0 : 1;
 
             GLMasterResponseDto dto = new GLMasterResponseDto();
             dto.setGlPoid(entity.getGlPoid());
@@ -1013,7 +1040,7 @@ public class GLMasterServiceImpl implements GLMasterService {
             dto.setDescription(entity.getDescription());
             dto.setType(entity.getType());
             dto.setAccountType(entity.getAccountType());
-            dto.setParentPoid(entity.getGroupGlPoid());
+            dto.setParentPoid(entity.getSubOf());
             dto.setLevel(level);
             dto.setActive("Y".equals(entity.getActiveFlag()));
             dto.setDeleted("Y".equals(entity.getDeletedFlag()));

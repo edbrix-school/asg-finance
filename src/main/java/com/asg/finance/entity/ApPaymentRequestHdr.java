@@ -46,8 +46,8 @@ public class ApPaymentRequestHdr extends BaseEntity {
     @Column(name = "CURRENCY_RATE")
     private BigDecimal currencyRate;
 
-    @Column(name = "PAYEE_POID")
-    private Long payeePoid;
+    @Column(name = "PAYEE_NAME", length = 200)
+    private String payeeName;
 
     @Column(name = "REQUESTED_BY", length = 200)
     private String requestedBy;

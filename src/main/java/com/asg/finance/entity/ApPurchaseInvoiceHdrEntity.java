@@ -21,7 +21,6 @@ public class ApPurchaseInvoiceHdrEntity extends BaseEntity {
     @Column(name = "TRANSACTION_POID")
     private Long transactionPoid;
 
-    @AuditIgnore
     @Column(name = "TRANSACTION_DATE")
     private LocalDate transactionDate;
 

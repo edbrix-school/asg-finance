@@ -148,10 +148,11 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         entityManager.flush();
 
         // Log the creation
-//        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(),
-//                header.getTransactionPoid().toString());
-        loggingService.createLogSummaryEntry("300-105", header.getTransactionPoid().toString(),
-                String.format("%s %s", LogDetailsEnum.CREATED, header.getDocRef()));
+        loggingService.createLogSummaryEntry(
+            UserContext.getDocumentId(),
+            header.getTransactionPoid().toString(),
+            String.format("%s %s", LogDetailsEnum.CREATED, header.getDocRef())
+        );
 
         log.info("Successfully created general receipt: {}", header.getDocRef());
 

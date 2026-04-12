@@ -23,6 +23,7 @@ import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.PurchaseOrderService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.enums.LogDetailsEnum;
+import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import net.sf.jasperreports.engine.JasperReport;
@@ -62,6 +63,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     private final LoggingService loggingService;
     private final DocumentDeleteService documentDeleteService;
     private final GlobalParameterService globalParameterService;
+    private final EntityManager entityManager;
 
     @Override
     @Transactional
@@ -70,6 +72,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         try {
             PurchaseOrder purchaseOrder = mapToPurchaseOrder(request);
             PurchaseOrder savedPO = purchaseOrderRepository.save(purchaseOrder);
+            entityManager.refresh(purchaseOrder);
 
             Long transactionPoid = savedPO.getTransactionPoid();
             
@@ -105,7 +108,11 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             }
 
             // Logging for create operation
-            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, documentId, savedPO.getTransactionPoid().toString());
+            loggingService.createLogSummaryEntry(
+                documentId, 
+                savedPO.getTransactionPoid().toString(), 
+                String.format("%s %s", LogDetailsEnum.CREATED, savedPO.getDocRef())
+            );
 
             return mapToPurchaseOrderResponse(savedPO, savedItems);
 

@@ -22,6 +22,7 @@ import com.asg.finance.repository.PdcChqBatchHdrRepository;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.PdcChqBatchService;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.Cell;
@@ -50,6 +51,7 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
     private final PdcBatchCreationRepository pdcBatchCreationRepository;
     private final PdcBatchExcelUploadTempRepository tempRepo;
     private final LoggingService loggingService;
+    private final EntityManager entityManager;
 
     private static final String STATUS_SUCCESS = "SUCCESS";
     private static final String DOC_ID = "400-113";
@@ -62,7 +64,9 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
         validateSrsBusinessRules(dto);
 
         PdcChqBatchHdrEntity hdr = mapHeaderDtoToEntity(dto);
-        hdr = hdrRepo.save(hdr); // trigger generates docRef + poid
+        hdr = hdrRepo.save(hdr);
+        entityManager.refresh(hdr);
+
 
         Long transactionPoid = hdr.getTransactionPoid();
 

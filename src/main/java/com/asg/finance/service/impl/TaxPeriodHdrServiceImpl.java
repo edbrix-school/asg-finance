@@ -70,6 +70,7 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
         validatePeriodOverlap(request.getPeriodFrom(), request.getPeriodTo());
         TaxPeriodHdr entity = convertFromTaxPeriodHdrDtoToTaxPeriodHdrEntity(request);
         TaxPeriodHdr taxPeriodHdr = taxPeriodHdrRepository.save(entity);
+        entityManager.refresh(entity);
         Long transactionPoid = taxPeriodHdr.getTransactionPoid();
         String key = taxPeriodHdr.getTransactionPoid().toString();
         String docId = UserContext.getDocumentId();
@@ -113,7 +114,11 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
             });
         }
 
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, key);
+        loggingService.createLogSummaryEntry(
+            docId, 
+            key, 
+            String.format("%s %s", LogDetailsEnum.CREATED, taxPeriodHdr.getDocRef())
+        );
 
 
         return convertFromTaxPeriodHdrEntityToTaxPeriodHdrDto(taxPeriodHdr);

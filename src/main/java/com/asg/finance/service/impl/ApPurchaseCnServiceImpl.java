@@ -1407,7 +1407,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         dto.setChargePoid(entity.getChargePoid());
         if (entity.getChargePoid() != null) {
             // Use appropriate LOV based on charge context - FF vs FDA
-            String lovName = REF_TYPE_FF.equals(refType) ? LOV_FF_CHARGE_MASTER_PJ : LOV_FDA_CHARGE_MASTER_PJ;
+            String lovName = REF_TYPE_FF_JOB.equals(refType) ? LOV_FF_CHARGE_MASTER_PJ : LOV_FDA_CHARGE_MASTER_PJ;
             dto.setChargeDet(lovService.getDetailsByPoidAndLovName(entity.getChargePoid(), lovName));
         }
         dto.setChargeAmount(entity.getChargeAmount());

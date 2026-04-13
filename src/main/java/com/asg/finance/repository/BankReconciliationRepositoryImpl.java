@@ -440,6 +440,10 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
         dto.setCrAmt(getBigDecimal(row, 12));
         dto.setDrAmt(getBigDecimal(row, 13));
 
+        if (dto.getDocId() != null) {
+            dto.setDocTitle(getDocumentTitle(dto.getDocId()));
+        }
+
         return dto;
     }
 

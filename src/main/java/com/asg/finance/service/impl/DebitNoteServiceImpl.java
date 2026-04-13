@@ -111,6 +111,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         ArDebitNoteHdr entity = mapToEntity(debitNoteDto);
         ArDebitNoteHdr savedEntity = debitNoteHdrRepository.saveAndFlush(entity);
         // Refresh to pull back trigger-generated DOC_REF from the database
+        entityManager.flush();
         entityManager.refresh(savedEntity);
         debitNoteDto.setDocRef(savedEntity.getDocRef());
         DocumentBeforeSaveBillwiseCostGroups(debitNoteDto);

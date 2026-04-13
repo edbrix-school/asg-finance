@@ -83,6 +83,7 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
             hdr.setDeleted("N");
 
             GlBankFileHdr savedHdr = hdrRepository.saveAndFlush(hdr);
+            entityManager.flush();
             entityManager.refresh(hdr);
 
             if (request.getDetails() != null && !request.getDetails().isEmpty()) {

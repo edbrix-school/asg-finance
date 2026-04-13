@@ -381,7 +381,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         apPurchaseInvoiceHdrEntity.setFdaCoveringRef(apPurchaseInvoiceHdrDto.getFdaCoveringRef());
 
         ApPurchaseInvoiceHdrEntity savedApPurchaseInvoiceHdrEntity = repository.save(apPurchaseInvoiceHdrEntity);
-        //entityManager.flush();
+        entityManager.flush();
         entityManager.refresh(savedApPurchaseInvoiceHdrEntity);
 
         Long transactionPoid = savedApPurchaseInvoiceHdrEntity.getTransactionPoid();
@@ -460,8 +460,11 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         saveRjvDetails(transactionPoid, apPurchaseInvoiceHdrDto);
 
         // Log the creation
-        String key = transactionPoid.toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, documentId, key);
+        loggingService.createLogSummaryEntry(
+            documentId, 
+            savedApPurchaseInvoiceHdrEntity.getTransactionPoid().toString(), 
+            String.format("%s %s", LogDetailsEnum.CREATED, savedApPurchaseInvoiceHdrEntity.getDocRef())
+        );
 
        /* repository.flush();
         apPurchaseInvoiceItemDtlRepository.flush();

@@ -17,6 +17,7 @@ import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.GlobalParameterService;
+import com.asg.finance.annotation.DocAfterSave;
 import com.asg.finance.annotation.PerformGlPosting;
 import com.asg.finance.entity.GLMaster;
 import com.asg.finance.entity.SupplierMasterEntity;
@@ -105,6 +106,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
     @Override
     @PerformGlPosting
+    @DocAfterSave
     @Transactional
     public PettyCashResponseDto createPettyCash(PettyCashCreateRequestDto requestDto, String documentId) {
         StringBuilder result = new StringBuilder();
@@ -376,6 +378,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
     @Transactional
     @Override
     @PerformGlPosting
+    @DocAfterSave
     public PettyCashResponseDto updatePettyCash(Long transactionPoid,
                                                 PettyCashUpdateRequestDto requestDto, String documentId) {
         try {

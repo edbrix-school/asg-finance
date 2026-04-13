@@ -6,6 +6,7 @@ import com.asg.finance.dto.*;
 import com.asg.finance.entity.GlBankEntity;
 import jakarta.persistence.*;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
 import org.hibernate.Session;
 import org.springframework.stereotype.Repository;
 
@@ -341,7 +342,7 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
         set(sp, P_RECONCILE_CHEQUE, req.getReconcileCheque());
         set(sp, P_BR_TYPE, req.getBrType());
         set(sp, P_CHEQUE_TYPE, req.getChequeType());
-        set(sp, P_CHEQUE_FILTER, Optional.ofNullable(req.getChequeFilter()).orElse("ALL"));
+        set(sp, P_CHEQUE_FILTER, StringUtils.defaultIfBlank(req.getChequeFilter(), "ALL"));
 
         sp.execute();
 

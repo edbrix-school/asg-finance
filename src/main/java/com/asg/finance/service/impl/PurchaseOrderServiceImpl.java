@@ -72,6 +72,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         try {
             PurchaseOrder purchaseOrder = mapToPurchaseOrder(request);
             PurchaseOrder savedPO = purchaseOrderRepository.save(purchaseOrder);
+            entityManager.flush();
             entityManager.refresh(purchaseOrder);
 
             Long transactionPoid = savedPO.getTransactionPoid();

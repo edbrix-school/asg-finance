@@ -68,6 +68,7 @@ public class AdvancePettyCashHdrServiceImpl implements AdvancePettyCashHdrServic
         try {
             AdvancePettyCashHdr entity = convertFromDtoToEntity(request);
             AdvancePettyCashHdr saved = repository.save(entity);
+            entityManager.flush();
             entityManager.refresh(entity);
             String key = saved.getTransactionPoid().toString();
             

@@ -232,6 +232,7 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
         header.setCrTotal(request.getCrTotal());
 
         GlContraVoucherHdr savedHeader = hdrRepository.save(header);
+        entityManager.flush();
         entityManager.refresh(header);
 
         // Log the creation

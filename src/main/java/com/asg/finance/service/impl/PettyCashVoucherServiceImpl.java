@@ -163,6 +163,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             validateCashBalance(requestDto, documentId);
 
             GlPettyCashPaymentHdr savedHeader = glPettyCashPaymentHdrRepository.save(header);
+            entityManager.flush();
             entityManager.refresh(header);
             Long hdrPoid = savedHeader.getTransactionPoid();
 

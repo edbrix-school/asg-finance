@@ -141,6 +141,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             header.setLastModifiedDate(now);
 
             ArCreditNoteHdr savedHeader = creditNoteHdrRepository.saveAndFlush(header);
+            entityManager.flush();
             entityManager.refresh(savedHeader);
             creditNoteDto.setDocRef(savedHeader.getDocRef());
             DocumentBeforeSaveBillwiseCostGroups(creditNoteDto);

@@ -65,6 +65,7 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
 
         PdcChqBatchHdrEntity hdr = mapHeaderDtoToEntity(dto);
         hdr = hdrRepo.save(hdr);
+        entityManager.flush();
         entityManager.refresh(hdr);
 
 

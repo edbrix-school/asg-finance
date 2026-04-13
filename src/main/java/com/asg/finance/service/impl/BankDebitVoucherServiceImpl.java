@@ -182,6 +182,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         populateCreateAudit(header);
 
         GlBankDebitHdr savedHeader = headerRepository.save(header);
+        entityManager.flush();
         entityManager.refresh(header);
 
         // Post-save job cost updates (mirrors legacy DocumentAfterSave)

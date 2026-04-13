@@ -250,6 +250,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
             hdr.setDeleted(DEFAULT_NO_VALUE);
             
             ApPurchaseCnHdr savedHdr = hdrRepository.save(hdr);
+            entityManager.flush();
             entityManager.refresh(hdr);
             log.info(LOG_MESSAGE_SAVED_HEADER, savedHdr.getTransactionPoid());
             

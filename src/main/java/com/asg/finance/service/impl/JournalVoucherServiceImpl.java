@@ -104,6 +104,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
 
             GlJournalVoucherHdr header = buildJournalVoucherHeader(request, bhdAmount, isMultiCompany);
             header = glJournalVoucherHdrRepository.save(header);
+            entityManager.flush();
             entityManager.refresh(header);
 
             log.info("Journal Voucher header saved - TransactionPoid: {}, DocRef: {}",

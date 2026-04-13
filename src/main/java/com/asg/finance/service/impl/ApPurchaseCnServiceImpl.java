@@ -48,7 +48,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import javax.sql.DataSource;
 import java.math.BigDecimal;
+import java.sql.CallableStatement;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.sql.Types;
+import java.util.Objects;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -918,6 +923,91 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
     private void validateGeneralRefType(ApPurchaseCnHdrDto dto) {
         if (CollectionUtils.isEmpty(dto.getGlDetails())) {
             throw new ValidationException(ERROR_GL_DETAIL_REQUIRED_PREFIX + REF_TYPE_GENERAL);
+        }
+        autoBalancePartyGlForGeneral(dto);
+    }
+
+    private void autoBalancePartyGlForGeneral(ApPurchaseCnHdrDto dto) {
+        Long partyPoid = PARTY_TYPE_SUPPLIER.equals(dto.getPartyType())
+                ? dto.getSupplierPoid() : dto.getPrincipalPoid();
+        if (partyPoid == null) {
+            return;
+        }
+
+        Long partyGl;
+        try {
+            partyGl = executeGetPartyGLPoid(partyPoid, dto.getPartyType());
+        } catch (SQLException e) {
+            throw new ValidationException("Failed to load Party GL: " + e.getMessage());
+        }
+        if (partyGl == null) {
+            return;
+        }
+
+        List<ApPurchaseCnGlDtlDto> activeGlDetails = dto.getGlDetails().stream()
+                .filter(Objects::nonNull)
+                .filter(gl -> !ACTION_TYPE_IS_DELETED.equalsIgnoreCase(normalizeActionType(gl.getActionType())))
+                .toList();
+
+        boolean partyGlFound = activeGlDetails.stream()
+                .anyMatch(gl -> Objects.equals(gl.getGlPoid(), partyGl));
+        if (partyGlFound) {
+            return;
+        }
+
+        BigDecimal totalDrAmt = activeGlDetails.stream()
+                .filter(gl -> "DR".equalsIgnoreCase(gl.getType()))
+                .map(gl -> gl.getDrAmount() != null ? gl.getDrAmount() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalCrAmt = activeGlDetails.stream()
+                .filter(gl -> "CR".equalsIgnoreCase(gl.getType()))
+                .map(gl -> gl.getCrAmount() != null ? gl.getCrAmount() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal documentTotal = dto.getBhdAmount() != null ? dto.getBhdAmount() : dto.getGrandTotal();
+        BigDecimal balancingAmount = totalDrAmt.subtract(totalCrAmt);
+        if (balancingAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            balancingAmount = documentTotal;
+        }
+        if (balancingAmount == null || balancingAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            return;
+        }
+
+        Long nextDetRowId = dto.getGlDetails().stream()
+                .map(ApPurchaseCnGlDtlDto::getDetRowId)
+                .filter(Objects::nonNull)
+                .max(Long::compareTo)
+                .orElse(0L) + 1;
+
+        ApPurchaseCnGlDtlDto balancingRow = new ApPurchaseCnGlDtlDto();
+        balancingRow.setType("CR");
+        balancingRow.setCompanyPoid(UserContext.getCompanyPoid());
+        balancingRow.setGlPoid(partyGl);
+        balancingRow.setDrAmount(BigDecimal.ZERO);
+        balancingRow.setCrAmount(balancingAmount);
+        balancingRow.setTotalAmount(balancingAmount);
+        balancingRow.setRemarks("Auto Balance Entry");
+        balancingRow.setActionType(ACTION_TYPE_IS_CREATED);
+        balancingRow.setDetRowId(nextDetRowId);
+
+        dto.getGlDetails().add(balancingRow);
+        log.info("Auto-balanced party GL {} with CR amount {} for Supplier CN", partyGl, balancingAmount);
+    }
+
+    private Long executeGetPartyGLPoid(Long partyPoid, String partyType) throws SQLException {
+        String sql = "BEGIN PROC_GL_GET_DR_PARTY_GLPOID(?, ?, ?, ?, ?, ?, ?); END;";
+        try (Connection conn = dataSource.getConnection();
+             CallableStatement cs = conn.prepareCall(sql)) {
+            cs.setLong(1, UserContext.getGroupPoid());
+            cs.setLong(2, UserContext.getCompanyPoid());
+            cs.setLong(3, UserContext.getUserPoid());
+            cs.setLong(4, partyPoid != null ? partyPoid : 0);
+            cs.setString(5, partyType != null ? partyType : PARTY_TYPE_SUPPLIER);
+            cs.registerOutParameter(6, Types.NUMERIC);
+            cs.registerOutParameter(7, Types.VARCHAR);
+            cs.execute();
+            long partyGLPoid = cs.getLong(6);
+            return partyGLPoid == 0 ? null : partyGLPoid;
         }
     }
 

@@ -28,6 +28,7 @@ public class PurchaseInvoiceChargeDtl {
     private Long chargePoid;
 
     @ManyToOne
+    @AuditIgnore
     @JoinColumn(name = "CHARGE_POID", referencedColumnName = "CHARGE_POID",
             insertable = false, updatable = false)
     private ShipChargeEntity shipChargeMaster;

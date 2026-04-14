@@ -260,6 +260,12 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         validateBeforeSaveInNewTransaction(existing);
 
+        // Legacy Validation: Pre-printed (Manual) cheques allow edits even after print.
+        // System cheques are locked once printed.
+        if ("Y".equalsIgnoreCase(existing.getChqPrinted()) && !"Y".equalsIgnoreCase(existing.getPrePrinted())) {
+            throw new ValidationException("Cheque is printed..Not allowed to edit document..");
+        }
+
         updateHeaderFromRequest(existing, req);
         GLPaymentVoucherHDREntity updatedHeader = paymentVoucherRepository.save(existing);
 
@@ -415,11 +421,6 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         entity.setSecurityCheque(req.getSecurityCheque());
         entity.setCurrencyAmount(req.getCurrencyAmount());
         entity.setAvailableBalance(req.getAvailableBalance());
-        entity.setChqPrintedUserCode(req.getChqPrintedUserCode());
-        entity.setChqPrintedDate(req.getChqPrintedDate());
-        if (req.getChqPrintedUserCode() != null || req.getChqPrintedDate() != null) {
-            entity.setChqPrinted("Y");
-        }
 
         if (Boolean.TRUE.equals(req.getReleased())) {
             entity.setReleasedToPerson(req.getReleasedToPerson());
@@ -665,8 +666,13 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         }
 
         entity.setTransactionDate(LocalDate.now());
-        entity.setChqPrintedUserCode(req.getChqPrintedUserCode());
-        entity.setChqPrintedDate(req.getChqPrintedDate());
+        if (req.getChqPrintedUserCode() != null || req.getChqPrintedDate() != null) {
+            entity.setChqPrintedUserCode(req.getChqPrintedUserCode());
+            entity.setChqPrintedDate(req.getChqPrintedDate());
+            entity.setChqPrinted("Y");
+        } else {
+            entity.setChqPrinted("N");
+        }
         entity.setAvailableBalance(req.getAvailableBalance());
 
         return entity;
@@ -1193,7 +1199,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
             String result = spRepository.validateJob(groupPoid, userPoid, companyPoid, docId, refType, refPoid);
             if (result != null) {
                 if (result.contains("CLOSED")) {
-                    throw new ValidationException("WARNING : Selected MTA RFQ is in closed status,Unable to save...");
+                    throw new ValidationException("WARNING : Selected MTA RFQ is in closed status,Unable to save");
                 }
                 if (result.startsWith("ERROR") || result.startsWith("WARNING")) {
                     throw new ValidationException(result);

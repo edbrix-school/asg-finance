@@ -30,6 +30,10 @@
     <parameter name="P_PRINT_WITHOUT_BILL" class="java.lang.String">
         <defaultValueExpression><![CDATA["N"]]></defaultValueExpression>
     </parameter>
+    <parameter name="SUB_HEADER" class="net.sf.jasperreports.engine.JasperReport"/>
+    <parameter name="SUBREPORT_GL" class="net.sf.jasperreports.engine.JasperReport"/>
+    <parameter name="SUBREPORT_CHARGE" class="net.sf.jasperreports.engine.JasperReport"/>
+    <parameter name="SUB_FOOTER_ISO" class="net.sf.jasperreports.engine.JasperReport"/>
     <queryString>
         <![CDATA[select distinct HDR.TRANSACTION_POID, NVL(ASM.SUPPLIER_NAME, SPM.PRINCIPAL_NAME) as SUPPLIER_NAME, HDR.DOC_REF, TO_CHAR(HDR.TRANSACTION_DATE,'DD-MON-YYYY') as TRANSACTION_DATE,
 TO_CHAR(HDR.SUPPLIER_CN_DATE,'DD-MON-YYYY') as SUPPLIER_INV_DATE, SUPPLIER_CN_NO SUPPLIER_INV_NO,
@@ -61,7 +65,8 @@ where TRANSACTION_POID = $P{DOC_KEY_POID}]]>
                     <subreportParameterExpression><![CDATA[$P{LOGIN_COMP_POID}]]></subreportParameterExpression>
                 </subreportParameter>
                 <connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
-                <subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "Templates//DocHeaderSubReport.jasper"]]></subreportExpression>
+<!--                <subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "Templates//DocHeaderSubReport.jasper"]]></subreportExpression>-->
+                <subreportExpression><![CDATA[$P{SUB_HEADER}]]></subreportExpression>
             </subreport>
             <staticText>
                 <reportElement x="10" y="140" width="76" height="18" uuid="be743463-bf4c-4c3f-9239-e6f07dcc0a27"/>
@@ -248,7 +253,8 @@ where TRANSACTION_POID = $P{DOC_KEY_POID}]]>
                     <subreportParameterExpression><![CDATA[$F{TRANSACTION_POID}]]></subreportParameterExpression>
                 </subreportParameter>
                 <connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
-                <subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "AP//PurchaseReturn//PurchaseInvoiceReportGlSubreport1.jasper"]]></subreportExpression>
+<!--                <subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "AP//PurchaseReturn//PurchaseInvoiceReportGlSubreport1.jasper"]]></subreportExpression>-->
+                <subreportExpression><![CDATA[$P{SUBREPORT_GL}]]></subreportExpression>
             </subreport>
         </band>
         <band height="26">
@@ -258,7 +264,8 @@ where TRANSACTION_POID = $P{DOC_KEY_POID}]]>
                     <subreportParameterExpression><![CDATA[$P{DOC_KEY_POID}]]></subreportParameterExpression>
                 </subreportParameter>
                 <connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
-                <subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "AP//PurchaseReturn//PurchaseReturnNoteChargeSubReport.jasper"]]></subreportExpression>
+<!--                <subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "AP//PurchaseReturn//PurchaseReturnNoteChargeSubReport.jasper"]]></subreportExpression>-->
+                <subreportExpression><![CDATA[$P{SUBREPORT_CHARGE}]]></subreportExpression>
             </subreport>
         </band>
     </detail>
@@ -271,7 +278,8 @@ where TRANSACTION_POID = $P{DOC_KEY_POID}]]>
                 </subreportParameter>
                 <subreportParameter name="LOGIN_COMP_POID"/>
                 <connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
-                <subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "Templates//DocFooterSubReport-ISO.jasper"]]></subreportExpression>
+<!--                <subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "Templates//DocFooterSubReport-ISO.jasper"]]></subreportExpression>-->
+                <subreportExpression><![CDATA[$P{SUB_FOOTER_ISO}]]></subreportExpression>
             </subreport>
             <textField evaluationTime="Report">
                 <reportElement style="Column header" x="513" y="80" width="24" height="18" forecolor="#999999" uuid="9f52c44c-f0e2-489b-a5c8-5bff55f347d4"/>
@@ -378,7 +386,8 @@ where TRANSACTION_POID = $P{DOC_KEY_POID}]]>
                 </subreportParameter>
                 <subreportParameter name="LOGIN_COMP_POID"/>
                 <connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
-                <subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "Templates//DocFooterSubReport-ISO.jasper"]]></subreportExpression>
+<!--                <subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "Templates//DocFooterSubReport-ISO.jasper"]]></subreportExpression>-->
+                <subreportExpression><![CDATA[$P{SUB_FOOTER_ISO}]]></subreportExpression>
             </subreport>
             <textField evaluationTime="Report">
                 <reportElement style="Column header" x="513" y="124" width="24" height="18" forecolor="#999999" uuid="b7df11b5-b228-465b-abb7-b815790cb113"/>

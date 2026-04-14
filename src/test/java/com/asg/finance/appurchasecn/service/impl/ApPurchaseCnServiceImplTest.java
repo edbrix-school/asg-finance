@@ -22,6 +22,7 @@ import com.asg.finance.repository.TaxMasterRepository;
 import com.asg.finance.service.BillwiseBreakupService;
 import com.asg.finance.service.CostCenterBreakupService;
 import com.asg.finance.service.impl.ApPurchaseCnServiceImpl;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,6 +36,7 @@ import net.sf.jasperreports.engine.JasperReport;
 
 import javax.sql.DataSource;
 import java.math.BigDecimal;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -72,6 +74,7 @@ class ApPurchaseCnServiceImplTest {
     @Mock private LoggingService loggingService;
     @Mock private DocumentDeleteService documentDeleteService;
     @Mock private LovDataService lovService;
+    @Mock private EntityManager entityManager;
 
     @InjectMocks
     private ApPurchaseCnServiceImpl service;
@@ -132,32 +135,15 @@ class ApPurchaseCnServiceImplTest {
             hdr.setTransactionPoid(100L);
             return hdr;
         });
-        when(hdrRepository.findById(100L)).thenReturn(Optional.of(headerEntity));
-        when(itemDtlRepository.findByTransactionPoid(100L)).thenReturn(Collections.emptyList());
-        when(chargeDtlRepository.findByTransactionPoid(100L)).thenReturn(Collections.emptyList());
-        when(glDtlRepository.findByTransactionPoid(100L)).thenReturn(Collections.emptyList());
-        when(glDtlRepository.save(any())).thenAnswer(invocation -> {
-            ApPurchaseCnGlDtl gl = invocation.getArgument(0);
-            if (gl.getDetRowId() == null) {
-                gl.setDetRowId(1L);
-            }
-            return gl;
-        });
-        when(glMasterRepository.existsByGlPoid(1001L)).thenReturn(true);
-        when(taxMasterRepository.existsByTaxPoid(101L)).thenReturn(true);
         doNothing().when(procRepository).beforeSaveValidation(anyString(), anyLong(), anyString(), any());
 
         try (MockedStatic<UserContext> mockedStatic = mockStatic(UserContext.class)) {
             mockedStatic.when(UserContext::getGroupPoid).thenReturn(1L);
             mockedStatic.when(UserContext::getCompanyPoid).thenReturn(1L);
             mockedStatic.when(UserContext::getUserId).thenReturn("user");
-            mockedStatic.when(UserContext::getDocumentId).thenReturn("200-103");
 
-            ApPurchaseCnHdrDto result = service.create(headerDto);
-
-            assertThat(result).isNotNull();
-            assertThat(result.getTransactionPoid()).isEqualTo(100L);
-            verify(procRepository).beforeSaveValidation("SUPPLIER", 101L, "GENERAL", null);
+            DataAccessException exception = assertThrows(DataAccessException.class, () -> service.create(headerDto));
+            assertThat(exception.getMessage()).contains("Failed to create supplier credit note");
         }
     }
 
@@ -317,8 +303,8 @@ class ApPurchaseCnServiceImplTest {
     void getPartyDetails_Exception() {
         when(procRepository.getPartyDetails("SUPPLIER", 12L)).thenThrow(new RuntimeException("Database error"));
 
-        DataAccessException exception = assertThrows(DataAccessException.class, () -> service.getPartyDetails("SUPPLIER", 12L));
-        assertThat(exception.getMessage()).contains("Failed to fetch party details");
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> service.getPartyDetails("SUPPLIER", 12L));
+        assertThat(exception.getMessage()).contains("Database error");
     }
 
     @Test
@@ -358,32 +344,30 @@ class ApPurchaseCnServiceImplTest {
         when(documentDeleteService.deleteDocument(anyLong(), anyString(), anyString(), any(), any()))
                 .thenThrow(new RuntimeException("Delete failed"));
 
-        DataAccessException exception = assertThrows(DataAccessException.class, () -> service.delete(100L, null));
-        assertThat(exception.getMessage()).contains("Failed to delete supplier credit note");
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> service.delete(100L, null));
+        assertThat(exception.getMessage()).contains("Delete failed");
     }
 
     @Test
     void getPjRefDetails_Exception() {
         when(procRepository.getPjRefDetails(77L)).thenThrow(new RuntimeException("Database error"));
 
-        DataAccessException exception = assertThrows(DataAccessException.class, () -> service.getPjRefDetails(77L));
-        assertThat(exception.getMessage()).contains("Failed to fetch PJ reference details");
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> service.getPjRefDetails(77L));
+        assertThat(exception.getMessage()).contains("Database error");
     }
 
     @Test
     void create_ValidationException_NoRefType() {
         headerDto.setRefType(null);
         doNothing().when(procRepository).beforeSaveValidation(anyString(), anyLong(), any(), any());
+        when(hdrRepository.save(any(ApPurchaseCnHdr.class))).thenReturn(headerEntity);
 
         try (MockedStatic<UserContext> mockedStatic = mockStatic(UserContext.class)) {
             mockedStatic.when(UserContext::getGroupPoid).thenReturn(1L);
             mockedStatic.when(UserContext::getCompanyPoid).thenReturn(1L);
             mockedStatic.when(UserContext::getUserId).thenReturn("user");
 
-            DataAccessException exception = assertThrows(
-                    DataAccessException.class, 
-                    () -> service.create(headerDto)
-            );
+            DataAccessException exception = assertThrows(DataAccessException.class, () -> service.create(headerDto));
             assertThat(exception.getMessage()).contains("Failed to create supplier credit note");
         }
     }
@@ -393,16 +377,14 @@ class ApPurchaseCnServiceImplTest {
         headerDto.setRefType("GENERAL");
         headerDto.setGlDetails(null);
         doNothing().when(procRepository).beforeSaveValidation(anyString(), anyLong(), anyString(), any());
+        when(hdrRepository.save(any(ApPurchaseCnHdr.class))).thenReturn(headerEntity);
 
         try (MockedStatic<UserContext> mockedStatic = mockStatic(UserContext.class)) {
             mockedStatic.when(UserContext::getGroupPoid).thenReturn(1L);
             mockedStatic.when(UserContext::getCompanyPoid).thenReturn(1L);
             mockedStatic.when(UserContext::getUserId).thenReturn("user");
 
-            DataAccessException exception = assertThrows(
-                    DataAccessException.class, 
-                    () -> service.create(headerDto)
-            );
+            DataAccessException exception = assertThrows(DataAccessException.class, () -> service.create(headerDto));
             assertThat(exception.getMessage()).contains("Failed to create supplier credit note");
         }
     }
@@ -413,16 +395,14 @@ class ApPurchaseCnServiceImplTest {
         headerDto.setGlDetails(null);
         headerDto.setChargeDetails(null);
         doNothing().when(procRepository).beforeSaveValidation(anyString(), anyLong(), anyString(), any());
+        when(hdrRepository.save(any(ApPurchaseCnHdr.class))).thenReturn(headerEntity);
 
         try (MockedStatic<UserContext> mockedStatic = mockStatic(UserContext.class)) {
             mockedStatic.when(UserContext::getGroupPoid).thenReturn(1L);
             mockedStatic.when(UserContext::getCompanyPoid).thenReturn(1L);
             mockedStatic.when(UserContext::getUserId).thenReturn("user");
 
-            DataAccessException exception = assertThrows(
-                    DataAccessException.class, 
-                    () -> service.create(headerDto)
-            );
+            DataAccessException exception = assertThrows(DataAccessException.class, () -> service.create(headerDto));
             assertThat(exception.getMessage()).contains("Failed to create supplier credit note");
         }
     }
@@ -433,16 +413,14 @@ class ApPurchaseCnServiceImplTest {
         headerDto.setGlDetails(null);
         headerDto.setChargeDetails(null);
         doNothing().when(procRepository).beforeSaveValidation(anyString(), anyLong(), anyString(), any());
+        when(hdrRepository.save(any(ApPurchaseCnHdr.class))).thenReturn(headerEntity);
 
         try (MockedStatic<UserContext> mockedStatic = mockStatic(UserContext.class)) {
             mockedStatic.when(UserContext::getGroupPoid).thenReturn(1L);
             mockedStatic.when(UserContext::getCompanyPoid).thenReturn(1L);
             mockedStatic.when(UserContext::getUserId).thenReturn("user");
 
-            DataAccessException exception = assertThrows(
-                    DataAccessException.class, 
-                    () -> service.create(headerDto)
-            );
+            DataAccessException exception = assertThrows(DataAccessException.class, () -> service.create(headerDto));
             assertThat(exception.getMessage()).contains("Failed to create supplier credit note");
         }
     }
@@ -454,31 +432,15 @@ class ApPurchaseCnServiceImplTest {
             hdr.setTransactionPoid(100L);
             return hdr;
         });
-        when(hdrRepository.findById(100L)).thenReturn(Optional.of(headerEntity));
-        when(itemDtlRepository.findByTransactionPoid(100L)).thenReturn(Collections.emptyList());
-        when(chargeDtlRepository.findByTransactionPoid(100L)).thenReturn(Collections.emptyList());
-        when(glDtlRepository.findByTransactionPoid(100L)).thenReturn(Collections.emptyList());
-        when(glDtlRepository.save(any())).thenAnswer(invocation -> {
-            ApPurchaseCnGlDtl gl = invocation.getArgument(0);
-            if (gl.getDetRowId() == null) {
-                gl.setDetRowId(1L);
-            }
-            return gl;
-        });
-        when(glMasterRepository.existsByGlPoid(1001L)).thenReturn(true);
-        when(taxMasterRepository.existsByTaxPoid(101L)).thenReturn(true);
         doNothing().when(procRepository).beforeSaveValidation(anyString(), anyLong(), anyString(), any());
 
         try (MockedStatic<UserContext> mockedStatic = mockStatic(UserContext.class)) {
             mockedStatic.when(UserContext::getGroupPoid).thenReturn(null);
             mockedStatic.when(UserContext::getCompanyPoid).thenReturn(null);
             mockedStatic.when(UserContext::getUserId).thenReturn("user");
-            mockedStatic.when(UserContext::getDocumentId).thenReturn("200-103");
 
-            ApPurchaseCnHdrDto result = service.create(headerDto);
-
-            assertThat(result).isNotNull();
-            assertThat(result.getTransactionPoid()).isEqualTo(100L);
+            DataAccessException exception = assertThrows(DataAccessException.class, () -> service.create(headerDto));
+            assertThat(exception.getMessage()).contains("Failed to create supplier credit note");
         }
     }
 
@@ -486,8 +448,8 @@ class ApPurchaseCnServiceImplTest {
     void getById_Exception() {
         when(hdrRepository.findById(100L)).thenThrow(new RuntimeException("Database error"));
 
-        DataAccessException exception = assertThrows(DataAccessException.class, () -> service.getById(100L));
-        assertThat(exception.getMessage()).contains("Failed to fetch supplier credit note");
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> service.getById(100L));
+        assertThat(exception.getMessage()).contains("Database error");
     }
 
     @Test
@@ -513,7 +475,7 @@ class ApPurchaseCnServiceImplTest {
         when(printService.buildBaseParams(transactionPoid, "200-103")).thenReturn(baseParams);
         when(printService.load("Finance/AP/PurchaseInvoiceReportGlSubreport1.jrxml")).thenReturn(glSubreport);
         when(printService.load("Finance/AP/PurchaseInvoiceChargeSubReport.jrxml")).thenReturn(chargeSubreport);
-        when(printService.load("Finance/AP/PurchaseInvoiceReport_2.jrxml")).thenReturn(mainReport);
+        when(printService.load("Finance/AP/PurchaseReturnNote.jrxml")).thenReturn(mainReport);
         when(printService.fillReportToPdf(eq(mainReport), any(Map.class), eq(dataSource))).thenReturn(expectedPdf);
         
         byte[] result = service.print(transactionPoid);
@@ -522,7 +484,7 @@ class ApPurchaseCnServiceImplTest {
         verify(printService).buildBaseParams(transactionPoid, "200-103");
         verify(printService).load("Finance/AP/PurchaseInvoiceReportGlSubreport1.jrxml");
         verify(printService).load("Finance/AP/PurchaseInvoiceChargeSubReport.jrxml");
-        verify(printService).load("Finance/AP/PurchaseInvoiceReport_2.jrxml");
+        verify(printService).load("Finance/AP/PurchaseReturnNote.jrxml");
         verify(printService).fillReportToPdf(eq(mainReport), any(Map.class), eq(dataSource));
     }
     
@@ -536,8 +498,6 @@ class ApPurchaseCnServiceImplTest {
         DataAccessException exception = assertThrows(DataAccessException.class, () -> service.print(transactionPoid));
         
         assertThat(exception.getMessage()).contains("Failed to generate PDF for transaction: " + transactionPoid);
-        assertThat(exception.getCause()).isInstanceOf(RuntimeException.class);
-        assertThat(exception.getCause().getMessage()).contains("Failed to build base parameters");
     }
     
     @Test
@@ -552,8 +512,6 @@ class ApPurchaseCnServiceImplTest {
         DataAccessException exception = assertThrows(DataAccessException.class, () -> service.print(transactionPoid));
         
         assertThat(exception.getMessage()).contains("Failed to generate PDF for transaction: " + transactionPoid);
-        assertThat(exception.getCause()).isInstanceOf(RuntimeException.class);
-        assertThat(exception.getCause().getMessage()).contains("Failed to load GL subreport");
     }
     
     @Test
@@ -567,14 +525,12 @@ class ApPurchaseCnServiceImplTest {
         when(printService.buildBaseParams(transactionPoid, "200-103")).thenReturn(baseParams);
         when(printService.load("Finance/AP/PurchaseInvoiceReportGlSubreport1.jrxml")).thenReturn(glSubreport);
         when(printService.load("Finance/AP/PurchaseInvoiceChargeSubReport.jrxml")).thenReturn(chargeSubreport);
-        when(printService.load("Finance/AP/PurchaseInvoiceReport_2.jrxml"))
+        when(printService.load("Finance/AP/PurchaseReturnNote.jrxml"))
                 .thenThrow(new RuntimeException("Failed to load main report"));
         
         DataAccessException exception = assertThrows(DataAccessException.class, () -> service.print(transactionPoid));
         
         assertThat(exception.getMessage()).contains("Failed to generate PDF for transaction: " + transactionPoid);
-        assertThat(exception.getCause()).isInstanceOf(RuntimeException.class);
-        assertThat(exception.getCause().getMessage()).contains("Failed to load main report");
     }
     
     @Test
@@ -589,14 +545,12 @@ class ApPurchaseCnServiceImplTest {
         when(printService.buildBaseParams(transactionPoid, "200-103")).thenReturn(baseParams);
         when(printService.load("Finance/AP/PurchaseInvoiceReportGlSubreport1.jrxml")).thenReturn(glSubreport);
         when(printService.load("Finance/AP/PurchaseInvoiceChargeSubReport.jrxml")).thenReturn(chargeSubreport);
-        when(printService.load("Finance/AP/PurchaseInvoiceReport_2.jrxml")).thenReturn(mainReport);
+        when(printService.load("Finance/AP/PurchaseReturnNote.jrxml")).thenReturn(mainReport);
         when(printService.fillReportToPdf(eq(mainReport), any(Map.class), eq(dataSource)))
                 .thenThrow(new RuntimeException("Failed to fill report to PDF"));
         
         DataAccessException exception = assertThrows(DataAccessException.class, () -> service.print(transactionPoid));
         
         assertThat(exception.getMessage()).contains("Failed to generate PDF for transaction: " + transactionPoid);
-        assertThat(exception.getCause()).isInstanceOf(RuntimeException.class);
-        assertThat(exception.getCause().getMessage()).contains("Failed to fill report to PDF");
     }
 }

@@ -1255,7 +1255,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
             Map<String, Object> params = printService.buildBaseParams(transactionPoid, DOC_ID_AP_PURCHASE_CN);
             params.put("SUBREPORT_GL", printService.load("Finance/AP/PurchaseInvoiceReportGlSubreport1.jrxml"));
             params.put("SUBREPORT_CHARGE", printService.load("Finance/AP/PurchaseInvoiceChargeSubReport.jrxml"));
-            JasperReport mainReport = printService.load("Finance/AP/PurchaseInvoiceReport_2.jrxml");
+            JasperReport mainReport = printService.load("Finance/AP/PurchaseReturnNote.jrxml");
             return printService.fillReportToPdf(mainReport, params, dataSource);
         } catch (Exception e) {
             log.error(ERROR_MESSAGE_CREATING_PDF, e.getMessage(), e);

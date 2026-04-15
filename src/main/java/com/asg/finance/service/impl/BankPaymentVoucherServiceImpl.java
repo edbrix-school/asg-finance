@@ -728,6 +728,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         List<GlBankPaymentChargeDtlEntity> toSave = new ArrayList<>();
         List<GlBankPaymentChargeDtlEntity> toDelete = new ArrayList<>();
+        List<Long> createdDetRowIds = new ArrayList<>();
         List<LogRequestDto<GlBankPaymentChargeDtlEntity>> logRequests = new ArrayList<>();
         String documentId = UserContext.getDocumentId();
 
@@ -751,6 +752,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                     detail.setDetRowId(++maxDetRowId); // Auto-generate detRowId
                     mapChargeFields(newEntity, detail, transactionPoid);
                     toSave.add(newEntity);
+                    createdDetRowIds.add(newEntity.getDetRowId());
                     break;
 
                 case "ISUPDATED":
@@ -805,7 +807,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         // Log creation for new records
         savedEntities.stream()
-                .filter(entity -> entity.getCreatedDate() != null && entity.getCreatedDate().isAfter(LocalDateTime.now().minusMinutes(1)))
+                .filter(entity -> createdDetRowIds.contains(entity.getDetRowId()))
                 .forEach(entity -> {
                     String logDetail = String.format("Row Created on Charge Detail with detRowId: %s", entity.getDetRowId());
                     loggingService.createLogSummaryEntry(documentId, transactionPoid.toString(), logDetail);
@@ -841,6 +843,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         List<GlBankPaymentItemDtlEntity> toSave = new ArrayList<>();
         List<GlBankPaymentItemDtlEntity> toDelete = new ArrayList<>();
+        List<Long> createdDetRowIds = new ArrayList<>();
         List<LogRequestDto<GlBankPaymentItemDtlEntity>> logRequests = new ArrayList<>();
         String documentId = UserContext.getDocumentId();
 
@@ -864,6 +867,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                     detail.setDetRowId(++maxDetRowId); // Auto-generate detRowId
                     mapItemFields(newEntity, detail, transactionPoid);
                     toSave.add(newEntity);
+                    createdDetRowIds.add(newEntity.getDetRowId());
                     break;
 
                 case "ISUPDATED":
@@ -917,7 +921,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         // Log creation for new records
         savedEntities.stream()
-                .filter(entity -> entity.getCreatedDate() != null && entity.getCreatedDate().isAfter(LocalDateTime.now().minusMinutes(1)))
+                .filter(entity -> createdDetRowIds.contains(entity.getDetRowId()))
                 .forEach(entity -> {
                     String logDetail = String.format("Row Created on Item Detail with detRowId: %s", entity.getDetRowId());
                     loggingService.createLogSummaryEntry(documentId, transactionPoid.toString(), logDetail);
@@ -1307,6 +1311,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         List<GLPaymentVoucherDtlGLEntity> toSave = new ArrayList<>();
         List<GLPaymentVoucherDtlGLEntity> toDelete = new ArrayList<>();
+        List<Long> createdDetRowIds = new ArrayList<>();
         List<LogRequestDto<GLPaymentVoucherDtlGLEntity>> logRequests = new ArrayList<>();
 
         // Auto-generate detRowId for new records
@@ -1329,6 +1334,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                     detail.setDetRowId(++maxDetRowId); // Auto-generate detRowId
                     mapGLFields(newEntity, detail, transactionPoid);
                     toSave.add(newEntity);
+                    createdDetRowIds.add(newEntity.getDetRowId());
                     break;
 
                 case "ISUPDATED":
@@ -1382,7 +1388,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         }
 
         savedEntities.stream()
-                .filter(entity -> entity.getCreatedDate() != null && entity.getCreatedDate().isAfter(LocalDateTime.now().minusMinutes(1)))
+                .filter(entity -> createdDetRowIds.contains(entity.getDetRowId()))
                 .forEach(entity -> {
                     String logDetail = String.format("Row Created on GL Detail with detRowId: %s", entity.getDetRowId());
                     loggingService.createLogSummaryEntry(documentId, transactionPoid.toString(), logDetail);

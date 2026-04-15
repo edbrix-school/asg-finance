@@ -155,6 +155,11 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
     public String holdCheque(List<BankReconcHoldAndUholdRequest> reqList) {
         for (BankReconcHoldAndUholdRequest req : reqList) {
 
+            if(req.getDocId()==null || !req.getDocId().equalsIgnoreCase("400-107")){
+                String errorMessage=req.getDocId()==null?"The selected item cannot be hold":String.format("DocRef: %s cannot be hold",req.getDocRef());
+                throw new IllegalStateException(errorMessage);
+            }
+
             StoredProcedureQuery sp = createSP("PROC_GL_BANK_RECONCILE_HOLD");
 
             regIn(sp, P_TRANSACTION_GROUP_POID, Long.class);
@@ -177,7 +182,7 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
             String result = outStr(sp, P_RESULT);
 
             if (isError(result)) {
-                throw new RuntimeException(result);
+                throw new IllegalStateException(result);
             }
         }
 
@@ -199,17 +204,21 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
                 cs.registerOutParameter(7, Types.VARCHAR);
 
                 for (BankReconcHoldAndUholdRequest req : reqList) {
-
+                    if(req.getDocId()==null || !req.getDocId().equalsIgnoreCase("400-107")){
+                        String errorMessage=req.getDocId()==null?"The selected item cannot be unhold":String.format("DocRef: %s cannot be unhold",req.getDocRef());
+                        throw new IllegalStateException(errorMessage);
+                    }
                     String result = executeUnhold(cs, req);
 
                     if (isError(result)) {
-                        throw new RuntimeException(result);
+                        throw new IllegalStateException(result);
                     }
                 }
 
                 return reqList.size() + " cheques unheld successfully";
 
-            } catch (ResourceNotFoundException e) {
+            }
+            catch (IllegalStateException e) {
                 throw e;
             } catch (Exception e) {
                 throw new IllegalStateException("Error calling PROC_GL_BANK_RECONCILE_UNHOLD", e);
@@ -353,7 +362,7 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
                 .map(cursorData -> mapReportRow(
                         cursorData,
                         req.getChequeType(),
-                        req.getChequeFilter()
+                        StringUtils.defaultIfBlank(req.getChequeFilter(), "ALL")
                 ))
                 .toList();
 

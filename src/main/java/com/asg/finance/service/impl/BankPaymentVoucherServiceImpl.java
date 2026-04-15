@@ -260,11 +260,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         validateBeforeSaveInNewTransaction(existing);
 
-        // Legacy Validation: Pre-printed (Manual) cheques allow edits even after print.
-        // System cheques are locked once printed.
-        if ("Y".equalsIgnoreCase(existing.getChqPrinted()) && !"Y".equalsIgnoreCase(existing.getPrePrinted())) {
-            throw new ValidationException("Cheque is printed..Not allowed to edit document..");
-        }
+
 
         updateHeaderFromRequest(existing, req);
         GLPaymentVoucherHDREntity updatedHeader = paymentVoucherRepository.save(existing);

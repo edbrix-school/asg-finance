@@ -94,7 +94,7 @@ WHERE GPCC.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
                 <textFieldExpression><![CDATA[$F{CHARGE_NAME}]]></textFieldExpression>
             </textField>
             <textField isStretchWithOverflow="true" isBlankWhenNull="true">
-                <reportElement x="229" y="0" width="201" height="20" uuid="102a1567-6b23-44b9-9dd8-c8b64d5d447d"/>
+                <reportElement x="238" y="0" width="201" height="20" uuid="102a1567-6b23-44b9-9dd8-c8b64d5d447d"/>
                 <textElement verticalAlignment="Middle">
                     <font size="8"/>
                 </textElement>

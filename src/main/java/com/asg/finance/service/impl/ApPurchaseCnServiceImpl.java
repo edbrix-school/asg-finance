@@ -17,6 +17,7 @@ import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.common.lib.dto.FilterRequestDto;
+import com.asg.finance.annotation.PerformGlPosting;
 import com.asg.finance.dto.*;
 import com.asg.finance.exception.DataAccessException;
 import com.asg.finance.entity.ApPurchaseCnChargeDtl;
@@ -240,6 +241,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
 
     @Override
     @Transactional
+    @PerformGlPosting
     public ApPurchaseCnHdrDto create(ApPurchaseCnHdrDto dto) {
         log.info(LOG_MESSAGE_CREATING, dto.getPartyType(), dto.getRefType());
         
@@ -310,6 +312,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
 
     @Override
     @Transactional
+    @PerformGlPosting
     public ApPurchaseCnHdrDto update(Long transactionPoid, ApPurchaseCnHdrDto dto) {
         log.info(LOG_MESSAGE_UPDATING, transactionPoid);
         

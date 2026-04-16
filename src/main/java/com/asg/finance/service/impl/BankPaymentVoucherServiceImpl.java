@@ -183,7 +183,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         GLPaymentVoucherHDREntity entity = mapHeaderFromRequest(req);
 
-        if (req.getChequeNo() == null && req.getBankPoid() != null) {
+        if (req.getChqCardNo() == null && req.getBankPoid() != null) {
             try {
                 String nextCheque = spRepository.getNextChequeNumber(req.getBankPoid());
                 entity.setChqCardNo(nextCheque);
@@ -405,11 +405,12 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         entity.setFfRef(req.getFfRefId() != null ? String.valueOf(req.getFfRefId()) : null);
         entity.setMtaRef(req.getMtaRfqId());
 
-        if (req.getChequeDate() != null && !req.getChequeDate().isEmpty()) {
-            entity.setChqDate(LocalDate.parse(req.getChequeDate()));
+        if (req.getChqDate() != null && !req.getChqDate().isEmpty()) {
+            entity.setChqDate(LocalDate.parse(req.getChqDate()));
         }
 
-        entity.setChqCardNo(req.getChequeNo());
+
+        entity.setChqCardNo(req.getChqCardNo());
         entity.setLongNarration(req.getLongNarration());
         entity.setSuppressValidation(req.getSuppressValidation());
         entity.setAccountPayee(req.getAccountPayee());
@@ -474,9 +475,9 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     }
 
     private void validateChequeDate(BankPaymentVoucherRequest req, LocalDate today) {
-        if (isEmpty(req.getChequeDate())) return;
+        if (isEmpty(req.getChqDate())) return;
 
-        LocalDate chqDate = LocalDate.parse(req.getChequeDate());
+        LocalDate chqDate = LocalDate.parse(req.getChqDate());
 
         try {
             BigDecimal validateDays = new BigDecimal(
@@ -500,12 +501,12 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     }
 
     private void validatePostDatedCheque(BankPaymentVoucherRequest req, LocalDate today) {
-        if (isEmpty(req.getChequeDate())) return;
+        if (isEmpty(req.getChqDate())) return;
 
         String refType = req.getRefType();
         if (!isRefType(refType, "MTA RFQ", "FF JOBS", "FDA JOBS")) return;
 
-        LocalDate chqDate = LocalDate.parse(req.getChequeDate());
+        LocalDate chqDate = LocalDate.parse(req.getChqDate());
 
         if (chqDate.isAfter(today)) {
             throw new ValidationException(
@@ -635,11 +636,13 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         entity.setSalesQtnRef(req.getSalesQtnRef() != null ? req.getSalesQtnRef() :
                 (StringUtils.isNumeric(req.getMtaRfqId()) ? Long.valueOf(req.getMtaRfqId()) : null));
 
-        if (req.getChequeDate() != null && !req.getChequeDate().isEmpty()) {
-            entity.setChqDate(LocalDate.parse(req.getChequeDate()));
+        if (req.getChqDate() != null && !req.getChqDate().isEmpty()) {
+            entity.setChqDate(LocalDate.parse(req.getChqDate()));
         }
 
-        entity.setChqCardNo(req.getChequeNo());
+        entity.setTransactionDate(LocalDate.now());
+
+        entity.setChqCardNo(req.getChqCardNo());
         entity.setLongNarration(req.getLongNarration());
         entity.setSuppressValidation(req.getSuppressValidation());
         entity.setAccountPayee(req.getAccountPayee());
@@ -661,7 +664,6 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
             entity.setReleased("Y");
         }
 
-        entity.setTransactionDate(LocalDate.now());
         if (req.getChqPrintedUserCode() != null || req.getChqPrintedDate() != null) {
             entity.setChqPrintedUserCode(req.getChqPrintedUserCode());
             entity.setChqPrintedDate(req.getChqPrintedDate());

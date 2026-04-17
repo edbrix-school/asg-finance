@@ -183,7 +183,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         GLPaymentVoucherHDREntity entity = mapHeaderFromRequest(req);
 
-        if (req.getChequeNo() == null && req.getBankPoid() != null) {
+        if (req.getChqCardNo() == null && req.getBankPoid() != null) {
             try {
                 String nextCheque = spRepository.getNextChequeNumber(req.getBankPoid());
                 entity.setChqCardNo(nextCheque);
@@ -259,6 +259,8 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         }
 
         validateBeforeSaveInNewTransaction(existing);
+
+
 
         updateHeaderFromRequest(existing, req);
         GLPaymentVoucherHDREntity updatedHeader = paymentVoucherRepository.save(existing);
@@ -403,11 +405,12 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         entity.setFfRef(req.getFfRefId() != null ? String.valueOf(req.getFfRefId()) : null);
         entity.setMtaRef(req.getMtaRfqId());
 
-        if (req.getChequeDate() != null && !req.getChequeDate().isEmpty()) {
-            entity.setChqDate(LocalDate.parse(req.getChequeDate()));
+        if (req.getChqDate() != null && !req.getChqDate().isEmpty()) {
+            entity.setChqDate(LocalDate.parse(req.getChqDate()));
         }
 
-        entity.setChqCardNo(req.getChequeNo());
+
+        entity.setChqCardNo(req.getChqCardNo());
         entity.setLongNarration(req.getLongNarration());
         entity.setSuppressValidation(req.getSuppressValidation());
         entity.setAccountPayee(req.getAccountPayee());
@@ -415,11 +418,6 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         entity.setSecurityCheque(req.getSecurityCheque());
         entity.setCurrencyAmount(req.getCurrencyAmount());
         entity.setAvailableBalance(req.getAvailableBalance());
-        entity.setChqPrintedUserCode(req.getChqPrintedUserCode());
-        entity.setChqPrintedDate(req.getChqPrintedDate());
-        if (req.getChqPrintedUserCode() != null || req.getChqPrintedDate() != null) {
-            entity.setChqPrinted("Y");
-        }
 
         if (Boolean.TRUE.equals(req.getReleased())) {
             entity.setReleasedToPerson(req.getReleasedToPerson());
@@ -477,9 +475,9 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     }
 
     private void validateChequeDate(BankPaymentVoucherRequest req, LocalDate today) {
-        if (isEmpty(req.getChequeDate())) return;
+        if (isEmpty(req.getChqDate())) return;
 
-        LocalDate chqDate = LocalDate.parse(req.getChequeDate());
+        LocalDate chqDate = LocalDate.parse(req.getChqDate());
 
         try {
             BigDecimal validateDays = new BigDecimal(
@@ -503,12 +501,12 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     }
 
     private void validatePostDatedCheque(BankPaymentVoucherRequest req, LocalDate today) {
-        if (isEmpty(req.getChequeDate())) return;
+        if (isEmpty(req.getChqDate())) return;
 
         String refType = req.getRefType();
         if (!isRefType(refType, "MTA RFQ", "FF JOBS", "FDA JOBS")) return;
 
-        LocalDate chqDate = LocalDate.parse(req.getChequeDate());
+        LocalDate chqDate = LocalDate.parse(req.getChqDate());
 
         if (chqDate.isAfter(today)) {
             throw new ValidationException(
@@ -638,11 +636,13 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         entity.setSalesQtnRef(req.getSalesQtnRef() != null ? req.getSalesQtnRef() :
                 (StringUtils.isNumeric(req.getMtaRfqId()) ? Long.valueOf(req.getMtaRfqId()) : null));
 
-        if (req.getChequeDate() != null && !req.getChequeDate().isEmpty()) {
-            entity.setChqDate(LocalDate.parse(req.getChequeDate()));
+        if (req.getChqDate() != null && !req.getChqDate().isEmpty()) {
+            entity.setChqDate(LocalDate.parse(req.getChqDate()));
         }
 
-        entity.setChqCardNo(req.getChequeNo());
+        entity.setTransactionDate(LocalDate.now());
+
+        entity.setChqCardNo(req.getChqCardNo());
         entity.setLongNarration(req.getLongNarration());
         entity.setSuppressValidation(req.getSuppressValidation());
         entity.setAccountPayee(req.getAccountPayee());
@@ -664,9 +664,13 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
             entity.setReleased("Y");
         }
 
-        entity.setTransactionDate(LocalDate.now());
-        entity.setChqPrintedUserCode(req.getChqPrintedUserCode());
-        entity.setChqPrintedDate(req.getChqPrintedDate());
+        if (req.getChqPrintedUserCode() != null || req.getChqPrintedDate() != null) {
+            entity.setChqPrintedUserCode(req.getChqPrintedUserCode());
+            entity.setChqPrintedDate(req.getChqPrintedDate());
+            entity.setChqPrinted("Y");
+        } else {
+            entity.setChqPrinted("N");
+        }
         entity.setAvailableBalance(req.getAvailableBalance());
 
         return entity;
@@ -726,6 +730,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         List<GlBankPaymentChargeDtlEntity> toSave = new ArrayList<>();
         List<GlBankPaymentChargeDtlEntity> toDelete = new ArrayList<>();
+        List<Long> createdDetRowIds = new ArrayList<>();
         List<LogRequestDto<GlBankPaymentChargeDtlEntity>> logRequests = new ArrayList<>();
         String documentId = UserContext.getDocumentId();
 
@@ -749,6 +754,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                     detail.setDetRowId(++maxDetRowId); // Auto-generate detRowId
                     mapChargeFields(newEntity, detail, transactionPoid);
                     toSave.add(newEntity);
+                    createdDetRowIds.add(newEntity.getDetRowId());
                     break;
 
                 case "ISUPDATED":
@@ -803,7 +809,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         // Log creation for new records
         savedEntities.stream()
-                .filter(entity -> entity.getCreatedDate() != null && entity.getCreatedDate().isAfter(LocalDateTime.now().minusMinutes(1)))
+                .filter(entity -> createdDetRowIds.contains(entity.getDetRowId()))
                 .forEach(entity -> {
                     String logDetail = String.format("Row Created on Charge Detail with detRowId: %s", entity.getDetRowId());
                     loggingService.createLogSummaryEntry(documentId, transactionPoid.toString(), logDetail);
@@ -839,6 +845,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         List<GlBankPaymentItemDtlEntity> toSave = new ArrayList<>();
         List<GlBankPaymentItemDtlEntity> toDelete = new ArrayList<>();
+        List<Long> createdDetRowIds = new ArrayList<>();
         List<LogRequestDto<GlBankPaymentItemDtlEntity>> logRequests = new ArrayList<>();
         String documentId = UserContext.getDocumentId();
 
@@ -862,6 +869,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                     detail.setDetRowId(++maxDetRowId); // Auto-generate detRowId
                     mapItemFields(newEntity, detail, transactionPoid);
                     toSave.add(newEntity);
+                    createdDetRowIds.add(newEntity.getDetRowId());
                     break;
 
                 case "ISUPDATED":
@@ -915,7 +923,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         // Log creation for new records
         savedEntities.stream()
-                .filter(entity -> entity.getCreatedDate() != null && entity.getCreatedDate().isAfter(LocalDateTime.now().minusMinutes(1)))
+                .filter(entity -> createdDetRowIds.contains(entity.getDetRowId()))
                 .forEach(entity -> {
                     String logDetail = String.format("Row Created on Item Detail with detRowId: %s", entity.getDetRowId());
                     loggingService.createLogSummaryEntry(documentId, transactionPoid.toString(), logDetail);
@@ -1193,7 +1201,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
             String result = spRepository.validateJob(groupPoid, userPoid, companyPoid, docId, refType, refPoid);
             if (result != null) {
                 if (result.contains("CLOSED")) {
-                    throw new ValidationException("WARNING : Selected MTA RFQ is in closed status,Unable to save...");
+                    throw new ValidationException("WARNING : Selected MTA RFQ is in closed status,Unable to save");
                 }
                 if (result.startsWith("ERROR") || result.startsWith("WARNING")) {
                     throw new ValidationException(result);
@@ -1305,6 +1313,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         List<GLPaymentVoucherDtlGLEntity> toSave = new ArrayList<>();
         List<GLPaymentVoucherDtlGLEntity> toDelete = new ArrayList<>();
+        List<Long> createdDetRowIds = new ArrayList<>();
         List<LogRequestDto<GLPaymentVoucherDtlGLEntity>> logRequests = new ArrayList<>();
 
         // Auto-generate detRowId for new records
@@ -1327,6 +1336,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                     detail.setDetRowId(++maxDetRowId); // Auto-generate detRowId
                     mapGLFields(newEntity, detail, transactionPoid);
                     toSave.add(newEntity);
+                    createdDetRowIds.add(newEntity.getDetRowId());
                     break;
 
                 case "ISUPDATED":
@@ -1380,7 +1390,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         }
 
         savedEntities.stream()
-                .filter(entity -> entity.getCreatedDate() != null && entity.getCreatedDate().isAfter(LocalDateTime.now().minusMinutes(1)))
+                .filter(entity -> createdDetRowIds.contains(entity.getDetRowId()))
                 .forEach(entity -> {
                     String logDetail = String.format("Row Created on GL Detail with detRowId: %s", entity.getDetRowId());
                     loggingService.createLogSummaryEntry(documentId, transactionPoid.toString(), logDetail);

@@ -130,7 +130,8 @@ public class BankFileAubServiceImpl implements BankFileAubService {
         }
 
         if (!"BHD".equals(detail.getDebitCurrencyCode())) {
-            Map<String, String> beneficiaryDetails = procRepository.getBeneficiaryDetails(detail.getDebitTransactionPoid());
+            Map<String, String> beneficiaryDetails = procRepository.getBeneficiaryDetails(
+                    detail.getDebitTransactionPoid(), detail.getDebitDocRef());
 
             String ttChargeType = procRepository.getTtChargeType(detail.getDebitTransactionPoid());
             if (ttChargeType == null) {
@@ -168,7 +169,9 @@ public class BankFileAubServiceImpl implements BankFileAubService {
         }
 
         Map<String, String> companyDetails = procRepository.getCompanyDetails(detail.getDebitCompanyPoid());
-        String countryCode = "BHD".equals(detail.getDebitCurrencyCode()) ? "BH" : procRepository.getCountryCode(detail.getDebitTransactionPoid());
+        String countryCode = "BHD".equals(detail.getDebitCurrencyCode())
+                ? "BH"
+                : procRepository.getCountryCode(detail.getDebitTransactionPoid(), detail.getDebitDocRef());
 
         procRepository.createBankFilePaymentAub(
                 detail.getDebitCompanyPoid(), detail.getDebitTransactionPoid(), userPoid,

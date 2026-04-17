@@ -8,20 +8,26 @@ import jakarta.persistence.ParameterMode;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.StoredProcedureQuery;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
 
+import javax.sql.DataSource;
 import java.math.BigDecimal;
+import java.sql.CallableStatement;
+import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.List;
 
 @Repository
 @RequiredArgsConstructor
+@Slf4j
 public class TelexFileGenerateProcRepositoryImpl implements TelexFileGenerateProcRepository {
 
     @PersistenceContext
     private EntityManager entityManager;
 
     private final LoggingService loggingService;
+    private final DataSource dataSource;
 
     @Override
     public List<TelexFileDtlDto> loadTelexTransferData(String bankList) {
@@ -217,30 +223,33 @@ public class TelexFileGenerateProcRepositoryImpl implements TelexFileGeneratePro
     }
 
     @Override
-    public java.util.Map<String, String> getBeneficiaryDetails(Long debitTransactionPoid) {
+    public java.util.Map<String, String> getBeneficiaryDetails(Long debitTransactionPoid, String docRef) {
         try {
             String sql = """
-                SELECT BENEFICIARY_ID, INTERMEDIARY_COUNTRY_POID, BENEFICIARY_COUNTRY, 
+                SELECT BENEFICIARY_ID, INTERMEDIARY_COUNTRY_POID, BENEFICIARY_COUNTRY,
                        INTERMEDIARY_ACCT, INTERMEDIARY_BANK
                 FROM (
-                    SELECT BENEFICIARY_ID, INTERMEDIARY_COUNTRY_POID, BENEFICIARY_COUNTRY, 
+                    SELECT BENEFICIARY_ID, INTERMEDIARY_COUNTRY_POID, BENEFICIARY_COUNTRY,
                            INTERMEDIARY_ACCT, INTERMEDIARY_BANK
                     FROM SHIP_PRINCIPAL_MASTER_PYMT_DTL
                     UNION ALL
-                    SELECT BENEFICIARY_ID, INTERMEDIARY_COUNTRY_POID, BENEFICIARY_COUNTRY, 
+                    SELECT BENEFICIARY_ID, INTERMEDIARY_COUNTRY_POID, BENEFICIARY_COUNTRY,
                            INTERMEDIARY_ACCT, INTERMEDIARY_BANK
                     FROM AP_SUPPLIER_MASTER_PYMT_DTL
                     UNION ALL
-                    SELECT BENEFICIARY_ID, INTERMEDIARY_COUNTRY_POID, BENEFICIARY_COUNTRY, 
+                    SELECT BENEFICIARY_ID, INTERMEDIARY_COUNTRY_POID, BENEFICIARY_COUNTRY,
                            INTERMEDIARY_ACCT, INTERMEDIARY_BANK
                     FROM gl_master_pymt_dtl
                 )
                 WHERE BENEFICIARY_ID IN (
-                    SELECT PAYING_TO FROM GL_BANK_DEBIT_HDR WHERE TRANSACTION_POID = ?
+                    SELECT PAYING_TO FROM GL_BANK_DEBIT_HDR
+                     WHERE TRANSACTION_POID = ?
+                       AND DOC_REF = ?
                 )
                 """;
             List<Object[]> results = entityManager.createNativeQuery(sql)
                     .setParameter(1, new BigDecimal(debitTransactionPoid))
+                    .setParameter(2, docRef)
                     .getResultList();
             
             if (!results.isEmpty()) {
@@ -289,24 +298,27 @@ public class TelexFileGenerateProcRepositoryImpl implements TelexFileGeneratePro
     }
 
     @Override
-    public String getCountryCode(Long debitTransactionPoid) {
+    public String getCountryCode(Long debitTransactionPoid, String docRef) {
         try {
             String sql = """
                 SELECT GET_COUNTRY_CODE(BENEFICIARY_COUNTRY) FROM (
                     SELECT BENEFICIARY_COUNTRY FROM SHIP_PRINCIPAL_MASTER_PYMT_DTL
-                    WHERE BENEFICIARY_ID IN (SELECT PAYING_TO FROM GL_BANK_DEBIT_HDR WHERE TRANSACTION_POID = ?)
+                    WHERE BENEFICIARY_ID IN (SELECT PAYING_TO FROM GL_BANK_DEBIT_HDR WHERE TRANSACTION_POID = ? AND DOC_REF = ?)
                     UNION ALL
                     SELECT BENEFICIARY_COUNTRY FROM AP_SUPPLIER_MASTER_PYMT_DTL
-                    WHERE BENEFICIARY_ID IN (SELECT PAYING_TO FROM GL_BANK_DEBIT_HDR WHERE TRANSACTION_POID = ?)
+                    WHERE BENEFICIARY_ID IN (SELECT PAYING_TO FROM GL_BANK_DEBIT_HDR WHERE TRANSACTION_POID = ? AND DOC_REF = ?)
                     UNION ALL
                     SELECT BENEFICIARY_COUNTRY FROM gl_master_pymt_dtl
-                    WHERE BENEFICIARY_ID IN (SELECT PAYING_TO FROM GL_BANK_DEBIT_HDR WHERE TRANSACTION_POID = ?)
+                    WHERE BENEFICIARY_ID IN (SELECT PAYING_TO FROM GL_BANK_DEBIT_HDR WHERE TRANSACTION_POID = ? AND DOC_REF = ?)
                 ) WHERE ROWNUM = 1
                 """;
             return (String) entityManager.createNativeQuery(sql)
                     .setParameter(1, new BigDecimal(debitTransactionPoid))
-                    .setParameter(2, new BigDecimal(debitTransactionPoid))
+                    .setParameter(2, docRef)
                     .setParameter(3, new BigDecimal(debitTransactionPoid))
+                    .setParameter(4, docRef)
+                    .setParameter(5, new BigDecimal(debitTransactionPoid))
+                    .setParameter(6, docRef)
                     .getSingleResult();
         } catch (Exception e) {
             return "BH";
@@ -353,37 +365,24 @@ public class TelexFileGenerateProcRepositoryImpl implements TelexFileGeneratePro
     public void generateHsbcApiXml(Long companyPoid, Long transactionPoid, Long userPoid, String companyName,
                                   String address, String country, String docRef, String chargeType,
                                   String countryCode, Long mainTransactionPoid, int seqNo, Long detRowId) {
-        try {
-            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("PROC_HSBC_API_GENERATE_XML_V2");
-            query.registerStoredProcedureParameter(1, BigDecimal.class, ParameterMode.IN);
-            query.registerStoredProcedureParameter(2, BigDecimal.class, ParameterMode.IN);
-            query.registerStoredProcedureParameter(3, BigDecimal.class, ParameterMode.IN);
-            query.registerStoredProcedureParameter(4, String.class, ParameterMode.IN);
-            query.registerStoredProcedureParameter(5, String.class, ParameterMode.IN);
-            query.registerStoredProcedureParameter(6, String.class, ParameterMode.IN);
-            query.registerStoredProcedureParameter(7, String.class, ParameterMode.IN);
-            query.registerStoredProcedureParameter(8, String.class, ParameterMode.IN);
-            query.registerStoredProcedureParameter(9, String.class, ParameterMode.IN);
-            query.registerStoredProcedureParameter(10, BigDecimal.class, ParameterMode.IN);
-            query.registerStoredProcedureParameter(11, BigDecimal.class, ParameterMode.IN);
-            query.registerStoredProcedureParameter(12, BigDecimal.class, ParameterMode.IN);
-
-            query.setParameter(1, new BigDecimal(companyPoid));
-            query.setParameter(2, new BigDecimal(transactionPoid));
-            query.setParameter(3, new BigDecimal(userPoid));
-            query.setParameter(4, companyName);
-            query.setParameter(5, address);
-            query.setParameter(6, country);
-            query.setParameter(7, docRef);
-            query.setParameter(8, chargeType);
-            query.setParameter(9, countryCode);
-            query.setParameter(10, new BigDecimal(mainTransactionPoid));
-            query.setParameter(11, new BigDecimal(seqNo));
-            query.setParameter(12, new BigDecimal(detRowId));
-
-            query.execute();
+        try (Connection conn = dataSource.getConnection();
+             CallableStatement stmt = conn.prepareCall(
+                     "{call PROC_HSBC_API_GENERATE_XML_V2(?,?,?,?,?,?,?,?,?,?,?,?)}")) {
+            stmt.setBigDecimal(1, new BigDecimal(companyPoid));
+            stmt.setBigDecimal(2, new BigDecimal(transactionPoid));
+            stmt.setBigDecimal(3, new BigDecimal(userPoid));
+            stmt.setString(4, companyName);
+            stmt.setString(5, address);
+            stmt.setString(6, country);
+            stmt.setString(7, docRef);
+            stmt.setString(8, chargeType);
+            stmt.setString(9, countryCode);
+            stmt.setBigDecimal(10, new BigDecimal(mainTransactionPoid));
+            stmt.setBigDecimal(11, new BigDecimal(seqNo));
+            stmt.setBigDecimal(12, new BigDecimal(detRowId));
+            stmt.execute();
         } catch (Exception e) {
-            // Ignore errors
+            log.warn("Error generating HSBC API XML for docRef={}: {}", docRef, e.getMessage());
         }
     }
 

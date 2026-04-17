@@ -111,13 +111,19 @@ public class BankFileBatchServiceImpl implements BankFileBatchService {
                 return String.join(",", statusMessages);
             }
 
-            // Generate and send file
-            generateAndSendFile(transactionPoid, userPoid);
+            // Mirror proc COMMIT at line 425: payment work must persist even if
+            // file write / email fails. Catch here instead of letting Spring roll back.
+            String fileEmailStatus = "SUCCESS: FILE SENT BY MAIL/API";
+            try {
+                generateAndSendFile(transactionPoid, userPoid);
+                triggerMailJob();
+            } catch (Exception e) {
+                log.error("Bank file write/email failed; payment work preserved", e);
+                String msg = e.getMessage() == null ? "" : e.getMessage();
+                fileEmailStatus = "ERROR : " + msg.substring(0, Math.min(200, msg.length()));
+            }
 
-            // Trigger mail job
-            triggerMailJob();
-
-            return String.join(",", statusMessages) + "SUCCESS: FILE SENT BY MAIL/API";
+            return String.join(",", statusMessages) + fileEmailStatus;
 
         } catch (Exception e) {
             log.error("Error in createBankFileBatch", e);
@@ -191,7 +197,8 @@ public class BankFileBatchServiceImpl implements BankFileBatchService {
 
         // Validate foreign currency details
         if (!"BHD".equals(detail.getDebitCurrencyCode())) {
-            Map<String, String> beneficiaryDetails = procRepository.getBeneficiaryDetails(detail.getDebitTransactionPoid());
+            Map<String, String> beneficiaryDetails = procRepository.getBeneficiaryDetails(
+                    detail.getDebitTransactionPoid(), detail.getDebitDocRef());
 
             String ttChargeType = procRepository.getTtChargeType(detail.getDebitTransactionPoid());
             if (ttChargeType == null) {
@@ -226,7 +233,9 @@ public class BankFileBatchServiceImpl implements BankFileBatchService {
         }
 
         Map<String, String> companyDetails = procRepository.getCompanyDetails(detail.getDebitCompanyPoid());
-        String countryCode = "BHD".equals(detail.getDebitCurrencyCode()) ? "BH" : procRepository.getCountryCode(detail.getDebitTransactionPoid());
+        String countryCode = "BHD".equals(detail.getDebitCurrencyCode())
+                ? "BH"
+                : procRepository.getCountryCode(detail.getDebitTransactionPoid(), detail.getDebitDocRef());
 
         try {
             Thread.sleep(5000);
@@ -253,7 +262,7 @@ public class BankFileBatchServiceImpl implements BankFileBatchService {
 
     private void generateAndSendFile(Long transactionPoid, Long userPoid) {
         try {
-            String timestamp = new java.text.SimpleDateFormat("ddMMMyyyy").format(new java.util.Date()).toUpperCase();
+            String timestamp = new java.text.SimpleDateFormat("ddMMMyyyy", java.util.Locale.ENGLISH).format(new java.util.Date()).toUpperCase();
             String random = String.valueOf(Math.round(Math.random() * 1000));
             String filename = "PPFILE" + transactionPoid + random + timestamp + ".TXT";
 
@@ -315,7 +324,7 @@ public class BankFileBatchServiceImpl implements BankFileBatchService {
 
     private void queueEmail(String emailId, Long userPoid, Long transactionPoid) {
         try {
-            String subject = "BANK FILE " + new java.text.SimpleDateFormat("dd-MMM-yyyy").format(new java.util.Date()).toUpperCase();
+            String subject = "BANK FILE " + new java.text.SimpleDateFormat("dd-MMM-yyyy", java.util.Locale.ENGLISH).format(new java.util.Date()).toUpperCase();
             jdbcTemplate.update(
                 "INSERT INTO GLOBAL_MAIL_SENDING_QUEUE (RECEVER_EMAIL_ID, MESSAGE_SUBJECT, MESSGE_BODY, " +
                 "SENT_STATUS, QUEUE_DATE, SENDING_POID, ATTACHED_FILE_NAME, LINK_TRANSACTION_POID) " +
@@ -327,10 +336,10 @@ public class BankFileBatchServiceImpl implements BankFileBatchService {
     }
 
     private void triggerMailJob() {
-        try {
-            jdbcTemplate.execute("BEGIN DBMS_SCHEDULER.RUN_JOB(job_name => 'JOB_GLOBAL_MAIL_SENDING_QUEUE', USE_CURRENT_SESSION => FALSE); END;");
-        } catch (Exception e) {
-            log.warn("Error triggering mail job", e);
-        }
+//        try {
+//            jdbcTemplate.execute("BEGIN DBMS_SCHEDULER.RUN_JOB(job_name => 'JOB_GLOBAL_MAIL_SENDING_QUEUE', USE_CURRENT_SESSION => FALSE); END;");
+//        } catch (Exception e) {
+//            log.warn("Error triggering mail job", e);
+//        }
     }
 }

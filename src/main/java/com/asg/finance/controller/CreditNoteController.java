@@ -561,13 +561,12 @@ public class CreditNoteController {
     @Operation(
             summary = "Get Party GL POID",
             description = """
-                Fetches party GL POID for a selected party using: When Ref Type is General or Custom
-                PROC_GL_GET_DR_PARTY_GLPOID
+                Fetches party GL POID for a selected party using PROC_GL_GET_DR_PARTY_GLPOID.
+                Used when Ref Type is GENERAL.
 
                 ### Input:
                 - Party POID
                 - Party Type (CUSTOMER, SUPPLIER, PRINCIPAL)
-                
 
                 ### Output:
                 - Party GL POID

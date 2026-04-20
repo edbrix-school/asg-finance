@@ -40,7 +40,6 @@ public class AssetLocation extends BaseEntity {
     private String deleted;
 
     @Column(name = "ACTIVE", nullable = false,length = 1)
-    @AuditIgnore
     private String active;
 
 }

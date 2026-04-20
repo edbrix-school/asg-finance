@@ -580,4 +580,25 @@ public class ApPurchaseJournalController {
             );
         }
     }
+
+    @GetMapping("/supplier-gl-poid")
+    public ResponseEntity<?> getSupplierGlPoid(
+            @RequestParam String partyType,
+            @RequestParam Long partyPoid
+    ) {
+
+        Long groupPoid = UserContext.getGroupPoid();
+        Long companyPoid = UserContext.getCompanyPoid();
+        Long userPoid = UserContext.getUserPoid();
+
+        String glPoid = service.getSupplierGlPoid(
+                groupPoid,
+                companyPoid,
+                userPoid,
+                partyType,
+                partyPoid
+        );
+
+        return ResponseEntity.ok(glPoid);
+    }
 }

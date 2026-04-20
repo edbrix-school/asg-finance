@@ -582,6 +582,7 @@ public class ApPurchaseJournalController {
     }
 
     @GetMapping("/supplier-gl-poid")
+    @AllowedAction(UserRolesRightsEnum.VIEW)
     public ResponseEntity<?> getSupplierGlPoid(
             @RequestParam String partyType,
             @RequestParam Long partyPoid

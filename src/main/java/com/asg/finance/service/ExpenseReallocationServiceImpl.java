@@ -14,6 +14,7 @@ import com.asg.common.lib.utility.DateUtil;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.client.CompanyServiceClient;
 import com.asg.finance.dto.*;
+import com.asg.finance.dto.ExpenseReallocationConfigResponse;
 import com.asg.finance.entity.GlExpenseReallocationDtl;
 import com.asg.finance.entity.GlExpenseReallocationHdr;
 import com.asg.finance.entity.GlExpenseReallocationXlDtl;
@@ -35,6 +36,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -121,10 +123,10 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 
     @Override
     @Transactional(readOnly = true)
-    public ExpenseReallocationResponse getExpenseReallocationById(Long transactionPoid, Long groupPoid) {
-        log.info("getExpenseReallocationById started for transactionPoid={} groupPoid={}", transactionPoid, groupPoid);
+    public ExpenseReallocationResponse getExpenseReallocationById(Long transactionPoid) {
+        log.info("getExpenseReallocationById started for transactionPoid={} groupPoid={}", transactionPoid);
 
-        GlExpenseReallocationHdr header = hdrRepository.findByTransactionPoidAndGroupPoid(transactionPoid, groupPoid)
+        GlExpenseReallocationHdr header = hdrRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Expense Reallocation", "transactionPoid",
                         transactionPoid));
 
@@ -772,14 +774,54 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 
         setExpenseGroupInfo(response, header.getExpenseGroupGl());
 
-        List<GlExpenseReallocationDtl> details = dtlRepository.findByTransactionPoid(header.getTransactionPoid()).orElse(new ArrayList<GlExpenseReallocationDtl>());
-        response.setDetails(details.stream().map(this::convertDetailToResponse).collect(Collectors.toList()));
+        List<GlExpenseReallocationXlDtl> newDetails = xlDtlRepository.findByTransactionPoid(header.getTransactionPoid()).orElse(new ArrayList<GlExpenseReallocationXlDtl>());
+        List<ExpenseReallocationDetailResponseDto> details;
+        if (!newDetails.isEmpty()) {
+
+            Map<String, ExpenseReallocationDetailResponseDto> groupedMap = new LinkedHashMap<>();
+
+            for (GlExpenseReallocationXlDtl curr : newDetails) {
+                String key = curr.getCompanyCode();
+
+                ExpenseReallocationDetailResponseDto dto =
+                        groupedMap.computeIfAbsent(key, k -> {
+                            ExpenseReallocationDetailResponseDto newDto =
+                                    new ExpenseReallocationDetailResponseDto();
+
+                            newDto.setTransactionPoid(curr.getTransactionPoid());
+                            newDto.setCompany(curr.getCompany());
+                            newDto.setCompanyCode(curr.getCompanyCode());
+                            newDto.setDetRowId(curr.getDetRowId());
+
+                            return newDto;
+                        });
+
+                String costCenter = curr.getCostCentre() != null
+                        ? curr.getCostCentre().toUpperCase().trim()
+                        : null;
+
+                if (costCenter != null && curr.getPercent() != null) {
+                    dto.getCostCenterMap().put(costCenter, curr.getPercent());
+                    dto.getCostCenterMap().put("TOTAL",dto.getCostCenterMap().values().stream()
+                            .map(val -> val != null ? val : BigDecimal.ZERO)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add));
+                }
+
+            }
+
+            details = new ArrayList<>(groupedMap.values());
+
+        } else {
+            List<GlExpenseReallocationDtl> oldDetails = dtlRepository.findByTransactionPoid(header.getTransactionPoid()).orElse(new ArrayList<GlExpenseReallocationDtl>());
+            details = oldDetails.stream()
+                    .map(this::convertDetailToResponse)
+                    .collect(Collectors.toList());
+        }
+
+        response.setDetails(details);
 
         ExpenseReallocationResponse.DetailTotals detailTotals = calculateTotals(header.getTransactionPoid());
         response.setDetailTotals(detailTotals);
-
-        List<GlExpenseReallocationXlDtl> xlDetails = xlDtlRepository.findByTransactionPoid(header.getTransactionPoid()).orElse(new ArrayList<GlExpenseReallocationXlDtl>());
-        response.setXlDetails(xlDetails.stream().map(this::convertXlDetailToResponse).collect(Collectors.toList()));
 
         return response;
     }
@@ -837,21 +879,40 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         return totals;
     }
 
-    private ExpenseReallocationDetailResponse convertDetailToResponse(GlExpenseReallocationDtl detail) {
-        ExpenseReallocationDetailResponse response = new ExpenseReallocationDetailResponse();
+    private ExpenseReallocationDetailResponseDto convertDetailToResponse(GlExpenseReallocationDtl detail) {
+
+        ExpenseReallocationDetailResponseDto response =
+                new ExpenseReallocationDetailResponseDto();
+
+        response.setTransactionPoid(detail.getTransactionPoid());
         response.setDetRowId(detail.getDetRowId());
         response.setCompany(detail.getCompany());
-        response.setCompanyName(detail.getCompanyName());
-        response.setSh(detail.getSh());
-        response.setFf(detail.getFf());
-        response.setFfs(detail.getFfs());
-        response.setFfp(detail.getFfp());
-        response.setProperties(detail.getProperties());
-        response.setMta(detail.getMta());
-        response.setPda(detail.getPda());
-        response.setAdmin(detail.getAdmin());
-        response.setTotal(detail.getTotal());
-        response.setRemarks(detail.getRemarks());
+        response.setCompanyCode(detail.getCompanyName());
+
+        Map<String, BigDecimal> costCenterMap = new HashMap<>();
+
+        for (Field field : GlExpenseReallocationDtl.class.getDeclaredFields()) {
+
+            if (field.getType().equals(BigDecimal.class)) {
+
+                field.setAccessible(true);
+
+                try {
+                    BigDecimal value = (BigDecimal) field.get(detail);
+
+                    if (value != null) {
+                        String key = field.getName().toUpperCase(); // SH, FFS, etc.
+                        costCenterMap.put(key, value);
+                    }
+
+                } catch (IllegalAccessException e) {
+                    throw new RuntimeException("Error accessing field: " + field.getName(), e);
+                }
+            }
+        }
+
+        response.setCostCenterMap(costCenterMap);
+
         return response;
     }
 
@@ -1072,7 +1133,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         }
     }
 
-    private void validateDetRowID(Long detRowId, String position ){
-        Optional.ofNullable(detRowId).orElseThrow(()-> new ValidationException(String.format("Validation Error on %s RowId is Required",position)));
+    private void validateDetRowID(Long detRowId, String position) {
+        Optional.ofNullable(detRowId).orElseThrow(() -> new ValidationException(String.format("Validation Error on %s RowId is Required", position)));
     }
 }

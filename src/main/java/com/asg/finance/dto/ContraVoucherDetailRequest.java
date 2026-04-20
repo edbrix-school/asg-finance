@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -19,5 +20,7 @@ public class ContraVoucherDetailRequest {
     private BigDecimal drAmt;
     private BigDecimal crAmt;
     private String remarks;
+    private List<BillwiseBreakupPopupRequestDto> breakupList;
+    private List<CostCenterBreakupPopupRequestDto> costCenterList;
 }
 

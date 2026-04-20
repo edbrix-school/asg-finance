@@ -29,6 +29,7 @@ import com.asg.finance.service.CostCenterBreakupService;
 import com.asg.finance.service.DebitNoteService;
 import com.asg.finance.service.GlPostingService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;
 import org.apache.commons.lang3.StringUtils;
@@ -92,6 +93,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
     private final TaxMasterRepository taxMasterRepository;
     private final GlPostingService glPostingService;
     private final GLMasterRepository glMasterRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -111,6 +113,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         ArDebitNoteHdr entity = mapToEntity(debitNoteDto);
         ArDebitNoteHdr savedEntity = debitNoteHdrRepository.saveAndFlush(entity);
         // Refresh to pull back trigger-generated DOC_REF from the database
+        entityManager.flush();
         entityManager.refresh(savedEntity);
         debitNoteDto.setDocRef(savedEntity.getDocRef());
         DocumentBeforeSaveBillwiseCostGroups(debitNoteDto);
@@ -160,8 +163,6 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         String oldRefType = existingEntity.getRefType();
 
         validateDebitNoteInput(debitNoteDto);
-        DocumentBeforeSaveBillwiseCostGroups(debitNoteDto);
-        // Validate using stored procedure for Edit
 
         if (debitNoteDto.getRefType().equals("FDA JOBS")
                 || debitNoteDto.getRefType().equals("FF JOBS")
@@ -193,6 +194,11 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         existingEntity.setLastModifiedDate(LocalDateTime.now());
         existingEntity.setTransactionDate(debitNoteDto.getTransactionDate());
         debitNoteHdrRepository.save(existingEntity);
+        entityManager.flush();
+        entityManager.refresh(existingEntity);
+
+        debitNoteDto.setDocRef(existingEntity.getDocRef());
+        DocumentBeforeSaveBillwiseCostGroups(debitNoteDto);
 
         List<GlobalLogSummary> detailSummaryLogs = new ArrayList<>();
         updateGlDetailsWithLogging(debitNoteDto.getGlDetails(), transactionPoid, detailSummaryLogs);
@@ -1425,7 +1431,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
     }
 
     private void publishAfterSaveEvent(ArDebitNoteHdr entity, String oldFdaRef, String oldRefType) {
-        // Event will be handled by onAfterSaveCommit listener after transaction commit
+        eventPublisher.publishEvent(new DebitNoteAfterSaveEvent(entity, oldFdaRef, oldRefType));
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)

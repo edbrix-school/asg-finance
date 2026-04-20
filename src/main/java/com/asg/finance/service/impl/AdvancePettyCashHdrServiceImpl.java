@@ -61,12 +61,14 @@ public class AdvancePettyCashHdrServiceImpl implements AdvancePettyCashHdrServic
     private final DocumentDeleteService documentDeleteService;
 
     @Override
+    @Transactional
     public AdvancePettyCashHdrResponseDTO createAdvancePettyCash(AdvancePettyCashHdrRequestDTO request) {
         validateTransactionDate(request.getTransactionDate());
         validateClosedStatus(request.getStatus(), request.getClosedReason());
         try {
             AdvancePettyCashHdr entity = convertFromDtoToEntity(request);
             AdvancePettyCashHdr saved = repository.save(entity);
+            entityManager.flush();
             entityManager.refresh(entity);
             String key = saved.getTransactionPoid().toString();
             
@@ -85,6 +87,7 @@ public class AdvancePettyCashHdrServiceImpl implements AdvancePettyCashHdrServic
     }
 
     @Override
+    @Transactional
     public AdvancePettyCashHdrResponseDTO updateAdvancePettyCash(Long transactionPoid, AdvancePettyCashHdrRequestDTO request) {
         AdvancePettyCashHdr existing = repository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Advance Petty Cash not found with ID: ", "transactionPoid", transactionPoid));

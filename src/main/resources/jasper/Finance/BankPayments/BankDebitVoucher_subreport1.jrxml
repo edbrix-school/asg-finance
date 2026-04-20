@@ -22,7 +22,7 @@
 	<detail>
 		<band height="40" splitType="Stretch">
 			<textField isStretchWithOverflow="true">
-				<reportElement x="0" y="0" width="555" height="40" uuid="527ac1ba-2cb6-487c-a883-e17f65b53b49"/>
+				<reportElement x="0" y="0" width="380" height="40" uuid="527ac1ba-2cb6-487c-a883-e17f65b53b49"/>
 				<textFieldExpression><![CDATA[$F{CLAUSE_DETAILS}]]></textFieldExpression>
 			</textField>
 		</band>

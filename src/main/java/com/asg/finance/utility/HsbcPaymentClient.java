@@ -2,10 +2,13 @@ package com.asg.finance.utility;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import javax.sql.DataSource;
 
@@ -36,6 +39,8 @@ import oracle.jdbc.OracleTypes;
 @Slf4j
 public class HsbcPaymentClient {
 
+    private static final String GROUP = "GROUP";
+
     private final DataSource dataSource;
     private final PgpHelper pgpHelper;
     private final GlobalParameterService globalParameterService;
@@ -43,12 +48,13 @@ public class HsbcPaymentClient {
     public void processPendingPayments() throws Exception {
         log.info("Starting HSBC payment processing");
 
-        String apiUrl = globalParameterService.getParameterValue("HSBC_URL_FOR_BULK_PAYMENT_API", "GROUP", "1", "");
-        String profileId = globalParameterService.getParameterValue("HSBC_PROFILE_ID_FOR_API", "GROUP", "1", "");
-        String clientSecret = globalParameterService.getParameterValue("HSBC_CLIENT_SECRET_API", "GROUP", "1", "");
-        String bankPublicKeyPath = globalParameterService.getParameterValue("HSBC_PUBLIC_KEY_FOR_API", "GROUP", "1", "");
-        String asgPrivateKeyPath = globalParameterService.getParameterValue("HSBC_ASG_PRIV_KEY_FOR_API", "GROUP", "1", "");
-        String secretKey = globalParameterService.getParameterValue("HSBC_SECRET_KEY_API", "GROUP", "1", "");
+        String apiUrl = globalParameterService.getParameterValue("HSBC_URL_FOR_BULK_PAYMENT_API", GROUP, "1", "");
+        String profileId = globalParameterService.getParameterValue("HSBC_PROFILE_ID_FOR_API_PAYMENT", GROUP, "1", "");
+        String bankPublicKeyPath = globalParameterService.getParameterValue("HSBC_PUBLIC_KEY_FOR_API_PAYMENT", GROUP, "1", "");
+        String asgPrivateKeyPath = globalParameterService.getParameterValue("HSBC_ASG_PRIV_KEY_FOR_API_PAYMENT", GROUP, "1", "");
+        String secretKey = globalParameterService.getParameterValue("HSBC_SECRET_KEY_API", GROUP, "1", "");
+
+        Map<String, String> headers = buildHeaders(profileId);
 
         PGPSecretKey secretKeyObj = pgpHelper.readSecretKeyFromFile(asgPrivateKeyPath);
         PGPPublicKey bankPublicKey = pgpHelper.readPublicKeyFromFile(bankPublicKeyPath);
@@ -64,7 +70,7 @@ public class HsbcPaymentClient {
                     String paymentXml = rs.getString("XML_DATA");
                     String transactionPoid = rs.getString("TRANSACTION_POID");
                     try {
-                        processPayment(conn, transactionPoid, paymentXml, apiUrl, profileId, clientSecret,
+                        processPayment(conn, transactionPoid, paymentXml, apiUrl, profileId, headers,
                                 bankPublicKey, secretKeyObj, secretKey);
                     } catch (Exception e) {
                         log.error("Failed to process payment {}: {}", transactionPoid, e.getMessage(), e);
@@ -74,17 +80,34 @@ public class HsbcPaymentClient {
         }
     }
 
+    private Map<String, String> buildHeaders(String profileId) {
+        String clientSecret = globalParameterService.getParameterValue("HSBC_CLIENT_SECRET_API_PAYMENT", GROUP, "1", "");
+        String contentType = globalParameterService.getParameterValue("HSBC_CONTENT_TYPE_API", GROUP, "1", "");
+        String countryCode = globalParameterService.getParameterValue("HSBC_CONUNTRY_CODE_API", GROUP, "1", "");
+        String payLoadType = globalParameterService.getParameterValue("HSBC_PAYLOAD_TYPE_API_PAYMENT", GROUP, "1", "");
+        String transactionType = globalParameterService.getParameterValue("HSBC_TRANSACTION_TYPE_API_PAYMENT", GROUP, "1", "");
+
+        Map<String, String> headers = new LinkedHashMap<>();
+        headers.put("x-hsbc-client-secret", clientSecret.trim());
+        headers.put("x-hsbc-profile-id", profileId);
+        headers.put("Content-Type", contentType.trim());
+        headers.put("countryCode", countryCode.trim());
+        headers.put("x-payload-type", payLoadType.trim());
+        headers.put("x-trans-type", transactionType.trim());
+        return headers;
+    }
+
     private void processPayment(Connection conn, String transactionPoid, String paymentXml,
-                                 String apiUrl, String profileId, String clientSecret,
+                                 String apiUrl, String profileId, Map<String, String> headers,
                                  PGPPublicKey bankPublicKey, PGPSecretKey secretKeyObj, String secretKey) throws Exception {
         ByteArrayOutputStream encryptedData = new ByteArrayOutputStream();
-        pgpHelper.encryptAndSign(encryptedData, new ByteArrayInputStream(paymentXml.getBytes("UTF-8")),
+        pgpHelper.encryptAndSign(encryptedData, new ByteArrayInputStream(paymentXml.getBytes(StandardCharsets.UTF_8)),
                 bankPublicKey, pgpHelper.extractPrivateKey(secretKeyObj, secretKey.toCharArray()));
 
         String encryptedBase64 = Base64.toBase64String(encryptedData.toByteArray());
         String payload = "{\"paymentBase64\":\"" + encryptedBase64 + "\"}";
 
-        String response = executeHttpPost(apiUrl, payload, profileId, clientSecret);
+        String response = executeHttpPost(apiUrl, payload, headers);
 
         JSONObject obj = JSON.parseObject(response);
         String statusCode = obj.getString("statusCode");
@@ -102,20 +125,32 @@ public class HsbcPaymentClient {
                 hsbcResponseStatus, statusCode, statusDesc, extractedResponseStr, "PAYMENT_INITIATION");
     }
 
-    private String executeHttpPost(String url, String payload, String profileId, String clientSecret) throws Exception {
+    private String executeHttpPost(String url, String payload, Map<String, String> headers) throws Exception {
+        System.out.println("==== HSBC CURL REQUEST ====");
+        StringBuilder curl = new StringBuilder("curl -X POST '").append(url).append("' \\\n");
+        for (Map.Entry<String, String> h : headers.entrySet()) {
+            curl.append("  -H '").append(h.getKey()).append(": ").append(h.getValue()).append("' \\\n");
+        }
+        curl.append("  -d '").append(payload).append("'");
+        System.out.println(curl);
+        System.out.println("===========================");
+
         var sslContext = new SSLContextBuilder().loadTrustMaterial(null, (chain, authType) -> true).build();
         var sslFactory = new SSLConnectionSocketFactory(sslContext);
         var connectionManager = PoolingHttpClientConnectionManagerBuilder.create().setSSLSocketFactory(sslFactory).build();
 
         try (CloseableHttpClient client = HttpClients.custom().setConnectionManager(connectionManager).build()) {
             HttpPost post = new HttpPost(url);
-            post.setHeader("x-hsbc-client-secret", clientSecret);
-            post.setHeader("x-hsbc-profile-id", profileId);
-            post.setHeader("Content-Type", "application/json");
+            for (Map.Entry<String, String> h : headers.entrySet()) {
+                post.setHeader(h.getKey(), h.getValue());
+            }
             post.setEntity(new StringEntity(payload));
 
             try (CloseableHttpResponse response = client.execute(post)) {
-                return EntityUtils.toString(response.getEntity());
+                int statusCode = response.getCode();
+                String responseBody = EntityUtils.toString(response.getEntity());
+                log.info("HSBC response status: {}, body: {}", statusCode, responseBody);
+                return responseBody;
             }
         }
     }
@@ -145,12 +180,13 @@ public class HsbcPaymentClient {
     public void checkPaymentStatus() throws Exception {
         log.info("Checking HSBC payment status for pending payments");
 
-        String apiUrl = globalParameterService.getParameterValue("HSBC_URL_FOR_PAYMENT_STATUS_API", "GROUP", "1", "");
-        String profileId = globalParameterService.getParameterValue("HSBC_PROFILE_ID_FOR_API", "GROUP", "1", "");
-        String clientSecret = globalParameterService.getParameterValue("HSBC_CLIENT_SECRET_API", "GROUP", "1", "");
-        String bankPublicKeyPath = globalParameterService.getParameterValue("HSBC_PUBLIC_KEY_FOR_API", "GROUP", "1", "");
-        String asgPrivateKeyPath = globalParameterService.getParameterValue("HSBC_ASG_PRIV_KEY_FOR_API", "GROUP", "1", "");
-        String secretKey = globalParameterService.getParameterValue("HSBC_SECRET_KEY_API", "GROUP", "1", "");
+        String apiUrl = globalParameterService.getParameterValue("HSBC_URL_FOR_PAYMENT_STATUS_API", GROUP, "1", "");
+        String profileId = globalParameterService.getParameterValue("HSBC_PROFILE_ID_FOR_API_PAYMENT", GROUP, "1", "");
+        String bankPublicKeyPath = globalParameterService.getParameterValue("HSBC_PUBLIC_KEY_FOR_API_PAYMENT", GROUP, "1", "");
+        String asgPrivateKeyPath = globalParameterService.getParameterValue("HSBC_ASG_PRIV_KEY_FOR_API_PAYMENT", GROUP, "1", "");
+        String secretKey = globalParameterService.getParameterValue("HSBC_SECRET_KEY_API", GROUP, "1", "");
+
+        Map<String, String> headers = buildHeaders(profileId);
 
         PGPSecretKey secretKeyObj = pgpHelper.readSecretKeyFromFile(asgPrivateKeyPath);
         PGPPublicKey bankPublicKey = pgpHelper.readPublicKeyFromFile(bankPublicKeyPath);
@@ -166,7 +202,7 @@ public class HsbcPaymentClient {
                     String statusXml = rs.getString("XML_OUTPUT");
                     String transactionPoid = rs.getString("TRANSACTION_POID");
                     try {
-                        queryPaymentStatus(conn, transactionPoid, statusXml, apiUrl, profileId, clientSecret,
+                        queryPaymentStatus(conn, transactionPoid, statusXml, apiUrl, headers,
                                 bankPublicKey, secretKeyObj, secretKey);
                     } catch (Exception e) {
                         log.error("Failed to query status for payment {}: {}", transactionPoid, e.getMessage(), e);
@@ -177,16 +213,16 @@ public class HsbcPaymentClient {
     }
 
     private void queryPaymentStatus(Connection conn, String transactionPoid, String statusXml,
-                                     String apiUrl, String profileId, String clientSecret,
+                                     String apiUrl, Map<String, String> headers,
                                      PGPPublicKey bankPublicKey, PGPSecretKey secretKeyObj, String secretKey) throws Exception {
         ByteArrayOutputStream encryptedData = new ByteArrayOutputStream();
-        pgpHelper.encryptAndSign(encryptedData, new ByteArrayInputStream(statusXml.getBytes("UTF-8")),
+        pgpHelper.encryptAndSign(encryptedData, new ByteArrayInputStream(statusXml.getBytes(StandardCharsets.UTF_8)),
                 bankPublicKey, pgpHelper.extractPrivateKey(secretKeyObj, secretKey.toCharArray()));
 
         String encryptedBase64 = Base64.toBase64String(encryptedData.toByteArray());
         String payload = "{\"paymentEnquiryBase64\":\"" + encryptedBase64 + "\"}";
 
-        String response = executeHttpPost(apiUrl, payload, profileId, clientSecret);
+        String response = executeHttpPost(apiUrl, payload, headers);
 
         JSONObject obj = JSON.parseObject(response);
         String statusCode = obj.getString("statusCode");

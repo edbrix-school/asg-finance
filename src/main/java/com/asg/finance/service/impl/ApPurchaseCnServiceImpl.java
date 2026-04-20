@@ -17,6 +17,7 @@ import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.common.lib.dto.FilterRequestDto;
+import com.asg.finance.annotation.PerformGlPosting;
 import com.asg.finance.dto.*;
 import com.asg.finance.exception.DataAccessException;
 import com.asg.finance.entity.ApPurchaseCnChargeDtl;
@@ -48,13 +49,19 @@ import org.springframework.transaction.annotation.Transactional;
 
 import javax.sql.DataSource;
 import java.math.BigDecimal;
+import java.sql.CallableStatement;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.sql.Types;
+import java.util.Objects;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 @Slf4j
@@ -235,6 +242,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
 
     @Override
     @Transactional
+    @PerformGlPosting
     public ApPurchaseCnHdrDto create(ApPurchaseCnHdrDto dto) {
         log.info(LOG_MESSAGE_CREATING, dto.getPartyType(), dto.getRefType());
         
@@ -243,16 +251,20 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
             Long partyPoid = PARTY_TYPE_SUPPLIER.equals(dto.getPartyType()) ? dto.getSupplierPoid() : dto.getPrincipalPoid();
             log.debug(LOG_MESSAGE_VALIDATION, partyPoid);
             procRepository.beforeSaveValidation(dto.getPartyType(), partyPoid, dto.getRefType(), dto.getPjReversalRef());
-            
+            validateInputFields(dto);
+            documentBeforeSaveAutoBalance(dto);
+
             ApPurchaseCnHdr hdr = mapToEntity(dto);
             hdr.setCreatedBy(UserContext.getUserId());
             hdr.setCreatedDate(Timestamp.valueOf(LocalDateTime.now()));
             hdr.setDeleted(DEFAULT_NO_VALUE);
-            
+
             ApPurchaseCnHdr savedHdr = hdrRepository.save(hdr);
-            entityManager.refresh(hdr);
+            entityManager.flush();
+            entityManager.refresh(savedHdr);
+            dto.setDocRef(savedHdr.getDocRef());
             log.info(LOG_MESSAGE_SAVED_HEADER, savedHdr.getTransactionPoid());
-            
+
             saveDetails(savedHdr.getTransactionPoid(), dto);
             log.info(LOG_MESSAGE_CREATED_SUCCESS, savedHdr.getTransactionPoid());
             
@@ -304,6 +316,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
 
     @Override
     @Transactional
+    @PerformGlPosting
     public ApPurchaseCnHdrDto update(Long transactionPoid, ApPurchaseCnHdrDto dto) {
         log.info(LOG_MESSAGE_UPDATING, transactionPoid);
         
@@ -319,7 +332,9 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
             
             hdrRepository.save(existing);
             log.info(LOG_MESSAGE_HEADER_UPDATED);
-            
+
+            validateInputFields(dto);
+            documentBeforeSaveAutoBalance(dto);
             updateDetailsByActionType(transactionPoid, dto);
             log.info(LOG_MESSAGE_UPDATED_SUCCESS, transactionPoid);
             loggingService.logChanges(oldEntity, existing, ApPurchaseCnHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, COLUMN_TRANSACTION_POID);
@@ -918,6 +933,91 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         if (CollectionUtils.isEmpty(dto.getGlDetails())) {
             throw new ValidationException(ERROR_GL_DETAIL_REQUIRED_PREFIX + REF_TYPE_GENERAL);
         }
+        autoBalancePartyGlForGeneral(dto);
+    }
+
+    private void autoBalancePartyGlForGeneral(ApPurchaseCnHdrDto dto) {
+        Long partyPoid = PARTY_TYPE_SUPPLIER.equals(dto.getPartyType())
+                ? dto.getSupplierPoid() : dto.getPrincipalPoid();
+        if (partyPoid == null) {
+            return;
+        }
+
+        Long partyGl;
+        try {
+            partyGl = executeGetPartyGLPoid(partyPoid, dto.getPartyType());
+        } catch (SQLException e) {
+            throw new ValidationException("Failed to load Party GL: " + e.getMessage());
+        }
+        if (partyGl == null) {
+            return;
+        }
+
+        List<ApPurchaseCnGlDtlDto> activeGlDetails = dto.getGlDetails().stream()
+                .filter(Objects::nonNull)
+                .filter(gl -> !ACTION_TYPE_IS_DELETED.equalsIgnoreCase(normalizeActionType(gl.getActionType())))
+                .toList();
+
+        boolean partyGlFound = activeGlDetails.stream()
+                .anyMatch(gl -> Objects.equals(gl.getGlPoid(), partyGl));
+        if (partyGlFound) {
+            return;
+        }
+
+        BigDecimal totalDrAmt = activeGlDetails.stream()
+                .filter(gl -> "DR".equalsIgnoreCase(gl.getType()))
+                .map(gl -> gl.getDrAmount() != null ? gl.getDrAmount() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalCrAmt = activeGlDetails.stream()
+                .filter(gl -> "CR".equalsIgnoreCase(gl.getType()))
+                .map(gl -> gl.getCrAmount() != null ? gl.getCrAmount() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal documentTotal = dto.getBhdAmount() != null ? dto.getBhdAmount() : dto.getGrandTotal();
+        BigDecimal balancingAmount = totalDrAmt.subtract(totalCrAmt);
+        if (balancingAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            balancingAmount = documentTotal;
+        }
+        if (balancingAmount == null || balancingAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            return;
+        }
+
+        Long nextDetRowId = dto.getGlDetails().stream()
+                .map(ApPurchaseCnGlDtlDto::getDetRowId)
+                .filter(Objects::nonNull)
+                .max(Long::compareTo)
+                .orElse(0L) + 1;
+
+        ApPurchaseCnGlDtlDto balancingRow = new ApPurchaseCnGlDtlDto();
+        balancingRow.setType("CR");
+        balancingRow.setCompanyPoid(UserContext.getCompanyPoid());
+        balancingRow.setGlPoid(partyGl);
+        balancingRow.setDrAmount(BigDecimal.ZERO);
+        balancingRow.setCrAmount(balancingAmount);
+        balancingRow.setTotalAmount(balancingAmount);
+        balancingRow.setRemarks("Auto Balance Entry");
+        balancingRow.setActionType(ACTION_TYPE_IS_CREATED);
+        balancingRow.setDetRowId(nextDetRowId);
+
+        dto.getGlDetails().add(balancingRow);
+        log.info("Auto-balanced party GL {} with CR amount {} for Supplier CN", partyGl, balancingAmount);
+    }
+
+    private Long executeGetPartyGLPoid(Long partyPoid, String partyType) throws SQLException {
+        String sql = "BEGIN PROC_GL_GET_DR_PARTY_GLPOID(?, ?, ?, ?, ?, ?, ?); END;";
+        try (Connection conn = dataSource.getConnection();
+             CallableStatement cs = conn.prepareCall(sql)) {
+            cs.setLong(1, UserContext.getGroupPoid());
+            cs.setLong(2, UserContext.getCompanyPoid());
+            cs.setLong(3, UserContext.getUserPoid());
+            cs.setLong(4, partyPoid != null ? partyPoid : 0);
+            cs.setString(5, partyType != null ? partyType : PARTY_TYPE_SUPPLIER);
+            cs.registerOutParameter(6, Types.NUMERIC);
+            cs.registerOutParameter(7, Types.VARCHAR);
+            cs.execute();
+            long partyGLPoid = cs.getLong(6);
+            return partyGLPoid == 0 ? null : partyGLPoid;
+        }
     }
 
     private void validateFfRefType(ApPurchaseCnHdrDto dto) {
@@ -1164,7 +1264,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
             Map<String, Object> params = printService.buildBaseParams(transactionPoid, DOC_ID_AP_PURCHASE_CN);
             params.put("SUBREPORT_GL", printService.load("Finance/AP/PurchaseInvoiceReportGlSubreport1.jrxml"));
             params.put("SUBREPORT_CHARGE", printService.load("Finance/AP/PurchaseInvoiceChargeSubReport.jrxml"));
-            JasperReport mainReport = printService.load("Finance/AP/PurchaseInvoiceReport_2.jrxml");
+            JasperReport mainReport = printService.load("Finance/AP/PurchaseReturnNote.jrxml");
             return printService.fillReportToPdf(mainReport, params, dataSource);
         } catch (Exception e) {
             log.error(ERROR_MESSAGE_CREATING_PDF, e.getMessage(), e);
@@ -1406,7 +1506,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         dto.setChargePoid(entity.getChargePoid());
         if (entity.getChargePoid() != null) {
             // Use appropriate LOV based on charge context - FF vs FDA
-            String lovName = REF_TYPE_FF.equals(refType) ? LOV_FF_CHARGE_MASTER_PJ : LOV_FDA_CHARGE_MASTER_PJ;
+            String lovName = REF_TYPE_FF_JOB.equals(refType) ? LOV_FF_CHARGE_MASTER_PJ : LOV_FDA_CHARGE_MASTER_PJ;
             dto.setChargeDet(lovService.getDetailsByPoidAndLovName(entity.getChargePoid(), lovName));
         }
         dto.setChargeAmount(entity.getChargeAmount());
@@ -1714,5 +1814,236 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                     return dto;
                 })
                 .toList();
+    }
+
+    // -------------------------------------------------------------------------
+    // Auto-balancing (mirrors DebitNoteServiceImpl.DocumentBeforeSaveBillwiseCostGroups)
+    // -------------------------------------------------------------------------
+
+    private void validateInputFields(ApPurchaseCnHdrDto dto) {
+        if (dto.getSupplierCnAmount() == null) {
+            throw new ValidationException("Supplier CN Amount is mandatory");
+        }
+        if (dto.getSupplierCnAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ValidationException("Supplier CN Amount must be greater than zero");
+        }
+        if (dto.getCurrencyRate() == null) {
+            throw new ValidationException("Currency Rate is mandatory");
+        }
+        if (dto.getCurrencyRate().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ValidationException("Currency Rate must be greater than zero");
+        }
+
+        BigDecimal expectedBhdAmount = dto.getCurrencyRate().multiply(dto.getSupplierCnAmount());
+        if (dto.getBhdAmount() != null && dto.getBhdAmount().compareTo(expectedBhdAmount) != 0) {
+            throw new ValidationException(
+                    "BHD Amount (" + dto.getBhdAmount() + ") does not match Currency Rate x Supplier CN Amount (" + expectedBhdAmount + ")"
+            );
+        }
+
+        if (dto.getGrandTotal() != null && dto.getGrandTotal().compareTo(BigDecimal.ZERO) < 0) {
+            throw new ValidationException("Grand Total cannot be negative");
+        }
+
+        String refType = dto.getRefType();
+        if (StringUtils.isBlank(refType)) {
+            throw new ValidationException(ERROR_REF_TYPE_REQUIRED);
+        }
+
+        switch (refType.toUpperCase()) {
+            case REF_TYPE_FF, REF_TYPE_FF_JOB -> {
+                if (dto.getFfRef() == null) {
+                    throw new ValidationException("FF Reference is mandatory for ref type: " + refType);
+                }
+            }
+            case REF_TYPE_FDA -> {
+                if (StringUtils.isBlank(dto.getFdaCoveringRef())) {
+                    throw new ValidationException("FDA Covering Reference is mandatory for ref type: " + refType);
+                }
+            }
+            case REF_TYPE_PJ_REVERSAL -> {
+                if (dto.getPjReversalRef() == null) {
+                    throw new ValidationException("PJ Reversal Reference is mandatory for ref type: " + refType);
+                }
+                if (StringUtils.isBlank(dto.getPjReversalRefType())) {
+                    throw new ValidationException("PJ Reversal Ref Type is mandatory for ref type: " + refType);
+                }
+            }
+            default -> { /* GENERAL, GENERAL_PO, MTA_PO — no extra ref required */ }
+        }
+    }
+
+    private void documentBeforeSaveAutoBalance(ApPurchaseCnHdrDto dto) {
+        BigDecimal documentTotal = firstNonNull(dto.getBhdAmount(), dto.getGrandTotal());
+        if (documentTotal == null) {
+            throw new ValidationException("Total Amount is not found...");
+        }
+
+        Long partyPoid = PARTY_TYPE_SUPPLIER.equals(dto.getPartyType())
+                ? dto.getSupplierPoid() : dto.getPrincipalPoid();
+        if (partyPoid == null) {
+            throw new ValidationException("Party is not found...");
+        }
+
+        if (StringUtils.isBlank(dto.getRefType())) {
+            throw new ValidationException("Ref Type is not found...");
+        }
+
+        if (!REF_TYPE_GENERAL.equalsIgnoreCase(dto.getRefType())) {
+            return;
+        }
+
+        Long partyGl = getPartyGLPoid(partyPoid, dto.getPartyType());
+
+        List<ApPurchaseCnGlDtlDto> effectiveGlDetails = getEffectiveGlDetails(dto);
+        BigDecimal totalDrAmt = sumGlByType(effectiveGlDetails, "DR");
+        BigDecimal totalCrAmt = sumGlByType(effectiveGlDetails, "CR");
+
+        if (totalCrAmt.compareTo(BigDecimal.ZERO) == 0) {
+            throw new ValidationException("No Credit Entries Entered...");
+        }
+
+        boolean partyGlFound = effectiveGlDetails.stream()
+                .anyMatch(gl -> Objects.equals(gl.getGlPoid(), partyGl));
+
+        if (!partyGlFound) {
+            BigDecimal balancingAmount = totalCrAmt.subtract(totalDrAmt);
+            if (balancingAmount.compareTo(BigDecimal.ZERO) <= 0) {
+                balancingAmount = documentTotal;
+            }
+
+            Long nextDetRowId = dto.getGlDetails().stream()
+                    .map(ApPurchaseCnGlDtlDto::getDetRowId)
+                    .filter(Objects::nonNull)
+                    .max(Long::compareTo)
+                    .orElse(0L) + 1;
+
+            ApPurchaseCnGlDtlDto balancingRow = new ApPurchaseCnGlDtlDto();
+            balancingRow.setType("DR");
+            balancingRow.setCompanyPoid(UserContext.getCompanyPoid());
+            balancingRow.setGlPoid(partyGl);
+            balancingRow.setDrAmount(balancingAmount);
+            balancingRow.setCrAmount(BigDecimal.ZERO);
+            balancingRow.setTotalAmount(balancingAmount);
+            balancingRow.setRemarks("Auto Balance Entry");
+            balancingRow.setActionType("isCreated");
+            balancingRow.setDetRowId(nextDetRowId);
+
+            if (isBillwiseApplicable(partyGl)) {
+                balancingRow.setBreakupList(List.of(createDefaultBillwiseBreakup(dto, balancingAmount)));
+            }
+
+            if (dto.getGlDetails() == null) {
+                dto.setGlDetails(new ArrayList<>());
+            }
+            dto.getGlDetails().add(balancingRow);
+
+            effectiveGlDetails = getEffectiveGlDetails(dto);
+            totalDrAmt = sumGlByType(effectiveGlDetails, "DR");
+            totalCrAmt = sumGlByType(effectiveGlDetails, "CR");
+        }
+
+        if (totalDrAmt.compareTo(documentTotal) != 0) {
+            throw new ValidationException(
+                    "Amount (" + documentTotal + ") is not matching with party debit amount(" + totalDrAmt + ")"
+            );
+        }
+
+        if (totalCrAmt.compareTo(totalDrAmt) != 0) {
+            throw new ValidationException(
+                    "Total Debits and Credits not tallying. Cr> " + totalCrAmt + " Dr> " + totalDrAmt
+            );
+        }
+    }
+
+    private Long getPartyGLPoid(Long partyPoid, String partyType) {
+        String sql = "BEGIN PROC_GL_GET_DR_PARTY_GLPOID(?, ?, ?, ?, ?, ?, ?); END;";
+        try (Connection conn = dataSource.getConnection();
+             CallableStatement cs = conn.prepareCall(sql)) {
+
+            cs.setLong(1, getCurrentGroupPoid());
+            cs.setLong(2, getCurrentCompanyPoid());
+            cs.setLong(3, getCurrentUserPoid());
+            cs.setLong(4, partyPoid != null ? partyPoid : 0);
+            cs.setString(5, partyType);
+            cs.registerOutParameter(6, Types.NUMERIC);
+            cs.registerOutParameter(7, Types.VARCHAR);
+
+            cs.execute();
+
+            long partyGl = cs.getLong(6);
+            if (partyGl == 0) {
+                throw new ValidationException("Party GL not found.");
+            }
+            return partyGl;
+        } catch (ValidationException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new DataAccessException("Error fetching Party GL: " + e.getMessage(), e);
+        }
+    }
+
+    private boolean isBillwiseApplicable(Long glPoid) {
+        if (glPoid == null) return false;
+        return glMasterRepository.findByGlPoid(glPoid)
+                .map(gl -> "Y".equalsIgnoreCase(gl.getBillwise()))
+                .orElse(false);
+    }
+
+    private BillwiseBreakupPopupRequestDto createDefaultBillwiseBreakup(ApPurchaseCnHdrDto dto, BigDecimal amount) {
+        BillwiseBreakupPopupRequestDto billwise = new BillwiseBreakupPopupRequestDto();
+        billwise.setBillRefType("NEW");
+        String billRef = StringUtils.isNotBlank(dto.getSupplierCnNo())
+                ? dto.getSupplierCnNo()
+                : StringUtils.defaultIfBlank(dto.getDocRef(),
+                        dto.getSupplierCnAmount() != null ? dto.getSupplierCnAmount().toPlainString() : null);
+        billwise.setBillRef(billRef);
+        billwise.setBillDueDate(resolveDueDate(dto));
+        billwise.setType("DR");
+        billwise.setAmount(amount);
+        billwise.setBillRemarks(dto.getNarration());
+        billwise.setActionType("isCreated");
+        return billwise;
+    }
+
+    private LocalDate resolveDueDate(ApPurchaseCnHdrDto dto) {
+        if (dto.getDueDate() != null) return dto.getDueDate();
+        if (dto.getCreditPeriod() != null && dto.getCreditPeriod() > 0) {
+            return LocalDate.now().plusDays(dto.getCreditPeriod());
+        }
+        return LocalDate.now();
+    }
+
+    private List<ApPurchaseCnGlDtlDto> getEffectiveGlDetails(ApPurchaseCnHdrDto dto) {
+        if (dto.getGlDetails() == null) return new ArrayList<>();
+        return dto.getGlDetails().stream()
+                .filter(Objects::nonNull)
+                .filter(gl -> !ACTION_TYPE_IS_DELETED.equals(normalizeActionType(gl.getActionType())))
+                .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+    }
+
+    private BigDecimal sumGlByType(List<ApPurchaseCnGlDtlDto> glDetails, String type) {
+        return glDetails.stream()
+                .filter(gl -> type.equalsIgnoreCase(gl.getType()))
+                .map(this::resolveGlLineAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private BigDecimal resolveGlLineAmount(ApPurchaseCnGlDtlDto gl) {
+        if ("DR".equalsIgnoreCase(gl.getType())) {
+            return firstNonNull(gl.getTotalAmount(), gl.getDrAmount(), BigDecimal.ZERO);
+        }
+        if ("CR".equalsIgnoreCase(gl.getType())) {
+            return firstNonNull(gl.getTotalAmount(), gl.getCrAmount(), BigDecimal.ZERO);
+        }
+        return firstNonNull(gl.getTotalAmount(), BigDecimal.ZERO);
+    }
+
+    @SafeVarargs
+    private <T> T firstNonNull(T... values) {
+        for (T value : values) {
+            if (value != null) return value;
+        }
+        return null;
     }
 }

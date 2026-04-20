@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="PettyCashPayment" language="groovy" pageWidth="595" pageHeight="842" columnWidth="535" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="51f26c1c-332c-43f0-beb9-5722768520c7">
 	<property name="ireport.zoom" value="1.210000000000002"/>
 	<property name="ireport.x" value="0"/>
@@ -165,14 +165,14 @@ WHERE PCP.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 				<textFieldExpression><![CDATA[$F{PAYING_TO}]]></textFieldExpression>
 			</textField>
 			<staticText>
-				<reportElement x="25" y="50" width="53" height="20" uuid="0c951a95-c08c-413d-969a-08bc7081d889"/>
+				<reportElement x="25" y="50" width="68" height="20" uuid="0c951a95-c08c-413d-969a-08bc7081d889"/>
 				<textElement verticalAlignment="Middle">
 					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Narration :]]></text>
 			</staticText>
 			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
-				<reportElement x="78" y="50" width="221" height="20" uuid="7a135243-1b80-4707-aa71-da038a60c52b"/>
+				<reportElement x="78" y="53" width="221" height="20" uuid="7a135243-1b80-4707-aa71-da038a60c52b"/>
 				<textElement verticalAlignment="Middle">
 					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>

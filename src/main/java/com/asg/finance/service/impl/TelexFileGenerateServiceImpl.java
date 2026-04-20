@@ -83,6 +83,7 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
             hdr.setDeleted("N");
 
             GlBankFileHdr savedHdr = hdrRepository.saveAndFlush(hdr);
+            entityManager.flush();
             entityManager.refresh(hdr);
 
             if (request.getDetails() != null && !request.getDetails().isEmpty()) {
@@ -419,7 +420,7 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
         if ("BHD".equals(currencyCode)) {
             return;
         }
-        Map<String, String> beneficiaryDetails = procRepository.getBeneficiaryDetails(debitTransactionPoid);
+        Map<String, String> beneficiaryDetails = procRepository.getBeneficiaryDetails(debitTransactionPoid, docRef);
         String beneficiaryCountry = beneficiaryDetails.get("BENEFICIARY_COUNTRY");
         String intermediaryCountryPoid = beneficiaryDetails.get("INTERMEDIARY_COUNTRY_POID");
         String intermediaryAcct = beneficiaryDetails.get("INTERMEDIARY_ACCT");

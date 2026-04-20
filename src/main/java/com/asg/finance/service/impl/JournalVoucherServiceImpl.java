@@ -104,6 +104,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
 
             GlJournalVoucherHdr header = buildJournalVoucherHeader(request, bhdAmount, isMultiCompany);
             header = glJournalVoucherHdrRepository.save(header);
+            entityManager.flush();
             entityManager.refresh(header);
 
             log.info("Journal Voucher header saved - TransactionPoid: {}, DocRef: {}",
@@ -595,12 +596,12 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                     glJournalVoucherAssetDtlRepository.save(detail);
 
                     loggingService.createLogSummaryEntry(docId, transactionPoid.toString(),
-                            String.format("Row Created on %s with sn: %s", RES_ASSET_DETAIL, maxSn));
+                            String.format("Row Created on %s with detRowId: %s", RES_ASSET_DETAIL, maxSn));
                 }
                 case ACTION_ISUPDATED -> {
                     GlJournalVoucherAssetDtl existing = glJournalVoucherAssetDtlRepository
                             .findById(new TransactionDetailKey(transactionPoid, dto.getDetRowId()))
-                            .orElseThrow(() -> new ResourceNotFoundException(RES_ASSET_DETAIL, "sn", dto.getDetRowId()));
+                            .orElseThrow(() -> new ResourceNotFoundException(RES_ASSET_DETAIL, "detRowId", dto.getDetRowId()));
 
                     GlJournalVoucherAssetDtl oldDetail = new GlJournalVoucherAssetDtl();
                     BeanUtils.copyProperties(existing, oldDetail);
@@ -609,7 +610,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                     glJournalVoucherAssetDtlRepository.save(existing);
 
                     logRequests.add(new LogRequestDto<>(oldDetail, existing, GlJournalVoucherAssetDtl.class,
-                            docId, transactionPoid.toString(), "sn:" + dto.getDetRowId()));
+                            docId, transactionPoid.toString(), "detRowId:" + dto.getDetRowId()));
                 }
                 case ACTION_ISDELETED -> {
                     glJournalVoucherAssetDtlRepository
@@ -647,13 +648,13 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                     glJournalFaCapitalizationRepository.save(detail);
 
                     loggingService.createLogSummaryEntry(docId, transactionPoid.toString(),
-                            String.format("Row Created on %s Capitalization Detail with sn: %s",
+                            String.format("Row Created on %s Capitalization Detail with detRowId: %s",
                                     RES_JOURNAL_VOUCHER, maxSn));
                 }
                 case ACTION_ISUPDATED -> {
                     GlJournalFaCapitalization existing = glJournalFaCapitalizationRepository
                             .findById(new TransactionDetailKey(transactionPoid, dto.getDetRowId()))
-                            .orElseThrow(() -> new ResourceNotFoundException("Capitalization Detail", "sn",
+                            .orElseThrow(() -> new ResourceNotFoundException("Capitalization Detail", "detRowId",
                                     dto.getDetRowId()));
 
                     GlJournalFaCapitalization oldDetail = new GlJournalFaCapitalization();
@@ -663,7 +664,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                     glJournalFaCapitalizationRepository.save(existing);
 
                     logRequests.add(new LogRequestDto<>(oldDetail, existing, GlJournalFaCapitalization.class,
-                            docId, transactionPoid.toString(), "sn:" + dto.getDetRowId()));
+                            docId, transactionPoid.toString(), "detRowId:" + dto.getDetRowId()));
                 }
                 case ACTION_ISDELETED -> {
                     glJournalFaCapitalizationRepository

@@ -17,7 +17,10 @@ import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.PrintService;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.GlobalParameterService;
+import com.asg.finance.annotation.DocAfterSave;
 import com.asg.finance.annotation.PerformGlPosting;
+import com.asg.finance.event.PettyCashVoucherSaveEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import com.asg.finance.entity.GLMaster;
 import com.asg.finance.entity.SupplierMasterEntity;
 import com.asg.finance.repository.GLMasterRepository;
@@ -99,12 +102,14 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
     private final DataSource dataSource;
     private final LoggingService loggingService;
     private final GlobalParameterService globalParameterService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @PersistenceContext
     private EntityManager entityManager;
 
     @Override
     @PerformGlPosting
+    @DocAfterSave
     @Transactional
     public PettyCashResponseDto createPettyCash(PettyCashCreateRequestDto requestDto, String documentId) {
         StringBuilder result = new StringBuilder();
@@ -161,6 +166,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             validateCashBalance(requestDto, documentId);
 
             GlPettyCashPaymentHdr savedHeader = glPettyCashPaymentHdrRepository.save(header);
+            entityManager.flush();
             entityManager.refresh(header);
             Long hdrPoid = savedHeader.getTransactionPoid();
 
@@ -324,8 +330,6 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                 default -> throw new IllegalArgumentException("Invalid RefType: " + refType);
             }
 
-            runAfterSaveReferenceProcedures(requestDto, hdrPoid, null, null);
-
             // Load billwise and cost center breakup data for response
             if (refType.equalsIgnoreCase("GENERAL") && !paymentDtls.isEmpty()) {
                 Long transPoid = savedHeader.getTransactionPoid();
@@ -363,6 +367,13 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             );
 
             entityManager.flush();
+            String capturedDocId = hasText(UserContext.getDocumentId()) ? UserContext.getDocumentId()
+                    : (hasText(requestDto.getDocId()) ? requestDto.getDocId() : "400-101");
+            eventPublisher.publishEvent(new PettyCashVoucherSaveEvent(
+                    this, requestDto, hdrPoid,
+                    UserContext.getGroupPoid(), UserContext.getCompanyPoid(),
+                    UserContext.getUserPoid(), capturedDocId,
+                    null, null));
             return mapToResponseDto(savedHeader, paymentDtls, chargeDtls, itemDtls);
 
         } catch (ValidationException | EntityNotFoundException e) {
@@ -376,6 +387,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
     @Transactional
     @Override
     @PerformGlPosting
+    @DocAfterSave
     public PettyCashResponseDto updatePettyCash(Long transactionPoid,
                                                 PettyCashUpdateRequestDto requestDto, String documentId) {
         try {
@@ -599,8 +611,13 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                 default -> throw new IllegalArgumentException("Invalid RefType: " + refType);
             }
 
-            runAfterSaveReferenceProcedures(requestDto, transactionPoid, oldRefType.toString(), oldRefPoid.toString());
-
+            String updateDocId = hasText(UserContext.getDocumentId()) ? UserContext.getDocumentId()
+                    : (hasText(requestDto.getDocId()) ? requestDto.getDocId() : "400-101");
+            eventPublisher.publishEvent(new PettyCashVoucherSaveEvent(
+                    this, requestDto, transactionPoid,
+                    UserContext.getGroupPoid(), UserContext.getCompanyPoid(),
+                    UserContext.getUserPoid(), updateDocId,
+                    oldRefType.toString(), oldRefPoid.toString()));
 
             //  Step 7: Load billwise and cost center breakup data for response
             if (refType.equalsIgnoreCase("GENERAL") && !paymentDtls.isEmpty()) {
@@ -1147,77 +1164,6 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
         result.setLength(0);  /*clear for next procedure call*/
     }
 
-    private void runAfterSaveReferenceProcedures(PettyCashRequestBase requestDto,
-                                                 Long transactionPoid,
-                                                 String oldRefType,
-                                                 String oldRefPoid) {
-        String newRefType = normalizeRefType(requestDto.getRefType());
-
-        // Re-apply old reference cost/status when reference changed.
-        if (hasText(oldRefType) && hasText(oldRefPoid)) {
-            String normalizedOldRefType = normalizeRefType(oldRefType);
-            String newRefForOldType = resolveRefPoidByType(requestDto, normalizedOldRefType);
-            boolean referenceChanged = !normalizedOldRefType.equals(newRefType) ||
-                    !normalizeRefPoid(oldRefPoid).equals(normalizeRefPoid(newRefForOldType));
-
-            if (referenceChanged) {
-                executeAfterSaveProcedure(normalizedOldRefType, oldRefPoid, transactionPoid);
-            }
-        }
-
-        String refPoid = resolveRefPoidByType(requestDto, newRefType);
-        if (hasText(newRefType) && hasText(refPoid)) {
-            executeAfterSaveProcedure(newRefType, refPoid, transactionPoid);
-        }
-
-        // Legacy parity: sync linked GRN status after petty cash save/update.
-        StringBuilder grnResult = new StringBuilder();
-        String docId = hasText(UserContext.getDocumentId()) ? UserContext.getDocumentId()
-                : (hasText(requestDto.getDocId()) ? requestDto.getDocId() : "400-101");
-        pettyCashPaymentVoucherCustomRepository.updateSalesGrnStatus(
-                UserContext.getGroupPoid(),
-                UserContext.getCompanyPoid(),
-                UserContext.getUserPoid(),
-                docId,
-                transactionPoid,
-                grnResult
-        );
-        assertProcedureSuccess("PROC_SALES_GRN_UPDATE_STATUS", grnResult);
-    }
-
-    private void executeAfterSaveProcedure(String refType, String refPoid, Long transactionPoid) {
-        Long groupPoid = UserContext.getGroupPoid();
-        Long companyPoid = UserContext.getCompanyPoid();
-        Long userPoid = UserContext.getUserPoid();
-        StringBuilder procResult = new StringBuilder();
-
-        switch (normalizeRefType(refType)) {
-            case "FF JOBS" -> {
-                pettyCashPaymentVoucherCustomRepository.updateCostFF(
-                        groupPoid, companyPoid, userPoid, refPoid, transactionPoid, procResult);
-                assertProcedureSuccess("PROC_AP_PI_FF_UPDATE_COST", procResult);
-            }
-            case "FDA JOBS" -> {
-                pettyCashPaymentVoucherCustomRepository.updateCostFDA(
-                        groupPoid, companyPoid, userPoid, refPoid, transactionPoid, procResult);
-                assertProcedureSuccess("PROC_AP_PI_FDA_UPDATE_COST", procResult);
-            }
-            case "MTA RFQ" -> {
-                pettyCashPaymentVoucherCustomRepository.updateRfqPurchasePrice(
-                        groupPoid, companyPoid, userPoid, refPoid, procResult);
-                assertProcedureSuccess("PROC_RFQ_UPDATE_PURCHASE_PRICE", procResult);
-            }
-            case "GENERAL PO" -> {
-                pettyCashPaymentVoucherCustomRepository.updatePurchaseOrderStatus(
-                        groupPoid, companyPoid, userPoid, refPoid, transactionPoid, procResult);
-                assertProcedureSuccess("PROC_AP_PO_UPDATE_STATUS", procResult);
-            }
-            default -> {
-                // No post-save procedure for other reference types.
-            }
-        }
-    }
-
     /**
      * Mirrors legacy DocumentBeforeEdit closure check on PROC_GL_VOUCHERS_VALIDATIONS:
      * if the result string contains CLOSED, throw a ref-type-aware error message.
@@ -1274,18 +1220,6 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
         };
     }
 
-    private void assertProcedureSuccess(String procedureName, StringBuilder result) {
-        String response = result == null ? "" : result.toString();
-        if (hasText(response)) {
-            String normalized = response.toUpperCase(Locale.ROOT);
-            if (normalized.contains("ERROR") || normalized.contains("WARNING")) {
-                log.warn("{} returned non-success response: {}", procedureName, response);
-                return;
-            }
-        }
-        logResult(procedureName, result == null ? new StringBuilder() : result);
-    }
-
     private String resolveRefPoidByType(PettyCashRequestBase requestDto, String refType) {
         return switch (normalizeRefType(refType)) {
             case "FF JOBS" -> requestDto.getFfRef();
@@ -1305,10 +1239,6 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
     private String normalizeRefType(String value) {
         return value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
-    }
-
-    private String normalizeRefPoid(String value) {
-        return value == null ? "" : value.trim();
     }
 
     private boolean hasText(String value) {

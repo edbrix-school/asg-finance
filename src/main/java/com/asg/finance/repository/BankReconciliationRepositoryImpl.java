@@ -6,6 +6,7 @@ import com.asg.finance.dto.*;
 import com.asg.finance.entity.GlBankEntity;
 import jakarta.persistence.*;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
 import org.hibernate.Session;
 import org.springframework.stereotype.Repository;
 
@@ -154,6 +155,11 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
     public String holdCheque(List<BankReconcHoldAndUholdRequest> reqList) {
         for (BankReconcHoldAndUholdRequest req : reqList) {
 
+            if(req.getDocId()==null || !req.getDocId().equalsIgnoreCase("400-107")){
+                String errorMessage=req.getDocId()==null?"The selected item cannot be hold":String.format("DocRef: %s cannot be hold",req.getDocRef());
+                throw new IllegalStateException(errorMessage);
+            }
+
             StoredProcedureQuery sp = createSP("PROC_GL_BANK_RECONCILE_HOLD");
 
             regIn(sp, P_TRANSACTION_GROUP_POID, Long.class);
@@ -176,7 +182,7 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
             String result = outStr(sp, P_RESULT);
 
             if (isError(result)) {
-                throw new RuntimeException(result);
+                throw new IllegalStateException(result);
             }
         }
 
@@ -198,17 +204,21 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
                 cs.registerOutParameter(7, Types.VARCHAR);
 
                 for (BankReconcHoldAndUholdRequest req : reqList) {
-
+                    if(req.getDocId()==null || !req.getDocId().equalsIgnoreCase("400-107")){
+                        String errorMessage=req.getDocId()==null?"The selected item cannot be unhold":String.format("DocRef: %s cannot be unhold",req.getDocRef());
+                        throw new IllegalStateException(errorMessage);
+                    }
                     String result = executeUnhold(cs, req);
 
                     if (isError(result)) {
-                        throw new RuntimeException(result);
+                        throw new IllegalStateException(result);
                     }
                 }
 
                 return reqList.size() + " cheques unheld successfully";
 
-            } catch (ResourceNotFoundException e) {
+            }
+            catch (IllegalStateException e) {
                 throw e;
             } catch (Exception e) {
                 throw new IllegalStateException("Error calling PROC_GL_BANK_RECONCILE_UNHOLD", e);
@@ -337,11 +347,11 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
         set(sp, P_BANK_POID, req.getBankPoid());
         set(sp, P_DATE_FROM, Optional.ofNullable(req.getDateFrom()).map(java.sql.Date::valueOf).orElse(null));
         set(sp, P_DATE_TILL, Optional.ofNullable(req.getDateTill()).map(java.sql.Date::valueOf).orElse(null));
-        set(sp, P_CHEQUE_NO, Optional.ofNullable(req.getChequeNo()).orElse(null));
-        set(sp, P_RECONCILE_CHEQUE, Optional.ofNullable(req.getReconcileCheque()).orElse(null));
-        set(sp, P_BR_TYPE, Optional.ofNullable(req.getBrType()).orElse(null));
-        set(sp, P_CHEQUE_TYPE, Optional.ofNullable(req.getChequeType()).orElse(null));
-        set(sp, P_CHEQUE_FILTER, Optional.ofNullable(req.getChequeFilter()).orElse(null));
+        set(sp, P_CHEQUE_NO, req.getChequeNo());
+        set(sp, P_RECONCILE_CHEQUE, req.getReconcileCheque());
+        set(sp, P_BR_TYPE, req.getBrType());
+        set(sp, P_CHEQUE_TYPE, req.getChequeType());
+        set(sp, P_CHEQUE_FILTER, StringUtils.defaultIfBlank(req.getChequeFilter(), "ALL"));
 
         sp.execute();
 
@@ -352,7 +362,7 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
                 .map(cursorData -> mapReportRow(
                         cursorData,
                         req.getChequeType(),
-                        req.getChequeFilter()
+                        StringUtils.defaultIfBlank(req.getChequeFilter(), "ALL")
                 ))
                 .toList();
 
@@ -439,6 +449,10 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
         dto.setGlPoid(getLong(row, 11));
         dto.setCrAmt(getBigDecimal(row, 12));
         dto.setDrAmt(getBigDecimal(row, 13));
+
+        if (dto.getDocId() != null) {
+            dto.setDocTitle(getDocumentTitle(dto.getDocId()));
+        }
 
         return dto;
     }

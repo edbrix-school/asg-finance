@@ -70,6 +70,7 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
         validatePeriodOverlap(request.getPeriodFrom(), request.getPeriodTo());
         TaxPeriodHdr entity = convertFromTaxPeriodHdrDtoToTaxPeriodHdrEntity(request);
         TaxPeriodHdr taxPeriodHdr = taxPeriodHdrRepository.save(entity);
+        entityManager.flush();
         entityManager.refresh(entity);
         Long transactionPoid = taxPeriodHdr.getTransactionPoid();
         String key = taxPeriodHdr.getTransactionPoid().toString();

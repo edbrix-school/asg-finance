@@ -43,7 +43,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 public class DebitNoteController {
 
     private final DebitNoteService debitNoteService;
-    private final CreditNoteService creditNoteService;;
+    private final CreditNoteService creditNoteService;
     private final LoggingService loggingService;
     // -------------------------------------------------------
     // CREATE
@@ -396,13 +396,12 @@ public class DebitNoteController {
     @Operation(
             summary = "Get Party GL POID",
             description = """
-                Fetches party GL POID for a selected party using: When Ref Type is General or Custom
-                PROC_GL_GET_DR_PARTY_GLPOID
+                Fetches party GL POID for a selected party using PROC_GL_GET_DR_PARTY_GLPOID.
+                Used when Ref Type is GENERAL.
 
                 ### Input:
                 - Party POID
                 - Party Type (CUSTOMER, SUPPLIER, PRINCIPAL)
-                
 
                 ### Output:
                 - Party GL POID

@@ -13,10 +13,10 @@ public interface TelexFileGenerateProcRepository {
     String linkBankApproval(Long param1, Long companyPoid, Long userPoid, String docId, String param5, String docKey);
     String getPayingTo(String docRef);
     boolean checkEmployeeIban(String docRef);
-    Map<String, String> getBeneficiaryDetails(Long debitTransactionPoid);
+    Map<String, String> getBeneficiaryDetails(Long debitTransactionPoid, String docRef);
     String getTtChargeType(Long debitTransactionPoid);
     Map<String, String> getCompanyDetails(Long companyPoid);
-    String getCountryCode(Long debitTransactionPoid);
+    String getCountryCode(Long debitTransactionPoid, String docRef);
     void createBankFilePayment(Long companyPoid, Long transactionPoid, Long userPoid, String companyName, 
                                String address, String country, String docRef, String chargeType, 
                                String countryCode, Long mainTransactionPoid, int seqNo);

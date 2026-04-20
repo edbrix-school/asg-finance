@@ -1047,6 +1047,62 @@ public class ApPurchaseJournalRepositoryImpl implements ApPurchaseJournalReposit
         return result;
     }
 
+    @Override
+    public String getSupplierGlPoid(
+            Long loginGroupPoid,
+            Long loginCompanyPoid,
+            Long loginUserPoid,
+            String partyType,
+            Long partyPoid
+    ) {
+
+        String glPoid = null;
+
+        try {
+            StoredProcedureQuery query =
+                    entityManager.createStoredProcedureQuery(
+                            "PROC_GL_GET_SUPPLIER_GLPOID_V2");
+
+            // IN parameters
+            query.registerStoredProcedureParameter(
+                    "P_LOGIN_GROUP_POID", Long.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter(
+                    "P_LOGIN_COMPANY_POID", Long.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter(
+                    "P_LOGIN_USER_POID", Long.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter(
+                    "P_PARTY_TYPE", String.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter(
+                    "P_PARTY_POID", Long.class, ParameterMode.IN);
+
+            // OUT parameter
+            query.registerStoredProcedureParameter(
+                    "P_PARTY_GLPOID", String.class, ParameterMode.OUT);
+
+            // Set values
+            query.setParameter("P_LOGIN_GROUP_POID", loginGroupPoid);
+            query.setParameter("P_LOGIN_COMPANY_POID", loginCompanyPoid);
+            query.setParameter("P_LOGIN_USER_POID", loginUserPoid);
+            query.setParameter("P_PARTY_TYPE", partyType);
+            query.setParameter("P_PARTY_POID", partyPoid);
+
+            // Execute
+            query.execute();
+
+            // Get OUT value
+            glPoid = (String) query.getOutputParameterValue("P_PARTY_GLPOID");
+
+            log.info("PROC_GL_GET_SUPPLIER_GLPOID_V2 executed → GL_POID={}", glPoid);
+
+        } catch (Exception e) {
+            log.error("Error executing PROC_GL_GET_SUPPLIER_GLPOID_V2: {}", e.getMessage(), e);
+            throw new RuntimeException(
+                    "Failed to fetch Supplier/Principal GL POID: " + e.getMessage(), e);
+        }
+
+        return glPoid;
+    }
+
     private Long getLong(ResultSet rs, String col) throws SQLException {
         long v = rs.getLong(col);
         return rs.wasNull() ? null : v;

@@ -2492,7 +2492,19 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
         String type = diff.compareTo(BigDecimal.ZERO) > 0 ? "CR" : "DR";
 
-        Long partyGl = getPartyGlPoid(dto.getPartyType(), dto.getSupplierPoid());
+        String supplierGlStr = getSupplierGlPoid(
+                UserContext.getGroupPoid(),
+                UserContext.getCompanyPoid(),
+                UserContext.getUserPoid(),
+                dto.getPartyType(),
+                dto.getSupplierPoid()
+        );
+
+        if (supplierGlStr == null || supplierGlStr.trim().isEmpty()) {
+            throw new ValidationException("Supplier GL not found for party type: " + dto.getPartyType());
+        }
+
+        Long partyGl = Long.parseLong(supplierGlStr.trim());
 
         Long detRowId =
                 apPurchaseInvoiceGlDtlRepository

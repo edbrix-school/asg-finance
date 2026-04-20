@@ -7,6 +7,7 @@ import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.finance.dto.DebitNoteHeaderDto;
+import com.asg.finance.dto.ProcessFdaRequestDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.finance.service.CreditNoteService;
 import com.asg.finance.service.DebitNoteService;
@@ -28,6 +29,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import static com.asg.common.lib.dto.response.ApiResponse.*;
@@ -130,7 +133,7 @@ public class DebitNoteController {
             @Valid @RequestBody DebitNoteHeaderDto dto
     ) {
         DebitNoteHeaderDto response = debitNoteService.createDebitNote(dto);
-        return success("Debit Note created successfully", response);
+        return successWithWarnings("Debit Note created successfully", response);
     }
 
     // -------------------------------------------------------
@@ -206,8 +209,8 @@ public class DebitNoteController {
             )
             @Valid @RequestBody DebitNoteHeaderDto dto
     ) {
-        return success("Debit Note updated successfully",
-                debitNoteService.updateDebitNote(transactionPoid, dto));
+        DebitNoteHeaderDto updated = debitNoteService.updateDebitNote(transactionPoid, dto);
+        return successWithWarnings("Debit Note updated successfully", updated);
     }
 
     // -------------------------------------------------------
@@ -393,6 +396,43 @@ public class DebitNoteController {
         return success("Custom LOV list retrieved successfully", result);
     }
 
+    @Operation(summary = "Process FDA Charges", description = "Loads FDA charges via PROC_AR_DEBIT_CREATE_FROM_FDA_V2 for the given FDA POID.")
+    @AllowedAction(UserRolesRightsEnum.VIEW)
+    @PostMapping("/process-fda-charges")
+    public ResponseEntity<?> processFdaCharges(@RequestBody ProcessFdaRequestDto req) {
+        Map<String, Object> result = debitNoteService.processFdaCharges(req);
+        return success("FDA charges processed successfully", result);
+    }
+
+    @Operation(summary = "Process FDA Direct Charges", description = "Loads FDA_DIRECT charges for the given FDA Direct POID.")
+    @AllowedAction(UserRolesRightsEnum.VIEW)
+    @PostMapping("/process-fda-direct-charges")
+    public ResponseEntity<?> processFdaDirectCharges(@RequestBody ProcessFdaRequestDto req) {
+        Map<String, Object> result = debitNoteService.processFdaDirectCharges(req);
+        return success("FDA Direct charges processed successfully", result);
+    }
+
+    @Operation(
+            summary = "Get Debit Note Parameters",
+            description = "Returns system parameter flags relevant to Debit Note: GLOBAL_TAX_APPLICABLE, CREDIT_PERIOD_VALIDATION_DAYS, VOYAGE_REF_IN_DN_CN, DEBIT_NOTE_VOUCHER_TYPE_VALIDATION_ENABLE, PRINT_COMPANY_IN_DN, PROPERTY_INVOICE_IN_DN."
+    )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
+    @GetMapping("/parameters")
+    public ResponseEntity<?> getDnParameters() {
+        return success("Debit Note parameters fetched successfully", debitNoteService.getDnParameters());
+    }
+
+    @Operation(
+            summary = "Release Job Old Values",
+            description = "Releases job-reserved amounts via PROC_GL_JOB_REL_OLD_VALUES before editing an FDA/FF Debit Note."
+    )
+    @AllowedAction(UserRolesRightsEnum.EDIT)
+    @PostMapping("/{transactionPoid}/release-job-values")
+    public ResponseEntity<?> releaseJobValues(@PathVariable Long transactionPoid) {
+        debitNoteService.releaseJobValues(transactionPoid);
+        return success("Job old values released successfully");
+    }
+
     @Operation(
             summary = "Get Party GL POID",
             description = """
@@ -419,6 +459,20 @@ public class DebitNoteController {
             log.error("Error fetching party GL POID for partyPoid: {}, partyType: {}", partyPoid, partyType, e);
             return internalServerError("Failed to fetch party GL POID: " + e.getMessage());
         }
+    }
+
+    private ResponseEntity<?> successWithWarnings(String message, DebitNoteHeaderDto dto) {
+        List<String> warnings = dto.getWarnings();
+        if (warnings == null || warnings.isEmpty()) {
+            return success(message, dto);
+        }
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("statusCode", 200);
+        body.put("success", true);
+        body.put("message", message);
+        body.put("warnings", warnings);
+        body.put("result", Map.of("data", dto));
+        return ResponseEntity.ok(body);
     }
 
 }

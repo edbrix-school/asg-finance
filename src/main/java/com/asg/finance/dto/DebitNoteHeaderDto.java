@@ -94,7 +94,30 @@ public class DebitNoteHeaderDto {
     private String deleted;
 
     private String voyageRef;
-    
+
+    private Long voyagePoid;
+
+    private Long ffRefPoid;
+
+    private Boolean propertyInvoice;
+
+    private Long printCompanyPoid;
+
+    // Response-only UI flags (not persisted, populated on GET)
+    private Boolean readOnlyJob;
+
+    private Boolean voucherTypeReadOnly;
+
+    private java.time.LocalDate fdaSailDate;
+
+    private Boolean globalTaxApplicable;
+
+    // LOV detail for FF ref
+    private com.asg.common.lib.dto.LovGetListDto ffRefDetails;
+
+    // Response-only: non-blocking warnings surfaced to the caller
+    private List<String> warnings;
+
     // Audit fields
     private String createdBy;
     

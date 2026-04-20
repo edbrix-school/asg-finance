@@ -252,7 +252,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
             log.debug(LOG_MESSAGE_VALIDATION, partyPoid);
             procRepository.beforeSaveValidation(dto.getPartyType(), partyPoid, dto.getRefType(), dto.getPjReversalRef());
             validateInputFields(dto);
-            documentBeforeSaveAutoBalance(dto);
+
 
             ApPurchaseCnHdr hdr = mapToEntity(dto);
             hdr.setCreatedBy(UserContext.getUserId());
@@ -264,6 +264,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
             entityManager.refresh(savedHdr);
             dto.setDocRef(savedHdr.getDocRef());
             log.info(LOG_MESSAGE_SAVED_HEADER, savedHdr.getTransactionPoid());
+            documentBeforeSaveAutoBalance(dto);
 
             saveDetails(savedHdr.getTransactionPoid(), dto);
             log.info(LOG_MESSAGE_CREATED_SUCCESS, savedHdr.getTransactionPoid());

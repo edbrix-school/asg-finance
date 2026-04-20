@@ -157,7 +157,7 @@ WHERE PCP.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 				</textElement>
 				<text><![CDATA[Paid To :]]></text>
 			</staticText>
-			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
 				<reportElement x="78" y="28" width="221" height="20" uuid="456129ed-38f8-4f3d-b048-08a8fe9567f6"/>
 				<textElement verticalAlignment="Middle">
 					<font isBold="true" pdfFontName="Helvetica-Bold"/>
@@ -171,8 +171,8 @@ WHERE PCP.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 				</textElement>
 				<text><![CDATA[Narration :]]></text>
 			</staticText>
-			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
-				<reportElement x="78" y="53" width="221" height="20" uuid="7a135243-1b80-4707-aa71-da038a60c52b"/>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement x="78" y="50" width="221" height="20" uuid="7a135243-1b80-4707-aa71-da038a60c52b"/>
 				<textElement verticalAlignment="Middle">
 					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
@@ -199,7 +199,7 @@ WHERE PCP.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 					<printWhenExpression><![CDATA[$F{REF_TYPE}!="GENERAL"]]></printWhenExpression>
 				</reportElement>
 			</rectangle>
-			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
 				<reportElement x="457" y="103" width="94" height="18" uuid="14bfbf60-f643-4864-b651-88e1fd0b3ea3">
 					<printWhenExpression><![CDATA[$F{REF_TYPE}!="GENERAL"]]></printWhenExpression>
 				</reportElement>
@@ -357,7 +357,7 @@ WHERE PCP.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 				</textElement>
 				<text><![CDATA[Amount in Words(BHD):]]></text>
 			</staticText>
-			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
 				<reportElement x="145" y="18" width="244" height="20" uuid="9984b26b-40b6-4061-b23a-424fcb4573bb"/>
 				<textElement verticalAlignment="Middle">
 					<font size="9" isBold="true" isItalic="false" pdfFontName="Helvetica-Bold"/>

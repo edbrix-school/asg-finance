@@ -152,5 +152,13 @@ public interface ApPurchaseJournalRepository {
             String rjvPoid
     );
 
+    String getSupplierGlPoid(
+            Long loginGroupPoid,
+            Long loginCompanyPoid,
+            Long loginUserPoid,
+            String partyType,
+            Long partyPoid
+    );
+
 
 }

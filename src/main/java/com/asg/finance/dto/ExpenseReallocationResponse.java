@@ -45,13 +45,13 @@ public class ExpenseReallocationResponse {
     private String reportName; // To be confirmed from SRS
 
     // Detail lines
-    private List<ExpenseReallocationDetailResponse> details;
+    private List<ExpenseReallocationDetailResponseDto> details;
 
     // Detail totals
     private DetailTotals detailTotals;
 
-    // Excel detail lines (optional)
-    private List<ExpenseReallocationXlDetailResponse> xlDetails;
+//    // Excel detail lines (optional)
+//    private List<ExpenseReallocationXlDetailResponse> xlDetails;
 
     @Data
     @NoArgsConstructor

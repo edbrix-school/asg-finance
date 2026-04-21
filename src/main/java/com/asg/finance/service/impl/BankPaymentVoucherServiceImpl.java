@@ -424,9 +424,19 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
             entity.setReleasedPersonAddress(req.getContact());
             entity.setReleasedByUserCode(Objects.requireNonNull(UserContext.getCurrentUser()).getUserName());
             entity.setReleasedDate(LocalDate.now());
+            entity.setReleased("Y");
         }
         entity.setSalesQtnRef(req.getSalesQtnRef() != null ? req.getSalesQtnRef() :
                 (StringUtils.isNumeric(req.getMtaRfqId()) ? Long.valueOf(req.getMtaRfqId()) : null));
+
+        entity.setPrePrinted(req.getPrePrinted() != null ? req.getPrePrinted() : "N");
+        if (req.getChqPrintedUserCode() != null || req.getChqPrintedDate() != null) {
+            entity.setChqPrintedUserCode(req.getChqPrintedUserCode());
+            entity.setChqPrintedDate(req.getChqPrintedDate());
+            entity.setChqPrinted("Y");
+        } else {
+            entity.setChqPrinted("N");
+        }
     }
 
     private void validateRefType(BankPaymentVoucherRequest req) {
@@ -649,7 +659,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         entity.setMultiCompany(req.getMultiple());
         entity.setSecurityCheque(req.getSecurityCheque());
         entity.setCurrencyAmount(req.getCurrencyAmount());
-        entity.setPrePrinted("N");
+        entity.setPrePrinted(req.getPrePrinted() != null ? req.getPrePrinted() : "N");
         entity.setReleased("N");
         entity.setHold("N");
         entity.setPrintWithoutBillwise("N");
@@ -1446,8 +1456,13 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                     dto.setBillRefType(popup.getBillRefType());
                     dto.setBillRef(popup.getBillRef());
                     dto.setBillDueDate(popup.getBillDueDate());
-                    dto.setDrAmt(popup.getAmount());
-                    dto.setCrAmt(popup.getAmount());
+                    if ("DR".equalsIgnoreCase(popup.getType())) {
+                        dto.setDrAmt(popup.getAmount());
+                        dto.setCrAmt(BigDecimal.ZERO);
+                    } else {
+                        dto.setCrAmt(popup.getAmount());
+                        dto.setDrAmt(BigDecimal.ZERO);
+                    }
                     dto.setBillRemarks(popup.getBillRemarks());
 
                     breakupList.add(dto);
@@ -1518,8 +1533,13 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                     dto.setBillRefType(popup.getBillRefType());
                     dto.setBillRef(popup.getBillRef());
                     dto.setBillDueDate(popup.getBillDueDate());
-                    dto.setDrAmt(popup.getAmount());
-                    dto.setCrAmt(popup.getAmount());
+                    if ("DR".equalsIgnoreCase(popup.getType())) {
+                        dto.setDrAmt(popup.getAmount());
+                        dto.setCrAmt(BigDecimal.ZERO);
+                    } else {
+                        dto.setCrAmt(popup.getAmount());
+                        dto.setDrAmt(BigDecimal.ZERO);
+                    }
                     dto.setBillRemarks(popup.getBillRemarks());
 
                     billwiseList.add(dto);

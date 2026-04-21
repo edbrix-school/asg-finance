@@ -1341,7 +1341,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
             throw new ValidationException("Ref Type is not found...");
         }
         String rtUpper = dto.getRefType().toUpperCase();
-        if (!"GENERAL".equals(rtUpper) && !"CUSTOM".equals(rtUpper)) {
+        if (!"GENERAL".equals(rtUpper)) {
             return;
         }
 

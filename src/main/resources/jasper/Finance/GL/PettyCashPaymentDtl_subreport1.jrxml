@@ -68,15 +68,27 @@ FROM(
     </columnHeader>
     <detail>
         <band height="23" splitType="Stretch">
-            <textField isStretchWithOverflow="true" isBlankWhenNull="true">
-                <reportElement x="52" y="0" width="214" height="20" uuid="b7968593-44a0-486f-b37a-3f7a4fa96a1e"/>
-                <textElement verticalAlignment="Middle"/>
+            <textField textAdjust="StretchHeight" isBlankWhenNull="true">
+                <reportElement x="52" y="0" width="214" height="20" uuid="b7968593-44a0-486f-b37a-3f7a4fa96a1e" stretchType="RelativeToTallestObject"/>
+                <textElement verticalAlignment="Top"/>
                 <textFieldExpression><![CDATA[$F{GL_DESCRIPTION}]]></textFieldExpression>
             </textField>
             <textField isBlankWhenNull="true">
-                <reportElement x="3" y="0" width="52" height="20" uuid="d45120e1-e7d9-438b-b8f6-ccdee0250355"/>
-                <textElement verticalAlignment="Middle"/>
+                <reportElement x="3" y="0" width="52" height="20" uuid="d45120e1-e7d9-438b-b8f6-ccdee0250355" stretchType="RelativeToTallestObject"/>
+                <textElement verticalAlignment="Top"/>
                 <textFieldExpression><![CDATA[$V{REPORT_COUNT}]]></textFieldExpression>
+            </textField>
+            <textField textAdjust="StretchHeight" isBlankWhenNull="true">
+                <reportElement x="266" y="0" width="178" height="20" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567890" stretchType="RelativeToTallestObject"/>
+                <textElement verticalAlignment="Top">
+                    <font size="12"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{REMARKS}]]></textFieldExpression>
+            </textField>
+            <textField pattern="###0.000" isBlankWhenNull="true">
+                <reportElement x="444" y="0" width="86" height="20" uuid="6990998a-7fbf-44b4-be47-3451f249c56f" stretchType="RelativeToTallestObject"/>
+                <textElement textAlignment="Right" verticalAlignment="Top"/>
+                <textFieldExpression><![CDATA[$F{AMOUNT}]]></textFieldExpression>
             </textField>
             <line>
                 <reportElement positionType="FixRelativeToBottom" x="0" y="20" width="530" height="1" forecolor="#999999" uuid="756e3c60-d0d8-4a86-9c00-8e7219e2f86c"/>
@@ -84,11 +96,6 @@ FROM(
                     <pen lineWidth="0.5" lineStyle="Dashed"/>
                 </graphicElement>
             </line>
-            <textField pattern="###0.000" isBlankWhenNull="true">
-                <reportElement x="444" y="0" width="86" height="20" uuid="6990998a-7fbf-44b4-be47-3451f249c56f"/>
-                <textElement textAlignment="Right" verticalAlignment="Middle"/>
-                <textFieldExpression><![CDATA[$F{AMOUNT}]]></textFieldExpression>
-            </textField>
         </band>
     </detail>
 </jasperReport>

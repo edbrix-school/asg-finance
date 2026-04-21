@@ -40,7 +40,7 @@ WHERE CM.COMPANY_POID =  $P{LOGIN_COMP_POID}]]>
                 </reportElement>
                 <imageExpression><![CDATA[$F{COMPANY_DIV_LOGO}]]></imageExpression>
             </image>
-            <textField isStretchWithOverflow="true" isBlankWhenNull="true">
+            <textField textAdjust="StretchHeight" isBlankWhenNull="true">
                 <reportElement x="0" y="55" width="555" height="20" isPrintWhenDetailOverflows="true" uuid="1eba0cbb-1c34-416a-9e6d-d7be1299df03"/>
                 <textElement textAlignment="Center" verticalAlignment="Middle">
                     <font fontName="SansSerif" size="8"/>

@@ -283,7 +283,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
                 boolean exists = costCenterRepository.existsByCostCenterCode(costCenterCode);
 
                 if (!exists) {
-                    throw new ValidationException("Please check Cost center or Company code and upload again");
+                    throw new ValidationException("Invalid Cost Center Code: "+costCenterCode);
                 }
 
                 headers.add(costCenterCode);
@@ -325,7 +325,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
                         LovGetListDto dto = mapLovDetails(companyCodeValue, "COMPANY", false);
 
                         if (dto == null || dto.getPoid() == null) {
-                            throw new ValidationException("Please check Cost center or Company code and upload again");
+                            throw new ValidationException("Invalid Company Code Value: "+companyCodeValue);
                         }
                         rowMap.put("company", dto.getPoid());
                         rowMap.put("companyName", dto.getDescription());

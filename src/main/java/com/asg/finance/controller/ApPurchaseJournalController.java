@@ -600,6 +600,6 @@ public class ApPurchaseJournalController {
                 partyPoid
         );
 
-        return ResponseEntity.ok(glPoid);
+        return success("Party GL POID fetched successfully", glPoid);
     }
 }

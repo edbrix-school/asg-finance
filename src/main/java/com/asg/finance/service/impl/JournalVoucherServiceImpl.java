@@ -1107,30 +1107,10 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         if (dto.getFaCategory() == null) {
             dto.setFaCategory(dbDetails.getFaCategory());
         }
-        if (StringUtils.isBlank(dto.getAssetType())) {
             dto.setAssetType(dbDetails.getAssetType());
-        }
-        if (dto.getLifeYear() == null) {
-            dto.setLifeYear(dbDetails.getLifeYear());
-        }
-        if (dto.getPurchaseDate() == null) {
-            dto.setPurchaseDate(dbDetails.getPurchaseDate());
-        }
-        if (dto.getDepreciationStartDate() == null) {
             dto.setDepreciationStartDate(dbDetails.getDepreciationStartDate());
-        }
-        if (dto.getAssetValue() == null) {
             dto.setAssetValue(dbDetails.getAssetValue());
-        }
-        if (dto.getDepreciatedAmt() == null) {
-            dto.setDepreciatedAmt(dbDetails.getDepreciatedAmt());
-        }
-        if (dto.getWdvValue() == null) {
-            dto.setWdvValue(dbDetails.getWdvValue());
-        }
-        if (dto.getScrapSoldDate() == null) {
             dto.setScrapSoldDate(dbDetails.getScrapSoldDate());
-        }
     }
 
     private void mapCapitalizationDetailToEntity(GlJournalFaCapitalization detail, Long transactionPoid, Long detRowId,

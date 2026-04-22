@@ -258,6 +258,10 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
     }
 
     private void validateAssetDisposalType(JournalVoucherRequest request) {
+        if (request.getWdvAccountGl() != null && request.getWdvAccountGl() == 0) {
+            request.setWdvAccountGl(null);
+        }
+
         if (request.getAssetDetails() == null || request.getAssetDetails().isEmpty()) {
             String msg = "At least one asset detail line is required for ASSET_DISPOSAL type";
             log.error(msg);

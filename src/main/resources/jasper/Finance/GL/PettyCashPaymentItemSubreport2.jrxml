@@ -98,7 +98,7 @@ WHERE GPCC.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
             <textField textAdjust="StretchHeight" isBlankWhenNull="true">
                 <reportElement x="238" y="0" width="201" height="20" uuid="102a1567-6b23-44b9-9dd8-c8b64d5d447d" stretchType="RelativeToTallestObject"/>
                 <textElement verticalAlignment="Top">
-                    <font size="12"/>
+                    <font size="10"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{REMARKS}]]></textFieldExpression>
             </textField>

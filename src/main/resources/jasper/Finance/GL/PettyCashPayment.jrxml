@@ -166,14 +166,14 @@ WHERE PCP.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 			</textField>
 			<staticText>
 				<reportElement x="25" y="50" width="68" height="20" uuid="0c951a95-c08c-413d-969a-08bc7081d889"/>
-				<textElement verticalAlignment="Middle">
+				<textElement verticalAlignment="Top">
 					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Narration :]]></text>
 			</staticText>
 			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
 				<reportElement x="78" y="50" width="221" height="20" uuid="7a135243-1b80-4707-aa71-da038a60c52b"/>
-				<textElement verticalAlignment="Middle">
+				<textElement verticalAlignment="Top">
 					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{NARRATION}]]></textFieldExpression>

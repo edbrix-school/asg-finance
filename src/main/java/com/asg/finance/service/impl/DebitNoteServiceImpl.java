@@ -770,7 +770,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         entity.setVoucherType(dto.getVoucherType());
         entity.setCostRefNumber(dto.getCostRefNumber());
         entity.setCostGroup(dto.getCostGroupPoid() != null ? dto.getCostGroupPoid().toString() : null);
-        entity.setPrintDivisionPoid(dto.getPrintDivisionPoid() != null ? dto.getPrintDivisionPoid() : 1L);
+        entity.setPrintDivisionPoid(dto.getPrintDivisionPoid());
         entity.setMultiCompany(dto.getMultiCompany() != null && dto.getMultiCompany() ? "Y" : "N");
         entity.setRemarksPrintable(dto.getRemarksPrintable() != null && dto.getRemarksPrintable() ? "Y" : "N");
         entity.setShowBankDetailsInPrint(dto.getShowBankDetailsInPrint() != null && dto.getShowBankDetailsInPrint() ? "Y" : "N");

@@ -2,6 +2,7 @@ package com.asg.finance.repository;
 
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.exception.ValidationException;
+import com.asg.common.lib.utility.DateUtil;
 import com.asg.finance.dto.*;
 import com.asg.finance.entity.GlBankEntity;
 import jakarta.persistence.*;
@@ -125,6 +126,17 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
         String response = "Successfully Updated.";
 
         for (BankReconciliationRequest dto : req) {
+            LocalDate today = DateUtil.getCurrentDateInUserTimeZone();
+
+            if (dto.getClearanceDate() != null && dto.getDocDate() != null) {
+                if (dto.getClearanceDate().isBefore(dto.getDocDate())
+                        || dto.getClearanceDate().isAfter(today)) {
+                    throw new IllegalArgumentException(
+                            "Clearance Date should be between Document Date and Today"
+                    );
+                }
+            }
+
             set(sp, P_TRANSACTION_GROUP_POID, dto.getTransactionGroupPoid());
             set(sp, P_TRANSACTION_COMPANY_POID, dto.getTransactionCompanyPoid());
             set(sp, P_DOC_ID, dto.getDocId());

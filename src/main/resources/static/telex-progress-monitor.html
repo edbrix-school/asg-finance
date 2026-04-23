@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telex File Generation Progress</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .message {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            border-left: 4px solid;
+        }
+        .message.INFO {
+            background-color: #e3f2fd;
+            border-left-color: #2196f3;
+        }
+        .message.SUCCESS {
+            background-color: #e8f5e8;
+            border-left-color: #4caf50;
+        }
+        .message.ERROR {
+            background-color: #ffebee;
+            border-left-color: #f44336;
+        }
+        .message.WARNING {
+            background-color: #fff3e0;
+            border-left-color: #ff9800;
+        }
+        .message.COMPLETED_SUCCESS {
+            background-color: #e8f5e8;
+            border-left-color: #4caf50;
+            font-weight: bold;
+        }
+        .message.COMPLETED_ERROR {
+            background-color: #ffebee;
+            border-left-color: #f44336;
+            font-weight: bold;
+        }
+        .timestamp {
+            font-size: 0.8em;
+            color: #666;
+            float: right;
+        }
+        .status {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        input, button {
+            padding: 8px;
+            margin: 5px;
+        }
+        #messages {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background-color: #f9f9f9;
+        }
+        .connection-status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        .connected {
+            background-color: #e8f5e8;
+            color: #2e7d32;
+        }
+        .disconnected {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+    </style>
+</head>
+<body>
+    <h1>Telex File Generation Progress Monitor</h1>
+    
+    <div class="container">
+        <div id="connectionStatus" class="connection-status disconnected">
+            Disconnected
+        </div>
+        
+        <div class="controls">
+            <input type="text" id="backendBaseUrl" placeholder="Backend Base URL" value="http://localhost:9090/asg/finance/api">
+            <input type="number" id="transactionPoid" placeholder="Enter Transaction POID" value="12345">
+            <button onclick="connectWebSocket()">Connect</button>
+            <button onclick="disconnect()">Disconnect</button>
+            <button onclick="clearMessages()">Clear Messages</button>
+        </div>
+    </div>
+    
+    <div class="container">
+        <h3>Progress Messages</h3>
+        <div id="messages"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    <script>
+        let stompClient = null;
+        let currentTransactionPoid = null;
+
+        function resolveBackendBaseUrl() {
+            const configuredUrl = document.getElementById('backendBaseUrl').value.trim();
+            if (configuredUrl) {
+                return configuredUrl.replace(/\/+$/, '');
+            }
+
+            const isHttpPage = window.location.protocol === 'http:' || window.location.protocol === 'https:';
+            if (isHttpPage) {
+                return window.location.origin + '/finance/api';
+            }
+
+            return 'http://localhost:8086/finance/api';
+        }
+
+        function resolveWebSocketUrl() {
+            const backendBaseUrl = resolveBackendBaseUrl();
+
+            if (backendBaseUrl.startsWith('https://')) {
+                return 'wss://' + backendBaseUrl.substring('https://'.length) + '/websocket';
+            }
+
+            if (backendBaseUrl.startsWith('http://')) {
+                return 'ws://' + backendBaseUrl.substring('http://'.length) + '/websocket';
+            }
+
+            return backendBaseUrl + '/websocket';
+        }
+
+        function connectWebSocket() {
+            const transactionPoid = document.getElementById('transactionPoid').value;
+            if (!transactionPoid) {
+                alert('Please enter a Transaction POID');
+                return;
+            }
+
+            currentTransactionPoid = transactionPoid;
+            
+            // Disconnect existing connection if any
+            if (stompClient !== null) {
+                stompClient.disconnect();
+            }
+
+            const socketUrl = resolveWebSocketUrl();
+            const socket = new WebSocket(socketUrl);
+            stompClient = Stomp.over(socket);
+            
+            stompClient.connect({}, function (frame) {
+                console.log('Connected: ' + frame);
+                updateConnectionStatus(true);
+                addMessage('SYSTEM', 'Connected to ' + socketUrl, 'INFO');
+                
+                // Subscribe to progress messages for this transaction
+                stompClient.subscribe('/topic/telex-progress/' + transactionPoid, function (message) {
+                    const data = JSON.parse(message.body);
+                    displayMessage(data);
+                });
+                
+                addMessage('SYSTEM', 'Connected to WebSocket. Listening for transaction: ' + transactionPoid, 'INFO');
+            }, function(error) {
+                console.log('Connection error: ' + error);
+                updateConnectionStatus(false);
+                addMessage('SYSTEM', 'Connection failed for ' + socketUrl + ': ' + error, 'ERROR');
+            });
+        }
+
+        function disconnect() {
+            if (stompClient !== null) {
+                stompClient.disconnect();
+                stompClient = null;
+            }
+            updateConnectionStatus(false);
+            addMessage('SYSTEM', 'Disconnected from WebSocket', 'INFO');
+        }
+
+        function updateConnectionStatus(connected) {
+            const statusElement = document.getElementById('connectionStatus');
+            if (connected) {
+                statusElement.textContent = 'Connected - Transaction POID: ' + currentTransactionPoid;
+                statusElement.className = 'connection-status connected';
+            } else {
+                statusElement.textContent = 'Disconnected';
+                statusElement.className = 'connection-status disconnected';
+            }
+        }
+
+        function displayMessage(data) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message ' + data.status;
+            
+            messageDiv.innerHTML = `
+                <span class="timestamp">${data.timestamp}</span>
+                <span class="status">[${data.status}]</span>
+                ${data.message}
+            `;
+            
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function addMessage(source, message, status) {
+            const now = new Date();
+            const timestamp = now.toLocaleTimeString();
+            displayMessage({
+                message: `[${source}] ${message}`,
+                status: status,
+                timestamp: timestamp
+            });
+        }
+
+        function clearMessages() {
+            document.getElementById('messages').innerHTML = '';
+        }
+
+        // Auto-connect on page load if transaction POID is provided
+        window.onload = function() {
+            const transactionPoid = document.getElementById('transactionPoid').value;
+            if (transactionPoid) {
+                // Uncomment the line below to auto-connect on page load
+                // connectWebSocket();
+            }
+        };
+
+        // Clean up on page unload
+        window.onbeforeunload = function() {
+            if (stompClient !== null) {
+                stompClient.disconnect();
+            }
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telex Progress Monitor (SSE)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .message {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            border-left: 4px solid;
+        }
+        .message.INFO {
+            background-color: #e3f2fd;
+            border-left-color: #2196f3;
+        }
+        .message.SUCCESS {
+            background-color: #e8f5e8;
+            border-left-color: #4caf50;
+        }
+        .message.ERROR {
+            background-color: #ffebee;
+            border-left-color: #f44336;
+        }
+        .message.WARNING {
+            background-color: #fff3e0;
+            border-left-color: #ff9800;
+        }
+        .message.COMPLETED_SUCCESS {
+            background-color: #e8f5e8;
+            border-left-color: #4caf50;
+            font-weight: bold;
+        }
+        .message.COMPLETED_ERROR {
+            background-color: #ffebee;
+            border-left-color: #f44336;
+            font-weight: bold;
+        }
+        .timestamp {
+            font-size: 0.8em;
+            color: #666;
+            float: right;
+        }
+        .status {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        input, button {
+            padding: 8px;
+            margin: 5px;
+        }
+        #messages {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background-color: #f9f9f9;
+        }
+        .connection-status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        .connected {
+            background-color: #e8f5e8;
+            color: #2e7d32;
+        }
+        .disconnected {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+    </style>
+</head>
+<body>
+    <h1>Telex Progress Monitor (SSE - Gateway Compatible)</h1>
+    
+    <div class="container">
+        <div id="connectionStatus" class="connection-status disconnected">
+            Disconnected
+        </div>
+        
+        <div class="controls">
+            <input type="number" id="transactionPoid" placeholder="Enter Transaction POID" value="12345">
+            <button onclick="connectSSE()">Connect SSE</button>
+            <button onclick="disconnect()">Disconnect</button>
+            <button onclick="clearMessages()">Clear Messages</button>
+            <button onclick="triggerBankFile()">Generate Bank File</button>
+        </div>
+    </div>
+    
+    <div class="container">
+        <h3>Progress Messages</h3>
+        <div id="messages"></div>
+    </div>
+
+    <script>
+        let eventSource = null;
+        let currentTransactionPoid = null;
+
+        function connectSSE() {
+            const transactionPoid = document.getElementById('transactionPoid').value;
+            if (!transactionPoid) {
+                alert('Please enter a Transaction POID');
+                return;
+            }
+
+            currentTransactionPoid = transactionPoid;
+            
+            // Close existing connection
+            if (eventSource !== null) {
+                eventSource.close();
+            }
+
+            const url = `http://localhost:9090/asg/finance/api/v1/telex-progress/${transactionPoid}/stream`;
+            eventSource = new EventSource(url);
+            
+            eventSource.onopen = function(event) {
+                console.log('SSE connection opened');
+                updateConnectionStatus(true);
+            };
+            
+            eventSource.onmessage = function(event) {
+                console.log('SSE message:', event.data);
+                try {
+                    const data = JSON.parse(event.data);
+                    displayMessage(data);
+                } catch (e) {
+                    addMessage('SSE', event.data, 'INFO');
+                }
+            };
+            
+            eventSource.addEventListener('connected', function(event) {
+                addMessage('SYSTEM', event.data, 'INFO');
+            });
+            
+            eventSource.addEventListener('progress', function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    displayMessage(data);
+                } catch (e) {
+                    addMessage('SSE', event.data, 'INFO');
+                }
+            });
+            
+            eventSource.onerror = function(event) {
+                console.log('SSE error:', event);
+                updateConnectionStatus(false);
+                addMessage('SYSTEM', 'SSE connection error', 'ERROR');
+            };
+        }
+
+        function disconnect() {
+            if (eventSource !== null) {
+                eventSource.close();
+                eventSource = null;
+            }
+            updateConnectionStatus(false);
+            addMessage('SYSTEM', 'Disconnected from SSE', 'INFO');
+        }
+
+        function updateConnectionStatus(connected) {
+            const statusElement = document.getElementById('connectionStatus');
+            if (connected) {
+                statusElement.textContent = 'Connected (SSE) - Transaction POID: ' + currentTransactionPoid;
+                statusElement.className = 'connection-status connected';
+            } else {
+                statusElement.textContent = 'Disconnected';
+                statusElement.className = 'connection-status disconnected';
+            }
+        }
+
+        function displayMessage(data) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message ' + data.status;
+            
+            messageDiv.innerHTML = `
+                <span class="timestamp">${data.timestamp}</span>
+                <span class="status">[${data.status}]</span>
+                ${data.message}
+            `;
+            
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function addMessage(source, message, status) {
+            const now = new Date();
+            const timestamp = now.toLocaleTimeString();
+            displayMessage({
+                message: `[${source}] ${message}`,
+                status: status,
+                timestamp: timestamp
+            });
+        }
+
+        function clearMessages() {
+            document.getElementById('messages').innerHTML = '';
+        }
+
+        function triggerBankFile() {
+            const transactionPoid = document.getElementById('transactionPoid').value;
+            if (!transactionPoid) {
+                alert('Please enter a Transaction POID');
+                return;
+            }
+
+            fetch(`http://localhost:9090/asg/finance/api/v1/telex-file-generate/${transactionPoid}/generate-bank-file`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                addMessage('HTTP', 'Bank file generation triggered: ' + JSON.stringify(data), 'INFO');
+            })
+            .catch(error => {
+                addMessage('HTTP', 'Error triggering bank file: ' + error.message, 'ERROR');
+            });
+        }
+
+        // Clean up on page unload
+        window.onbeforeunload = function() {
+            if (eventSource !== null) {
+                eventSource.close();
+            }
+        };
+    </script>
+</body>
+</html>

@@ -81,8 +81,8 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         final GlExpenseReallocationHdr savedHdr = hdrRepository.save(header);
         final Long hdrPoid = savedHdr.getTransactionPoid();
 
-        Long maxXlDetRowId = xlDtlRepository.findMaxDetRowIdByTransactionPoid(hdrPoid);
-        AtomicLong xlDtlDetRowIdSeq = new AtomicLong(maxXlDetRowId != null ? maxXlDetRowId + 1 : 1);
+        xlDtlRepository.deleteByTransactionPoid(hdrPoid);
+        AtomicLong xlDtlDetRowIdSeq = new AtomicLong(1);
 
         List<GlExpenseReallocationXlDtl> xlDtlEntities = mapXlDtoToEnity(mapXlDetailtoEntity(request.getDetails(), hdrPoid, xlDtlDetRowIdSeq));
 
@@ -95,7 +95,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         });
         log.info("createExpenseReallocation completed for transactionPoid={}", savedHdr.getTransactionPoid());
         loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), hdrPoid.toString());
-        return null;
+        return buildResponse(savedHdr);
     }
 
     @Override

@@ -323,6 +323,9 @@ public class BankDebitVoucherValidator {
         if(req.getBankCharges() != null) {
             headerAmount = headerAmount.add(nvl(req.getBankCharges()));
         }
+        if(req.getTaxAmount() != null) {
+            headerAmount = headerAmount.add(nvl(req.getTaxAmount()));
+        }
         BigDecimal totalGlDr = ZERO;
         BigDecimal totalGlCr = ZERO;
 
@@ -334,7 +337,13 @@ public class BankDebitVoucherValidator {
 
         for (PaymentGlDetails det : list) {
             totalGlDr = totalGlDr.add(nvl(det.getDrAmt()));
+            if("DR".equals(det.getType()) && det.getTaxAmount() != null) {
+                totalGlDr = totalGlDr.add(det.getTaxAmount());
+            }
             totalGlCr = totalGlCr.add(nvl(det.getCrAmt()));
+            if("CR".equals(det.getType()) && det.getTaxAmount() != null) {
+                totalGlCr = totalGlCr.add(det.getTaxAmount());
+            }
         }
 
         // For CUSTOM: separately validate that DR entries and CR entries are both present

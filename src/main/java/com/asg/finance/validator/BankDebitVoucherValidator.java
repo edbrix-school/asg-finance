@@ -320,6 +320,9 @@ public class BankDebitVoucherValidator {
         }
 
         BigDecimal headerAmount = nvl(req.getAmount());
+        if(req.getBankCharges() != null) {
+            headerAmount = headerAmount.add(nvl(req.getBankCharges()));
+        }
         BigDecimal totalGlDr = ZERO;
         BigDecimal totalGlCr = ZERO;
 

@@ -36,8 +36,6 @@ public class JournalVoucherRequest {
 
     private Long wdvAccountGl;
     private Boolean multiCompany;
-    private String remarks;
-    @NotBlank(message = "Confidential remarks is required")
     private String confidentialRemarks;
 
     private List<JournalVoucherGlDetailDto> glDetails;

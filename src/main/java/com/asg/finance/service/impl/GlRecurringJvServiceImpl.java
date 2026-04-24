@@ -339,7 +339,6 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
         Long transactionPoid = header.getTransactionPoid();
         saveDetails(transactionPoid, request.getDetails(), header, true);
 
-        // Log the creation
         String key = transactionPoid.toString();
         loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), key);
 
@@ -347,8 +346,6 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
     }
 
     private void validateRequest(RecurringJvRequest request) {
-        BigDecimal monthWiseAmount = request.getTotalAmount()
-                .divide(BigDecimal.valueOf(request.getNoOfMonths()), 3, RoundingMode.HALF_UP);
 
         BigDecimal drTotal = request.getDetails().stream()
                 .map(d -> d.getDrAmt() != null ? d.getDrAmt() : BigDecimal.ZERO)
@@ -362,8 +359,8 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
             throw new IllegalArgumentException("DR Total must equal CR Total");
         }
 
-        if (drTotal.setScale(3, RoundingMode.HALF_UP).compareTo(monthWiseAmount) != 0) {
-            throw new IllegalArgumentException(String.format("Monthly amount (%s) must equal Dr Total (%s)", monthWiseAmount, drTotal));
+        if (drTotal.setScale(3, RoundingMode.HALF_UP).compareTo(request.getMonthWiseAmount()) != 0) {
+            throw new IllegalArgumentException(String.format("Monthly amount (%s) must equal Dr Total (%s)", request.getMonthWiseAmount(), drTotal));
         }
 
         for (RecurringJvDetailRequest detail : request.getDetails()) {

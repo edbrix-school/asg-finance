@@ -159,8 +159,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                 .postingNarration(request.getPostingNarration())
                 .wdvAccountGl(request.getWdvAccountGl())
                 .multiCompany(isMultiCompany ? FLAG_YES : FLAG_NO)
-                .remarks(request.getRemarks())
-                .confidentialRemarks(request.getConfidentialRemarks())
+                .remarks(request.getConfidentialRemarks())
                 .deleted(FLAG_NO)
                 .build();
     }
@@ -703,8 +702,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         existing.setPostingNarration(request.getPostingNarration());
         existing.setWdvAccountGl(request.getWdvAccountGl());
         existing.setMultiCompany(isMultiCompany ? FLAG_YES : FLAG_NO);
-        existing.setRemarks(request.getRemarks());
-        existing.setConfidentialRemarks(request.getConfidentialRemarks());
+        existing.setRemarks(request.getConfidentialRemarks());
 
         glJournalVoucherHdrRepository.save(existing);
 
@@ -853,7 +851,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                 .wdvAccountGl(hdr.getWdvAccountGl())
                 .multiCompany(FLAG_YES.equals(hdr.getMultiCompany()))
                 .remarks(hdr.getRemarks())
-                .confidentialRemarks(hdr.getConfidentialRemarks())
+                .confidentialRemarks(hdr.getRemarks())
                 .createdBy(hdr.getCreatedBy())
                 .createdDate(hdr.getCreatedDate())
                 .modifiedBy(hdr.getLastModifiedBy())

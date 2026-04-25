@@ -1392,7 +1392,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         }
 
         // Save records and log creations
-        List<GLPaymentVoucherDtlGLEntity> savedEntities = paymentVoucherDetailsRepository.saveAll(toSave);
+        List<GLPaymentVoucherDtlGLEntity> savedEntities = paymentVoucherDetailsRepository.saveAllAndFlush(toSave);
 
         // Process batch logging for updates
         if (!logRequests.isEmpty()) {
@@ -1485,7 +1485,9 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                     dto.setCompanyPoid(UserContext.getCompanyPoid());
                     dto.setDocId(documentId);
                     dto.setTransactionPoid(transactionPoid);
-                    dto.setCostDetRowId(glDetail.getGlPoid()); // mapping GL → cost center
+                    dto.setMainDetRowId(glDetail.getDetRowId());
+                    dto.setGlPoid(glDetail.getGlPoid());
+                    dto.setCostDetRowId(popup.getCostDetRowId()); 
                     dto.setCostGroup(popup.getCostGroup());
                     dto.setCostPoid(popup.getCostPoid());
                     dto.setAmount(popup.getAmount());
@@ -1553,20 +1555,32 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         // === COST CENTER BREAKUP ===
         // -------------------------
+
+        costCenterBreakupDtlRepository.deleteCostCenters(
+                UserContext.getGroupPoid(),
+                UserContext.getCompanyPoid(),
+                documentId,
+                transactionPoid,
+                userPoid
+        );
+
         List<CostCenterBreakupRequestDto> costCenterList = new ArrayList<>();
 
         for (BankPaymentGLDetailRequest glDetail : glDetails) {
             if (glDetail.getCostCenterBreakup() != null && !glDetail.getCostCenterBreakup().isEmpty()) {
                 for (CostCenterBreakupPopupRequestDto popup : glDetail.getCostCenterBreakup()) {
-                    CostCenterBreakupRequestDto cc = CostCenterBreakupRequestDto.builder()
-                            .costDetRowId(glDetail.getGlPoid())
-                            .costGroup(UserContext.getGroupPoid().toString())
-                            .costPoid(popup.getCostPoid())
-                            .amount(popup.getAmount())
-                            .docId(documentId)
-                            .transactionPoid(transactionPoid)
-                            .loginUserPoid(UserContext.getUserPoid())
-                            .build();
+                    CostCenterBreakupRequestDto cc = new CostCenterBreakupRequestDto();
+                    cc.setGroupPoid(UserContext.getGroupPoid());
+                    cc.setCompanyPoid(UserContext.getCompanyPoid());
+                    cc.setDocId(documentId);
+                    cc.setTransactionPoid(transactionPoid);
+                    cc.setMainDetRowId(glDetail.getDetRowId());
+                    cc.setGlPoid(glDetail.getGlPoid());
+                    cc.setCostDetRowId(popup.getCostDetRowId());
+                    cc.setCostGroup(popup.getCostGroup());
+                    cc.setCostPoid(popup.getCostPoid());
+                    cc.setAmount(popup.getAmount());
+                    cc.setLoginUserPoid(userPoid);
 
                     costCenterList.add(cc);
                 }
@@ -1598,8 +1612,9 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         return list.stream().map(src -> {
             boolean isDebit = src.getDrAmt() != null && src.getDrAmt().compareTo(BigDecimal.ZERO) > 0;
+            boolean isCredit = src.getCrAmt() != null && src.getCrAmt().compareTo(BigDecimal.ZERO) > 0;
             String type = isDebit ? "DR" : "CR";
-            BigDecimal amount = src.getDrAmt() != null ? src.getDrAmt() : src.getCrAmt();
+            BigDecimal amount = isDebit ? src.getDrAmt() : (isCredit ? src.getCrAmt() : BigDecimal.ZERO);
             return BillwiseBreakupPopupRequestDto.builder()
                     .billDetRowId(src.getBillDetRowId())
                     .billRefType(src.getBillRefType())

@@ -722,6 +722,9 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         entity.setCostGroup(dto.getCostGroup() != null ? dto.getCostGroup().toString() : null);
         entity.setCheckAll(dto.getCheckAll());
         entity.setPrintSeqNo(dto.getSeqNo());
+        entity.setFdaDetRowId(dto.getFdaDetRowId());
+        entity.setRefDocId(dto.getRefDocId());
+        entity.setRefDocPoid(dto.getRefDocPoid());
 
         if (dto.getTotalAmount() != null) {
             entity.setTotalAmount(dto.getTotalAmount());
@@ -915,6 +918,9 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         dto.setCostGroup(entity.getCostGroup());
         dto.setCheckAll(entity.getCheckAll());
         dto.setCostAmount(entity.getPdaAmount());
+        dto.setFdaDetRowId(entity.getFdaDetRowId());
+        dto.setRefDocId(entity.getRefDocId());
+        dto.setRefDocPoid(entity.getRefDocPoid());
 
         // Populate LOV details based on refType
         if (entity.getChargePoid() != null) {

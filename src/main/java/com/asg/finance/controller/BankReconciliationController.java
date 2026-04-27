@@ -129,9 +129,14 @@ public class BankReconciliationController {
 
             @Parameter(description = "Statement date to update", required = true, example = "2025-12-05")
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd")
-            @PastOrPresent(message = "Bank Statement date cannot be in the future")
             LocalDate statementDate) {
+
+        if (statementDate.isAfter(LocalDate.now())) {
+            return error("Bank Statement date cannot be in the future", 400);
+        }
+
         String response = service.updateStatementDate(companyPoid, postedBy, bankPoid, statementDate);
+
         if (response.toLowerCase().startsWith(ERROR))
             return error(response, 500);
 

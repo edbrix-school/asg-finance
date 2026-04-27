@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.PastOrPresent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -126,7 +127,10 @@ public class BankReconciliationController {
 
             @Parameter(description = "Posted by user POID", required = true, example = "1001") @RequestParam Long postedBy,
 
-            @Parameter(description = "Statement date to update", required = true, example = "2025-12-05") @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate statementDate) {
+            @Parameter(description = "Statement date to update", required = true, example = "2025-12-05")
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd")
+            @PastOrPresent(message = "Bank Statement date cannot be in the future")
+            LocalDate statementDate) {
         String response = service.updateStatementDate(companyPoid, postedBy, bankPoid, statementDate);
         if (response.toLowerCase().startsWith(ERROR))
             return error(response, 500);

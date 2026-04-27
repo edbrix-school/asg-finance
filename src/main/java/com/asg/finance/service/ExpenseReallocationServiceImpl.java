@@ -76,7 +76,8 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
                 .expenseGroupGl(request.getExpenseGroupGlId()).fromCompany(request.getFromCompanyId())
                 .fromDate(request.getFromDate()).toDate(request.getToDate()).allocationType(request.getAllocationType())
                 .costPoid(request.getCostPoid()).remarks(request.getRemarks())
-                .deleted("N").reportGeneration("N").build();
+                .deleted("N").reportGeneration("N")
+                .narration(request.getNarration()).build();
 
         final GlExpenseReallocationHdr savedHdr = hdrRepository.save(header);
         final Long hdrPoid = savedHdr.getTransactionPoid();

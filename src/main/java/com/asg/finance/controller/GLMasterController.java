@@ -10,6 +10,7 @@ import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.finance.dto.GLMasterRequestDto;
 import com.asg.finance.dto.GLMasterResponseDto;
+import com.asg.finance.dto.GlMasterTreeNodeDto;
 import com.asg.finance.dto.GlMasterTreeRequest;
 import com.asg.finance.service.GLMasterService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -24,9 +25,11 @@ import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 
 import java.util.List;
 import java.util.Map;
@@ -203,14 +206,29 @@ public class GLMasterController {
                     .build();
 
             var treeItems = glMasterService.getGlMasterTree(UserContext.getDocumentId(), UserContext.getActionRequested(), request);
+            long totalLedgerCount = countLedgerNodes(treeItems);
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("totalElements", totalLedgerCount);
+            result.put("data", treeItems);
 
             if (treeItems.isEmpty()) {
-                return success("No GL Master records found", new ArrayList<>());
+                result.put("totalElements", 0L);
+                result.put("data", new ArrayList<>());
+                return ResponseEntity.status(HttpStatus.OK).body(Map.of(
+                        "success", true,
+                        "message", "No GL Master records found",
+                        "statusCode", 200,
+                        "result", result
+                ));
             }
 
-            // Return the tree structure directly as an array
             loggingService.createLogSummaryEntry(LogDetailsEnum.VIEWED, UserContext.getDocumentId(), "TREE");
-            return success("GL Master tree structure retrieved successfully", treeItems);
+            return ResponseEntity.status(HttpStatus.OK).body(Map.of(
+                    "success", true,
+                    "message", "GL Master tree structure retrieved successfully",
+                    "statusCode", 200,
+                    "result", result
+            ));
 
         } catch (Exception e) {
             return internalServerError("An error occurred while retrieving GL Master tree: " + e.getMessage());
@@ -391,6 +409,22 @@ public class GLMasterController {
         } catch (Exception e) {
             return internalServerError("An error occurred while retrieving account type: " + e.getMessage());
         }
+    }
+
+    private long countLedgerNodes(List<GlMasterTreeNodeDto> nodes) {
+        if (nodes == null || nodes.isEmpty()) {
+            return 0L;
+        }
+        long count = 0L;
+        for (GlMasterTreeNodeDto node : nodes) {
+            if (node != null && "LEDGER".equalsIgnoreCase(node.getType())) {
+                count++;
+            }
+            if (node != null && node.getChildren() != null && !node.getChildren().isEmpty()) {
+                count += countLedgerNodes(node.getChildren());
+            }
+        }
+        return count;
     }
 
 }

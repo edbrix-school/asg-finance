@@ -57,4 +57,10 @@ public interface GLMastersRepository extends JpaRepository<GLMasterEntity, Long>
 
     List<GLMasterEntity> findByGlPoidIn(List<Long> glPoids);
 
+    @Query("SELECT COUNT(g) FROM GLMasterEntity g " +
+           "WHERE g.type = 'LEDGER' " +
+           "AND (g.deletedFlag IS NULL OR g.deletedFlag = 'N') " +
+           "AND (:groupPoid IS NULL OR g.groupPoid = :groupPoid)")
+    Long countActiveLedgers(@Param("groupPoid") Long groupPoid);
+
 }

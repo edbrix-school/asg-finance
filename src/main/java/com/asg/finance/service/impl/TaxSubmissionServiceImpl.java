@@ -319,7 +319,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         
         log.info("loadVatDetails started for transactionPoid={} groupPoid={}", transactionPoid, groupPoid);
 
-        GlobalTaxSubmissionHdr header = hdrRepository.findByTransactionPoidAndGroupPoid(transactionPoid, groupPoid)
+        GlobalTaxSubmissionHdr header = hdrRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Tax Submission", "transactionPoid", transactionPoid));
 
         // Validate header is in editable state
@@ -391,11 +391,9 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
     @Override
     @Transactional
     public SubmitTaxSubmissionResponse submitTaxSubmission(Long transactionPoid, SubmitTaxSubmissionRequest request) {
-        Long groupPoid = UserContext.getGroupPoid();
-        
         log.info("submitTaxSubmission started for transactionPoid={} action={}", transactionPoid, request.getAction());
 
-        GlobalTaxSubmissionHdr header = hdrRepository.findByTransactionPoidAndGroupPoid(transactionPoid, groupPoid)
+        GlobalTaxSubmissionHdr header = hdrRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Tax Submission", "transactionPoid", transactionPoid));
 
         // Validate VAT details are loaded
@@ -436,7 +434,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
 
         log.info("runAfterSave started for transactionPoid={} groupPoid={} userId={}", transactionPoid, groupPoid, userId);
 
-        GlobalTaxSubmissionHdr header = hdrRepository.findByTransactionPoidAndGroupPoid(transactionPoid, groupPoid)
+        GlobalTaxSubmissionHdr header = hdrRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Tax Submission", "transactionPoid", transactionPoid));
 
         String afterSaveStatus = storedProcedureHelper.processAfterSave(
@@ -447,7 +445,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         }
 
         // Reload header (procedure may have updated fields like PERIOD_CLOSED_BY/DATE)
-        GlobalTaxSubmissionHdr reloadedHeader = hdrRepository.findByTransactionPoidAndGroupPoid(transactionPoid, groupPoid)
+        GlobalTaxSubmissionHdr reloadedHeader = hdrRepository.findByTransactionPoid(transactionPoid)
                 .orElse(header);
         List<GlobalTaxSubmissionDtl> details = dtlRepository.findByTransactionPoid(transactionPoid);
 

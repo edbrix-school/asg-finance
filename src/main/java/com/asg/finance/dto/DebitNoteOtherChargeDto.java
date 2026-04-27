@@ -27,10 +27,16 @@ public class DebitNoteOtherChargeDto {
     private Long costCenterPoid; // DN_GL_COST_CENTRE
     
     private String remarks;
-    
+
     private Integer seqNo;
-    
+
     private Boolean selected = false;
+
+    private Long fdaDetRowId;
+
+    private String refDocId;
+
+    private Long refDocPoid;
     
     // LOV Details
     private LovGetListDto chargeDetails;

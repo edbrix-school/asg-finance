@@ -38,6 +38,12 @@ public class DebitNoteChargeDetailDto {
     private String costPoid;
 
     private String costGroup;
+
+    private Long fdaDetRowId;
+
+    private String refDocId;
+
+    private Long refDocPoid;
     
     // LOV Details
     private LovGetListDto chargeDetails;
@@ -51,4 +57,7 @@ public class DebitNoteChargeDetailDto {
                costPoid == null && costGroup == null && chargeDetails == null && taxDetails == null &&
                costCenterDetails == null;
     }
+
+
+
 }

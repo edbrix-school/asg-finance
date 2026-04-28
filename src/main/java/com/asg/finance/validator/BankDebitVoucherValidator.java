@@ -319,7 +319,7 @@ public class BankDebitVoucherValidator {
             return; // only validate for GENERAL/CUSTOM
         }
 
-        BigDecimal headerAmount = nvl(req.getAmount());
+        BigDecimal headerAmount = nvl(req.getCurrencyAmt());
         if(req.getBankCharges() != null) {
             headerAmount = headerAmount.add(nvl(req.getBankCharges()));
         }

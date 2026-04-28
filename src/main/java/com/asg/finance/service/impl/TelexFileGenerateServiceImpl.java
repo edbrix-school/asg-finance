@@ -6,6 +6,7 @@ import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
+import com.asg.finance.dto.BankFileBatchResult;
 import com.asg.finance.dto.TelexFileDtlDto;
 import com.asg.finance.dto.TelexFileGenerateRequestDto;
 import com.asg.finance.dto.TelexFileGenerateResponseDto;
@@ -29,17 +30,16 @@ import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
+import org.springframework.context.ApplicationContext;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -57,134 +57,125 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
     private final LoggingService loggingService;
     private final DocumentDeleteService documentDeleteService;
     private final EntityManager entityManager;
+    private final ApplicationContext applicationContext;
 
     @Override
-    @Transactional
     public TelexFileGenerateResponseDto createTelexFile(TelexFileGenerateRequestDto request) {
         try {
-            // Validate intermediary bank details for selected records
-            if (request.getDetails() != null && !request.getDetails().isEmpty()) {
-                for (TelexFileDtlDto dto : request.getDetails()) {
-                    if ("Y".equalsIgnoreCase(dto.getSelected()) && dto.getDebitTransactionPoid() != null) {
-                        validateIntermediaryBankDetails(dto.getDebitTransactionPoid(), dto.getDebitDocRef(), dto.getDebitCurrencyCode());
-                    }
-                }
-            }
+            validateSelectedDetails(request.getDetails());
 
-            GlBankFileHdr hdr = new GlBankFileHdr();
-            hdr.setTransactionDate(request.getTransactionDate());
-            hdr.setGroupPoid(UserContext.getGroupPoid());
-            hdr.setCompanyPoid(UserContext.getCompanyPoid());
-            hdr.setBankPoid(request.getBankPoid());
-            hdr.setBankList(request.getBankList() != null ? request.getBankList() : "Y");
-            hdr.setLongNarration(request.getRemarks());
-            hdr.setOnlyApproval(request.isApprovalOnly() ? "Y" : "N");
-            hdr.setTtSuppressBalanceCheck(request.isSuppressBalanceCheck() ? "Y" : "N");
-            hdr.setDeleted("N");
-
-            GlBankFileHdr savedHdr = hdrRepository.saveAndFlush(hdr);
-            entityManager.flush();
-            entityManager.refresh(hdr);
-
-            if (request.getDetails() != null && !request.getDetails().isEmpty()) {
-                List<GlBankFileDtl> details = new ArrayList<>();
-                String docId = UserContext.getDocumentId();
-                String key = savedHdr.getTransactionPoid().toString();
-                
-                for (int i = 0; i < request.getDetails().size(); i++) {
-                    TelexFileDtlDto dto = request.getDetails().get(i);
-                    // Skip records with actionType "ISDELETED"
-                    if ("ISDELETED".equalsIgnoreCase(dto.getActionType())) {
-                        continue;
-                    }
-                    GlBankFileDtl detail = convertToDetailEntity(dto, savedHdr.getTransactionPoid());
-                    detail.setDetRowId((long) (i + 1));
-                    details.add(detail);
-                }
-                dtlRepository.saveAll(details);
-                dtlRepository.flush();
-                
-                details.forEach(detail -> {
-                    String logDetail = String.format("Row Created on Telex File Detail with detRowId: %s", detail.getDetRowId());
-                    loggingService.createLogSummaryEntry(docId, key, logDetail);
-                });
-            }
+            TelexFileGenerateServiceImpl self = applicationContext.getBean(TelexFileGenerateServiceImpl.class);
+            Long transactionPoid = self.saveTelexFileInternal(request);
 
             Long userId = UserContext.getUserPoid() != null ? UserContext.getUserPoid() : 1L;
-            Long transactionPoid = savedHdr.getTransactionPoid();
+            BankFileBatchResult batchResult = self.processFileAsync(transactionPoid, userId);
 
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    processFileAsync(transactionPoid, userId);
-                }
-            });
-
-            String key = savedHdr.getTransactionPoid().toString();
-            String docId = UserContext.getDocumentId();
-            loggingService.createLogSummaryEntry(
-                docId, 
-                key, 
-                String.format("%s %s", LogDetailsEnum.CREATED, savedHdr.getDocRef())
-            );
-            
-            return getTelexFileById(transactionPoid);
+            TelexFileGenerateResponseDto response = getTelexFileById(transactionPoid);
+            enrichWithBatchMessages(response, batchResult);
+            return response;
+        } catch (ValidationException e) {
+            throw e;
         } catch (Exception e) {
-            String errorMessage = extractTriggerErrorMessage(e);
-            throw new ValidationException(errorMessage);
+            throw new ValidationException(extractTriggerErrorMessage(e));
         }
     }
 
-    @Override
     @Transactional
+    public Long saveTelexFileInternal(TelexFileGenerateRequestDto request) {
+        GlBankFileHdr hdr = new GlBankFileHdr();
+        hdr.setTransactionDate(request.getTransactionDate());
+        hdr.setGroupPoid(UserContext.getGroupPoid());
+        hdr.setCompanyPoid(UserContext.getCompanyPoid());
+        hdr.setBankPoid(request.getBankPoid());
+        hdr.setBankList(request.getBankList() != null ? request.getBankList() : "Y");
+        hdr.setLongNarration(request.getRemarks());
+        hdr.setOnlyApproval(request.isApprovalOnly() ? "Y" : "N");
+        hdr.setTtSuppressBalanceCheck(request.isSuppressBalanceCheck() ? "Y" : "N");
+        hdr.setDeleted("N");
+
+        GlBankFileHdr savedHdr = hdrRepository.saveAndFlush(hdr);
+        entityManager.flush();
+        entityManager.refresh(hdr);
+
+        if (request.getDetails() != null && !request.getDetails().isEmpty()) {
+            List<GlBankFileDtl> details = new ArrayList<>();
+            String docId = UserContext.getDocumentId();
+            String key = savedHdr.getTransactionPoid().toString();
+
+            for (int i = 0; i < request.getDetails().size(); i++) {
+                TelexFileDtlDto dto = request.getDetails().get(i);
+                if ("ISDELETED".equalsIgnoreCase(dto.getActionType())) {
+                    continue;
+                }
+                GlBankFileDtl detail = convertToDetailEntity(dto, savedHdr.getTransactionPoid());
+                detail.setDetRowId((long) (i + 1));
+                details.add(detail);
+            }
+            dtlRepository.saveAll(details);
+            dtlRepository.flush();
+
+            details.forEach(detail -> {
+                String logDetail = String.format("Row Created on Telex File Detail with detRowId: %s", detail.getDetRowId());
+                loggingService.createLogSummaryEntry(docId, key, logDetail);
+            });
+        }
+
+        String key = savedHdr.getTransactionPoid().toString();
+        String docId = UserContext.getDocumentId();
+        loggingService.createLogSummaryEntry(
+            docId,
+            key,
+            String.format("%s %s", LogDetailsEnum.CREATED, savedHdr.getDocRef())
+        );
+
+        return savedHdr.getTransactionPoid();
+    }
+
+    @Override
     public TelexFileGenerateResponseDto updateTelexFile(Long transactionPoid, TelexFileGenerateRequestDto request) {
         try {
-            // Validate intermediary bank details for selected records
-            if (request.getDetails() != null && !request.getDetails().isEmpty()) {
-                for (TelexFileDtlDto dto : request.getDetails()) {
-                    if ("Y".equalsIgnoreCase(dto.getSelected()) && dto.getDebitTransactionPoid() != null) {
-                        validateIntermediaryBankDetails(dto.getDebitTransactionPoid(), dto.getDebitDocRef(), dto.getDebitCurrencyCode());
-                    }
-                }
-            }
+            validateSelectedDetails(request.getDetails());
 
-            GlBankFileHdr hdr = hdrRepository.findByTransactionPoid(transactionPoid)
-                    .orElseThrow(() -> new ResourceNotFoundException("Telex File", "transactionPoid", transactionPoid));
-            
-            GlBankFileHdr oldHdr = new GlBankFileHdr();
-            BeanUtils.copyProperties(hdr, oldHdr);
-            hdr.setTransactionDate(request.getTransactionDate());
-            hdr.setBankPoid(request.getBankPoid());
-            hdr.setBankList(request.getBankList() != null ? request.getBankList() : "Y");
-            hdr.setLongNarration(request.getRemarks());
-            hdr.setOnlyApproval(request.isApprovalOnly() ? "Y" : "N");
-            hdr.setTtSuppressBalanceCheck(request.isSuppressBalanceCheck() ? "Y" : "N");
-
-            hdrRepository.saveAndFlush(hdr);
-
-            if (request.getDetails() != null && !request.getDetails().isEmpty()) {
-                processDetails(transactionPoid, request.getDetails());
-            }
-            
-            String key = transactionPoid.toString();
-            String docId = UserContext.getDocumentId();
-            loggingService.logChanges(oldHdr, hdr, GlBankFileHdr.class, 
-                    docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+            TelexFileGenerateServiceImpl self = applicationContext.getBean(TelexFileGenerateServiceImpl.class);
+            self.updateTelexFileInternal(transactionPoid, request);
 
             Long userId = UserContext.getUserPoid() != null ? UserContext.getUserPoid() : 1L;
+            BankFileBatchResult batchResult = self.processFileAsync(transactionPoid, userId);
 
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    processFileAsync(transactionPoid, userId);
-                }
-            });
-            
-            return getTelexFileById(transactionPoid);
+            TelexFileGenerateResponseDto response = getTelexFileById(transactionPoid);
+            enrichWithBatchMessages(response, batchResult);
+            return response;
+        } catch (ValidationException e) {
+            throw e;
         } catch (Exception e) {
-            String errorMessage = extractTriggerErrorMessage(e);
-            throw new ValidationException(errorMessage);
+            throw new ValidationException(extractTriggerErrorMessage(e));
         }
+    }
+
+    @Transactional
+    public void updateTelexFileInternal(Long transactionPoid, TelexFileGenerateRequestDto request) {
+        GlBankFileHdr hdr = hdrRepository.findByTransactionPoid(transactionPoid)
+                .orElseThrow(() -> new ResourceNotFoundException("Telex File", "transactionPoid", transactionPoid));
+
+        GlBankFileHdr oldHdr = new GlBankFileHdr();
+        BeanUtils.copyProperties(hdr, oldHdr);
+        hdr.setTransactionDate(request.getTransactionDate());
+        hdr.setBankPoid(request.getBankPoid());
+        hdr.setBankList(request.getBankList() != null ? request.getBankList() : "Y");
+        hdr.setLongNarration(request.getRemarks());
+        hdr.setOnlyApproval(request.isApprovalOnly() ? "Y" : "N");
+        hdr.setTtSuppressBalanceCheck(request.isSuppressBalanceCheck() ? "Y" : "N");
+
+        hdrRepository.saveAndFlush(hdr);
+
+        if (request.getDetails() != null && !request.getDetails().isEmpty()) {
+            processDetails(transactionPoid, request.getDetails());
+        }
+
+        String key = transactionPoid.toString();
+        String docId = UserContext.getDocumentId();
+        loggingService.logChanges(oldHdr, hdr, GlBankFileHdr.class,
+                docId, key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
     }
 
     @Override
@@ -260,7 +251,7 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
     @Transactional
     public String generateBankFileButton(Long transactionPoid) {
         Long userId = UserContext.getUserPoid() != null ? UserContext.getUserPoid() : 1L;
-        return bankFileBatchService.createBankFileBatch(transactionPoid, userId);
+        return bankFileBatchService.createBankFileBatch(transactionPoid, userId).getResult();
     }
     
     @Override
@@ -334,11 +325,6 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
                 .drilldownLinkInfo(entity.getDrilldownLinkInfo())
                 .debitTtChargeType(entity.getDebitTtChargeType())
                 .build();
-    }
-
-    private String getCurrentUser() {
-        Long userPoid = UserContext.getUserPoid();
-        return userPoid != null ? userPoid.toString() : "SYSTEM";
     }
 
     private void processDetails(Long transactionPoid, List<TelexFileDtlDto> details) {
@@ -458,12 +444,43 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
         return errorMessage != null ? errorMessage : "Database operation failed";
     }
 
-    @Async
-    public void processFileAsync(Long transactionPoid, Long userId) {
+    public BankFileBatchResult processFileAsync(Long transactionPoid, Long userId) {
         try {
-            bankFileBatchService.createBankFileBatch(transactionPoid, userId);
+            return bankFileBatchService.createBankFileBatch(transactionPoid, userId);
         } catch (Exception e) {
-            // Log error but don't throw - async method
+            List<Map<String, String>> messages = new ArrayList<>();
+            Map<String, String> entry = new HashMap<>();
+            entry.put("message", e.getMessage());
+            entry.put("status", "ERROR");
+            messages.add(entry);
+            return new BankFileBatchResult("ERROR : " + e.getMessage(), messages);
         }
+    }
+
+    private void validateSelectedDetails(List<TelexFileDtlDto> details) {
+        if (details == null || details.isEmpty()) return;
+        for (TelexFileDtlDto dto : details) {
+            if ("Y".equalsIgnoreCase(dto.getSelected()) && dto.getDebitTransactionPoid() != null) {
+                validateIntermediaryBankDetails(dto.getDebitTransactionPoid(), dto.getDebitDocRef(), dto.getDebitCurrencyCode());
+            }
+        }
+    }
+
+    private void enrichWithBatchMessages(TelexFileGenerateResponseDto response, BankFileBatchResult batchResult) {
+        if (batchResult == null || batchResult.getMessages() == null || batchResult.getMessages().isEmpty()) return;
+        List<String> warnings = new ArrayList<>();
+        List<String> infos = new ArrayList<>();
+        for (Map<String, String> entry : batchResult.getMessages()) {
+            String status = entry.get("status");
+            String message = entry.get("message");
+            if (message == null || message.isBlank()) continue;
+            if ("WARNING".equals(status) || "ERROR".equals(status) || "COMPLETED_ERROR".equals(status)) {
+                warnings.add(message);
+            } else {
+                infos.add(message);
+            }
+        }
+        response.setWarnings(warnings.isEmpty() ? null : warnings);
+        response.setInfos(infos.isEmpty() ? null : infos);
     }
 }

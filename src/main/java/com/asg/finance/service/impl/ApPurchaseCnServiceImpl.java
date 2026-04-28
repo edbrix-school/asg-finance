@@ -1662,7 +1662,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
 
         if (StringUtils.isNotEmpty(costCenterDto.getCostPoid()) && StringUtils.isNotEmpty(costCenterDto.getCostGroup())) {
             popup.setCostCenterDetails(
-                    lovService.getDetailsByPoidAndLovName(Long.valueOf(costCenterDto.getCostPoid()), costCenterDto.getCostGroup()));
+                    lovService.getDetailsByCodeAndLovName(costCenterDto.getCostPoid(), costCenterDto.getCostGroup()));
         }
 
         return popup;

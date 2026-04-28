@@ -831,30 +831,6 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         }
     }
 
-//    private Map<String, BigDecimal> calculateTotals(List <ExpenseReallocationDetailResponseDto> details) {
-//
-//            Map<String, BigDecimal> costCenterMap = new HashMap<>();
-//        for (ExpenseReallocationDetailResponseDto detail : details) {
-//            detail.getCostCenterMap().keySet().forEach(val->{
-//                if(val.equalsIgnoreCase("TOTAL")){
-//                    if(costCenterMap.containsKey(val)){
-//                        costCenterMap.put("grand".concat(val),costCenterMap.get(val).add(detail.getCostCenterMap().get(val)));
-//                    }
-//                    else{
-//                        costCenterMap.put("grant".concat(val),detail.getCostCenterMap().get(val));
-//                    }
-//                }
-//                else if(costCenterMap.containsKey(val)){
-//                    costCenterMap.put("total".concat(val),costCenterMap.get(val).add(detail.getCostCenterMap().get(val)));
-//                }
-//                else{
-//                    costCenterMap.put("total".concat(val),detail.getCostCenterMap().get(val));
-//                }
-//            });
-//        }
-//        return costCenterMap;
-//    }
-
     private Map<String, BigDecimal> calculateTotals(List<ExpenseReallocationDetailResponseDto> details) {
 
         Map<String, BigDecimal> result = new HashMap<>();

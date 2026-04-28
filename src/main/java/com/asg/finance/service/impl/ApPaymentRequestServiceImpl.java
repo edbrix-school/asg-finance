@@ -12,13 +12,13 @@ import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.utility.PaginationUtil;
-import com.asg.finance.dto.ApPaymentRequestDetailResponse;
-import com.asg.finance.dto.ApPaymentRequestHdrRequestDto;
-import com.asg.finance.dto.ApPaymentRequestHdrResponseDto;
-import com.asg.finance.dto.ApPaymentRequestMapper;
+import com.asg.finance.dto.*;
 import com.asg.finance.entity.*;
 import com.asg.finance.repository.*;
 import com.asg.finance.service.ApPaymentRequestService;
+import com.asg.finance.service.PurchaseOrderService;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
@@ -48,6 +48,8 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
     private final PurchaseOrderRepository purchaseOrderRepository;
     private final PurchaseOrderItemRepository purchaseOrderItemRepository;
     private final FFManifestChargesDtlRepository manifestChargesDtlRepository;
+    private final PurchaseOrderService purchaseOrderService;
+    private final ObjectMapper objectMapper;
     
     private static final String DETROWID="detRowId";
     private static final String TRANSACTION_POID="TRANSACTION_POID";
@@ -230,10 +232,13 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
     }
 
     @Override
-    public ApPaymentRequestDetailResponse findDetailsByRefId(Long transactionPoid, String refType) {
+    public List<Map<String,Object>> findDetailsByRefId(Long transactionPoid, String refType) {
 
         if (refType.equalsIgnoreCase("PO") || refType.equalsIgnoreCase("MTA")) {
-            List<PurchaseOrderItem> orderItems=purchaseOrderItemRepository.findByTransactionPoid(transactionPoid);
+            return getPoItems(transactionPoid)
+                    .stream()
+                    .map(item -> objectMapper.convertValue(item, new TypeReference<Map<String, Object>>() {}))
+                    .toList();
             
         }else if (refType.equalsIgnoreCase("FDA")) {
 
@@ -245,6 +250,10 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
             throw new IllegalArgumentException("Invalid RefType");
         }
         return null;
+    }
+
+    private List<PurchaseOrderItemResponseDto> getPoItems(Long transactionPoid){
+        return purchaseOrderService.findById(transactionPoid).getItems();
     }
 
     private void processStockDetails(Long transactionPoid, List<com.asg.finance.dto.ApPaymentRequestStockDtlRequest> stockDetails) {

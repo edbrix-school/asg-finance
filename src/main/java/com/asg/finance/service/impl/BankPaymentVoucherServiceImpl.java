@@ -570,12 +570,18 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         BigDecimal inputTaxLimit = getInputTaxLimit();
         if (inputTaxLimit == null) return;
 
+        int displayRowNum = 0;
         for (int i = 0; i < glDetails.size(); i++) {
             BankPaymentGLDetailRequest row = glDetails.get(i);
-            int rowNum = i + 1;
-
-            validateTax(row.getDrAmt(), row, inputTaxLimit, rowNum);
-            validateTax(row.getCrAmt(), row, inputTaxLimit, rowNum);
+            
+            // Skip deleted rows
+            if ("isDeleted".equalsIgnoreCase(row.getActionType())) {
+                continue;
+            }
+            
+            displayRowNum++;
+            validateTax(row.getDrAmt(), row, inputTaxLimit, displayRowNum);
+            validateTax(row.getCrAmt(), row, inputTaxLimit, displayRowNum);
         }
     }
 

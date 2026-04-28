@@ -1384,7 +1384,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                 String gainLossGlPoidStr = globalParameterService.getParameterValue("EXCHANGE GAIN LOSS ACCT", "GROUP", "1", null);
                 if (gainLossGlPoidStr != null) {
                     Long gainLossGlPoid = parseLong(gainLossGlPoidStr);
-                    String gainLossRowType = "CR".equalsIgnoreCase(gainLossType) ? "DR" : "CR";
+                    String gainLossRowType = "CR".equalsIgnoreCase(gainLossType) ? "CR" : "DR";
                     rows.add(buildGlRow(detRowId++, gainLossRowType, gainLossGlPoid, gainLoss, null));
                 }
             }
@@ -1583,8 +1583,8 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                 PaymentGlDetails item = request.getPaymentGlDetails().get(i);
                 if (item.getTaxPercentage() == null) continue;
 
-                BigDecimal baseAmount = item.getTotalAmount() != null ? item.getTotalAmount()
-                        : item.getDrAmt() != null ? item.getDrAmt()
+                BigDecimal baseAmount = item.getDrAmt() != null && item.getDrAmt().compareTo(BigDecimal.ZERO) > 0
+                        ? item.getDrAmt()
                         : item.getCrAmt() != null ? item.getCrAmt() : BigDecimal.ZERO;
                 baseAmount = baseAmount.setScale(3, java.math.RoundingMode.HALF_UP);
 
@@ -1599,12 +1599,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                 BigDecimal difference = enteredTax.subtract(expectedTax).abs();
 
                 if (difference.compareTo(inputTaxLimit) > 0) {
-                    throw new ValidationException(String.format(
-                            "WARNING : Please check the payment GL row number %d, Maximum allowed VAT difference is %s. Current difference is %s+/-",
-                            i + 1,
-                            inputTaxLimit.stripTrailingZeros().toPlainString(),
-                            difference.stripTrailingZeros().toPlainString()
-                    ));
+                    throw new ValidationException("WARNING : Input tax difference (" + difference + "/-) should be within " + inputTaxLimit + "/- Please note the row number " + (i + 1));
                 }
             }
         }
@@ -1626,12 +1621,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                 BigDecimal difference = enteredTax.subtract(expectedTax).abs();
 
                 if (difference.compareTo(inputTaxLimit) > 0) {
-                    throw new ValidationException(String.format(
-                            "WARNING : Please check the charge detail row number %d, Maximum allowed VAT difference is %s. Current difference is %s+/-",
-                            i + 1,
-                            inputTaxLimit.stripTrailingZeros().toPlainString(),
-                            difference.stripTrailingZeros().toPlainString()
-                    ));
+                    throw new ValidationException("WARNING : Input tax difference (" + difference + "/-) should be within " + inputTaxLimit + "/- Please note the row number " + (i + 1));
                 }
             }
         }

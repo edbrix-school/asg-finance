@@ -93,7 +93,7 @@ public class BankDebitVoucherValidator {
         // payingTo (Beneficiary A/C ID) required when PayingType = 1 or 3 (with conditions)
         // payingToName required when PayingType != 4
         if (!"4".equals(payingType) && isBlank(req.getPayingToName())) {
-            throw new ValidationException("Paying To Name is required for selected Paying Type");
+            throw new ValidationException("Beneficiary Name is a required field...");
         }
 
         // For TT (1) bank must be present (also checked in service, but double-check here)
@@ -130,13 +130,13 @@ public class BankDebitVoucherValidator {
     public void validateReferenceNotNull(BankDebitVoucherRequest req) {
         String refType = trim(req.getRefType());
         if ("FF JOBS".equalsIgnoreCase(refType) && isBlank(req.getFfRef())) {
-            throw new ValidationException("FF Reference is required for FF JOBS");
+            throw new ValidationException("Select a FF Ref...");
         }
         if ("FDA JOBS".equalsIgnoreCase(refType) && req.getFdaRef() == null) {
-            throw new ValidationException("FDA Reference is required for FDA JOBS");
+            throw new ValidationException("Select a FDA Ref...");
         }
         if ("MTA RFQ".equalsIgnoreCase(refType) && req.getSalesQtnRef() == null) {
-            throw new ValidationException("Sales Quotation Reference is required for MTA RFQ");
+            throw new ValidationException("Select a MTA RFQ Ref...");
         }
     }
 
@@ -213,7 +213,7 @@ public class BankDebitVoucherValidator {
 
         // payingToName (Beneficiary Name) required when PayingType != 4
         if (!"4".equals(payingType) && isBlank(req.getPayingToName())) {
-            throw new ValidationException("Beneficiary Name (payingToName) is required for selected PayingType");
+            throw new ValidationException("Beneficiary Name is a required field...");
         }
 
         // If payingType = 2 or 4, beneficiary IBAN not allowed (per clarifications)
@@ -293,19 +293,19 @@ public class BankDebitVoucherValidator {
 
         if ("GENERAL".equalsIgnoreCase(refType) || "CUSTOM".equalsIgnoreCase(refType)) {
             if (req.getPaymentGlDetails() == null || req.getPaymentGlDetails().isEmpty()) {
-                throw new ValidationException("At least one Payment GL Detail is required for Ref Type " + refType);
+                throw new ValidationException("No Details in this Transaction...");
             }
         }
 
         if ("FF JOBS".equalsIgnoreCase(refType) || "FDA JOBS".equalsIgnoreCase(refType)) {
             if (req.getChargeDetails() == null || req.getChargeDetails().isEmpty()) {
-                throw new ValidationException("Charge Details are required for Ref Type " + refType);
+                throw new ValidationException("No Details in this Transaction...");
             }
         }
 
         if ("MTA RFQ".equalsIgnoreCase(refType)) {
             if (req.getItemDetails() == null || req.getItemDetails().isEmpty()) {
-                throw new ValidationException("Item Details are required for Ref Type MTA RFQ");
+                throw new ValidationException("No Details in this Transaction...");
             }
         }
     }
@@ -319,7 +319,7 @@ public class BankDebitVoucherValidator {
             return; // only validate for GENERAL/CUSTOM
         }
 
-        BigDecimal headerAmount = nvl(req.getCurrencyAmt());
+        BigDecimal headerAmount = nvl(req.getAmount());
         if(req.getBankCharges() != null) {
             headerAmount = headerAmount.add(nvl(req.getBankCharges()));
         }
@@ -357,11 +357,7 @@ public class BankDebitVoucherValidator {
         }
 
         if (totalGlDr.compareTo(totalGlCr) != 0) {
-            throw new ValidationException(String.format("Total DR (%.3f) and CR (%.3f) in Payment GL details must be equal", totalGlDr, totalGlCr));
-        }
-
-        if ("GENERAL".equalsIgnoreCase(refType) && totalGlCr.compareTo(headerAmount) != 0) {
-            throw new ValidationException(String.format("Header amount (%.3f) does not match total CR (%.3f)", headerAmount, totalGlCr));
+            throw new ValidationException(String.format("Total Debit(%s) Amounts and Credit(%s) Amounts are not tallying...", totalGlDr.stripTrailingZeros().toPlainString(), totalGlCr.stripTrailingZeros().toPlainString()));
         }
     }
 
@@ -395,9 +391,7 @@ public class BankDebitVoucherValidator {
                 BigDecimal expected = base.multiply(req.getTaxPercentage()).divide(BigDecimal.valueOf(100), 3, RoundingMode.HALF_UP);
                 BigDecimal diff = expected.subtract(req.getTaxAmount()).abs();
                 if (diff.compareTo(allowedDifference) > 0) {
-                    throw new ValidationException(String.format(
-                            "Actual VAT amount (%.3f) and entered VAT amount (%.3f) difference should be less than %.3f",
-                            expected, req.getTaxAmount(), allowedDifference));
+                    throw new ValidationException("Actual VAT amount (" + expected + "/-) and entered VAT amount (" + req.getTaxAmount() + "/-) difference between should be less than " + allowedDifference + "...");
                 }
             }
         }
@@ -431,8 +425,7 @@ public class BankDebitVoucherValidator {
                 BigDecimal expected = det.getDrAmt().multiply(taxPerc).divide(BigDecimal.valueOf(100), 3, RoundingMode.HALF_UP);
                 BigDecimal diff = taxAmt.subtract(expected).abs();
                 if (diff.compareTo(inputTaxLimit) > 0) {
-                    throw new ValidationException(String.format("WARNING : Input tax difference (%.3f) should be within %.3f. Please note the row number %d",
-                            diff, inputTaxLimit, rowNum));
+                    throw new ValidationException("WARNING : Input tax difference (" + diff + "/-) should be within " + inputTaxLimit + "/- Please note the row number " + rowNum);
                 }
             }
 
@@ -441,8 +434,7 @@ public class BankDebitVoucherValidator {
                 BigDecimal expected = det.getCrAmt().multiply(taxPerc).divide(BigDecimal.valueOf(100), 3, RoundingMode.HALF_UP);
                 BigDecimal diff = taxAmt.subtract(expected).abs();
                 if (diff.compareTo(inputTaxLimit) > 0) {
-                    throw new ValidationException(String.format("WARNING : Input tax difference (%.3f) should be within %.3f. Please note the row number %d",
-                            diff, inputTaxLimit, rowNum));
+                    throw new ValidationException("WARNING : Input tax difference (" + diff + "/-) should be within " + inputTaxLimit + "/- Please note the row number " + rowNum);
                 }
             }
         }
@@ -478,7 +470,7 @@ public class BankDebitVoucherValidator {
                 if (postDays != null) {
                     long daysDiff = ChronoUnit.DAYS.between(systemDate, ttDate);
                     if (daysDiff > postDays) {
-                        throw new ValidationException(String.format("Postdated entries more than %d days is not allowed for TT. Please verify the Value Date...", postDays));
+                        throw new ValidationException(String.format("Postdated entries more than %d days is not allowed for TT in the Bank Debit Voucher, Please verify the Value Date...", postDays));
                     }
                 }
             } else {
@@ -503,7 +495,7 @@ public class BankDebitVoucherValidator {
                 if (postDays != null) {
                     long daysDiff = ChronoUnit.DAYS.between(systemDate, ttDate);
                     if (daysDiff > postDays) {
-                        throw new ValidationException(String.format("Postdated entries more than %d days is not allowed for Direct Transfer. Please verify the Value Date...", postDays));
+                        throw new ValidationException(String.format("Postdated entries more than %d days is not allowed for Direct Transfer in the Bank Debit Voucher, Please verify the Value Date...", postDays));
                     }
                 }
             } else {
@@ -524,7 +516,7 @@ public class BankDebitVoucherValidator {
             if (postDays != null) {
                 long daysDiff = ChronoUnit.DAYS.between(systemDate, ttDate);
                 if (daysDiff > postDays) {
-                    throw new ValidationException(String.format("Postdated entries more than %d days is not allowed for Credit Card. Please verify the Value Date...", postDays));
+                    throw new ValidationException(String.format("Postdated entries more than %d days is not allowed for Credit Card in the Bank Debit Voucher, Please verify the Value Date...", postDays));
                 }
             }
         }
@@ -605,13 +597,11 @@ public class BankDebitVoucherValidator {
             // Only rows with checkAll != 'N' are counted
             BigDecimal totalCharges = req.getChargeDetails().stream()
                     .filter(c -> !"N".equalsIgnoreCase(c.getCheckAll()))
-                    .map(c -> nvl(c.getChargeAmount()).add(nvl(c.getTaxAmount())))
+                    .map(c -> nvl(c.getChargeAmount()))
                     .reduce(ZERO, BigDecimal::add);
 
             if (totalCharges.compareTo(ZERO) > 0 && totalCharges.compareTo(headerAmount) != 0) {
-                throw new ValidationException(String.format(
-                        "Total charge amount (%.3f) must equal header amount (%.3f) for %s",
-                        totalCharges, headerAmount, refType));
+                throw new ValidationException("Total charge amount (" + totalCharges + ") is not matched with debit voucher Amount (" + headerAmount + ")");
             }
         }
 
@@ -623,9 +613,7 @@ public class BankDebitVoucherValidator {
                     .reduce(ZERO, BigDecimal::add);
 
             if (totalItems.compareTo(ZERO) > 0 && totalItems.compareTo(headerAmount) != 0) {
-                throw new ValidationException(String.format(
-                        "Total item amount (%.3f) must equal header amount (%.3f) for MTA RFQ",
-                        totalItems, headerAmount));
+                throw new ValidationException("Total charge amount (" + totalItems + ") is not matched with debit voucher Amount (" + headerAmount + ")");
             }
         }
     }

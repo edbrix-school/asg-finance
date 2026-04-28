@@ -173,6 +173,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
                 if (creditNoteDto.getChargeDetails() != null) {
                     saveChargeDetails(transactionPoid, creditNoteDto.getChargeDetails());
+                    entityManager.flush();
                     executeChargeTaxIfChanged(transactionPoid, creditNoteDto);
                 }
 
@@ -189,6 +190,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
             saveBillwiseForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111", false);
             saveCostCenterForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111", false);
+            executePostSaveUpdates(transactionPoid, creditNoteDto);
 
             loadBillwiseAndCostCenterBreakup(glDetailDtos, transactionPoid, "300-111");
             result.setGlDetails(glDetailDtos);
@@ -285,16 +287,12 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             }
 
             if (creditNoteDto.getChargeDetails() != null) {
-                updateChargeDetailsWithLogging(transactionPoid, creditNoteDto.getChargeDetails(), detailSummaryLogs, creditNoteDto);                           
+                updateChargeDetailsWithLogging(transactionPoid, creditNoteDto.getChargeDetails(), detailSummaryLogs, creditNoteDto);
             }
-
-            entityManager.flush();
             saveBillwiseForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111", true);
             saveCostCenterForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111", true);
             entityManager.flush();
-
             executePostSaveUpdates(transactionPoid, creditNoteDto);
-
             // Execute post-commit tax recalculation and reference updates
             executePostCommitTaxUpdates(transactionPoid, creditNoteDto, oldFdaRef, oldFfRef, existing);
 

@@ -24,6 +24,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 
 import static com.asg.common.lib.dto.response.ApiResponse.internalServerError;
@@ -168,7 +169,7 @@ public class ApPaymentRequestHdrController {
             @RequestParam(name = "transactionPoid") Long transactionPoid,
             @RequestParam(name = "refType") String refType
     ) {
-        ApPaymentRequestDetailResponse response =
+        List<Map<String,Object>> response =
                 service.findDetailsByRefId(transactionPoid,refType);
 
         return success("AP Payment Request fetched successfully", response);

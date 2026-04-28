@@ -8,6 +8,7 @@ import com.asg.finance.dto.ApPaymentRequestHdrResponseDto;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 
 public interface ApPaymentRequestService {
@@ -19,7 +20,8 @@ public interface ApPaymentRequestService {
 
     ApPaymentRequestHdrResponseDto findById(Long transactionPoid);
 
-    ApPaymentRequestDetailResponse findDetailsByRefId(Long transactionPoid, String refType);
+    List<Map<String,Object>> findDetailsByRefId(Long transactionPoid, String refType);
+//    ApPaymentRequestDetailResponse findDetailsByRefId(Long transactionPoid, String refType);
 
     void delete(Long transactionPoid, DeleteReasonDto deleteReasonDto);
 

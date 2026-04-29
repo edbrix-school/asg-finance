@@ -34,4 +34,6 @@ public class TelexFileGenerateResponseDto {
     private String lastModifiedBy;
     private LocalDateTime lastModifiedDate;
     private List<TelexFileDtlDto> details;
+    private List<String> warnings;
+    private List<String> infos;
 }

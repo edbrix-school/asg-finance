@@ -13,7 +13,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import javax.sql.DataSource;
 import java.math.BigDecimal;
+import java.sql.CallableStatement;
+import java.sql.Connection;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -23,7 +26,6 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@SuppressWarnings("unchecked")
 class TelexFileGenerateProcRepositoryTest {
 
     @Mock
@@ -31,6 +33,15 @@ class TelexFileGenerateProcRepositoryTest {
 
     @Mock
     private LoggingService loggingService;
+
+    @Mock
+    private DataSource dataSource;
+
+    @Mock
+    private Connection connection;
+
+    @Mock
+    private CallableStatement callableStatement;
 
     @Mock
     private Query query;
@@ -42,7 +53,7 @@ class TelexFileGenerateProcRepositoryTest {
 
     @BeforeEach
     void setUp() {
-        repository = new TelexFileGenerateProcRepositoryImpl(loggingService);
+        repository = new TelexFileGenerateProcRepositoryImpl(loggingService, dataSource);
         ReflectionTestUtils.setField(repository, "entityManager", entityManager);
     }
 
@@ -87,7 +98,7 @@ class TelexFileGenerateProcRepositoryTest {
     @Test
     void loadTelexTransferData_EmptyResult() {
         List<Object[]> emptyList = new ArrayList<>();
-        
+
         when(entityManager.createNativeQuery(anyString())).thenReturn(query);
         when(query.setParameter(anyInt(), any())).thenReturn(query);
         doReturn(emptyList).when(query).getResultList();
@@ -160,7 +171,7 @@ class TelexFileGenerateProcRepositoryTest {
 
     @Test
     void checkOverdraft_Success() {
-        when(entityManager.createStoredProcedureQuery("PROC_BANK_FILE_CHECK_OD")).thenReturn(storedProcedureQuery);
+        when(entityManager.createStoredProcedureQuery("PROC_BANK_FILE_CHECK_OD_V2")).thenReturn(storedProcedureQuery);
         when(storedProcedureQuery.registerStoredProcedureParameter(anyInt(), any(), any())).thenReturn(storedProcedureQuery);
         when(storedProcedureQuery.setParameter(anyInt(), any())).thenReturn(storedProcedureQuery);
         when(storedProcedureQuery.execute()).thenReturn(true);
@@ -173,7 +184,7 @@ class TelexFileGenerateProcRepositoryTest {
 
     @Test
     void checkOverdraft_Exception() {
-        when(entityManager.createStoredProcedureQuery("PROC_BANK_FILE_CHECK_OD"))
+        when(entityManager.createStoredProcedureQuery("PROC_BANK_FILE_CHECK_OD_V2"))
                 .thenThrow(new RuntimeException("Database error"));
 
         String result = repository.checkOverdraft(42418L);
@@ -208,7 +219,7 @@ class TelexFileGenerateProcRepositoryTest {
     void getPayingTo_Success() {
         List<String> resultList = new ArrayList<>();
         resultList.add("EMP-001");
-        
+
         when(entityManager.createNativeQuery(anyString())).thenReturn(query);
         when(query.setParameter(anyInt(), any())).thenReturn(query);
         doReturn(resultList).when(query).getResultList();
@@ -221,7 +232,7 @@ class TelexFileGenerateProcRepositoryTest {
     @Test
     void getPayingTo_EmptyResult() {
         List<String> emptyList = new ArrayList<>();
-        
+
         when(entityManager.createNativeQuery(anyString())).thenReturn(query);
         when(query.setParameter(anyInt(), any())).thenReturn(query);
         doReturn(emptyList).when(query).getResultList();
@@ -283,7 +294,7 @@ class TelexFileGenerateProcRepositoryTest {
         when(query.setParameter(anyInt(), any())).thenReturn(query);
         doReturn(resultList).when(query).getResultList();
 
-        Map<String, String> result = repository.getBeneficiaryDetails(1001L);
+        Map<String, String> result = repository.getBeneficiaryDetails(1001L, "BD-2025-001");
 
         assertNotNull(result);
         assertEquals("BEN-001", result.get("BENEFICIARY_ID"));
@@ -293,12 +304,12 @@ class TelexFileGenerateProcRepositoryTest {
     @Test
     void getBeneficiaryDetails_EmptyResult() {
         List<Object[]> emptyList = new ArrayList<>();
-        
+
         when(entityManager.createNativeQuery(anyString())).thenReturn(query);
         when(query.setParameter(anyInt(), any())).thenReturn(query);
         doReturn(emptyList).when(query).getResultList();
 
-        Map<String, String> result = repository.getBeneficiaryDetails(1001L);
+        Map<String, String> result = repository.getBeneficiaryDetails(1001L, "BD-2025-001");
 
         assertNotNull(result);
         assertTrue(result.isEmpty());
@@ -308,7 +319,7 @@ class TelexFileGenerateProcRepositoryTest {
     void getBeneficiaryDetails_Exception() {
         when(entityManager.createNativeQuery(anyString())).thenThrow(new RuntimeException("Database error"));
 
-        Map<String, String> result = repository.getBeneficiaryDetails(1001L);
+        Map<String, String> result = repository.getBeneficiaryDetails(1001L, "BD-2025-001");
 
         assertNotNull(result);
         assertTrue(result.isEmpty());
@@ -368,7 +379,7 @@ class TelexFileGenerateProcRepositoryTest {
         when(query.setParameter(anyInt(), any())).thenReturn(query);
         when(query.getSingleResult()).thenReturn("BH");
 
-        String result = repository.getCountryCode(1001L);
+        String result = repository.getCountryCode(1001L, "BD-2025-001");
 
         assertEquals("BH", result);
     }
@@ -377,7 +388,7 @@ class TelexFileGenerateProcRepositoryTest {
     void getCountryCode_Exception() {
         when(entityManager.createNativeQuery(anyString())).thenThrow(new RuntimeException("Database error"));
 
-        String result = repository.getCountryCode(1001L);
+        String result = repository.getCountryCode(1001L, "BD-2025-001");
 
         assertEquals("BH", result);
         verify(entityManager, times(1)).createNativeQuery(anyString());
@@ -400,33 +411,28 @@ class TelexFileGenerateProcRepositoryTest {
         when(entityManager.createStoredProcedureQuery("PROC_BANK_FILE_CREATE_PAYMENT"))
                 .thenThrow(new RuntimeException("Database error"));
 
-        // Should not throw exception, just log it
         repository.createBankFilePayment(1L, 1001L, 1L, "Company", "Address", "BH", "REF", "OUR", "BH", 42418L, 1);
 
         verify(entityManager, times(1)).createStoredProcedureQuery("PROC_BANK_FILE_CREATE_PAYMENT");
     }
 
     @Test
-    void generateHsbcApiXml_Success() {
-        when(entityManager.createStoredProcedureQuery("PROC_HSBC_API_GENERATE_XML_V2")).thenReturn(storedProcedureQuery);
-        when(storedProcedureQuery.registerStoredProcedureParameter(anyInt(), any(), any())).thenReturn(storedProcedureQuery);
-        when(storedProcedureQuery.setParameter(anyInt(), any())).thenReturn(storedProcedureQuery);
-        when(storedProcedureQuery.execute()).thenReturn(true);
+    void generateHsbcApiXml_Success() throws Exception {
+        when(dataSource.getConnection()).thenReturn(connection);
+        when(connection.prepareCall(anyString())).thenReturn(callableStatement);
 
         repository.generateHsbcApiXml(1L, 1001L, 1L, "Company", "Address", "BH", "REF", "OUR", "BH", 42418L, 1, 1L);
 
-        verify(entityManager, times(1)).createStoredProcedureQuery("PROC_HSBC_API_GENERATE_XML_V2");
+        verify(callableStatement, times(1)).execute();
     }
 
     @Test
-    void generateHsbcApiXml_Exception() {
-        when(entityManager.createStoredProcedureQuery("PROC_HSBC_API_GENERATE_XML_V2"))
-                .thenThrow(new RuntimeException("Database error"));
+    void generateHsbcApiXml_Exception() throws Exception {
+        when(dataSource.getConnection()).thenThrow(new RuntimeException("Database error"));
 
-        // Should not throw exception, just log it
         repository.generateHsbcApiXml(1L, 1001L, 1L, "Company", "Address", "BH", "REF", "OUR", "BH", 42418L, 1, 1L);
 
-        verify(entityManager, times(1)).createStoredProcedureQuery("PROC_HSBC_API_GENERATE_XML_V2");
+        verify(dataSource, times(1)).getConnection();
     }
 
     @Test
@@ -446,7 +452,6 @@ class TelexFileGenerateProcRepositoryTest {
         when(entityManager.createStoredProcedureQuery("PROC_BANK_FILE_CREATE_PMT_AUB"))
                 .thenThrow(new RuntimeException("Database error"));
 
-        // Should not throw exception, just log it
         repository.createBankFilePaymentAub(1L, 1001L, 1L, "Company", "Address", "BH", "REF", "OUR", "BH", 42418L, 1);
 
         verify(entityManager, times(1)).createStoredProcedureQuery("PROC_BANK_FILE_CREATE_PMT_AUB");

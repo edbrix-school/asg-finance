@@ -186,11 +186,11 @@ public class GLMasterServiceImpl implements GLMasterService {
                 entity.setGlCode(refreshedEntity.getGlCode());
             } else {
                 // Fallback: construct expected GL_CODE
-                entity.setGlCode(entity.getAccountType() + entity.getGlPoid());
+                entity.setGlCode(buildFallbackGlCode(entity.getAccountType(), entity.getGlPoid()));
             }
         } catch (Exception e) {
             log.warn("Failed to get generated GL_CODE, using fallback: {}", e.getMessage());
-            entity.setGlCode(entity.getAccountType() + entity.getGlPoid());
+            entity.setGlCode(buildFallbackGlCode(entity.getAccountType(), entity.getGlPoid()));
         }
 
 
@@ -263,6 +263,9 @@ public class GLMasterServiceImpl implements GLMasterService {
                 .orElseThrow(() -> new RuntimeException("GL Master not found: " + glPoid));
 
         String existingType = entity.getType();
+        if (isLockedSystemMainGroup(entity) && isAccountTypeChanged(entity.getAccountType(), req.getAccountType())) {
+            throw new ValidationException("GL Account Type cannot be changed for Main Groups (ASSETS, LIABILITIES, REVENUE ACCOUNTS, EXPENSES).");
+        }
         String requestedType = req.getType();
         if (isGroupType(existingType) && "LEDGER".equalsIgnoreCase(requestedType) && hasActiveChildren(glPoid)) {
             throw new ValidationException("Cannot change GL Type to LEDGER because child GL accounts are already mapped under this group.");
@@ -461,6 +464,40 @@ public class GLMasterServiceImpl implements GLMasterService {
 
     private boolean isGroupType(String type) {
         return "MAIN_GROUP".equalsIgnoreCase(type) || "SUB_GROUP".equalsIgnoreCase(type);
+    }
+
+    private boolean isLockedSystemMainGroup(GLMasterEntity entity) {
+        if (entity == null || !"MAIN_GROUP".equalsIgnoreCase(entity.getType())) {
+            return false;
+        }
+        String accountType = entity.getAccountType() == null ? "" : entity.getAccountType().trim().toUpperCase();
+        return "ASSET".equals(accountType)
+                || "LIABILITY".equals(accountType)
+                || "REVENUE".equals(accountType)
+                || "EXPENSE".equals(accountType);
+    }
+
+    private boolean isAccountTypeChanged(String existingAccountType, String requestedAccountType) {
+        String existing = existingAccountType == null ? "" : existingAccountType.trim();
+        String requested = requestedAccountType == null ? "" : requestedAccountType.trim();
+        return !existing.equalsIgnoreCase(requested);
+    }
+
+    private String buildFallbackGlCode(String accountType, Long glPoid) {
+        String prefix = "";
+        if (accountType != null) {
+            String normalized = accountType.trim().toUpperCase();
+            if ("ASSET".equals(normalized)) {
+                prefix = "A";
+            } else if ("LIABILITY".equals(normalized)) {
+                prefix = "L";
+            } else if ("REVENUE".equals(normalized)) {
+                prefix = "R";
+            } else if ("EXPENSE".equals(normalized)) {
+                prefix = "E";
+            }
+        }
+        return prefix + glPoid;
     }
 
 
@@ -967,8 +1004,42 @@ public class GLMasterServiceImpl implements GLMasterService {
                 "GL_DESCRIPTION");
 
         Page<Map<String, Object>> page = new PageImpl<>(raw.records(), pageable, raw.totalRecords());
+        Map<String, Object> response = PaginationUtil.wrapPage(page, raw.displayFields());
+        if (isSearchRequest(filters)) {
+            response.put("totalElements", countLedgerRows(raw.records()));
+        } else {
+            response.put("totalElements", glMasterRepo.countActiveLedgers(UserContext.getGroupPoid()));
+        }
+        return response;
+    }
 
-        return PaginationUtil.wrapPage(page, raw.displayFields());
+    private boolean isSearchRequest(List<FilterDto> filters) {
+        if (filters == null || filters.isEmpty()) {
+            return false;
+        }
+        return filters.stream()
+                .anyMatch(filter -> filter != null
+                        && filter.searchValue() != null
+                        && !filter.searchValue().trim().isEmpty());
+    }
+
+    private long countLedgerRows(List<Map<String, Object>> records) {
+        if (records == null || records.isEmpty()) {
+            return 0L;
+        }
+        return records.stream()
+                .filter(Objects::nonNull)
+                .map(this::extractGlType)
+                .filter(type -> "LEDGER".equalsIgnoreCase(type))
+                .count();
+    }
+
+    private String extractGlType(Map<String, Object> row) {
+        Object glType = row.get("GL_TYPE");
+        if (glType == null) {
+            glType = row.get("TYPE");
+        }
+        return glType == null ? "" : glType.toString();
     }
 
     @Override

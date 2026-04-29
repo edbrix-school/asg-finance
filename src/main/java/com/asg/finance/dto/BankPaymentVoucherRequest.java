@@ -29,10 +29,11 @@ public class BankPaymentVoucherRequest {
     private String multiple;
     private String securityCheque;
     private Boolean released;
-    private String releasedToPerson;      // → RELEASED_TO_PERSON
+    private String releasedToPerson;
     private String contact;
     private String chqPrintedUserCode;
     private LocalDate chqPrintedDate;
+    private String prePrinted;
     private Long salesQtnRef;
     private Long availableBalance;
     private List<BankPaymentGLDetailRequest> glDetails;

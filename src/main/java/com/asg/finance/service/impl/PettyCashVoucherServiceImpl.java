@@ -1700,8 +1700,13 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
                         if (StringUtils.isNotEmpty(cc.getCostPoid()) && StringUtils.isNotEmpty(cc.getCostGroup())) {
                             try {
-                                Long poid = Long.parseLong(cc.getCostPoid());
-                                dto.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(poid, cc.getCostGroup()));
+
+                                LovGetListDto lovGetListDto = lovService.getDetailsByCodeAndLovName(cc.getCostPoid(), cc.getCostGroup());
+                                if (lovGetListDto.getPoid() == null) {
+                                    Long poid = Long.parseLong(cc.getCostPoid());
+                                    lovGetListDto = lovService.getDetailsByPoidAndLovName(poid, cc.getCostGroup());
+                                }
+                                dto.setCostCenterDetails(lovGetListDto);
                             } catch (NumberFormatException e) {
                                 dto.setCostCenterDetails(lovService.getDetailsByCodeAndLovName(cc.getCostPoid(), cc.getCostGroup()));
                             }

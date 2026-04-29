@@ -42,8 +42,6 @@ public class CreateExpenseReallocationRequest {
 
     @Valid
     @NotNull(message = "Details are required")
-    private List<ExpenseReallocationDetailRequest> details;
+    private List<ExpenseReallocationXlDetailRequest> details;
 
-    @Valid
-    private List<ExpenseReallocationXlDetailRequest> xlDetails; // Optional
 }

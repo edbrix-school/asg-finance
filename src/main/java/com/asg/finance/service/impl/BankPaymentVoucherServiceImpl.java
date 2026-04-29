@@ -424,9 +424,19 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
             entity.setReleasedPersonAddress(req.getContact());
             entity.setReleasedByUserCode(Objects.requireNonNull(UserContext.getCurrentUser()).getUserName());
             entity.setReleasedDate(LocalDate.now());
+            entity.setReleased("Y");
         }
         entity.setSalesQtnRef(req.getSalesQtnRef() != null ? req.getSalesQtnRef() :
                 (StringUtils.isNumeric(req.getMtaRfqId()) ? Long.valueOf(req.getMtaRfqId()) : null));
+
+        entity.setPrePrinted(req.getPrePrinted() != null ? req.getPrePrinted() : "N");
+        if (req.getChqPrintedUserCode() != null || req.getChqPrintedDate() != null) {
+            entity.setChqPrintedUserCode(req.getChqPrintedUserCode());
+            entity.setChqPrintedDate(req.getChqPrintedDate());
+            entity.setChqPrinted("Y");
+        } else {
+            entity.setChqPrinted("N");
+        }
     }
 
     private void validateRefType(BankPaymentVoucherRequest req) {
@@ -560,12 +570,18 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         BigDecimal inputTaxLimit = getInputTaxLimit();
         if (inputTaxLimit == null) return;
 
+        int displayRowNum = 0;
         for (int i = 0; i < glDetails.size(); i++) {
             BankPaymentGLDetailRequest row = glDetails.get(i);
-            int rowNum = i + 1;
-
-            validateTax(row.getDrAmt(), row, inputTaxLimit, rowNum);
-            validateTax(row.getCrAmt(), row, inputTaxLimit, rowNum);
+            
+            // Skip deleted rows
+            if ("isDeleted".equalsIgnoreCase(row.getActionType())) {
+                continue;
+            }
+            
+            displayRowNum++;
+            validateTax(row.getDrAmt(), row, inputTaxLimit, displayRowNum);
+            validateTax(row.getCrAmt(), row, inputTaxLimit, displayRowNum);
         }
     }
 
@@ -649,7 +665,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         entity.setMultiCompany(req.getMultiple());
         entity.setSecurityCheque(req.getSecurityCheque());
         entity.setCurrencyAmount(req.getCurrencyAmount());
-        entity.setPrePrinted("N");
+        entity.setPrePrinted(req.getPrePrinted() != null ? req.getPrePrinted() : "N");
         entity.setReleased("N");
         entity.setHold("N");
         entity.setPrintWithoutBillwise("N");
@@ -1382,7 +1398,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         }
 
         // Save records and log creations
-        List<GLPaymentVoucherDtlGLEntity> savedEntities = paymentVoucherDetailsRepository.saveAll(toSave);
+        List<GLPaymentVoucherDtlGLEntity> savedEntities = paymentVoucherDetailsRepository.saveAllAndFlush(toSave);
 
         // Process batch logging for updates
         if (!logRequests.isEmpty()) {
@@ -1446,8 +1462,13 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                     dto.setBillRefType(popup.getBillRefType());
                     dto.setBillRef(popup.getBillRef());
                     dto.setBillDueDate(popup.getBillDueDate());
-                    dto.setDrAmt(popup.getAmount());
-                    dto.setCrAmt(popup.getAmount());
+                    if ("DR".equalsIgnoreCase(popup.getType())) {
+                        dto.setDrAmt(popup.getAmount());
+                        dto.setCrAmt(BigDecimal.ZERO);
+                    } else {
+                        dto.setCrAmt(popup.getAmount());
+                        dto.setDrAmt(BigDecimal.ZERO);
+                    }
                     dto.setBillRemarks(popup.getBillRemarks());
 
                     breakupList.add(dto);
@@ -1470,7 +1491,9 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                     dto.setCompanyPoid(UserContext.getCompanyPoid());
                     dto.setDocId(documentId);
                     dto.setTransactionPoid(transactionPoid);
-                    dto.setCostDetRowId(glDetail.getGlPoid()); // mapping GL → cost center
+                    dto.setMainDetRowId(glDetail.getDetRowId());
+                    dto.setGlPoid(glDetail.getGlPoid());
+                    dto.setCostDetRowId(popup.getCostDetRowId()); 
                     dto.setCostGroup(popup.getCostGroup());
                     dto.setCostPoid(popup.getCostPoid());
                     dto.setAmount(popup.getAmount());
@@ -1518,8 +1541,13 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                     dto.setBillRefType(popup.getBillRefType());
                     dto.setBillRef(popup.getBillRef());
                     dto.setBillDueDate(popup.getBillDueDate());
-                    dto.setDrAmt(popup.getAmount());
-                    dto.setCrAmt(popup.getAmount());
+                    if ("DR".equalsIgnoreCase(popup.getType())) {
+                        dto.setDrAmt(popup.getAmount());
+                        dto.setCrAmt(BigDecimal.ZERO);
+                    } else {
+                        dto.setCrAmt(popup.getAmount());
+                        dto.setDrAmt(BigDecimal.ZERO);
+                    }
                     dto.setBillRemarks(popup.getBillRemarks());
 
                     billwiseList.add(dto);
@@ -1533,20 +1561,32 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         // === COST CENTER BREAKUP ===
         // -------------------------
+
+        costCenterBreakupDtlRepository.deleteCostCenters(
+                UserContext.getGroupPoid(),
+                UserContext.getCompanyPoid(),
+                documentId,
+                transactionPoid,
+                userPoid
+        );
+
         List<CostCenterBreakupRequestDto> costCenterList = new ArrayList<>();
 
         for (BankPaymentGLDetailRequest glDetail : glDetails) {
             if (glDetail.getCostCenterBreakup() != null && !glDetail.getCostCenterBreakup().isEmpty()) {
                 for (CostCenterBreakupPopupRequestDto popup : glDetail.getCostCenterBreakup()) {
-                    CostCenterBreakupRequestDto cc = CostCenterBreakupRequestDto.builder()
-                            .costDetRowId(glDetail.getGlPoid())
-                            .costGroup(UserContext.getGroupPoid().toString())
-                            .costPoid(popup.getCostPoid())
-                            .amount(popup.getAmount())
-                            .docId(documentId)
-                            .transactionPoid(transactionPoid)
-                            .loginUserPoid(UserContext.getUserPoid())
-                            .build();
+                    CostCenterBreakupRequestDto cc = new CostCenterBreakupRequestDto();
+                    cc.setGroupPoid(UserContext.getGroupPoid());
+                    cc.setCompanyPoid(UserContext.getCompanyPoid());
+                    cc.setDocId(documentId);
+                    cc.setTransactionPoid(transactionPoid);
+                    cc.setMainDetRowId(glDetail.getDetRowId());
+                    cc.setGlPoid(glDetail.getGlPoid());
+                    cc.setCostDetRowId(popup.getCostDetRowId());
+                    cc.setCostGroup(popup.getCostGroup());
+                    cc.setCostPoid(popup.getCostPoid());
+                    cc.setAmount(popup.getAmount());
+                    cc.setLoginUserPoid(userPoid);
 
                     costCenterList.add(cc);
                 }
@@ -1578,8 +1618,9 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         return list.stream().map(src -> {
             boolean isDebit = src.getDrAmt() != null && src.getDrAmt().compareTo(BigDecimal.ZERO) > 0;
+            boolean isCredit = src.getCrAmt() != null && src.getCrAmt().compareTo(BigDecimal.ZERO) > 0;
             String type = isDebit ? "DR" : "CR";
-            BigDecimal amount = src.getDrAmt() != null ? src.getDrAmt() : src.getCrAmt();
+            BigDecimal amount = isDebit ? src.getDrAmt() : (isCredit ? src.getCrAmt() : BigDecimal.ZERO);
             return BillwiseBreakupPopupRequestDto.builder()
                     .billDetRowId(src.getBillDetRowId())
                     .billRefType(src.getBillRefType())

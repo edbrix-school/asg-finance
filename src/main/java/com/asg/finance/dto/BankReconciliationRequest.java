@@ -3,6 +3,7 @@ package com.asg.finance.dto;
 import java.time.LocalDate;
 
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.Positive;
 import lombok.Data;
 
@@ -22,6 +23,7 @@ public class BankReconciliationRequest {
 	@NotNull(message = "Transaction date is required")
 	private LocalDate transactionDate;
     @NotNull(message = "Bank Statement Date is required")
+    @PastOrPresent(message = "Bank Statement Date cannot be a future date")
     private LocalDate bankStatementDate;
 	@NotNull(message = "DocRef is required")
 	private String docRef;
@@ -37,6 +39,8 @@ public class BankReconciliationRequest {
 	private Double drAmt;
 	private Double crAmt;
 	private Long postedBy;
+    @NotNull(message = "Document Date is required")
+    private LocalDate docDate;
     @NotNull(message = "Clearance Date is required")
 	private LocalDate clearanceDate;
 	private String userAuto;

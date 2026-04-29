@@ -159,8 +159,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                 .postingNarration(request.getPostingNarration())
                 .wdvAccountGl(request.getWdvAccountGl())
                 .multiCompany(isMultiCompany ? FLAG_YES : FLAG_NO)
-                .remarks(request.getRemarks())
-                .confidentialRemarks(request.getConfidentialRemarks())
+                .remarks(request.getConfidentialRemarks())
                 .deleted(FLAG_NO)
                 .build();
     }
@@ -258,10 +257,10 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
     }
 
     private void validateAssetDisposalType(JournalVoucherRequest request) {
-        if (request.getWdvAccountGl() == null) {
-            log.error("WDV Account GL is required for ASSET_DISPOSAL");
-            throw new IllegalArgumentException("WDV Account GL is required for ASSET_DISPOSAL type");
+        if (request.getWdvAccountGl() != null && request.getWdvAccountGl() == 0) {
+            request.setWdvAccountGl(null);
         }
+
         if (request.getAssetDetails() == null || request.getAssetDetails().isEmpty()) {
             String msg = "At least one asset detail line is required for ASSET_DISPOSAL type";
             log.error(msg);
@@ -435,24 +434,15 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                 case ACTION_ISCREATED -> {
                     maxDetRowId++;
                     GlJournalVoucherDtl detail = new GlJournalVoucherDtl();
-                    BeanUtils.copyProperties(dto, detail);
-                    detail.setTransactionPoid(transactionPoid);
-                    detail.setDetRowId(maxDetRowId);
-                    detail.setCompanyPoid(companyPoid);
+                    mapGlDetailToEntity(detail, transactionPoid, maxDetRowId, dto, companyPoid);
                     glJournalVoucherDtlRepository.save(detail);
 
                     loggingService.createLogSummaryEntry(docId, transactionPoid.toString(),
                             String.format("Row Created on %s GL Detail with detRowId: %s", RES_JOURNAL_VOUCHER,
                                     maxDetRowId));
 
-                    if (dto.getCostCenterBreakup() != null && !dto.getCostCenterBreakup().isEmpty()) {
-                        costCenterRequestDtoList.addAll(buildCostCenterBreakups(transactionPoid, maxDetRowId, docId,
-                                dto.getGlPoid(), dto.getCostCenterBreakup(), isNew, costCenterCounter));
-                    }
-                    if (dto.getBillWiseBreakup() != null && !dto.getBillWiseBreakup().isEmpty()) {
-                        billwiseRequestDtoList.addAll(buildBillwiseBreakups(transactionPoid, maxDetRowId, docId,
-                                dto.getGlPoid(), companyPoid, dto.getBillWiseBreakup(), isNew, billwiseCounter));
-                    }
+                    processBreakups(dto, transactionPoid, maxDetRowId, docId, companyPoid, isNew,
+                            costCenterRequestDtoList, billwiseRequestDtoList, costCenterCounter, billwiseCounter);
                 }
                 case ACTION_ISUPDATED -> {
                     GlJournalVoucherDtl detail = glJournalVoucherDtlRepository
@@ -462,8 +452,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                     GlJournalVoucherDtl oldDetail = new GlJournalVoucherDtl();
                     BeanUtils.copyProperties(detail, oldDetail);
 
-                    BeanUtils.copyProperties(dto, detail, "detRowId", "transactionPoid");
-                    detail.setCompanyPoid(companyPoid);
+                    mapGlDetailToEntity(detail, transactionPoid, dto.getDetRowId(), dto, companyPoid);
                     glJournalVoucherDtlRepository.save(detail);
 
                     String logDetail = String.format("KeyId = %s:%s DET_ROW_ID:%s", FIELD_TRANSACTION_POID,
@@ -472,19 +461,17 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                     logRequests.add(new LogRequestDto<>(oldDetail, detail, GlJournalVoucherDtl.class, docId,
                             transactionPoid.toString(), logDetail));
 
-                    if (dto.getCostCenterBreakup() != null && !dto.getCostCenterBreakup().isEmpty()) {
-                        costCenterRequestDtoList.addAll(buildCostCenterBreakups(transactionPoid, dto.getDetRowId(),
-                                docId, dto.getGlPoid(), dto.getCostCenterBreakup(), isNew, costCenterCounter));
-                    }
-                    if (dto.getBillWiseBreakup() != null && !dto.getBillWiseBreakup().isEmpty()) {
-                        billwiseRequestDtoList.addAll(buildBillwiseBreakups(transactionPoid, dto.getDetRowId(), docId,
-                                dto.getGlPoid(), companyPoid, dto.getBillWiseBreakup(), isNew, billwiseCounter));
-                    }
+                    processBreakups(dto, transactionPoid, dto.getDetRowId(), docId, companyPoid, isNew,
+                            costCenterRequestDtoList, billwiseRequestDtoList, costCenterCounter, billwiseCounter);
                 }
                 case ACTION_ISDELETED -> {
                     glJournalVoucherDtlRepository
                             .deleteById(new TransactionDetailKey(transactionPoid, dto.getDetRowId()));
                     loggingService.logDelete(dto, docId, transactionPoid.toString());
+                }
+                case ACTION_NOCHANGES -> {
+                    processBreakups(dto, transactionPoid, dto.getDetRowId(), docId, companyPoid, isNew,
+                            costCenterRequestDtoList, billwiseRequestDtoList, costCenterCounter, billwiseCounter);
                 }
             }
         }
@@ -512,6 +499,19 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         } else {
             billwiseBreakupService.deleteBillwiseBreakup(getGroupId(), getCompanyId(), docId, transactionPoid,
                     getUserPoid());
+        }
+    }
+
+    private void processBreakups(JournalVoucherGlDetailDto dto, Long transactionPoid, Long detRowId, String docId, Long companyPoid, boolean isNew,
+                                 List<CostCenterBreakupRequestDto> costCenterRequestDtoList, List<BillwiseBreakupRequestDto> billwiseRequestDtoList,
+                                 AtomicLong costCenterCounter, AtomicLong billwiseCounter) {
+        if (dto.getCostCenterBreakup() != null && !dto.getCostCenterBreakup().isEmpty()) {
+            costCenterRequestDtoList.addAll(buildCostCenterBreakups(transactionPoid, detRowId,
+                    docId, dto.getGlPoid(), dto.getCostCenterBreakup(), isNew, costCenterCounter));
+        }
+        if (dto.getBillWiseBreakup() != null && !dto.getBillWiseBreakup().isEmpty()) {
+            billwiseRequestDtoList.addAll(buildBillwiseBreakups(transactionPoid, detRowId, docId,
+                    dto.getGlPoid(), companyPoid, dto.getBillWiseBreakup(), isNew, billwiseCounter));
         }
     }
 
@@ -590,9 +590,8 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                 case ACTION_ISCREATED -> {
                     maxSn++;
                     GlJournalVoucherAssetDtl detail = new GlJournalVoucherAssetDtl();
-                    BeanUtils.copyProperties(dto, detail);
-                    detail.setTransactionPoid(transactionPoid);
-                    detail.setDetRowId(maxSn);
+                    enrichAssetDetailFromDb(dto);
+                    mapAssetDetailToEntity(detail, transactionPoid, maxSn, dto);
                     glJournalVoucherAssetDtlRepository.save(detail);
 
                     loggingService.createLogSummaryEntry(docId, transactionPoid.toString(),
@@ -606,7 +605,8 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                     GlJournalVoucherAssetDtl oldDetail = new GlJournalVoucherAssetDtl();
                     BeanUtils.copyProperties(existing, oldDetail);
 
-                    BeanUtils.copyProperties(dto, existing, "detRowId", "transactionPoid");
+                    enrichAssetDetailFromDb(dto);
+                    mapAssetDetailToEntity(existing, transactionPoid, dto.getDetRowId(), dto);
                     glJournalVoucherAssetDtlRepository.save(existing);
 
                     logRequests.add(new LogRequestDto<>(oldDetail, existing, GlJournalVoucherAssetDtl.class,
@@ -642,9 +642,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                 case ACTION_ISCREATED -> {
                     maxSn++;
                     GlJournalFaCapitalization detail = new GlJournalFaCapitalization();
-                    BeanUtils.copyProperties(dto, detail);
-                    detail.setTransactionPoid(transactionPoid);
-                    detail.setDetRowId(maxSn);
+                    mapCapitalizationDetailToEntity(detail, transactionPoid, maxSn, dto);
                     glJournalFaCapitalizationRepository.save(detail);
 
                     loggingService.createLogSummaryEntry(docId, transactionPoid.toString(),
@@ -655,12 +653,12 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                     GlJournalFaCapitalization existing = glJournalFaCapitalizationRepository
                             .findById(new TransactionDetailKey(transactionPoid, dto.getDetRowId()))
                             .orElseThrow(() -> new ResourceNotFoundException("Capitalization Detail", "detRowId",
-                                    dto.getDetRowId()));
+                                     dto.getDetRowId()));
 
                     GlJournalFaCapitalization oldDetail = new GlJournalFaCapitalization();
                     BeanUtils.copyProperties(existing, oldDetail);
 
-                    BeanUtils.copyProperties(dto, existing, "detRowId", "transactionPoid");
+                    mapCapitalizationDetailToEntity(existing, transactionPoid, dto.getDetRowId(), dto);
                     glJournalFaCapitalizationRepository.save(existing);
 
                     logRequests.add(new LogRequestDto<>(oldDetail, existing, GlJournalFaCapitalization.class,
@@ -709,8 +707,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         existing.setPostingNarration(request.getPostingNarration());
         existing.setWdvAccountGl(request.getWdvAccountGl());
         existing.setMultiCompany(isMultiCompany ? FLAG_YES : FLAG_NO);
-        existing.setRemarks(request.getRemarks());
-        existing.setConfidentialRemarks(request.getConfidentialRemarks());
+        existing.setRemarks(request.getConfidentialRemarks());
 
         glJournalVoucherHdrRepository.save(existing);
 
@@ -859,7 +856,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                 .wdvAccountGl(hdr.getWdvAccountGl())
                 .multiCompany(FLAG_YES.equals(hdr.getMultiCompany()))
                 .remarks(hdr.getRemarks())
-                .confidentialRemarks(hdr.getConfidentialRemarks())
+                .confidentialRemarks(hdr.getRemarks())
                 .createdBy(hdr.getCreatedBy())
                 .createdDate(hdr.getCreatedDate())
                 .modifiedBy(hdr.getLastModifiedBy())
@@ -1071,4 +1068,63 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         };
     }
 
+    private void mapGlDetailToEntity(GlJournalVoucherDtl detail, Long transactionPoid, Long detRowId,
+                                     JournalVoucherGlDetailDto dto, Long companyPoid) {
+        detail.setTransactionPoid(transactionPoid);
+        detail.setDetRowId(detRowId);
+        detail.setType(dto.getType());
+        detail.setCompanyPoid(companyPoid);
+        detail.setGlPoid(dto.getGlPoid());
+        detail.setDrAmt(dto.getDrAmt());
+        detail.setCrAmt(dto.getCrAmt());
+        detail.setRemarks(dto.getRemarks());
+    }
+
+    private void mapAssetDetailToEntity(GlJournalVoucherAssetDtl detail, Long transactionPoid, Long detRowId,
+                                        JournalVoucherAssetDetailDto dto) {
+        detail.setTransactionPoid(transactionPoid);
+        detail.setDetRowId(detRowId);
+        detail.setFaPoid(dto.getFaPoid());
+        detail.setFaDescription(dto.getFaDescription());
+        detail.setFaCategory(dto.getFaCategory() != null ? dto.getFaCategory().toString() : null);
+        detail.setAssetType(dto.getAssetType());
+        detail.setLifeYear(dto.getLifeYear());
+        detail.setPurchaseDate(dto.getPurchaseDate());
+        detail.setDepreciationStartDate(dto.getDepreciationStartDate());
+        detail.setScrapSoldDate(dto.getScrapSoldDate());
+        detail.setAssetValue(dto.getAssetValue());
+        detail.setDepreciatedAmt(dto.getDepreciatedAmt());
+        detail.setWdvValue(dto.getWdvValue());
+        detail.setProcess(dto.getProcess());
+        detail.setScrapSoldValue(dto.getScrapSoldValue());
+        detail.setRemarks(dto.getRemarks());
+    }
+
+    private void enrichAssetDetailFromDb(JournalVoucherAssetDetailDto dto) {
+        log.debug("Enriching asset detail from DB for faPoid: {}", dto.getFaPoid());
+        JournalVoucherAssetDetailDto dbDetails = getAssetDepreciationDetails(dto.getFaPoid());
+
+        if (StringUtils.isBlank(dto.getFaDescription())) {
+            dto.setFaDescription(dbDetails.getFaDescription());
+        }
+        if (dto.getFaCategory() == null) {
+            dto.setFaCategory(dbDetails.getFaCategory());
+        }
+            dto.setAssetType(dbDetails.getAssetType());
+            dto.setDepreciationStartDate(dbDetails.getDepreciationStartDate());
+            dto.setAssetValue(dbDetails.getAssetValue());
+            dto.setScrapSoldDate(dbDetails.getScrapSoldDate());
+    }
+
+    private void mapCapitalizationDetailToEntity(GlJournalFaCapitalization detail, Long transactionPoid, Long detRowId,
+                                                 JournalVoucherCapitalizationDto dto) {
+        detail.setTransactionPoid(transactionPoid);
+        detail.setDetRowId(detRowId);
+        detail.setFaPoid(dto.getFaPoid());
+        detail.setFaDescription(dto.getFaDescription());
+        detail.setFaCategory(dto.getFaCategory());
+        detail.setAssetType(dto.getAssetType());
+        detail.setAssetValue(dto.getAssetValue());
+        detail.setRemarks(dto.getRemarks());
+    }
 }

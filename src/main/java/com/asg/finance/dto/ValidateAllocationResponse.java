@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 @Data
 @NoArgsConstructor
@@ -15,21 +16,7 @@ public class ValidateAllocationResponse {
     private Boolean valid;
     private List<String> errors;
     private List<String> warnings;
-    private AllocationTotals totals;
+    private Map<String, BigDecimal> totals;
 
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class AllocationTotals {
-        private BigDecimal totalSh;
-        private BigDecimal totalFf;
-        private BigDecimal totalFfs;
-        private BigDecimal totalFfp;
-        private BigDecimal totalProperties;
-        private BigDecimal totalMta;
-        private BigDecimal totalPda;
-        private BigDecimal totalAdmin;
-        private BigDecimal grandTotal;
-    }
 }
 

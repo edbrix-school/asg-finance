@@ -39,6 +39,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
@@ -54,15 +55,10 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.sql.Types;
-import java.util.Objects;
+import java.util.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 
 @Slf4j
 @Service
@@ -252,7 +248,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
             log.debug(LOG_MESSAGE_VALIDATION, partyPoid);
             procRepository.beforeSaveValidation(dto.getPartyType(), partyPoid, dto.getRefType(), dto.getPjReversalRef());
             validateInputFields(dto);
-            documentBeforeSaveAutoBalance(dto);
+
 
             ApPurchaseCnHdr hdr = mapToEntity(dto);
             hdr.setCreatedBy(UserContext.getUserId());
@@ -264,6 +260,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
             entityManager.refresh(savedHdr);
             dto.setDocRef(savedHdr.getDocRef());
             log.info(LOG_MESSAGE_SAVED_HEADER, savedHdr.getTransactionPoid());
+            documentBeforeSaveAutoBalance(dto);
 
             saveDetails(savedHdr.getTransactionPoid(), dto);
             log.info(LOG_MESSAGE_CREATED_SUCCESS, savedHdr.getTransactionPoid());
@@ -392,6 +389,10 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         
         try {
             Map<String, Object> result = procRepository.getPjRefDetails(pjPoid);
+            if (MapUtils.isEmpty(result)) return result;
+            String refType = (String) result.getOrDefault(PARAM_PJ_REF_TYPE, "");
+            if (StringUtils.isEmpty(refType)) return new HashMap<>();
+
             GlVoucherLoadBillwiseBreakupResponseDto blResponse = billwiseBreakupService.loadBillwiseBreakup(
                     UserContext.getGroupPoid(), UserContext.getCompanyPoid(), DOC_ID_AP_PURCHASE_CN, pjPoid);
             GlVoucherCostCenterBreakupResponseDto cCResponse = costCenterBreakupService.loadCostCenterData(
@@ -1661,7 +1662,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
 
         if (StringUtils.isNotEmpty(costCenterDto.getCostPoid()) && StringUtils.isNotEmpty(costCenterDto.getCostGroup())) {
             popup.setCostCenterDetails(
-                    lovService.getDetailsByPoidAndLovName(Long.valueOf(costCenterDto.getCostPoid()), costCenterDto.getCostGroup()));
+                    lovService.getDetailsByCodeAndLovName(costCenterDto.getCostPoid(), costCenterDto.getCostGroup()));
         }
 
         return popup;
@@ -1696,7 +1697,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
     }
 
     @SuppressWarnings("unchecked")
-    private List<Map<String, Object>> getLineItems(Map<String, Object> params) {
+    private List<Map<String, Object>>  getLineItems(Map<String, Object> params) {
         return (List<Map<String, Object>>) params.get(PARAM_LINE_ITEMS);
     }
 

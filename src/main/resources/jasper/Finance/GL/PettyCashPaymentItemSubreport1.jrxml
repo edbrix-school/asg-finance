@@ -111,7 +111,7 @@ WHERE GPCI.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
                 <textElement verticalAlignment="Middle"/>
                 <textFieldExpression><![CDATA[$V{REPORT_COUNT}]]></textFieldExpression>
             </textField>
-            <textField isStretchWithOverflow="true" isBlankWhenNull="true">
+            <textField textAdjust="StretchHeight" isBlankWhenNull="true">
                 <reportElement x="32" y="0" width="193" height="20" uuid="a747c618-98b8-4fa9-91d0-ab728b8b8c50"/>
                 <textElement verticalAlignment="Middle"/>
                 <textFieldExpression><![CDATA[$F{STOCK_NAME}]]></textFieldExpression>

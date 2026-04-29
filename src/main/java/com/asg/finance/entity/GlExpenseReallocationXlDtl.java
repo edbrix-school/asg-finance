@@ -45,5 +45,6 @@ public class GlExpenseReallocationXlDtl extends BaseEntity {
     public static class CompositeKey implements Serializable {
         private Long transactionPoid;
         private Long detRowId;
+        private String costCentre;
     }
 }

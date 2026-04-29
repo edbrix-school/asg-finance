@@ -4,6 +4,7 @@ import com.asg.finance.dto.BankFileDetailProjection;
 import com.asg.finance.repository.TelexFileGenerateProcRepository;
 import com.asg.finance.service.BankFileAubService;
 import com.asg.finance.service.BankFileBatchService;
+import com.asg.finance.service.WebSocketMessageService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +29,7 @@ public class BankFileBatchServiceImpl implements BankFileBatchService {
     private final TelexFileGenerateProcRepository procRepository;
     private final JdbcTemplate jdbcTemplate;
     private final BankFileAubService aubService;
+    private final WebSocketMessageService webSocketMessageService;
 
     @Value("${bank.file.pp.directory:FAX_EMAIL}")
     private String ppFileDirectoryName;
@@ -36,19 +38,55 @@ public class BankFileBatchServiceImpl implements BankFileBatchService {
     @Transactional
     public String createBankFileBatch(Long transactionPoid, Long userPoid) {
         try {
+            webSocketMessageService.sendInfoMessage(transactionPoid, "Starting bank file batch creation...");
+            
+            // Check if the record exists first
+            Integer recordCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM GL_BANK_FILE_HDR WHERE TRANSACTION_POID = ?",
+                Integer.class, transactionPoid);
+            
+            if (recordCount == 0) {
+                String errorMsg = "No bank file header record found for transaction POID: " + transactionPoid;
+                webSocketMessageService.sendErrorMessage(transactionPoid, errorMsg);
+                return "ERROR : " + errorMsg;
+            }
+            
+            webSocketMessageService.sendInfoMessage(transactionPoid, "Bank file header record found. Validating...");
+            
+            // Check if record is deleted
+            String deletedStatus = jdbcTemplate.queryForObject(
+                "SELECT NVL(DELETED, 'N') FROM GL_BANK_FILE_HDR WHERE TRANSACTION_POID = ?",
+                String.class, transactionPoid);
+            
+            if ("Y".equals(deletedStatus)) {
+                String errorMsg = "Bank file header record is deleted for transaction POID: " + transactionPoid;
+                webSocketMessageService.sendErrorMessage(transactionPoid, errorMsg);
+                return "ERROR : " + errorMsg;
+            }
+
             // Gap 1+5: DISTINCT added; fetched before branching only
             String bankList = jdbcTemplate.queryForObject(
                 "SELECT DISTINCT NVL(BANK_LIST, 'Y') FROM GL_BANK_FILE_HDR WHERE TRANSACTION_POID = ?",
                 String.class, transactionPoid);
 
+            webSocketMessageService.sendInfoMessage(transactionPoid, "Bank list type: " + bankList);
+
             // Handle AUB file generation
             if ("A".equals(bankList)) {
-                return processAubFiles(transactionPoid, userPoid);
+                webSocketMessageService.sendInfoMessage(transactionPoid, "Processing AUB file generation...");
+                String result = processAubFiles(transactionPoid, userPoid);
+                boolean isSuccess = result.contains("SUCCESS");
+                webSocketMessageService.sendCompletionMessage(transactionPoid, result, isSuccess);
+                return result;
             }
 
             // Handle NBB file generation
             if ("B".equals(bankList)) {
-                return processNbbFiles(transactionPoid, userPoid);
+                webSocketMessageService.sendInfoMessage(transactionPoid, "Processing NBB file generation...");
+                String result = processNbbFiles(transactionPoid, userPoid);
+                boolean isSuccess = result.contains("SUCCESS");
+                webSocketMessageService.sendCompletionMessage(transactionPoid, result, isSuccess);
+                return result;
             }
 
             // Gap 5: fetch only after AUB/NBB branch (matches proc flow)
@@ -58,43 +96,73 @@ public class BankFileBatchServiceImpl implements BankFileBatchService {
 
             // Check overdraft if not suppressed
             if ("N".equals(ttSuppressBalanceCheck)) {
+                webSocketMessageService.sendInfoMessage(transactionPoid, "Checking bank balance...");
                 String odStatus = procRepository.checkOverdraft(transactionPoid);
                 if (odStatus != null && odStatus.toUpperCase().contains("WARNING : AMOUNT IS GREATER THAN OUR")) {
+                    webSocketMessageService.sendWarningMessage(transactionPoid, "Insufficient balance: " + odStatus);
+                    webSocketMessageService.sendCompletionMessage(transactionPoid, odStatus, false);
                     return odStatus;
                 }
+                webSocketMessageService.sendSuccessMessage(transactionPoid, "Bank balance check passed");
+            } else {
+                webSocketMessageService.sendInfoMessage(transactionPoid, "Balance check suppressed");
             }
 
             // Process bank file details
+            webSocketMessageService.sendInfoMessage(transactionPoid, "Fetching bank file details...");
             List<BankFileDetailProjection> details = fetchBankFileDetails(transactionPoid);
+            
+            if (details.isEmpty()) {
+                String errorMsg = "No bank file details found for transaction POID: " + transactionPoid;
+                webSocketMessageService.sendErrorMessage(transactionPoid, errorMsg);
+                return "ERROR : " + errorMsg;
+            }
+            
+            webSocketMessageService.sendInfoMessage(transactionPoid, "Found " + details.size() + " records to process");
+            
             List<String> statusMessages = new ArrayList<>();
             int seqNo = 0;
             // Gap 3: track last onlyApproval to match proc's post-loop early return
             String lastOnlyApproval = "N";
 
-            for (BankFileDetailProjection detail : details) {
+            for (int i = 0; i < details.size(); i++) {
+                BankFileDetailProjection detail = details.get(i);
+                webSocketMessageService.sendInfoMessage(transactionPoid, 
+                    String.format("Processing record %d/%d: %s", i + 1, details.size(), detail.getDebitDocRef()));
+                
                 String onlyApproval = detail.getOnlyApproval() != null ? detail.getOnlyApproval() : "N";
                 lastOnlyApproval = onlyApproval;
 
                 if ("Y".equals(onlyApproval)) {
+                    webSocketMessageService.sendInfoMessage(transactionPoid, "Processing approval for: " + detail.getDebitDocRef());
                     String approvalStatus = procRepository.linkBankApproval(
                             1L, detail.getDebitCompanyPoid(), userPoid, "400-111", "xx",
                             "400-111-" + detail.getDebitTransactionPoid());
                     statusMessages.add(detail.getDebitDocRef() + "," + (approvalStatus != null ? approvalStatus.substring(0, Math.min(100, approvalStatus.length())) : ""));
+                    webSocketMessageService.sendSuccessMessage(transactionPoid, "Approval processed for: " + detail.getDebitDocRef());
                 } else {
+                    webSocketMessageService.sendInfoMessage(transactionPoid, "Validating payment details for: " + detail.getDebitDocRef());
                     String validationError = validatePaymentDetails(detail);
                     if (validationError != null) {
                         updateDetailDeleted(transactionPoid, detail.getDebitDocRef(), "N");
                         statusMessages.add(validationError + ",FILE NOT GENERATED FOR " + detail.getDebitDocRef());
+                        webSocketMessageService.sendWarningMessage(transactionPoid, "Validation failed for " + detail.getDebitDocRef() + ": " + validationError);
                         continue;
                     }
 
+                    webSocketMessageService.sendInfoMessage(transactionPoid, "Processing payment for: " + detail.getDebitDocRef());
                     String paymentStatus = processPayment(detail, transactionPoid, userPoid, ++seqNo);
                     if (paymentStatus != null && paymentStatus.toUpperCase().contains("WARNING")) {
                         statusMessages.add(paymentStatus);
+                        webSocketMessageService.sendWarningMessage(transactionPoid, "Payment warning for " + detail.getDebitDocRef() + ": " + paymentStatus);
+                    } else {
+                        webSocketMessageService.sendSuccessMessage(transactionPoid, "Payment processed successfully for: " + detail.getDebitDocRef());
                     }
                 }
             }
 
+            webSocketMessageService.sendInfoMessage(transactionPoid, "Updating record counts and cleaning up...");
+            
             // Update total record count
             int totalRecords = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM GL_BANK_FILE_GENERATE WHERE MAIN_TRANSACTION_POID = ?",
@@ -108,26 +176,37 @@ public class BankFileBatchServiceImpl implements BankFileBatchService {
 
             // Gap 3: skip file generation and email for approval-only batches (mirrors proc line 427-430)
             if ("Y".equals(lastOnlyApproval)) {
-                return String.join(",", statusMessages);
+                String result = String.join(",", statusMessages);
+                webSocketMessageService.sendCompletionMessage(transactionPoid, "Approval-only batch completed: " + result, true);
+                return result;
             }
 
             // Mirror proc COMMIT at line 425: payment work must persist even if
             // file write / email fails. Catch here instead of letting Spring roll back.
             String fileEmailStatus = "SUCCESS: FILE SENT BY MAIL/API";
             try {
+                webSocketMessageService.sendInfoMessage(transactionPoid, "Generating and sending bank file...");
                 generateAndSendFile(transactionPoid, userPoid);
+                webSocketMessageService.sendInfoMessage(transactionPoid, "Triggering email notification...");
                 triggerMailJob();
+                webSocketMessageService.sendSuccessMessage(transactionPoid, "Bank file generated and email sent successfully");
             } catch (Exception e) {
                 log.error("Bank file write/email failed; payment work preserved", e);
                 String msg = e.getMessage() == null ? "" : e.getMessage();
                 fileEmailStatus = "ERROR : " + msg.substring(0, Math.min(200, msg.length()));
+                webSocketMessageService.sendErrorMessage(transactionPoid, "File generation/email failed: " + fileEmailStatus);
             }
 
-            return String.join(",", statusMessages) + fileEmailStatus;
+            String finalResult = String.join(",", statusMessages) + fileEmailStatus;
+            boolean isSuccess = !fileEmailStatus.startsWith("ERROR");
+            webSocketMessageService.sendCompletionMessage(transactionPoid, finalResult, isSuccess);
+            return finalResult;
 
         } catch (Exception e) {
-            log.error("Error in createBankFileBatch", e);
-            return "ERROR : " + e.getMessage().substring(0, Math.min(200, e.getMessage().length()));
+            log.error("Error in createBankFileBatch for transactionPoid: {}", transactionPoid, e);
+            String errorMsg = "ERROR : " + e.getMessage().substring(0, Math.min(200, e.getMessage().length()));
+            webSocketMessageService.sendCompletionMessage(transactionPoid, errorMsg, false);
+            return errorMsg;
         }
     }
 

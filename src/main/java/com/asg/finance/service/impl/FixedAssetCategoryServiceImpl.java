@@ -9,6 +9,7 @@ import com.asg.finance.repository.GLMasterRepository;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.utility.ASGHelperUtils;
 import com.asg.finance.dto.FixedAssetCategoryRequestDto;
 import com.asg.finance.dto.FixedAssetCategoryResponseDto;
@@ -40,10 +41,8 @@ public class FixedAssetCategoryServiceImpl implements FixedAssetCategoryService 
     private final DocumentSearchService documentService;
     private final DocumentDeleteService documentDeleteService;
     private final FixedAssetCategoryRepository fixedAssetCategoryRepository;
-    private final RoleServiceClient roleServiceClient;
-    private final GLMasterRepository glMasterRepository;
-    private final CostCenterRepository costCenterRepository;
     private final LoggingService loggingService;
+    private final LovDataService lovDataService;
 
     @Override
     public FixedAssetCategoryResponseDto createFixedAssetCategory(FixedAssetCategoryRequestDto request) {
@@ -134,6 +133,22 @@ public class FixedAssetCategoryServiceImpl implements FixedAssetCategoryService 
         fixedAssetCategoryResponseDto.setFaCategoryDescription(fixedAssetCategory.getFaCategoryDescription());
         fixedAssetCategoryResponseDto.setFaCategoryDescription2(fixedAssetCategory.getFaCategoryDescription2());
         fixedAssetCategoryResponseDto.setAssetType(fixedAssetCategory.getAssetType());
+        
+        // Get Asset Type details using LOV service (code-based)
+        if (fixedAssetCategory.getAssetType() != null && !fixedAssetCategory.getAssetType().isBlank()) {
+            LovGetListDto assetTypeDetail = lovDataService.getDetailsByCodeAndLovName(fixedAssetCategory.getAssetType(), "ASSET_TYPE");
+            if (assetTypeDetail != null && assetTypeDetail.getCode() != null) {
+                DetailsDto assetTypeDetailsDto = new DetailsDto(
+                    assetTypeDetail.getPoid(),
+                    assetTypeDetail.getCode(),
+                    assetTypeDetail.getDescription(),
+                    assetTypeDetail.getValue(),
+                    assetTypeDetail.getDescription(),
+                    null
+                );
+                fixedAssetCategoryResponseDto.setAssetTypeDet(assetTypeDetailsDto);
+            }
+        }
         fixedAssetCategoryResponseDto.setFaGlAccount(Long.valueOf(fixedAssetCategory.getFaGlAccount()));
         fixedAssetCategoryResponseDto.setFaAccumulationAccount(Long.valueOf(fixedAssetCategory.getFaAccumulationAccount()));
         fixedAssetCategoryResponseDto.setFaDepreciationAccount(Long.valueOf(fixedAssetCategory.getFaDepreciationAccount()));
@@ -141,56 +156,88 @@ public class FixedAssetCategoryServiceImpl implements FixedAssetCategoryService 
         Long costCenterPoid = fixedAssetCategory.getCostCenter() == null ? null : Long.valueOf(fixedAssetCategory.getCostCenter());
         if (costCenterPoid != null) {
         	fixedAssetCategoryResponseDto.setCostCenter(costCenterPoid);
-
-            costCenterRepository.findById(costCenterPoid)
-                    .ifPresent(cc -> fixedAssetCategoryResponseDto.setCostCenterDet(
-                    		new DetailsDto(
-                    				cc.getCostCenterPoid(), 
-                    				cc.getCostCenterCode(),
-                	                cc.getCostCenterDescription(), 
-                	                cc.getCostCenterPoid(), 
-                	                cc.getCostCenterDescription(), 
-                	                cc.getSeqNo()
-                	                )));
+            LovGetListDto costCenterDetail = lovDataService.getDetailsByPoidAndLovName(costCenterPoid, "GL_COST_CENTRE");
+            if (costCenterDetail != null) {
+                DetailsDto costCenterDetailsDto = new DetailsDto(
+                    costCenterDetail.getPoid(),
+                    costCenterDetail.getCode(),
+                    costCenterDetail.getDescription(),
+                    costCenterDetail.getValue(),
+                    costCenterDetail.getDescription(),
+                    null
+                );
+                fixedAssetCategoryResponseDto.setCostCenterDet(costCenterDetailsDto);
+            }
         }
         
+        // Use LOV service to get GL Master details
         Set<Long> glPoids = new HashSet<>(Arrays.asList(
                 Long.valueOf(fixedAssetCategory.getFaGlAccount()),
                 Long.valueOf(fixedAssetCategory.getFaAccumulationAccount()),
                 Long.valueOf(fixedAssetCategory.getFaDepreciationAccount())
         ));
+        
+        Map<Long, LovGetListDto> glMasterDetailsMap = new HashMap<>();
+        for (Long glPoid : glPoids) {
+            glMasterDetailsMap.put(glPoid, lovDataService.getDetailsByPoidAndLovName(glPoid, "GL_MASTER_LEDGERS"));
+        }
+        
+        // Convert LovGetListDto to DetailsDto for GL accounts
+        LovGetListDto faGlDetail = glMasterDetailsMap.get(Long.valueOf(fixedAssetCategory.getFaGlAccount()));
+        if (faGlDetail != null) {
+            DetailsDto faGlDetailsDto = new DetailsDto(
+                faGlDetail.getPoid(),
+                faGlDetail.getCode(),
+                faGlDetail.getDescription(),
+                faGlDetail.getValue(),
+                faGlDetail.getDescription(),
+                null
+            );
+            fixedAssetCategoryResponseDto.setFaGlAccountDet(faGlDetailsDto);
+        }
+        
+        LovGetListDto faAccDetail = glMasterDetailsMap.get(Long.valueOf(fixedAssetCategory.getFaAccumulationAccount()));
+        if (faAccDetail != null) {
+            DetailsDto faAccDetailsDto = new DetailsDto(
+                faAccDetail.getPoid(),
+                faAccDetail.getCode(),
+                faAccDetail.getDescription(),
+                faAccDetail.getValue(),
+                faAccDetail.getDescription(),
+                null
+            );
+            fixedAssetCategoryResponseDto.setFaAccumulationAccountDet(faAccDetailsDto);
+        }
+        
+        LovGetListDto faDepDetail = glMasterDetailsMap.get(Long.valueOf(fixedAssetCategory.getFaDepreciationAccount()));
+        if (faDepDetail != null) {
+            DetailsDto faDepDetailsDto = new DetailsDto(
+                faDepDetail.getPoid(),
+                faDepDetail.getCode(),
+                faDepDetail.getDescription(),
+                faDepDetail.getValue(),
+                faDepDetail.getDescription(),
+                null
+            );
+            fixedAssetCategoryResponseDto.setFaDepreciationAccountDet(faDepDetailsDto);
+        }
 
-        List<GLMaster> glMasters = glMasterRepository.findByGlPoidIn(glPoids);
-
-        Map<Long, DetailsDto> glMasterDetailsMap = glMasters.stream()
-                .collect(Collectors.toMap(
-                        GLMaster::getGlPoid,
-                        glMaster -> new DetailsDto(
-                                glMaster.getGlPoid(),
-                                glMaster.getGlCode(),
-                                glMaster.getGlDescription(),
-                                glMaster.getGlPoid(),
-                                glMaster.getGlDescription(),
-                                glMaster.getSeqno()
-                        )
-                ));
-        fixedAssetCategoryResponseDto.setFaGlAccountDet(glMasterDetailsMap.get(Long.valueOf(fixedAssetCategory.getFaGlAccount())));
-        fixedAssetCategoryResponseDto.setFaAccumulationAccountDet(glMasterDetailsMap.get(Long.valueOf(fixedAssetCategory.getFaAccumulationAccount())));
-        fixedAssetCategoryResponseDto.setFaDepreciationAccountDet(glMasterDetailsMap.get(Long.valueOf(fixedAssetCategory.getFaDepreciationAccount())));
-
+        // Use LOV service for user roles
         List<UserRoleDto> userRoleDtos = new ArrayList<>();
         if (fixedAssetCategory.getUserRolePoid() != null && !fixedAssetCategory.getUserRolePoid().isBlank()) {
             String[] userRoles = fixedAssetCategory.getUserRolePoid().split(";");
             for (String userRoleString : userRoles) {
                 if (userRoleString != null && !userRoleString.isBlank()) {
-
-                    RoleDto roleDtoResponse = roleServiceClient.findById(Long.valueOf(userRoleString.trim()));
-                    if (roleDtoResponse != null) {
+                    Long userRolePoid = Long.valueOf(userRoleString.trim());
+                    LovGetListDto roleDetail = lovDataService.getDetailsByPoidAndLovName(userRolePoid, "USER_ROLES");
+                    if (roleDetail != null && roleDetail.getCode() != null) {
                         UserRoleDto roleDto = UserRoleDto.builder()
-                                .userRoleId(roleDtoResponse.getUserRoleId())
-                                .userRolePoId(roleDtoResponse.getUserRolePoid())
-                                .userRoleName(roleDtoResponse.getUserRoleName())
-                                .active(roleDtoResponse.getActive())
+                                .userRoleId(roleDetail.getCode())
+                                .userRolePoId(roleDetail.getPoid())
+                                .userRoleName(roleDetail.getDescription())
+                                .deleted("N")
+                                .actionType(null)
+                                .detRowId(null)
                                 .build();
                         userRoleDtos.add(roleDto);
                     }

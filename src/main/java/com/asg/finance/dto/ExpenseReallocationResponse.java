@@ -9,6 +9,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Data
 @NoArgsConstructor
@@ -45,27 +46,10 @@ public class ExpenseReallocationResponse {
     private String reportName; // To be confirmed from SRS
 
     // Detail lines
-    private List<ExpenseReallocationDetailResponse> details;
+    private List<ExpenseReallocationDetailResponseDto> details;
 
     // Detail totals
-    private DetailTotals detailTotals;
+    private Map<String, BigDecimal> detailTotals;
 
-    // Excel detail lines (optional)
-    private List<ExpenseReallocationXlDetailResponse> xlDetails;
-
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class DetailTotals {
-        private BigDecimal totalSh;
-        private BigDecimal totalFf;
-        private BigDecimal totalFfs;
-        private BigDecimal totalFfp;
-        private BigDecimal totalProperties;
-        private BigDecimal totalMta;
-        private BigDecimal totalPda;
-        private BigDecimal totalAdmin;
-        private BigDecimal grandTotal;
-    }
 }
 

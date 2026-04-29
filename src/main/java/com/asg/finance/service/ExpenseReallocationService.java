@@ -22,7 +22,7 @@ public interface ExpenseReallocationService {
 	ExpenseReallocationResponse createExpenseReallocation(CreateExpenseReallocationRequest request, Long groupPoid,
 			Long companyPoid, String userId);
 
-	ExpenseReallocationResponse getExpenseReallocationById(Long transactionPoid, Long groupPoid);
+	ExpenseReallocationResponse getExpenseReallocationById(Long transactionPoid);
 
 	ExpenseReallocationResponse updateExpenseReallocation(Long transactionPoid,
 			UpdateExpenseReallocationRequest request, Long groupPoid, String userId);

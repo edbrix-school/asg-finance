@@ -43,7 +43,7 @@ public class BankFileBatchServiceImpl implements BankFileBatchService {
     public BankFileBatchResult createBankFileBatch(Long transactionPoid, Long userPoid) {
         List<Map<String, String>> messages = new ArrayList<>();
         try {
-            addMessage(messages, "Starting bank file batch creation...", "INFO");
+//            addMessage(messages, "Starting bank file batch creation...", "INFO");
 
             Integer recordCount = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM GL_BANK_FILE_HDR WHERE TRANSACTION_POID = ?",
@@ -55,7 +55,7 @@ public class BankFileBatchServiceImpl implements BankFileBatchService {
                 return new BankFileBatchResult("ERROR : " + errorMsg, messages);
             }
 
-            addMessage(messages, "Bank file header record found. Validating...", "INFO");
+//            addMessage(messages, "Bank file header record found. Validating...", "INFO");
 
             String deletedStatus = jdbcTemplate.queryForObject(
                 "SELECT NVL(DELETED, 'N') FROM GL_BANK_FILE_HDR WHERE TRANSACTION_POID = ?",
@@ -72,10 +72,10 @@ public class BankFileBatchServiceImpl implements BankFileBatchService {
                 "SELECT DISTINCT NVL(BANK_LIST, 'Y') FROM GL_BANK_FILE_HDR WHERE TRANSACTION_POID = ?",
                 String.class, transactionPoid);
 
-            addMessage(messages, "Bank list type: " + bankList, "INFO");
+//            addMessage(messages, "Bank list type: " + bankList, "INFO");
 
             if ("A".equals(bankList)) {
-                addMessage(messages, "Processing AUB file generation...", "INFO");
+//                addMessage(messages, "Processing AUB file generation...", "INFO");
                 String result = processAubFiles(transactionPoid, userPoid);
                 boolean isSuccess = result.contains("SUCCESS");
                 addMessage(messages, result, isSuccess ? "COMPLETED_SUCCESS" : "COMPLETED_ERROR");
@@ -83,7 +83,7 @@ public class BankFileBatchServiceImpl implements BankFileBatchService {
             }
 
             if ("B".equals(bankList)) {
-                addMessage(messages, "Processing NBB file generation...", "INFO");
+//                addMessage(messages, "Processing NBB file generation...", "INFO");
                 String result = processNbbFiles(transactionPoid, userPoid);
                 boolean isSuccess = result.contains("SUCCESS");
                 addMessage(messages, result, isSuccess ? "COMPLETED_SUCCESS" : "COMPLETED_ERROR");
@@ -96,19 +96,18 @@ public class BankFileBatchServiceImpl implements BankFileBatchService {
                 String.class, transactionPoid);
 
             if ("N".equals(ttSuppressBalanceCheck)) {
-                addMessage(messages, "Checking bank balance...", "INFO");
+//                addMessage(messages, "Checking bank balance...", "INFO");
                 String odStatus = procRepository.checkOverdraft(transactionPoid);
                 if (odStatus != null && odStatus.toUpperCase().contains("WARNING : AMOUNT IS GREATER THAN OUR")) {
                     addMessage(messages, "Insufficient balance: " + odStatus, "WARNING");
                     addMessage(messages, odStatus, "COMPLETED_ERROR");
-                    return new BankFileBatchResult(odStatus, messages);
                 }
-                addMessage(messages, "Bank balance check passed", "SUCCESS");
+//                addMessage(messages, "Bank balance check passed", "SUCCESS");
             } else {
-                addMessage(messages, "Balance check suppressed", "INFO");
+//                addMessage(messages, "Balance check suppressed", "INFO");
             }
 
-            addMessage(messages, "Fetching bank file details...", "INFO");
+//            addMessage(messages, "Fetching bank file details...", "INFO");
             List<BankFileDetailProjection> details = fetchBankFileDetails(transactionPoid);
 
             if (details.isEmpty()) {
@@ -117,7 +116,7 @@ public class BankFileBatchServiceImpl implements BankFileBatchService {
                 return new BankFileBatchResult("ERROR : " + errorMsg, messages);
             }
 
-            addMessage(messages, "Found " + details.size() + " records to process", "INFO");
+//            addMessage(messages, "Found " + details.size() + " records to process", "INFO");
 
             List<String> statusMessages = new ArrayList<>();
             int seqNo = 0;
@@ -134,14 +133,14 @@ public class BankFileBatchServiceImpl implements BankFileBatchService {
                 lastOnlyApproval = onlyApproval;
 
                 if ("Y".equals(onlyApproval)) {
-                    addMessage(messages, "Processing approval for: " + detail.getDebitDocRef(), "INFO");
+//                    addMessage(messages, "Processing approval for: " + detail.getDebitDocRef(), "INFO");
                     String approvalStatus = procRepository.linkBankApproval(
                             1L, detail.getDebitCompanyPoid(), userPoid, "400-111", "xx",
                             "400-111-" + detail.getDebitTransactionPoid());
                     statusMessages.add(detail.getDebitDocRef() + "," + (approvalStatus != null ? approvalStatus.substring(0, Math.min(100, approvalStatus.length())) : ""));
                     addMessage(messages, "Approval processed for: " + detail.getDebitDocRef(), "SUCCESS");
                 } else {
-                    addMessage(messages, "Validating payment details for: " + detail.getDebitDocRef(), "INFO");
+//                    addMessage(messages, "Validating payment details for: " + detail.getDebitDocRef(), "INFO");
                     String validationError = validatePaymentDetails(detail);
                     if (validationError != null) {
                         updateDetailDeleted(transactionPoid, detail.getDebitDocRef(), "N");
@@ -150,7 +149,7 @@ public class BankFileBatchServiceImpl implements BankFileBatchService {
                         continue;
                     }
 
-                    addMessage(messages, "Processing payment for: " + detail.getDebitDocRef(), "INFO");
+//                    addMessage(messages, "Processing payment for: " + detail.getDebitDocRef(), "INFO");
                     String paymentStatus = processPayment(detail, transactionPoid, userPoid, ++seqNo);
                     if (paymentStatus != null && paymentStatus.toUpperCase().contains("WARNING")) {
                         statusMessages.add(paymentStatus);
@@ -161,7 +160,7 @@ public class BankFileBatchServiceImpl implements BankFileBatchService {
                 }
             }
 
-            addMessage(messages, "Updating record counts and cleaning up...", "INFO");
+//            addMessage(messages, "Updating record counts and cleaning up...", "INFO");
 
             // Update total record count
             int totalRecords = jdbcTemplate.queryForObject(
@@ -185,11 +184,11 @@ public class BankFileBatchServiceImpl implements BankFileBatchService {
             // file write / email fails. Catch here instead of letting Spring roll back.
             String fileEmailStatus = "SUCCESS: FILE SENT BY MAIL/API";
             try {
-                addMessage(messages, "Generating and sending bank file...", "INFO");
+//                addMessage(messages, "Generating and sending bank file...", "INFO");
                 generateAndSendFile(transactionPoid, userPoid);
-                addMessage(messages, "Triggering email notification...", "INFO");
+//                addMessage(messages, "Triggering email notification...", "INFO");
                 triggerMailJob();
-                addMessage(messages, "Bank file generated and email sent successfully", "SUCCESS");
+//                addMessage(messages, "Bank file generated and email sent successfully", "SUCCESS");
             } catch (Exception e) {
                 log.error("Bank file write/email failed; payment work preserved", e);
                 String msg = e.getMessage() == null ? "" : e.getMessage();

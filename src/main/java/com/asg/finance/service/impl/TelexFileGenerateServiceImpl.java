@@ -80,7 +80,7 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
         }
     }
 
-    @Transactional
+    @Transactional(Transactional.TxType.REQUIRES_NEW)
     public Long saveTelexFileInternal(TelexFileGenerateRequestDto request) {
         GlBankFileHdr hdr = new GlBankFileHdr();
         hdr.setTransactionDate(request.getTransactionDate());
@@ -152,7 +152,7 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
         }
     }
 
-    @Transactional
+    @Transactional(Transactional.TxType.REQUIRES_NEW)
     public void updateTelexFileInternal(Long transactionPoid, TelexFileGenerateRequestDto request) {
         GlBankFileHdr hdr = hdrRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Telex File", "transactionPoid", transactionPoid));

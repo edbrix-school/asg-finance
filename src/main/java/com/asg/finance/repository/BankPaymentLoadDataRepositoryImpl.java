@@ -12,6 +12,7 @@ import org.springframework.jdbc.core.SqlParameter;
 import org.springframework.jdbc.core.simple.SimpleJdbcCall;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -73,8 +74,8 @@ public class BankPaymentLoadDataRepositoryImpl implements BankPaymentLoadDataRep
     private BankPayFfItemDto mapFfItem(ResultSet rs) throws SQLException {
         BankPayFfItemDto dto = new BankPayFfItemDto();
         dto.setChargePoid(rs.getLong("CHARGE_POID"));
-        dto.setChargeAmount(rs.getDouble("CHARGE_AMOUNT"));
-        dto.setFfAmount(rs.getDouble("FF_AMOUNT"));
+        dto.setChargeAmount(rs.getBigDecimal("CHARGE_AMOUNT"));
+        dto.setFfAmount(rs.getBigDecimal("FF_AMOUNT"));
         dto.setRefDocId(rs.getString("REF_DOC_ID"));
         dto.setRefDocPoid(rs.getString("REF_DOC_POID"));
         dto.setDetRowId(rs.getString("FDA_DET_ROW_ID"));
@@ -126,7 +127,7 @@ public class BankPaymentLoadDataRepositoryImpl implements BankPaymentLoadDataRep
     private BankPayFdaItemDto mapFdaItem(ResultSet rs) throws SQLException {
         BankPayFdaItemDto dto = new BankPayFdaItemDto();
         dto.setChargePoid(rs.getLong("CHARGE_POID"));
-        dto.setPdaAmount(rs.getDouble("PDA_AMOUNT"));
+        dto.setPdaAmount(rs.getBigDecimal("PDA_AMOUNT"));
         dto.setRemarks(rs.getString("REMARKS"));
         dto.setRefDocId(rs.getString("REF_DOC_ID"));
         dto.setRefDocPoid(rs.getString("REF_DOC_POID"));
@@ -206,8 +207,8 @@ public class BankPaymentLoadDataRepositoryImpl implements BankPaymentLoadDataRep
             BankPaymentChargeDetailResponse dto = new BankPaymentChargeDetailResponse();
 
             dto.setChargePoid(((Number) row[0]).longValue());
-            dto.setChargeAmount(((Number) row[1]).longValue());
-            dto.setFfAmount(((Number) row[2]).longValue());
+            dto.setChargeAmount(BigDecimal.valueOf(((Number) row[1]).doubleValue()));
+            dto.setFfAmount(BigDecimal.valueOf(((Number) row[2]).doubleValue()));
 
             dto.setRefDocId((String) row[3]);
             dto.setRefDocPoid(((Number) row[4]).longValue());
@@ -215,7 +216,7 @@ public class BankPaymentLoadDataRepositoryImpl implements BankPaymentLoadDataRep
             dto.setDetRowId(((Number) row[5]).longValue());
 
             // PDA_AMOUNT, REMARKS are not present in procedure → Set default
-            dto.setPdaAmount(0L);
+            dto.setPdaAmount(BigDecimal.ZERO);
             dto.setRemarks(null);
 
             list.add(dto);
@@ -232,9 +233,9 @@ public class BankPaymentLoadDataRepositoryImpl implements BankPaymentLoadDataRep
                 dto.setDetRowId(rs.getLong("DET_ROW_ID"));
                 dto.setStockPoid(rs.getLong("STOCK_POID"));
                 dto.setStockUnitPoid(rs.getLong("STOCK_UNIT_POID"));
-                dto.setPrice(rs.getLong("PRICE"));
-                dto.setPoQty(rs.getLong("PO_QTY"));
-                dto.setTotal(rs.getLong("TOTAL"));
+                dto.setPrice(rs.getDouble("PRICE"));
+                dto.setPoQty(rs.getDouble("PO_QTY"));
+                dto.setTotal(rs.getDouble("TOTAL"));
                 dto.setRemarks(rs.getString("REMARKS"));
                 dto.setRefDocId(rs.getString("REF_DOC_ID"));
                 dto.setRefDocPoid(rs.getLong("REF_DOC_POID"));

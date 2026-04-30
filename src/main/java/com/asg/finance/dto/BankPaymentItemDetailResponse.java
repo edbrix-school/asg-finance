@@ -13,12 +13,12 @@ public class BankPaymentItemDetailResponse {
     private LovGetListDto stockDet;
     private Long stockUnitPoid;
     private LovGetListDto stockUnitDet;
-    private Long poQty;
-    private Long dnQty;
-    private Long qtyReceived;
-    private Long price;
-    private Long discount;
-    private Long total;
+    private Double poQty;
+    private Double dnQty;
+    private Double qtyReceived;
+    private Double price;
+    private Double discount;
+    private Double total;
     private String remarks;
     private String refDocId;
     private Long refDocPoid;

@@ -211,7 +211,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
     @Override
     public CreditNoteHeaderDto getCreditNoteById(Long transactionPoid) {
-        ArCreditNoteHdr header = creditNoteHdrRepository.findByTransactionPoidAndDeleted(transactionPoid, "N")
+        ArCreditNoteHdr header = creditNoteHdrRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Credit Note", "transactionPoid", transactionPoid));
 
         CreditNoteHeaderDto dto = mapToDto(header);

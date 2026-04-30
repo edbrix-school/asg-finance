@@ -2,13 +2,12 @@ package com.asg.finance.repository;
 
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.exception.ValidationException;
+import com.asg.common.lib.utility.DateUtil;
 import com.asg.finance.dto.*;
 import com.asg.finance.entity.GlBankEntity;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.ParameterMode;
-import jakarta.persistence.PersistenceContext;
-import jakarta.persistence.StoredProcedureQuery;
+import jakarta.persistence.*;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
 import org.hibernate.Session;
 import org.springframework.stereotype.Repository;
 
@@ -127,6 +126,17 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
         String response = "Successfully Updated.";
 
         for (BankReconciliationRequest dto : req) {
+            LocalDate today = DateUtil.getCurrentDateInUserTimeZone();
+
+            if (dto.getClearanceDate() != null && dto.getDocDate() != null) {
+                if (dto.getClearanceDate().isBefore(dto.getDocDate())
+                        || dto.getClearanceDate().isAfter(today)) {
+                    throw new IllegalArgumentException(
+                            "Clearance Date should be between Document Date and Today"
+                    );
+                }
+            }
+
             set(sp, P_TRANSACTION_GROUP_POID, dto.getTransactionGroupPoid());
             set(sp, P_TRANSACTION_COMPANY_POID, dto.getTransactionCompanyPoid());
             set(sp, P_DOC_ID, dto.getDocId());
@@ -157,6 +167,11 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
     public String holdCheque(List<BankReconcHoldAndUholdRequest> reqList) {
         for (BankReconcHoldAndUholdRequest req : reqList) {
 
+            if(req.getDocId()==null || !req.getDocId().equalsIgnoreCase("400-107")){
+                String errorMessage=req.getDocId()==null?"The selected item cannot be hold":String.format("DocRef: %s cannot be hold",req.getDocRef());
+                throw new IllegalStateException(errorMessage);
+            }
+
             StoredProcedureQuery sp = createSP("PROC_GL_BANK_RECONCILE_HOLD");
 
             regIn(sp, P_TRANSACTION_GROUP_POID, Long.class);
@@ -178,8 +193,8 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
 
             String result = outStr(sp, P_RESULT);
 
-            if (result != null && result.toLowerCase().startsWith("error")) {
-                return result;
+            if (isError(result)) {
+                throw new IllegalStateException(result);
             }
         }
 
@@ -201,43 +216,26 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
                 cs.registerOutParameter(7, Types.VARCHAR);
 
                 for (BankReconcHoldAndUholdRequest req : reqList) {
-
-                    validateRequest(req);  // 🔹 Extracted validation
-
-                    String result = executeUnhold(cs, req); // 🔹 Extracted execution
+                    if(req.getDocId()==null || !req.getDocId().equalsIgnoreCase("400-107")){
+                        String errorMessage=req.getDocId()==null?"The selected item cannot be unhold":String.format("DocRef: %s cannot be unhold",req.getDocRef());
+                        throw new IllegalStateException(errorMessage);
+                    }
+                    String result = executeUnhold(cs, req);
 
                     if (isError(result)) {
-                        return result;
+                        throw new IllegalStateException(result);
                     }
                 }
 
                 return reqList.size() + " cheques unheld successfully";
 
-            } catch (ResourceNotFoundException e) {
+            }
+            catch (IllegalStateException e) {
                 throw e;
             } catch (Exception e) {
                 throw new IllegalStateException("Error calling PROC_GL_BANK_RECONCILE_UNHOLD", e);
             }
         });
-    }
-
-    private void validateRequest(BankReconcHoldAndUholdRequest req) {
-
-        if (!existsByTransactionPoid(req.getTransactionPoid())) {
-            throw new ResourceNotFoundException(
-                    "Bank Reconciliation",
-                    "transaction poid",
-                    req.getTransactionPoid()
-            );
-        }
-
-        if (!existsByDocref(req.getTransactionPoid(), req.getDocRef())) {
-            throw new ResourceNotFoundException(
-                    "Document Reference",
-                    "docRef",
-                    req.getDocRef()
-            );
-        }
     }
 
     private String executeUnhold(CallableStatement cs, BankReconcHoldAndUholdRequest req)
@@ -259,7 +257,7 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
     }
 
     private boolean isError(String result) {
-        return result != null && result.toLowerCase().startsWith("error");
+        return result != null && !result.toLowerCase().contains("success");
     }
 
     @Override
@@ -361,11 +359,11 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
         set(sp, P_BANK_POID, req.getBankPoid());
         set(sp, P_DATE_FROM, Optional.ofNullable(req.getDateFrom()).map(java.sql.Date::valueOf).orElse(null));
         set(sp, P_DATE_TILL, Optional.ofNullable(req.getDateTill()).map(java.sql.Date::valueOf).orElse(null));
-        set(sp, P_CHEQUE_NO, Optional.ofNullable(req.getChequeNo()).orElse(null));
-        set(sp, P_RECONCILE_CHEQUE, Optional.ofNullable(req.getReconcileCheque()).orElse(null));
-        set(sp, P_BR_TYPE, Optional.ofNullable(req.getBrType()).orElse(null));
-        set(sp, P_CHEQUE_TYPE, Optional.ofNullable(req.getChequeType()).orElse(null));
-        set(sp, P_CHEQUE_FILTER, Optional.ofNullable(req.getChequeFilter()).orElse(null));
+        set(sp, P_CHEQUE_NO, req.getChequeNo());
+        set(sp, P_RECONCILE_CHEQUE, req.getReconcileCheque());
+        set(sp, P_BR_TYPE, req.getBrType());
+        set(sp, P_CHEQUE_TYPE, req.getChequeType());
+        set(sp, P_CHEQUE_FILTER, StringUtils.defaultIfBlank(req.getChequeFilter(), "ALL"));
 
         sp.execute();
 
@@ -373,11 +371,13 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
 
         List<Object[]> cursorList = sp.getResultList();
         List<BankReconcileReportRow> reportRows = cursorList.stream()
-                .map(cursorData -> mapReportRow(cursorData, Optional.ofNullable(req.getChequeType()).orElse(null),
-                        Optional.ofNullable(req.getChequeFilter()).orElse(null)))
+                .map(cursorData -> mapReportRow(
+                        cursorData,
+                        req.getChequeType(),
+                        StringUtils.defaultIfBlank(req.getChequeFilter(), "ALL")
+                ))
                 .toList();
 
-        resp.setReportData(reportRows);
         resp.setOpeningBalance((String) sp.getOutputParameterValue("OUTDATA1"));
         resp.setClosingBalance((String) sp.getOutputParameterValue("OUTDATA2"));
         resp.setCreditTotal((String) sp.getOutputParameterValue("OUTDATA3"));
@@ -386,7 +386,29 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
         resp.setDebitTotal2((String) sp.getOutputParameterValue("OUTDATA6"));
         resp.setExtraValue((String) sp.getOutputParameterValue("OUTDATA7"));
 
+        reportRows.forEach(row -> {
+            if (row.getDocId1() != null) {
+                row.setDocTitle(getDocumentTitle(row.getDocId1()));
+            }
+        });
+        resp.setReportData(reportRows);
+
         return resp;
+    }
+
+    private String getDocumentTitle(String docId) {
+        try {
+            return (String) em
+                    .createNativeQuery(
+                            "SELECT DOC_NAME FROM GLOBAL_DOC_MASTER " +
+                                    "WHERE DOC_ID = :docId " +
+                                    "AND ACTIVE = 'Y' " +
+                                    "AND (DELETED = 'N' OR DELETED IS NULL)")
+                    .setParameter("docId", docId)
+                    .getSingleResult();
+        } catch (NoResultException e) {
+            return "";
+        }
     }
 
     private boolean existsByTransactionPoid(Long transactionPoid) {
@@ -439,6 +461,10 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
         dto.setGlPoid(getLong(row, 11));
         dto.setCrAmt(getBigDecimal(row, 12));
         dto.setDrAmt(getBigDecimal(row, 13));
+
+        if (dto.getDocId() != null) {
+            dto.setDocTitle(getDocumentTitle(dto.getDocId()));
+        }
 
         return dto;
     }
@@ -556,7 +582,7 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
         return new BankReconcileReportRow(getLong(row, 0), getLong(row, 1), getString(row, 2), getLong(row, 3),
                 getDate(row, 4), getString(row, 5), getString(row, 6), getLong(row, 7), getString(row, 8),
                 getLong(row, 9), getLong(row, 10), getBigDecimal(row, 11), isFiltered ? null : getBigDecimal(row, 12),
-                getDate(row, 13 - offset), getString(row, 14 - offset), getString(row, 15 - offset));
+                getDate(row, 13 - offset), getString(row, 14 - offset), getString(row, 15 - offset), null);
     }
 
     private boolean validateBank(Long bankPoid) {

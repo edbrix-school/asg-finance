@@ -14,8 +14,8 @@ public class BankPaymentVoucherRequest {
     private Long bankPoid;
     @JsonProperty("amount")
     private BigDecimal currencyAmount;
-    private String chequeDate;
-    private String chequeNo;
+    private String chqDate;
+    private String chqCardNo;
     private String accountPayee;
     private String longNarration;
     private String refType;
@@ -29,10 +29,12 @@ public class BankPaymentVoucherRequest {
     private String multiple;
     private String securityCheque;
     private Boolean released;
-    private String releasedToPerson;      // → RELEASED_TO_PERSON
+    private String releasedToPerson;
     private String contact;
     private String chqPrintedUserCode;
     private LocalDate chqPrintedDate;
+    private String prePrinted;
+    private Long salesQtnRef;
     private Long availableBalance;
     private List<BankPaymentGLDetailRequest> glDetails;
     private List<BankPaymentChargeDetailRequest> chargeDetailRequests;

@@ -269,7 +269,7 @@ public class TelexFileGenerateController {
             @PathVariable Long id
     ) {
         try {
-            String result = service.regenerateTelexFile(id);
+            String result = service.generateBankFileButton(id);
             if (result != null && result.contains("ERROR")) {
                 return internalServerError("Error generating telex file: " + result);
             }

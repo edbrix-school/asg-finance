@@ -40,7 +40,7 @@ public class GLMasterEntity {
     private String type;
 
     @Column(name = "GROUP_GL_POID")
-    private Long groupGlPoid;  // i.e. parent
+    private Long subOf;  // i.e. parent
 
     @Column(name = "GL_AC_TYPE")
     private String accountType;

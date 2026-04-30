@@ -2,6 +2,7 @@ package com.asg.finance.service;
 
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.finance.dto.DebitNoteHeaderDto;
+import com.asg.finance.dto.ProcessFdaRequestDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import org.springframework.data.domain.Pageable;
 
@@ -35,5 +36,13 @@ public interface DebitNoteService {
     Map<String, Object> validateEditRequest(Long transactionPoid);
 
     Map<String, String> getCustomLovList(String costGroup);
+
+    Map<String, Object> processFdaCharges(ProcessFdaRequestDto req);
+
+    Map<String, Object> processFdaDirectCharges(ProcessFdaRequestDto req);
+
+    Map<String, Object> getDnParameters();
+
+    void releaseJobValues(Long transactionPoid);
 
 }

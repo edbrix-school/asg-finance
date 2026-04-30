@@ -141,6 +141,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             header.setLastModifiedDate(now);
 
             ArCreditNoteHdr savedHeader = creditNoteHdrRepository.saveAndFlush(header);
+            entityManager.flush();
             entityManager.refresh(savedHeader);
             creditNoteDto.setDocRef(savedHeader.getDocRef());
             DocumentBeforeSaveBillwiseCostGroups(creditNoteDto);
@@ -172,6 +173,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
                 if (creditNoteDto.getChargeDetails() != null) {
                     saveChargeDetails(transactionPoid, creditNoteDto.getChargeDetails());
+                    entityManager.flush();
                     executeChargeTaxIfChanged(transactionPoid, creditNoteDto);
                 }
 
@@ -188,6 +190,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
             saveBillwiseForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111", false);
             saveCostCenterForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111", false);
+            executePostSaveUpdates(transactionPoid, creditNoteDto);
 
             loadBillwiseAndCostCenterBreakup(glDetailDtos, transactionPoid, "300-111");
             result.setGlDetails(glDetailDtos);
@@ -196,7 +199,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             result.setChargeDetails(chargeDetails.stream().map(charge -> mapChargeToDto(charge, result.getRefType())).collect(Collectors.toList()));
 
             // Log the creation
-            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), transactionPoid.toString());
+            loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString(), String.format("%s %s", LogDetailsEnum.CREATED, reloadedHeader.getDocRef()));
             List<GlobalLogSummary> detailCreateLogs = buildCreateDetailSummaryLogs(creditNoteDto, transactionPoid);
             if (!detailCreateLogs.isEmpty()) {
                 globalLogSummaryRepository.saveAll(detailCreateLogs);
@@ -284,16 +287,12 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             }
 
             if (creditNoteDto.getChargeDetails() != null) {
-                updateChargeDetailsWithLogging(transactionPoid, creditNoteDto.getChargeDetails(), detailSummaryLogs, creditNoteDto);                           
+                updateChargeDetailsWithLogging(transactionPoid, creditNoteDto.getChargeDetails(), detailSummaryLogs, creditNoteDto);
             }
-
-            entityManager.flush();
             saveBillwiseForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111", true);
             saveCostCenterForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111", true);
             entityManager.flush();
-
             executePostSaveUpdates(transactionPoid, creditNoteDto);
-
             // Execute post-commit tax recalculation and reference updates
             executePostCommitTaxUpdates(transactionPoid, creditNoteDto, oldFdaRef, oldFfRef, existing);
 

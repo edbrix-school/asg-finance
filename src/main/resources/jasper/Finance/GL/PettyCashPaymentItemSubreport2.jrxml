@@ -86,23 +86,25 @@ WHERE GPCC.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
     <detail>
         <band height="20" splitType="Stretch">
             <textField>
-                <reportElement x="0" y="0" width="40" height="20" uuid="4226303e-2681-49f9-8592-9354c703145d"/>
+                <reportElement x="0" y="0" width="40" height="20" uuid="4226303e-2681-49f9-8592-9354c703145d" stretchType="RelativeToTallestObject"/>
+                <textElement verticalAlignment="Top"/>
                 <textFieldExpression><![CDATA[$V{REPORT_COUNT}]]></textFieldExpression>
             </textField>
-            <textField isStretchWithOverflow="true" isBlankWhenNull="true">
-                <reportElement x="40" y="0" width="189" height="20" uuid="44aa6fdc-90df-490a-aa04-48377332b2f5"/>
+            <textField textAdjust="StretchHeight" isBlankWhenNull="true">
+                <reportElement x="40" y="0" width="189" height="20" uuid="44aa6fdc-90df-490a-aa04-48377332b2f5" stretchType="RelativeToTallestObject"/>
+                <textElement verticalAlignment="Top"/>
                 <textFieldExpression><![CDATA[$F{CHARGE_NAME}]]></textFieldExpression>
             </textField>
-            <textField isStretchWithOverflow="true" isBlankWhenNull="true">
-                <reportElement x="229" y="0" width="201" height="20" uuid="102a1567-6b23-44b9-9dd8-c8b64d5d447d"/>
-                <textElement verticalAlignment="Middle">
-                    <font size="8"/>
+            <textField textAdjust="StretchHeight" isBlankWhenNull="true">
+                <reportElement x="238" y="0" width="201" height="20" uuid="102a1567-6b23-44b9-9dd8-c8b64d5d447d" stretchType="RelativeToTallestObject"/>
+                <textElement verticalAlignment="Top">
+                    <font size="10"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{REMARKS}]]></textFieldExpression>
             </textField>
             <textField pattern="#,##0.000" isBlankWhenNull="true">
-                <reportElement x="430" y="0" width="100" height="20" uuid="7ef2df35-d4c7-4e1a-99c9-1e5c41cc8d1b"/>
-                <textElement textAlignment="Right" verticalAlignment="Middle"/>
+                <reportElement x="430" y="0" width="100" height="20" uuid="7ef2df35-d4c7-4e1a-99c9-1e5c41cc8d1b" stretchType="RelativeToTallestObject"/>
+                <textElement textAlignment="Right" verticalAlignment="Top"/>
                 <textFieldExpression><![CDATA[$F{CHARGE_AMOUNT}]]></textFieldExpression>
             </textField>
             <line>

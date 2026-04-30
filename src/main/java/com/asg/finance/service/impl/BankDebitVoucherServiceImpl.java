@@ -183,6 +183,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
         GlBankDebitHdr savedHeader = headerRepository.save(header);
         entityManager.flush();
+        entityManager.refresh(header);
 
         // Post-save job cost updates (mirrors legacy DocumentAfterSave)
 
@@ -190,7 +191,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
         // Log the creation
         String key = savedHeader.getTransactionPoid().toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, documentId, key);
+        loggingService.createLogSummaryEntry(documentId, key, String.format("%s %s", LogDetailsEnum.CREATED, savedHeader.getDocRef()));
 
         BankDebitVoucherResponse response = mapEntityToResponse(savedHeader);
 
@@ -1383,7 +1384,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                 String gainLossGlPoidStr = globalParameterService.getParameterValue("EXCHANGE GAIN LOSS ACCT", "GROUP", "1", null);
                 if (gainLossGlPoidStr != null) {
                     Long gainLossGlPoid = parseLong(gainLossGlPoidStr);
-                    String gainLossRowType = "CR".equalsIgnoreCase(gainLossType) ? "DR" : "CR";
+                    String gainLossRowType = "CR".equalsIgnoreCase(gainLossType) ? "CR" : "DR";
                     rows.add(buildGlRow(detRowId++, gainLossRowType, gainLossGlPoid, gainLoss, null));
                 }
             }
@@ -1529,16 +1530,12 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                 .orElseThrow(() -> new ResourceNotFoundException("Bank Debit Voucher", "transactionPoid", transactionPoid));
 
         Map<String, Object> params = printService.buildBaseParams(transactionPoid, "400-111");
-        JasperReport mainReport = null;
-        if (header.getPayingType() != null) {
-            String payingType = header.getPayingType();
-            if (payingType.contains("3")) {
-                mainReport = printService.load("Finance/BankPayments/BankDebitVouherCreditCard.jrxml");
-            } else if (payingType.contains("4")) {
-                mainReport = printService.load("Finance/BankPayments/BankDebitVouherBankCharges.jrxml");
-            } else {
-                mainReport = printService.load("Finance/BankPayments/BankDebitVoucher.jrxml");
-            }
+        JasperReport mainReport;
+        String payingType = header.getPayingType();
+        if (payingType != null && payingType.contains("3")) {
+            mainReport = printService.load("Finance/BankPayments/BankDebitVouherCreditCard.jrxml");
+        } else {
+            mainReport = printService.load("Finance/BankPayments/BankDebitVoucher.jrxml");
         }
         params.put("BANK_DEBIT_VOUCHER_SUBREPORT_1", printService.load("Finance/BankPayments/BankDebitVoucher_subreport1.jrxml"));
         return printService.fillReportToPdf(mainReport, params, dataSource);
@@ -1586,8 +1583,8 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                 PaymentGlDetails item = request.getPaymentGlDetails().get(i);
                 if (item.getTaxPercentage() == null) continue;
 
-                BigDecimal baseAmount = item.getTotalAmount() != null ? item.getTotalAmount()
-                        : item.getDrAmt() != null ? item.getDrAmt()
+                BigDecimal baseAmount = item.getDrAmt() != null && item.getDrAmt().compareTo(BigDecimal.ZERO) > 0
+                        ? item.getDrAmt()
                         : item.getCrAmt() != null ? item.getCrAmt() : BigDecimal.ZERO;
                 baseAmount = baseAmount.setScale(3, java.math.RoundingMode.HALF_UP);
 
@@ -1602,12 +1599,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                 BigDecimal difference = enteredTax.subtract(expectedTax).abs();
 
                 if (difference.compareTo(inputTaxLimit) > 0) {
-                    throw new ValidationException(String.format(
-                            "WARNING : Please check the payment GL row number %d, Maximum allowed VAT difference is %s. Current difference is %s+/-",
-                            i + 1,
-                            inputTaxLimit.stripTrailingZeros().toPlainString(),
-                            difference.stripTrailingZeros().toPlainString()
-                    ));
+                    throw new ValidationException("WARNING : Input tax difference (" + difference + "/-) should be within " + inputTaxLimit + "/- Please note the row number " + (i + 1));
                 }
             }
         }
@@ -1629,12 +1621,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                 BigDecimal difference = enteredTax.subtract(expectedTax).abs();
 
                 if (difference.compareTo(inputTaxLimit) > 0) {
-                    throw new ValidationException(String.format(
-                            "WARNING : Please check the charge detail row number %d, Maximum allowed VAT difference is %s. Current difference is %s+/-",
-                            i + 1,
-                            inputTaxLimit.stripTrailingZeros().toPlainString(),
-                            difference.stripTrailingZeros().toPlainString()
-                    ));
+                    throw new ValidationException("WARNING : Input tax difference (" + difference + "/-) should be within " + inputTaxLimit + "/- Please note the row number " + (i + 1));
                 }
             }
         }

@@ -1,161 +1,161 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="PurchaseInvoiceReportGlSubreport1" language="groovy" pageWidth="542" pageHeight="802" columnWidth="542" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="b5a097cf-ebe4-4e33-8890-70fa8537ea6b">
-	<property name="ireport.zoom" value="1.2100000000000002"/>
-	<property name="ireport.x" value="0"/>
-	<property name="ireport.y" value="0"/>
-	<parameter name="DOC_KEY_POID" class="java.lang.String"/>
-	<queryString>
-		<![CDATA[SELECT COMPANY_POID, TYPE, GL_CODE, COMPANY_CODE, GL_DESCRIPTION, DR_AMT, CR_AMT, REMARKS
+    <property name="ireport.zoom" value="1.771561000000001"/>
+    <property name="ireport.x" value="0"/>
+    <property name="ireport.y" value="0"/>
+    <parameter name="DOC_KEY_POID" class="java.lang.String"/>
+    <queryString>
+        <![CDATA[SELECT COMPANY_POID, TYPE, GL_CODE, COMPANY_CODE, GL_DESCRIPTION, DR_AMT, CR_AMT, REMARKS
 FROM(
       SELECT PIG.COMPANY_POID, PIG.TYPE, GM.GL_CODE, GCM.COMPANY_CODE, GM.GL_DESCRIPTION,
       PIG.DR_AMOUNT AS DR_AMT, PIG.CR_AMOUNT AS CR_AMT, PIG.REMARKS
-      FROM AP_PURCHASE_INVOICE_GL_DTL PIG
+      FROM AP_PURCHASE_CN_GL_DTL  PIG
       LEFT JOIN GL_MASTER GM ON GM.GL_POID=PIG.GL_POID
       LEFT JOIN GLOBAL_COMPANY_MASTER GCM ON GCM.COMPANY_POID=PIG.COMPANY_POID
       WHERE TRANSACTION_POID=$P{DOC_KEY_POID}
       Union all
       SELECT PIG.COMPANY_POID, PIG.TYPE, GM.GL_CODE, GCM.COMPANY_CODE, GM.GL_DESCRIPTION,
       CASE WHEN PIG.TAX_AMOUNT>0 THEN PIG.TAX_AMOUNT END AS DR_AMT, CASE WHEN PIG.TAX_AMOUNT<0 THEN ABS(PIG.TAX_AMOUNT) END AS CR_AMT, PIG.REMARKS
-      FROM AP_PURCHASE_INVOICE_GL_DTL PIG
+      FROM AP_PURCHASE_CN_GL_DTL  PIG
       INNER JOIN GLOBAL_TAX_MASTER GTM ON GTM.TAX_POID=PIG.TAX_POID
       LEFT JOIN GL_MASTER GM ON GM.GL_POID=GTM.GL_POID
       LEFT JOIN GLOBAL_COMPANY_MASTER GCM ON GCM.COMPANY_POID=PIG.COMPANY_POID
-      WHERE NVL(TAX_PERCENTAGE,0)>0 AND TRANSACTION_POID=$P{DOC_KEY_POID}
+      WHERE NVL(TAX_PERCENTAGE,0)>0
+      AND TRANSACTION_POID=$P{DOC_KEY_POID}
       )
 ORDER BY TYPE DESC]]>
-	</queryString>
-	<field name="COMPANY_POID" class="java.math.BigDecimal"/>
-	<field name="TYPE" class="java.lang.String"/>
-	<field name="GL_CODE" class="java.lang.String"/>
-	<field name="COMPANY_CODE" class="java.lang.String"/>
-	<field name="GL_DESCRIPTION" class="java.lang.String"/>
-	<field name="DR_AMT" class="java.math.BigDecimal"/>
-	<field name="CR_AMT" class="java.math.BigDecimal"/>
-	<field name="REMARKS" class="java.lang.String"/>
-	<background>
-		<band splitType="Stretch"/>
-	</background>
-	<columnHeader>
-		<band height="21">
-			<line>
-				<reportElement x="0" y="0" width="542" height="1" uuid="0b8aa02f-10ca-461a-aa81-90550174b663"/>
-				<graphicElement>
-					<pen lineWidth="1.5" lineColor="#999999"/>
-				</graphicElement>
-			</line>
-			<staticText>
-				<reportElement x="78" y="0" width="85" height="20" uuid="0c92185f-c04b-4681-ab81-4afb851b6063"/>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
-					<font isBold="true" pdfFontName="Helvetica-Bold"/>
-					<paragraph leftIndent="1"/>
-				</textElement>
-				<text><![CDATA[GL Code]]></text>
-			</staticText>
-			<staticText>
-				<reportElement x="163" y="0" width="229" height="20" uuid="9af145f9-8052-424d-a210-cc73b9a3a583"/>
-				<textElement verticalAlignment="Middle">
-					<font isBold="true" pdfFontName="Helvetica-Bold"/>
-					<paragraph leftIndent="1"/>
-				</textElement>
-				<text><![CDATA[GL Description]]></text>
-			</staticText>
-			<staticText>
-				<reportElement x="392" y="0" width="75" height="20" uuid="96ddbdcb-d696-4654-a2f5-5aace43a0fca"/>
-				<textElement verticalAlignment="Middle">
-					<font isBold="true" pdfFontName="Helvetica-Bold"/>
-					<paragraph leftIndent="1"/>
-				</textElement>
-				<text><![CDATA[Debit Amount]]></text>
-			</staticText>
-			<staticText>
-				<reportElement x="467" y="0" width="75" height="20" uuid="271cd196-1568-4d08-b9a7-9f2404ddacd6"/>
-				<textElement verticalAlignment="Middle">
-					<font isBold="true" pdfFontName="Helvetica-Bold"/>
-					<paragraph leftIndent="1"/>
-				</textElement>
-				<text><![CDATA[Credit Amount]]></text>
-			</staticText>
-			<staticText>
-				<reportElement x="0" y="0" width="26" height="20" uuid="36f1ba96-7192-46a1-83b9-33f051a6192c"/>
-				<textElement textAlignment="Center" verticalAlignment="Middle">
-					<font isBold="true" pdfFontName="Helvetica-Bold"/>
-					<paragraph leftIndent="1"/>
-				</textElement>
-				<text><![CDATA[SN]]></text>
-			</staticText>
-			<line>
-				<reportElement x="0" y="20" width="542" height="1" uuid="535cdd82-2567-4e4a-98af-56cb7cc540a6"/>
-				<graphicElement>
-					<pen lineWidth="1.0" lineStyle="Solid" lineColor="#999999"/>
-				</graphicElement>
-			</line>
-			<staticText>
-				<reportElement x="26" y="0" width="52" height="20" uuid="5cace929-9639-4fd0-a086-1a76986c15e2"/>
-				<textElement verticalAlignment="Middle">
-					<font isBold="true" pdfFontName="Helvetica-Bold"/>
-					<paragraph leftIndent="2" rightIndent="2"/>
-				</textElement>
-				<text><![CDATA[Company]]></text>
-			</staticText>
-		</band>
-	</columnHeader>
-	<detail>
-		<band height="21" splitType="Stretch">
-			<textField isBlankWhenNull="true">
-				<reportElement x="78" y="0" width="85" height="20" uuid="84f4a826-b2cf-4fb2-a91e-4751d11cdea4"/>
-				<textElement verticalAlignment="Middle">
-					<font size="9"/>
-					<paragraph leftIndent="1"/>
-				</textElement>
-				<textFieldExpression><![CDATA[$F{GL_CODE}]]></textFieldExpression>
-			</textField>
-			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
-				<reportElement x="163" y="0" width="229" height="20" uuid="7ce0dcb5-55da-4539-bdce-621a115891b0"/>
-				<textElement verticalAlignment="Middle">
-					<font size="9"/>
-					<paragraph leftIndent="1"/>
-				</textElement>
-				<textFieldExpression><![CDATA[$F{GL_DESCRIPTION}]]></textFieldExpression>
-			</textField>
-			<textField pattern="#,##0.000" isBlankWhenNull="true">
-				<reportElement x="392" y="0" width="75" height="20" uuid="bfde7b40-b346-4a4e-950f-ab19d884a476"/>
-				<textElement textAlignment="Right" verticalAlignment="Middle">
-					<font size="9"/>
-					<paragraph rightIndent="3"/>
-				</textElement>
-				<textFieldExpression><![CDATA[$F{DR_AMT}]]></textFieldExpression>
-			</textField>
-			<textField pattern="#,##0.000" isBlankWhenNull="true">
-				<reportElement x="467" y="0" width="75" height="20" uuid="fb27507b-c226-406f-b9e1-aeeeb911c5af"/>
-				<textElement textAlignment="Right" verticalAlignment="Middle">
-					<font size="9"/>
-					<paragraph rightIndent="3"/>
-				</textElement>
-				<textFieldExpression><![CDATA[$F{CR_AMT}]]></textFieldExpression>
-			</textField>
-			<textField isBlankWhenNull="true">
-				<reportElement x="0" y="0" width="26" height="20" uuid="1719bbb5-152a-4e78-8fc2-2b31a5bd64e4"/>
-				<textElement textAlignment="Center" verticalAlignment="Middle">
-					<font size="9"/>
-					<paragraph leftIndent="1"/>
-				</textElement>
-				<textFieldExpression><![CDATA[$V{REPORT_COUNT}]]></textFieldExpression>
-			</textField>
-			<line>
-				<reportElement positionType="Float" x="0" y="20" width="542" height="1" uuid="6ed48578-3386-4595-a17a-3736f838021a"/>
-				<graphicElement>
-					<pen lineStyle="Dotted" lineColor="#999999"/>
-				</graphicElement>
-			</line>
-			<textField isBlankWhenNull="true">
-				<reportElement x="26" y="0" width="52" height="20" uuid="18a070f9-32e2-4644-a5be-80f348e3954a"/>
-				<textElement verticalAlignment="Middle">
-					<font size="9"/>
-					<paragraph leftIndent="2"/>
-				</textElement>
-				<textFieldExpression><![CDATA[$F{COMPANY_CODE}]]></textFieldExpression>
-			</textField>
-		</band>
-	</detail>
+    </queryString>
+    <field name="COMPANY_POID" class="java.math.BigDecimal"/>
+    <field name="TYPE" class="java.lang.String"/>
+    <field name="GL_CODE" class="java.lang.String"/>
+    <field name="COMPANY_CODE" class="java.lang.String"/>
+    <field name="GL_DESCRIPTION" class="java.lang.String"/>
+    <field name="DR_AMT" class="java.math.BigDecimal"/>
+    <field name="CR_AMT" class="java.math.BigDecimal"/>
+    <field name="REMARKS" class="java.lang.String"/>
+    <background>
+        <band splitType="Stretch"/>
+    </background>
+    <columnHeader>
+        <band height="21">
+            <line>
+                <reportElement x="0" y="0" width="542" height="1" uuid="0b8aa02f-10ca-461a-aa81-90550174b663"/>
+                <graphicElement>
+                    <pen lineWidth="1.5" lineColor="#999999"/>
+                </graphicElement>
+            </line>
+            <staticText>
+                <reportElement x="78" y="0" width="85" height="20" uuid="0c92185f-c04b-4681-ab81-4afb851b6063"/>
+                <textElement textAlignment="Left" verticalAlignment="Middle">
+                    <font isBold="true"/>
+                    <paragraph leftIndent="1"/>
+                </textElement>
+                <text><![CDATA[GL Code]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="163" y="0" width="229" height="20" uuid="9af145f9-8052-424d-a210-cc73b9a3a583"/>
+                <textElement verticalAlignment="Middle">
+                    <font isBold="true"/>
+                    <paragraph leftIndent="1"/>
+                </textElement>
+                <text><![CDATA[GL Description]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="392" y="0" width="75" height="20" uuid="96ddbdcb-d696-4654-a2f5-5aace43a0fca"/>
+                <textElement verticalAlignment="Middle">
+                    <font isBold="true"/>
+                    <paragraph leftIndent="1"/>
+                </textElement>
+                <text><![CDATA[Debit Amount]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="467" y="0" width="75" height="20" uuid="271cd196-1568-4d08-b9a7-9f2404ddacd6"/>
+                <textElement verticalAlignment="Middle">
+                    <font isBold="true"/>
+                    <paragraph leftIndent="1"/>
+                </textElement>
+                <text><![CDATA[Credit Amount]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="0" y="0" width="26" height="20" uuid="36f1ba96-7192-46a1-83b9-33f051a6192c"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font isBold="true"/>
+                    <paragraph leftIndent="1"/>
+                </textElement>
+                <text><![CDATA[SN]]></text>
+            </staticText>
+            <line>
+                <reportElement x="0" y="20" width="542" height="1" uuid="535cdd82-2567-4e4a-98af-56cb7cc540a6"/>
+                <graphicElement>
+                    <pen lineWidth="1.0" lineStyle="Solid" lineColor="#999999"/>
+                </graphicElement>
+            </line>
+            <staticText>
+                <reportElement x="26" y="0" width="52" height="20" uuid="5cace929-9639-4fd0-a086-1a76986c15e2"/>
+                <textElement verticalAlignment="Middle">
+                    <font isBold="true"/>
+                    <paragraph leftIndent="2" rightIndent="2"/>
+                </textElement>
+                <text><![CDATA[Company]]></text>
+            </staticText>
+        </band>
+    </columnHeader>
+    <detail>
+        <band height="21" splitType="Stretch">
+            <textField isBlankWhenNull="true">
+                <reportElement x="78" y="0" width="85" height="20" uuid="84f4a826-b2cf-4fb2-a91e-4751d11cdea4"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="9"/>
+                    <paragraph leftIndent="1"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{GL_CODE}]]></textFieldExpression>
+            </textField>
+            <textField isStretchWithOverflow="true" isBlankWhenNull="true">
+                <reportElement x="163" y="0" width="229" height="20" uuid="7ce0dcb5-55da-4539-bdce-621a115891b0"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="9"/>
+                    <paragraph leftIndent="1"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{GL_DESCRIPTION}]]></textFieldExpression>
+            </textField>
+            <textField pattern="#,##0.000" isBlankWhenNull="true">
+                <reportElement x="392" y="0" width="75" height="20" uuid="bfde7b40-b346-4a4e-950f-ab19d884a476"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font size="9"/>
+                    <paragraph rightIndent="3"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{DR_AMT}]]></textFieldExpression>
+            </textField>
+            <textField pattern="#,##0.000" isBlankWhenNull="true">
+                <reportElement x="467" y="0" width="75" height="20" uuid="fb27507b-c226-406f-b9e1-aeeeb911c5af"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font size="9"/>
+                    <paragraph rightIndent="3"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{CR_AMT}]]></textFieldExpression>
+            </textField>
+            <textField isBlankWhenNull="true">
+                <reportElement x="0" y="0" width="26" height="20" uuid="1719bbb5-152a-4e78-8fc2-2b31a5bd64e4"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font size="9"/>
+                    <paragraph leftIndent="1"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$V{REPORT_COUNT}]]></textFieldExpression>
+            </textField>
+            <line>
+                <reportElement positionType="Float" x="0" y="20" width="542" height="1" uuid="6ed48578-3386-4595-a17a-3736f838021a"/>
+                <graphicElement>
+                    <pen lineStyle="Dotted" lineColor="#999999"/>
+                </graphicElement>
+            </line>
+            <textField isBlankWhenNull="true">
+                <reportElement x="26" y="0" width="52" height="20" uuid="18a070f9-32e2-4644-a5be-80f348e3954a"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="9"/>
+                    <paragraph leftIndent="2"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{COMPANY_CODE}]]></textFieldExpression>
+            </textField>
+        </band>
+    </detail>
 </jasperReport>
-

@@ -28,6 +28,7 @@ import com.asg.finance.repository.PettyCashPaymentVoucherCustomRepository;
 import com.asg.finance.entity.AdvancePettyCashDtl;
 
 import com.asg.finance.service.AdvancePettyCashHdrService;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,22 +54,30 @@ public class AdvancePettyCashHdrServiceImpl implements AdvancePettyCashHdrServic
     private final GLMasterRepository glMasterRepository;
     private final LoggingService loggingService;
     private final PettyCashPaymentVoucherCustomRepository pettyCashCustomRepository;
+    private final EntityManager entityManager;
     
     @Autowired
     private final DocumentSearchService documentService;
     private final DocumentDeleteService documentDeleteService;
 
     @Override
+    @Transactional
     public AdvancePettyCashHdrResponseDTO createAdvancePettyCash(AdvancePettyCashHdrRequestDTO request) {
         validateTransactionDate(request.getTransactionDate());
         validateClosedStatus(request.getStatus(), request.getClosedReason());
         try {
             AdvancePettyCashHdr entity = convertFromDtoToEntity(request);
             AdvancePettyCashHdr saved = repository.save(entity);
+            entityManager.flush();
+            entityManager.refresh(entity);
             String key = saved.getTransactionPoid().toString();
             
             // Log the creation
-            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), key);
+            loggingService.createLogSummaryEntry(
+                UserContext.getDocumentId(), 
+                key, 
+                String.format("%s %s", LogDetailsEnum.CREATED, saved.getDocRef())
+            );
             
             return convertFromEntityToDto(saved);
         } catch (Exception ex) {
@@ -78,6 +87,7 @@ public class AdvancePettyCashHdrServiceImpl implements AdvancePettyCashHdrServic
     }
 
     @Override
+    @Transactional
     public AdvancePettyCashHdrResponseDTO updateAdvancePettyCash(Long transactionPoid, AdvancePettyCashHdrRequestDTO request) {
         AdvancePettyCashHdr existing = repository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Advance Petty Cash not found with ID: ", "transactionPoid", transactionPoid));

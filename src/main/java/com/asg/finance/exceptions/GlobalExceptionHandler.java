@@ -143,7 +143,7 @@ public class GlobalExceptionHandler {
 					return error.getObjectName();
 				}, ObjectError::getDefaultMessage, (existing, replacement) -> existing, LinkedHashMap::new));
 
-		return ResponseEntity.badRequest().body(ApiResponse.error(ex.getMessage(), 400, errors));
+		return ApiResponse.error(ex.getMessage(), 400, errors);
 	}
 
 	@ExceptionHandler(Exception.class)

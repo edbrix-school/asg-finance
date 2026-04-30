@@ -38,8 +38,7 @@ public class ApPurchaseCnHdrDto {
     private BigDecimal currencyRate;
     
     private BigDecimal bhdAmount; // Auto-calculated
-    
-    @NotNull(message = "Credit note amount is required")
+
     private BigDecimal supplierCnAmount;
     
     private String supplierCnNo;

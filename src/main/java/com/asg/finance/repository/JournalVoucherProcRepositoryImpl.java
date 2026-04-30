@@ -49,14 +49,14 @@ public class JournalVoucherProcRepositoryImpl implements JournalVoucherProcRepos
 
         query.registerStoredProcedureParameter("P_COMPANY_POID", Long.class, ParameterMode.IN);
         query.registerStoredProcedureParameter("P_DEP_YEAR", Date.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter(P_FA_POID, Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(P_FA_POID, String.class, ParameterMode.IN);
         query.registerStoredProcedureParameter(OUTDATA, void.class, ParameterMode.REF_CURSOR);
 
         query.setParameter("P_COMPANY_POID", getCompanyId());
         LocalDate currentDate = DateUtil.getCurrentDateInUserTimeZone();
 
         query.setParameter("P_DEP_YEAR", java.sql.Date.valueOf(currentDate));
-        query.setParameter(P_FA_POID, faPoid);
+        query.setParameter(P_FA_POID, faPoid.toString());
 
         query.execute();
 

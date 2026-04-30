@@ -301,10 +301,8 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         // Ensure filterList is mutable (resolveDateFilters may return Collections.emptyList() which is immutable)
         filterList = new ArrayList<>(filterList);
 
-        // Use custom search method
-        // Note: GROUP_POID column is NULL in all records in GLOBAL_TAX_SUBMISSION_HDR table,
-        // so we pass null for groupPoid to skip GROUP_POID filtering entirely
-        RawSearchResult raw = searchTaxSubmissions(filterList, operator, pageable, isDeleted, null);
+        // Pass COMPANY_POID for proper data isolation; GROUP_POID passed as null due to current data state (NULL in DB)
+        RawSearchResult raw = searchTaxSubmissions(filterList, operator, pageable, isDeleted, null, UserContext.getCompanyPoid());
 
         Page<Map<String, Object>> page = new PageImpl<>(raw.records(), pageable, raw.totalRecords());
 
@@ -321,7 +319,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         
         log.info("loadVatDetails started for transactionPoid={} groupPoid={}", transactionPoid, groupPoid);
 
-        GlobalTaxSubmissionHdr header = hdrRepository.findByTransactionPoidAndGroupPoid(transactionPoid, groupPoid)
+        GlobalTaxSubmissionHdr header = hdrRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Tax Submission", "transactionPoid", transactionPoid));
 
         // Validate header is in editable state
@@ -393,11 +391,9 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
     @Override
     @Transactional
     public SubmitTaxSubmissionResponse submitTaxSubmission(Long transactionPoid, SubmitTaxSubmissionRequest request) {
-        Long groupPoid = UserContext.getGroupPoid();
-        
         log.info("submitTaxSubmission started for transactionPoid={} action={}", transactionPoid, request.getAction());
 
-        GlobalTaxSubmissionHdr header = hdrRepository.findByTransactionPoidAndGroupPoid(transactionPoid, groupPoid)
+        GlobalTaxSubmissionHdr header = hdrRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Tax Submission", "transactionPoid", transactionPoid));
 
         // Validate VAT details are loaded
@@ -438,7 +434,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
 
         log.info("runAfterSave started for transactionPoid={} groupPoid={} userId={}", transactionPoid, groupPoid, userId);
 
-        GlobalTaxSubmissionHdr header = hdrRepository.findByTransactionPoidAndGroupPoid(transactionPoid, groupPoid)
+        GlobalTaxSubmissionHdr header = hdrRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Tax Submission", "transactionPoid", transactionPoid));
 
         String afterSaveStatus = storedProcedureHelper.processAfterSave(
@@ -449,7 +445,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         }
 
         // Reload header (procedure may have updated fields like PERIOD_CLOSED_BY/DATE)
-        GlobalTaxSubmissionHdr reloadedHeader = hdrRepository.findByTransactionPoidAndGroupPoid(transactionPoid, groupPoid)
+        GlobalTaxSubmissionHdr reloadedHeader = hdrRepository.findByTransactionPoid(transactionPoid)
                 .orElse(header);
         List<GlobalTaxSubmissionDtl> details = dtlRepository.findByTransactionPoid(transactionPoid);
 
@@ -508,7 +504,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
      * Custom search method for tax submissions that handles GROUP_POID with exact numeric match
      */
     private RawSearchResult searchTaxSubmissions(List<FilterDto> filters, String operator, Pageable pageable, 
-                                                 String isDeleted, @Nullable Long groupPoid) {
+                                                 String isDeleted, @Nullable Long groupPoid, @Nullable Long companyPoid) {
         // Base SQL query
         String baseSql = "SELECT * FROM GLOBAL_TAX_SUBMISSION_HDR";
         
@@ -517,7 +513,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         
         // Build WHERE clause with proper GROUP_POID handling
         WhereClauseResult whereClause = buildTaxSubmissionWhereClause(columnNames, filters, operator, isDeleted, 
-                                                                       groupPoid);
+                                                                       groupPoid, companyPoid);
         
         // Apply sorting
         String sortedSql = applyTaxSubmissionSorting(baseSql, pageable, columnNames, whereClause.sql());
@@ -559,7 +555,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
      */
     private WhereClauseResult buildTaxSubmissionWhereClause(List<String> fields, List<FilterDto> filters, 
                                                             String operator, String isDeleted, 
-                                                            @Nullable Long groupPoid) {
+                                                            @Nullable Long groupPoid, @Nullable Long companyPoid) {
         StringBuilder sql = new StringBuilder(" WHERE 1=1 ");
         List<Object> params = new ArrayList<>();
         
@@ -570,11 +566,14 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
             sql.append(" AND (DELETED IS NULL OR DELETED = 'N')");
         }
         
-        // GROUP_POID filter (exact numeric match - critical for data isolation)
-        // NOTE: GROUP_POID column is NULL in all records in GLOBAL_TAX_SUBMISSION_HDR table,
-        // so this filter is intentionally skipped (groupPoid is always passed as null)
-        // If GROUP_POID data is populated in the future, this filter will automatically work
-        if (groupPoid != null) {
+        // COMPANY_POID filter - CRITICAL for data isolation and correct "value" totals
+        if (companyPoid != null && fields.contains("COMPANY_POID")) {
+            sql.append(" AND COMPANY_POID = ?");
+            params.add(companyPoid);
+        }
+        
+        // GROUP_POID filter
+        if (groupPoid != null && fields.contains("GROUP_POID")) {
             sql.append(" AND GROUP_POID = ?");
             params.add(groupPoid);
         }

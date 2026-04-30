@@ -72,7 +72,7 @@ class HsbcApiClientTest {
         // encryptAndSign will throw since we can't do real PGP in unit test
         doThrow(new Exception("Encryption failed")).when(pgpHelper).encryptAndSign(any(), any(), any(), any());
 
-        assertThrows(Exception.class, () -> hsbcApiClient.syncHsbcData("1234567890", "15-JAN-2025"));
+        assertThrows(Exception.class, () -> hsbcApiClient.syncHsbcData("1234567890", "15-JAN-2025", 1L, 1L, 1L, "TEST"));
 
         verify(pgpHelper).generateTestSecretKey();
         verify(pgpHelper).generateTestPublicKey();
@@ -82,7 +82,7 @@ class HsbcApiClientTest {
     void syncHsbcData_MissingParameter_ThrowsNoSuchElementException() throws Exception {
         when(parameterServiceClient.findParameterValueByName("HSBC_URL_FOR_API")).thenReturn(Optional.empty());
 
-        assertThrows(Exception.class, () -> hsbcApiClient.syncHsbcData("1234567890", "15-JAN-2025"));
+        assertThrows(Exception.class, () -> hsbcApiClient.syncHsbcData("1234567890", "15-JAN-2025", 1L, 1L, 1L, "TEST"));
     }
 
     @Test
@@ -93,7 +93,7 @@ class HsbcApiClientTest {
 
         doThrow(new Exception("Encryption failed")).when(pgpHelper).encryptAndSign(any(), any(), any(), any());
 
-        assertThrows(Exception.class, () -> hsbcApiClient.syncHsbcData("1234567890", "15-JAN-2025"));
+        assertThrows(Exception.class, () -> hsbcApiClient.syncHsbcData("1234567890", "15-JAN-2025", 1L, 1L, 1L, "TEST"));
 
         verify(pgpHelper, never()).generateTestSecretKey();
         verify(pgpHelper, never()).generateTestPublicKey();
@@ -110,7 +110,7 @@ class HsbcApiClientTest {
 
         doThrow(new Exception("Encryption failed")).when(pgpHelper).encryptAndSign(any(), any(), any(), any());
 
-        assertThrows(Exception.class, () -> hsbcApiClient.syncHsbcData("1234567890", "15-JAN-2025"));
+        assertThrows(Exception.class, () -> hsbcApiClient.syncHsbcData("1234567890", "15-JAN-2025", 1L, 1L, 1L, "TEST"));
 
         verify(callableStatement).setString(1, "SINGLE_ACCOUNT_HISTORY_DATE");
         verify(callableStatement).setString(2, "1234567890");

@@ -5,7 +5,9 @@ import com.asg.common.lib.dto.LovGetListDto;
 import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.DeleteReasonDto;
+import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
 import com.asg.common.lib.dto.request.LogRequestDto;
+import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
@@ -22,6 +24,11 @@ import com.asg.finance.dto.ContraVoucherRequest;
 import com.asg.finance.dto.ContraVoucherDetailResponse;
 import com.asg.finance.dto.ContraVoucherFullResponse;
 import com.asg.finance.dto.ContraVoucherResponse;
+import com.asg.finance.dto.BillwiseBreakupPopupRequestDto;
+import com.asg.finance.dto.CostCenterBreakupResponseDto;
+import com.asg.finance.dto.CostCenterBreakupPopupRequestDto;
+import com.asg.finance.dto.CostCenterBreakupRequestDto;
+import com.asg.finance.dto.GlVoucherCostCenterBreakupResponseDto;
 import com.asg.finance.dto.PoidDetailsDto;
 import com.asg.finance.entity.GlContraVoucherDtl;
 import com.asg.finance.entity.GlContraVoucherHdr;
@@ -30,7 +37,10 @@ import com.asg.finance.repository.GlContraVoucherHdrRepository;
 import com.asg.common.lib.security.util.UserContext;
 
 import com.asg.finance.annotation.PerformGlPosting;
+import com.asg.finance.service.BillwiseBreakupService;
 import com.asg.finance.service.ContraVoucherService;
+import com.asg.finance.service.CostCenterBreakupService;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;
@@ -42,12 +52,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.sql.DataSource;
+import java.math.BigDecimal;
 import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -57,6 +69,11 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class ContraVoucherServiceImpl implements ContraVoucherService {
+    private static final String DEFAULT_DOC_ID = "400-103";
+    private static final long DEFAULT_CONTEXT_POID = 1L;
+    private static final String BILLWISE_TYPE_DR = "DR";
+    private static final String BILLWISE_TYPE_CR = "CR";
+    private static final String DEFAULT_COST_GROUP_LOV = "COST_CENTRE";
 
     private final GlContraVoucherHdrRepository hdrRepository;
     private final GlContraVoucherDtlRepository dtlRepository;
@@ -67,6 +84,9 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
     private final LovDataService lovService;
     private final PrintService printService;
     private final LoggingService loggingService;
+    private final EntityManager entityManager;
+    private final BillwiseBreakupService billwiseBreakupService;
+    private final CostCenterBreakupService costCenterBreakupService;
 
     @Override
     public Map<String, Object> listContraVouchers(String docId, FilterRequestDto request, Pageable pageable, LocalDate periodFrom, LocalDate periodTo) {
@@ -230,10 +250,12 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
         header.setCrTotal(request.getCrTotal());
 
         GlContraVoucherHdr savedHeader = hdrRepository.save(header);
+        entityManager.flush();
+        entityManager.refresh(header);
 
         // Log the creation
         String key = savedHeader.getTransactionPoid().toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, "400-103", key);
+        loggingService.createLogSummaryEntry(UserContext.getDocumentId(), key, String.format("%s %s", LogDetailsEnum.CREATED, savedHeader.getDocRef()));
 
         // Process details from request
         if (request.getDetails() != null && !request.getDetails().isEmpty()) {
@@ -251,12 +273,15 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
                     detail.setCrAmt(detailRequest.getCrAmt());
                     detail.setRemarks(detailRequest.getRemarks());
                     dtlRepository.save(detail);
+                    detailRequest.setDetRowId(detail.getDetRowId());
                     
                     // Log child record creation
                     String logDetail = String.format("Row Created on Contra Voucher Detail with detRowId: %s", detail.getDetRowId());
                     loggingService.createLogSummaryEntry(UserContext.getDocumentId(), savedHeader.getTransactionPoid().toString(), logDetail);
                 }
             }
+            saveBillwiseForDetails(savedHeader.getTransactionPoid(), request.getDetails(), false);
+            saveCostCenterForDetails(savedHeader.getTransactionPoid(), request.getDetails(), false);
         }
 
         log.info("createContraVoucher completed for transactionPoid={}", savedHeader.getTransactionPoid());
@@ -337,6 +362,7 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
                     detail.setCrAmt(detailRequest.getCrAmt());
                     detail.setRemarks(detailRequest.getRemarks());
                     dtlRepository.save(detail);
+                    detailRequest.setDetRowId(detail.getDetRowId());
                     
                     // Log child record creation
                     String logDetail = String.format("Row Created on Contra Voucher Detail with detRowId: %s", detail.getDetRowId());
@@ -400,6 +426,13 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
             if (!logRequests.isEmpty()) {
                 loggingService.createLogBatch(logRequests);
             }
+
+            List<ContraVoucherDetailRequest> activeDetails = request.getDetails().stream()
+                    .filter(detail -> detail != null && detail.getDetRowId() != null)
+                    .filter(detail -> !"isDeleted".equalsIgnoreCase(detail.getActionType()))
+                    .toList();
+            saveBillwiseForDetails(savedHeader.getTransactionPoid(), activeDetails, true);
+            saveCostCenterForDetails(savedHeader.getTransactionPoid(), activeDetails, true);
         }
 
         log.info("updateContraVoucher completed for transactionPoid={}", savedHeader.getTransactionPoid());
@@ -546,7 +579,284 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
         response.setDrAmt(detail.getDrAmt());
         response.setCrAmt(detail.getCrAmt());
         response.setRemarks(detail.getRemarks());
+        response.setBreakupList(loadBillwisePopupList(detail.getTransactionPoid(), detail.getDetRowId()));
+        response.setCostCenterList(loadCostCenterPopupList(detail.getTransactionPoid(), detail.getDetRowId()));
         return response;
+    }
+
+    private void saveBillwiseForDetails(Long transactionPoid,
+                                        List<ContraVoucherDetailRequest> details,
+                                        boolean isUpdate) {
+        if (details == null || details.isEmpty()) {
+            return;
+        }
+
+        String docId = getCurrentDocId();
+        Long groupPoid = getCurrentGroupPoid();
+        Long companyPoid = getCurrentCompanyPoid();
+        Long userPoid = getCurrentUserPoid();
+        List<BillwiseBreakupRequestDto> breakupRequests = new ArrayList<>();
+
+        for (ContraVoucherDetailRequest detail : details) {
+            if (detail == null || detail.getDetRowId() == null || detail.getBreakupList() == null) {
+                continue;
+            }
+            for (BillwiseBreakupPopupRequestDto popup : detail.getBreakupList()) {
+                if (popup == null) {
+                    continue;
+                }
+                BillwiseBreakupRequestDto req = new BillwiseBreakupRequestDto();
+                req.setGroupPoid(groupPoid);
+                req.setCompanyPoid(companyPoid);
+                req.setDocId(docId);
+                req.setTransactionPoid(transactionPoid);
+                if (popup.getBillDetRowId() == null) {
+                    throw new IllegalArgumentException("billDetRowId is required in breakupList");
+                }
+                req.setBillDetRowId(popup.getBillDetRowId());
+                req.setBillRefType(popup.getBillRefType());
+                req.setBillRef(popup.getBillRef());
+                req.setBillDueDate(popup.getBillDueDate());
+                if (BILLWISE_TYPE_DR.equalsIgnoreCase(popup.getType())) {
+                    req.setDrAmt(popup.getAmount());
+                    req.setCrAmt(BigDecimal.ZERO);
+                } else {
+                    req.setDrAmt(BigDecimal.ZERO);
+                    req.setCrAmt(popup.getAmount());
+                }
+                req.setBillRemarks(popup.getBillRemarks());
+                req.setLoginUserPoid(userPoid);
+                req.setMainDetRowId(detail.getDetRowId());
+                req.setGlCompanyPoid(detail.getCompanyPoid() != null ? detail.getCompanyPoid() : companyPoid);
+                req.setGlPoid(detail.getGlPoid());
+                breakupRequests.add(req);
+            }
+        }
+
+        if (breakupRequests.isEmpty()) {
+            return;
+        }
+
+        if (isUpdate) {
+            billwiseBreakupService.updateBillwiseBreakups(breakupRequests, userPoid);
+        } else {
+            billwiseBreakupService.insertBillwiseBreakup(breakupRequests);
+        }
+    }
+
+    private void saveCostCenterForDetails(Long transactionPoid,
+                                          List<ContraVoucherDetailRequest> details,
+                                          boolean isUpdate) {
+        if (details == null || details.isEmpty()) {
+            return;
+        }
+
+        String docId = getCurrentDocId();
+        Long groupPoid = getCurrentGroupPoid();
+        Long companyPoid = getCurrentCompanyPoid();
+        Long userPoid = getCurrentUserPoid();
+        List<CostCenterBreakupRequestDto> costCenterRequests = new ArrayList<>();
+
+        for (ContraVoucherDetailRequest detail : details) {
+            if (detail == null || detail.getDetRowId() == null || detail.getCostCenterList() == null) {
+                continue;
+            }
+            for (CostCenterBreakupPopupRequestDto popup : detail.getCostCenterList()) {
+                if (popup == null) {
+                    continue;
+                }
+                CostCenterBreakupRequestDto dto = new CostCenterBreakupRequestDto();
+                dto.setGroupPoid(groupPoid);
+                dto.setCompanyPoid(companyPoid);
+                dto.setDocId(docId);
+                dto.setTransactionPoid(transactionPoid);
+                dto.setMainDetRowId(detail.getDetRowId());
+                dto.setGlPoid(detail.getGlPoid());
+                if (popup.getCostDetRowId() == null) {
+                    throw new IllegalArgumentException("costDetRowId is required in costCenterList");
+                }
+                dto.setCostDetRowId(popup.getCostDetRowId());
+                dto.setCostGroup(popup.getCostGroup());
+                dto.setCostPoid(popup.getCostPoid());
+                dto.setAmount(popup.getAmount());
+                dto.setLoginUserPoid(userPoid);
+                costCenterRequests.add(dto);
+            }
+        }
+
+        if (costCenterRequests.isEmpty()) {
+            return;
+        }
+
+        if (isUpdate) {
+            costCenterBreakupService.updateCostCenterBreakups(costCenterRequests, userPoid);
+        } else {
+            costCenterBreakupService.saveCostCenterBreakups(costCenterRequests);
+        }
+    }
+
+    private List<BillwiseBreakupPopupRequestDto> loadBillwisePopupList(Long transactionPoid, Long detRowId) {
+        GlVoucherLoadBillwiseBreakupResponseDto response = billwiseBreakupService.loadBillwiseBreakup(
+                getCurrentGroupPoid(),
+                getCurrentCompanyPoid(),
+                getCurrentDocId(),
+                transactionPoid
+        );
+        if (response == null || response.getLoadBillwiseBreakupResponseDtoList() == null) {
+            return Collections.emptyList();
+        }
+        return response.getLoadBillwiseBreakupResponseDtoList().stream()
+                .filter(b -> detRowId.equals(b.getMainDetRowId()))
+                .map(this::mapBillwisePopup)
+                .toList();
+    }
+
+    private BillwiseBreakupPopupRequestDto mapBillwisePopup(
+            com.asg.common.lib.dto.response.LoadBillwiseBreakupResponseDto billwiseDto) {
+        BillwiseBreakupPopupRequestDto popup = new BillwiseBreakupPopupRequestDto();
+        popup.setBillDetRowId(billwiseDto.getBillDetRowId());
+        popup.setBillRefType(billwiseDto.getBillRefType());
+        popup.setBillRef(billwiseDto.getBillRef());
+        popup.setBillDueDate(billwiseDto.getBillDueDate());
+        BigDecimal drAmt = billwiseDto.getDrAmt() != null ? billwiseDto.getDrAmt() : BigDecimal.ZERO;
+        BigDecimal crAmt = billwiseDto.getCrAmt() != null ? billwiseDto.getCrAmt() : BigDecimal.ZERO;
+        popup.setType(drAmt.compareTo(BigDecimal.ZERO) > 0 ? BILLWISE_TYPE_DR : BILLWISE_TYPE_CR);
+        popup.setAmount(drAmt.compareTo(BigDecimal.ZERO) > 0 ? drAmt : crAmt);
+        popup.setBillRemarks(billwiseDto.getBillRemarks());
+        return popup;
+    }
+
+    private List<CostCenterBreakupPopupRequestDto> loadCostCenterPopupList(Long transactionPoid, Long detRowId) {
+        GlVoucherCostCenterBreakupResponseDto response = costCenterBreakupService.loadCostCenterData(
+                getCurrentDocId(),
+                transactionPoid,
+                getCurrentGroupPoid(),
+                getCurrentCompanyPoid(),
+                getCurrentUserPoid()
+        );
+        if (response == null || response.getCostBreakupList() == null) {
+            return Collections.emptyList();
+        }
+        return response.getCostBreakupList().stream()
+                .filter(c -> detRowId.equals(c.getMainDetRowId()))
+                .map(this::mapCostCenterPopup)
+                .toList();
+    }
+
+    private CostCenterBreakupPopupRequestDto mapCostCenterPopup(CostCenterBreakupResponseDto costCenterDto) {
+        CostCenterBreakupPopupRequestDto popup = new CostCenterBreakupPopupRequestDto();
+        popup.setCostDetRowId(costCenterDto.getCostDetRowId());
+        popup.setCostGroup(costCenterDto.getCostGroup());
+        popup.setCostPoid(costCenterDto.getCostPoid());
+        popup.setAmount(costCenterDto.getAmount());
+        if (costCenterDto.getCostPoid() != null && costCenterDto.getCostGroup() != null) {
+            popup.setCostCenterDetails(resolveCostCenterDetails(costCenterDto));
+        }
+        return popup;
+    }
+
+    private String normalizeCostGroupLovName(String costGroup) {
+        if (costGroup == null) {
+            return DEFAULT_COST_GROUP_LOV;
+        }
+        String normalized = costGroup.trim().toUpperCase();
+        if (normalized.isEmpty()) {
+            return DEFAULT_COST_GROUP_LOV;
+        }
+        return getCustomLovNameForCostGroup(normalized);
+    }
+
+    
+    private String getCustomLovNameForCostGroup(String costGroup) {
+        return switch (costGroup) {
+            case "GL_SH_BLS" -> "GL_SH_BLS";
+            case "GL_FDA_JOBS" -> "GL_FDA_JOBS";
+            case "GL_FF_JOBS" -> "GL_FF_JOBS";
+            case "GL_FFP_JOBS" -> "GL_FFP_JOBS";
+            case "ANOOD_MANSION" -> "ANOOD_MANSION";
+            case "NAJOOD_MANSION" -> "NAJOOD_MANSION";
+            case "PROPERTIES" -> "DN_PROPERTIES";
+            case "GL_COST_CENTRE", "GL_COST_CENTER" -> "GL_COST_CENTRE";
+            case "COST_CENTER", "COST_CENTRE", "1", "TELEPHONES" -> DEFAULT_COST_GROUP_LOV;
+            case "FIXED_ASSET" -> "FIXED_ASSET";
+            case "OASIS" -> "DN_OASIS";
+            case "SALESMAN" -> "SALESMAN";
+            case "COMPANY" -> "COMPANY";
+            case "VOYAGE_COST_GROUP" -> "VOYAGE_COST_GROUP";
+            case "EMPLOYEE_NAME" -> "EMPLOYEE_NAME";
+            default -> DEFAULT_COST_GROUP_LOV;
+        };
+    }
+
+    private LovGetListDto resolveCostCenterDetails(CostCenterBreakupResponseDto costCenterDto) {
+        String lovName = normalizeCostGroupLovName(costCenterDto.getCostGroup());
+        String costPoid = costCenterDto.getCostPoid();
+
+        LovGetListDto details = null;
+        try {
+            Long numericPoid = Long.parseLong(costPoid);
+            details = lovService.getDetailsByPoidAndLovName(numericPoid, lovName);
+        } catch (NumberFormatException ignored) {
+         
+        }
+
+        if (!isLovResolved(details)) {
+            details = lovService.getDetailsByCodeAndLovName(costPoid, lovName);
+        }
+
+        if (!isLovResolved(details) && !DEFAULT_COST_GROUP_LOV.equalsIgnoreCase(lovName)) {
+            try {
+                Long numericPoid = Long.parseLong(costPoid);
+                details = lovService.getDetailsByPoidAndLovName(numericPoid, DEFAULT_COST_GROUP_LOV);
+            } catch (NumberFormatException ignored) {
+           
+            }
+            if (!isLovResolved(details)) {
+                details = lovService.getDetailsByCodeAndLovName(costPoid, DEFAULT_COST_GROUP_LOV);
+            }
+        }
+
+        if (!isLovResolved(details)) {
+            LovGetListDto fallback = new LovGetListDto();
+            fallback.setPoid(parseLongSafely(costPoid));
+            fallback.setCode(costPoid);
+            fallback.setDescription(
+                    costCenterDto.getDescription() != null ? costCenterDto.getDescription() : costPoid
+            );
+            return fallback;
+        }
+
+        return details;
+    }
+
+    private boolean isLovResolved(LovGetListDto details) {
+        return details != null
+                && ((details.getCode() != null && !details.getCode().isBlank())
+                || (details.getDescription() != null && !details.getDescription().isBlank()));
+    }
+
+    private Long parseLongSafely(String value) {
+        try {
+            return Long.parseLong(value);
+        } catch (Exception ex) {
+            return null;
+        }
+    }
+
+    private String getCurrentDocId() {
+        return UserContext.getDocumentId() != null ? UserContext.getDocumentId() : DEFAULT_DOC_ID;
+    }
+
+    private Long getCurrentGroupPoid() {
+        return UserContext.getGroupPoid() != null ? UserContext.getGroupPoid() : DEFAULT_CONTEXT_POID;
+    }
+
+    private Long getCurrentCompanyPoid() {
+        return UserContext.getCompanyPoid() != null ? UserContext.getCompanyPoid() : DEFAULT_CONTEXT_POID;
+    }
+
+    private Long getCurrentUserPoid() {
+        return UserContext.getUserPoid() != null ? UserContext.getUserPoid() : DEFAULT_CONTEXT_POID;
     }
 
     /**
@@ -596,7 +906,7 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
 
     @Override
     public byte[] print(Long transactionPoid) throws Exception {
-        Map<String, Object> params = printService.buildBaseParams(transactionPoid, "400-103");
+        Map<String, Object> params = printService.buildBaseParams(transactionPoid, DEFAULT_DOC_ID);
         params.put("SUB_DETAIL", printService.load("Finance/GL/ContraVoucherReportDtlSubreport1.jrxml"));
         JasperReport mainReport = printService.load("Finance/GL/ContraVoucherReport1.jrxml");
         return printService.fillReportToPdf(mainReport, params, dataSource);

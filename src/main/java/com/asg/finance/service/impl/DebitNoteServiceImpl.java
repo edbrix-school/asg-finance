@@ -8,6 +8,7 @@ import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
+import com.asg.common.lib.service.GlobalParameterService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
@@ -15,6 +16,7 @@ import com.asg.common.lib.utility.ASGHelperUtils;
 import com.asg.finance.annotation.PerformGlPosting;
 import com.asg.finance.client.GlPostingServiceClient;
 import com.asg.finance.dto.*;
+import com.asg.finance.dto.ProcessFdaRequestDto;
 import com.asg.finance.entity.ArDebitNoteChargeDtl;
 import com.asg.finance.entity.ArDebitNoteDtl;
 import com.asg.finance.entity.ArDebitNoteHdr;
@@ -29,6 +31,7 @@ import com.asg.finance.service.CostCenterBreakupService;
 import com.asg.finance.service.DebitNoteService;
 import com.asg.finance.service.GlPostingService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;
 import org.apache.commons.lang3.StringUtils;
@@ -46,6 +49,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import javax.sql.DataSource;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.Types;
@@ -92,6 +96,8 @@ public class DebitNoteServiceImpl implements DebitNoteService {
     private final TaxMasterRepository taxMasterRepository;
     private final GlPostingService glPostingService;
     private final GLMasterRepository glMasterRepository;
+    private final ApplicationEventPublisher eventPublisher;
+    private final GlobalParameterService globalParameterService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -105,14 +111,20 @@ public class DebitNoteServiceImpl implements DebitNoteService {
     public DebitNoteHeaderDto createDebitNote(DebitNoteHeaderDto debitNoteDto) {
 
         // VALIDATION BEFORE SAVE
+        preSaveValidate(debitNoteDto);
         validateDebitNoteInput(debitNoteDto);
         applyBusinessLogic(debitNoteDto);
 
         ArDebitNoteHdr entity = mapToEntity(debitNoteDto);
         ArDebitNoteHdr savedEntity = debitNoteHdrRepository.saveAndFlush(entity);
         // Refresh to pull back trigger-generated DOC_REF from the database
+        entityManager.flush();
         entityManager.refresh(savedEntity);
         debitNoteDto.setDocRef(savedEntity.getDocRef());
+
+        // Pre-save DB-level validations (after flush so TRANSACTION_POID is visible to procedures)
+        runPreSaveProcedures(savedEntity.getTransactionPoid(), debitNoteDto);
+
         DocumentBeforeSaveBillwiseCostGroups(debitNoteDto);
 
         // Save details (GL + Charge) — GL will be saved if provided regardless of refType
@@ -136,12 +148,16 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         ArDebitNoteHdr refreshedEntity = debitNoteHdrRepository.findById(savedEntity.getTransactionPoid())
                 .orElseThrow(() -> new ResourceNotFoundException("DebitNote", "transactionPoid", savedEntity.getTransactionPoid()));
         // Log the creation
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), savedEntity.getTransactionPoid().toString());
+        loggingService.createLogSummaryEntry(UserContext.getDocumentId(), savedEntity.getTransactionPoid().toString(), String.format("%s %s", LogDetailsEnum.CREATED, refreshedEntity.getDocRef()));
 
         // Publish event for after-save processing (will run after transaction commit)
         publishAfterSaveEvent(refreshedEntity, null, null);
 
-        return getDebitNote(savedEntity.getTransactionPoid());
+        DebitNoteHeaderDto finalResult = getDebitNote(savedEntity.getTransactionPoid());
+        if (debitNoteDto.getWarnings() != null && !debitNoteDto.getWarnings().isEmpty()) {
+            finalResult.setWarnings(debitNoteDto.getWarnings());
+        }
+        return finalResult;
     }
 
     @Override
@@ -154,14 +170,30 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         // Create a copy of the old entity for logging
         ArDebitNoteHdr oldEntity = new ArDebitNoteHdr();
         BeanUtils.copyProperties(existingEntity, oldEntity);
-//
-//        // Store old FDA references for after-save processing
+
+        // Store old FDA references for after-save processing
         String oldFdaRef = existingEntity.getFdaRef();
         String oldRefType = existingEntity.getRefType();
 
+        // Release old FDA/FF job holds before applying new values (must happen before new ref is written)
+        if (isFdaLike(existingEntity.getRefType())) {
+            Long oldRefPoid = "FDA_DIRECT".equalsIgnoreCase(existingEntity.getRefType())
+                    ? parseLongSafely(existingEntity.getFdaDirectRef())
+                    : parseLongSafely(existingEntity.getFdaRef());
+            if (oldRefPoid != null) {
+                try {
+                    debitNoteProcedureRepository.releaseJobOldValues(
+                            existingEntity.getGroupPoid(), existingEntity.getCompanyPoid(),
+                            UserContext.getUserPoid(), transactionPoid,
+                            existingEntity.getRefType(), oldRefPoid);
+                } catch (Exception e) {
+                    log.warn("releaseJobOldValues failed for transaction {}: {}", transactionPoid, e.getMessage());
+                }
+            }
+        }
+
+        preSaveValidate(debitNoteDto);
         validateDebitNoteInput(debitNoteDto);
-        DocumentBeforeSaveBillwiseCostGroups(debitNoteDto);
-        // Validate using stored procedure for Edit
 
         if (debitNoteDto.getRefType().equals("FDA JOBS")
                 || debitNoteDto.getRefType().equals("FF JOBS")
@@ -192,7 +224,19 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         existingEntity.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
         existingEntity.setLastModifiedDate(LocalDateTime.now());
         existingEntity.setTransactionDate(debitNoteDto.getTransactionDate());
+        existingEntity.setFfRef(debitNoteDto.getFfRefPoid() != null ? debitNoteDto.getFfRefPoid().toString() : null);
+        existingEntity.setPropertyInvoice(Boolean.TRUE.equals(debitNoteDto.getPropertyInvoice()) ? "Y" : "N");
+        existingEntity.setPrintCompanyPoid(debitNoteDto.getPrintCompanyPoid());
         debitNoteHdrRepository.save(existingEntity);
+        entityManager.flush();
+        entityManager.refresh(existingEntity);
+
+        debitNoteDto.setDocRef(existingEntity.getDocRef());
+
+        // Pre-save DB-level validations (after flush so TRANSACTION_POID is visible to procedures)
+        runPreSaveProcedures(existingEntity.getTransactionPoid(), debitNoteDto);
+
+        DocumentBeforeSaveBillwiseCostGroups(debitNoteDto);
 
         List<GlobalLogSummary> detailSummaryLogs = new ArrayList<>();
         updateGlDetailsWithLogging(debitNoteDto.getGlDetails(), transactionPoid, detailSummaryLogs);
@@ -221,7 +265,11 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         // Publish event for after-save processing (will run after transaction commit)
         publishAfterSaveEvent(existingEntity, oldFdaRef, oldRefType);
 
-        return getDebitNote(transactionPoid);
+        DebitNoteHeaderDto finalResult = getDebitNote(transactionPoid);
+        if (debitNoteDto.getWarnings() != null && !debitNoteDto.getWarnings().isEmpty()) {
+            finalResult.setWarnings(debitNoteDto.getWarnings());
+        }
+        return finalResult;
     }
 
     @Override
@@ -229,6 +277,22 @@ public class DebitNoteServiceImpl implements DebitNoteService {
     public void deleteDebitNote(Long transactionPoid, DeleteReasonDto deleteReasonDto) {
         ArDebitNoteHdr entity = debitNoteHdrRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("DebitNote", "transactionPoid", transactionPoid));
+
+        // Release FDA/FDA_DIRECT holds before soft-delete (mirrors legacy DocumentAfterDelete)
+        try {
+            if (isFdaLike(entity.getRefType())) {
+                String fdaRef = "FDA_DIRECT".equalsIgnoreCase(entity.getRefType())
+                        ? entity.getFdaDirectRef() : entity.getFdaRef();
+                if (fdaRef != null && !fdaRef.trim().isEmpty()) {
+                    debitNoteProcedureRepository.updateFdaAmount(
+                            entity.getGroupPoid(), entity.getCompanyPoid(),
+                            UserContext.getUserPoid(), fdaRef);
+                }
+            }
+        } catch (Exception e) {
+            log.error("FDA amount release failed on delete for transaction {}: {}", transactionPoid, e.getMessage());
+        }
+
         documentDeleteService.deleteDocument(
                 transactionPoid,
                 "AR_DEBIT_NOTE_HDR",
@@ -279,6 +343,20 @@ public class DebitNoteServiceImpl implements DebitNoteService {
 
         if (debitNoteDto.getCreditPeriod() != null && debitNoteDto.getCreditPeriod() > 0) {
             debitNoteDto.setDueDate(LocalDate.now().plusDays(debitNoteDto.getCreditPeriod()));
+        }
+
+        applyCurrencyConversion(debitNoteDto);
+    }
+
+    private void applyCurrencyConversion(DebitNoteHeaderDto dto) {
+        if (!"BHD".equalsIgnoreCase(dto.getCurrencyCode())) {
+            if (dto.getCurrencyRate() == null) {
+                throw new ValidationException("Currency Rate is required for non-BHD currencies");
+            }
+            if (dto.getOtherCurrAmount() == null) {
+                throw new ValidationException("Other Currency Amount is required for non-BHD currencies");
+            }
+            dto.setBhdAmount(dto.getOtherCurrAmount().multiply(dto.getCurrencyRate()).setScale(3, RoundingMode.HALF_UP));
         }
     }
 
@@ -644,6 +722,9 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         entity.setCostGroup(dto.getCostGroup() != null ? dto.getCostGroup().toString() : null);
         entity.setCheckAll(dto.getCheckAll());
         entity.setPrintSeqNo(dto.getSeqNo());
+        entity.setFdaDetRowId(dto.getFdaDetRowId());
+        entity.setRefDocId(dto.getRefDocId());
+        entity.setRefDocPoid(dto.getRefDocPoid());
 
         if (dto.getTotalAmount() != null) {
             entity.setTotalAmount(dto.getTotalAmount());
@@ -692,7 +773,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         entity.setVoucherType(dto.getVoucherType());
         entity.setCostRefNumber(dto.getCostRefNumber());
         entity.setCostGroup(dto.getCostGroupPoid() != null ? dto.getCostGroupPoid().toString() : null);
-        entity.setPrintDivisionPoid(dto.getPrintDivisionPoid() != null ? dto.getPrintDivisionPoid() : 1L);
+        entity.setPrintDivisionPoid(dto.getPrintDivisionPoid());
         entity.setMultiCompany(dto.getMultiCompany() != null && dto.getMultiCompany() ? "Y" : "N");
         entity.setRemarksPrintable(dto.getRemarksPrintable() != null && dto.getRemarksPrintable() ? "Y" : "N");
         entity.setShowBankDetailsInPrint(dto.getShowBankDetailsInPrint() != null && dto.getShowBankDetailsInPrint() ? "Y" : "N");
@@ -702,6 +783,9 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         entity.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
         entity.setLastModifiedDate(LocalDateTime.now());
         entity.setVoyageRef(dto.getVoyageRef());
+        entity.setFfRef(dto.getFfRefPoid() != null ? dto.getFfRefPoid().toString() : null);
+        entity.setPropertyInvoice(Boolean.TRUE.equals(dto.getPropertyInvoice()) ? "Y" : "N");
+        entity.setPrintCompanyPoid(dto.getPrintCompanyPoid());
 
         return entity;
     }
@@ -742,6 +826,11 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         dto.setDeleted(entity.getDeleted());
         dto.setDocRef(entity.getDocRef());
         dto.setVoyageRef(entity.getVoyageRef());
+        dto.setFfRefPoid(parseLongSafely(entity.getFfRef()));
+        dto.setPropertyInvoice("Y".equals(entity.getPropertyInvoice()));
+        dto.setPrintCompanyPoid(entity.getPrintCompanyPoid());
+        // voucherTypeReadOnly: true once the record has been saved (doc ref exists)
+        dto.setVoucherTypeReadOnly(entity.getDocRef() != null && !entity.getDocRef().trim().isEmpty());
 
         // Populate header LOV details
         if (dto.getFdaRefPoid() != null) {
@@ -829,6 +918,9 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         dto.setCostGroup(entity.getCostGroup());
         dto.setCheckAll(entity.getCheckAll());
         dto.setCostAmount(entity.getPdaAmount());
+        dto.setFdaDetRowId(entity.getFdaDetRowId());
+        dto.setRefDocId(entity.getRefDocId());
+        dto.setRefDocPoid(entity.getRefDocPoid());
 
         // Populate LOV details based on refType
         if (entity.getChargePoid() != null) {
@@ -1254,7 +1346,8 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         if (StringUtils.isBlank(dto.getRefType())) {
             throw new ValidationException("Ref Type is not found...");
         }
-        if (!"GENERAL".equalsIgnoreCase(dto.getRefType())) {
+        String rtUpper = dto.getRefType().toUpperCase();
+        if (!"GENERAL".equals(rtUpper)) {
             return;
         }
 
@@ -1425,7 +1518,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
     }
 
     private void publishAfterSaveEvent(ArDebitNoteHdr entity, String oldFdaRef, String oldRefType) {
-        // Event will be handled by onAfterSaveCommit listener after transaction commit
+        eventPublisher.publishEvent(new DebitNoteAfterSaveEvent(entity, oldFdaRef, oldRefType));
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -1439,53 +1532,50 @@ public class DebitNoteServiceImpl implements DebitNoteService {
      */
     private void performAfterSaveProcessing(ArDebitNoteHdr entity, String oldFdaRef, String oldRefType) {
         try {
-            // Handle old FDA references first (like in DocumentAfterSave)
+            // Release old FDA/FDA_DIRECT amounts on ref-type change during edit
             if (oldRefType != null && oldFdaRef != null) {
-                if ("FDA".equalsIgnoreCase(oldRefType)) {
+                if ("FDA".equalsIgnoreCase(oldRefType) || "FDA_DIRECT".equalsIgnoreCase(oldRefType)) {
                     String result = debitNoteProcedureRepository.updateFdaAmount(
-                            entity.getGroupPoid(),
-                            entity.getCompanyPoid(),
-                            UserContext.getUserPoid(),
-                            oldFdaRef
-                    );
-                    log.info("Old FDA reference amount update completed: {}", result);
+                            entity.getGroupPoid(), entity.getCompanyPoid(),
+                            UserContext.getUserPoid(), oldFdaRef);
+                    log.info("Old {} reference amount update completed: {}", oldRefType, result);
                 }
             }
 
-            // 1. Bill Reference Update for GENERAL RefType
-            if ("GENERAL".equalsIgnoreCase(entity.getRefType())) {
+            // 1. Bill Reference Update for GENERAL and CUSTOM ref types
+            if ("GENERAL".equalsIgnoreCase(entity.getRefType()) || "CUSTOM".equalsIgnoreCase(entity.getRefType())) {
                 String result = debitNoteProcedureRepository.updateBillReference(
-                        entity.getGroupPoid(),
-                        entity.getCompanyPoid(),
-                        UserContext.getUserPoid(),
-                        entity.getTransactionPoid(),
-                        entity.getDocRef(),
-                        debitNoteDocId, // "300-110"
-                        entity.getRefType(),
-                        entity.getPartyType()
-                );
-                log.info("Bill reference update completed for GENERAL RefType: {}", result);
+                        entity.getGroupPoid(), entity.getCompanyPoid(),
+                        UserContext.getUserPoid(), entity.getTransactionPoid(),
+                        entity.getDocRef(), debitNoteDocId,
+                        entity.getRefType(), entity.getPartyType());
+                log.info("Bill reference update completed for {} RefType: {}", entity.getRefType(), result);
             }
 
-            // 2. FDA Amount Updates for FDA RefType only
+            // 2. FDA Amount Update for FDA ref type
             if ("FDA".equalsIgnoreCase(entity.getRefType()) && entity.getFdaRef() != null) {
                 String result = debitNoteProcedureRepository.updateFdaAmount(
-                        entity.getGroupPoid(),
-                        entity.getCompanyPoid(),
-                        UserContext.getUserPoid(),
-                        entity.getFdaRef()
-                );
-                log.info("FDA amount update completed for FDA RefType: {}", result);
-
+                        entity.getGroupPoid(), entity.getCompanyPoid(),
+                        UserContext.getUserPoid(), entity.getFdaRef());
+                log.info("FDA amount update completed: {}", result);
                 if (result != null && result.contains("ERROR")) {
                     log.error("FDA amount update failed: {}", result);
-                    // Don't throw exception to avoid breaking the save process
+                }
+            }
+
+            // 3. FDA_DIRECT Amount Update
+            if ("FDA_DIRECT".equalsIgnoreCase(entity.getRefType()) && entity.getFdaDirectRef() != null) {
+                String result = debitNoteProcedureRepository.updateFdaAmount(
+                        entity.getGroupPoid(), entity.getCompanyPoid(),
+                        UserContext.getUserPoid(), entity.getFdaDirectRef());
+                log.info("FDA_DIRECT amount update completed: {}", result);
+                if (result != null && result.contains("ERROR")) {
+                    log.error("FDA_DIRECT amount update failed: {}", result);
                 }
             }
 
         } catch (Exception e) {
             log.error("Error in after-save processing for transaction {}: {}", entity.getTransactionPoid(), e.getMessage(), e);
-            // Log error but don't throw to avoid breaking the main save process
         }
     }
 
@@ -1513,6 +1603,308 @@ public class DebitNoteServiceImpl implements DebitNoteService {
 
         public String getOldRefType() {
             return oldRefType;
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Pre-save validation pipeline (mirrors legacy DocumentBeforeSave)
+    // -------------------------------------------------------------------------
+
+    private static final Map<String, Set<String>> ALLOWED_VOUCHER_TYPES = Map.of(
+            "GENERAL",       Set.of("DEBIT_NOTE", "INVOICE"),
+            "CUSTOM",        Set.of("DEBIT_NOTE", "INVOICE"),
+            "OTHER_CHARGES", Set.of("DEBIT_NOTE", "INVOICE"),
+            "FDA",           Set.of("DEBIT_NOTE"),
+            "FDA_DIRECT",    Set.of("DEBIT_NOTE"),
+            "FF",            Set.of("DEBIT_NOTE"),
+            "VOYAGE",        Set.of("DEBIT_NOTE")
+    );
+
+    private void preSaveValidate(DebitNoteHeaderDto dto) {
+        // V8 — party and refType required
+        if (dto.getPartyPoid() == null) {
+            throw new ValidationException("Party is required");
+        }
+        if (StringUtils.isBlank(dto.getRefType())) {
+            throw new ValidationException("Ref Type is required");
+        }
+
+        // V2 — transaction date must be after 31-DEC-2018
+        LocalDate cutoff = LocalDate.of(2018, 12, 31);
+        if (dto.getTransactionDate() == null || !dto.getTransactionDate().isAfter(cutoff)) {
+            throw new ValidationException("Transaction Date must be after 31-DEC-2018");
+        }
+
+        // V7 — BHD amount required when currency is not BHD
+        if (dto.getCurrencyCode() != null && !"BHD".equalsIgnoreCase(dto.getCurrencyCode())
+                && dto.getBhdAmount() == null && dto.getOtherCurrAmount() == null) {
+            throw new ValidationException("BHD Amount or Other Currency Amount is required when currency is not BHD");
+        }
+
+        // V3 — credit period must not exceed CREDIT_PERIOD_VALIDATION_DAYS parameter
+        if (dto.getCreditPeriod() != null) {
+            String groupPoidStr = UserContext.getGroupPoid() != null ? UserContext.getGroupPoid().toString() : "0";
+            String maxDaysStr = globalParameterService.getParameterValue(
+                    "CREDIT_PERIOD_VALIDATION_DAYS", "GROUP", groupPoidStr, "120");
+            int maxDays = 120;
+            try { maxDays = Integer.parseInt(maxDaysStr); } catch (NumberFormatException ignored) {}
+            if (dto.getCreditPeriod() > maxDays) {
+                throw new ValidationException("Credit Period cannot exceed " + maxDays + " days");
+            }
+        }
+
+        // V10 — posting narration max 2000 chars
+        if (dto.getPostingNarration() != null && dto.getPostingNarration().length() > 2000) {
+            throw new ValidationException("Posting Narration cannot exceed 2000 characters");
+        }
+
+        // V6 — strip blank rows before further validation
+        if (dto.getGlDetails() != null) {
+            dto.setGlDetails(dto.getGlDetails().stream().filter(gl -> !gl.isEmpty()).collect(Collectors.toList()));
+        }
+        if (dto.getChargeDetails() != null) {
+            dto.setChargeDetails(dto.getChargeDetails().stream().filter(c -> !c.isEmpty()).collect(Collectors.toList()));
+        }
+        if (dto.getOtherChargeDetails() != null) {
+            dto.setOtherChargeDetails(dto.getOtherChargeDetails().stream().filter(c -> !c.isEmpty()).collect(Collectors.toList()));
+        }
+
+        // V9 — per-refType detail list non-empty
+        String rt = dto.getRefType().toUpperCase();
+        boolean needsGl = "GENERAL".equals(rt) || "CUSTOM".equals(rt);
+        boolean needsCharges = "FDA".equals(rt) || "FDA_DIRECT".equals(rt) || "OTHER_CHARGES".equals(rt);
+        if (needsGl && (dto.getGlDetails() == null || dto.getGlDetails().isEmpty())) {
+            throw new ValidationException("GL Details are required for Ref Type: " + dto.getRefType());
+        }
+        if (needsCharges && (dto.getChargeDetails() == null || dto.getChargeDetails().isEmpty())) {
+            throw new ValidationException("Charge Details are required for Ref Type: " + dto.getRefType());
+        }
+
+        // V1 — voucher type × ref type matrix (gated by parameter)
+        if (dto.getVoucherType() != null) {
+            String groupPoidStr = UserContext.getGroupPoid() != null ? UserContext.getGroupPoid().toString() : "0";
+            String voucherValidationEnabled = globalParameterService.getParameterValue(
+                    "DEBIT_NOTE_VOUCHER_TYPE_VALIDATION_ENABLE", "GROUP", groupPoidStr, "N");
+            if ("Y".equalsIgnoreCase(voucherValidationEnabled)) {
+                Set<String> allowed = ALLOWED_VOUCHER_TYPES.get(rt);
+                if (allowed != null && !allowed.contains(dto.getVoucherType().toUpperCase())) {
+                    throw new ValidationException("Voucher Type '" + dto.getVoucherType()
+                            + "' is not allowed for Ref Type '" + dto.getRefType() + "'");
+                }
+            }
+        }
+
+        // V11 — voyage ref required when parameter VOYAGE_REF_IN_DN_CN = Y
+        if ("VOYAGE".equals(rt)) {
+            String groupPoidStr = UserContext.getGroupPoid() != null ? UserContext.getGroupPoid().toString() : "0";
+            String voyageRefRequired = globalParameterService.getParameterValue(
+                    "VOYAGE_REF_IN_DN_CN", "GROUP", groupPoidStr, "N");
+            if ("Y".equalsIgnoreCase(voyageRefRequired) && StringUtils.isBlank(dto.getVoyageRef())) {
+                throw new ValidationException("Voyage Reference is required");
+            }
+        }
+
+        // V4 — chargeAmount >= pdaAmount per charge row
+        if (dto.getChargeDetails() != null) {
+            for (DebitNoteChargeDetailDto charge : dto.getChargeDetails()) {
+                if (charge.getChargeAmount() != null && charge.getCostAmount() != null
+                        && charge.getChargeAmount().compareTo(charge.getCostAmount()) < 0) {
+                    throw new ValidationException("Charge Amount cannot be less than PDA Amount for charge ID: " + charge.getChargeId());
+                }
+            }
+        }
+
+        // V5 — grand total must match sum of charge totals for FDA/FDA_DIRECT/OTHER_CHARGES
+        if ("FDA".equals(rt) || "FDA_DIRECT".equals(rt) || "OTHER_CHARGES".equals(rt)) {
+            if (dto.getChargeDetails() != null && !dto.getChargeDetails().isEmpty() && dto.getGrandTotal() != null) {
+                BigDecimal chargesTotal = dto.getChargeDetails().stream()
+                        .filter(c -> c.getTotalAmount() != null)
+                        .map(DebitNoteChargeDetailDto::getTotalAmount)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+                if (chargesTotal.compareTo(BigDecimal.ZERO) > 0
+                        && chargesTotal.compareTo(dto.getGrandTotal()) != 0) {
+                    throw new ValidationException("Grand Total (" + dto.getGrandTotal()
+                            + ") does not match sum of charge totals (" + chargesTotal + ")");
+                }
+            }
+        }
+
+        // Sail-date enforcement for FDA / FDA_DIRECT
+        if ("FDA".equals(rt) || "FDA_DIRECT".equals(rt)) {
+            Long fdaPoid = "FDA_DIRECT".equals(rt) ? dto.getFdaDirectRefPoid() : dto.getFdaRefPoid();
+            if (fdaPoid != null) {
+                try {
+                    Map<String, Object> sailResult = debitNoteCustomRepository.checkSailDate(fdaPoid);
+                    Object sailDateObj = sailResult.get("sailDate");
+                    if (sailDateObj instanceof java.sql.Date sqlDate) {
+                        LocalDate sailDate = sqlDate.toLocalDate();
+                        if (dto.getTransactionDate() != null && dto.getTransactionDate().isBefore(sailDate)) {
+                            String warning = "Transaction Date (" + dto.getTransactionDate()
+                                    + ") is before FDA Sail Date (" + sailDate + "). Please verify.";
+                            log.warn(warning);
+                            if (dto.getWarnings() == null) dto.setWarnings(new ArrayList<>());
+                            dto.getWarnings().add(warning);
+                        }
+                    }
+                } catch (ValidationException ve) {
+                    throw ve;
+                } catch (Exception e) {
+                    log.warn("Sail date check failed for FDA POID {}: {}", fdaPoid, e.getMessage());
+                }
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Stored-procedure save-path wiring (P1–P5)
+    // -------------------------------------------------------------------------
+
+    private void runPreSaveProcedures(Long transactionPoid, DebitNoteHeaderDto dto) {
+        Long gp = UserContext.getGroupPoid();
+        Long cp = UserContext.getCompanyPoid();
+        Long up = UserContext.getUserPoid();
+        String rt = dto.getRefType() != null ? dto.getRefType().toUpperCase() : "";
+
+        // P1: PROC_GL_JOB_VAL_BEFORE_SAVE — FDA / FDA_DIRECT / FF only
+        if ("FDA".equals(rt) || "FDA_DIRECT".equals(rt) || "FF".equals(rt)) {
+            String jobStatus = debitNoteProcedureRepository.validateJobBeforeSave(
+                    gp, cp, up, transactionPoid, dto.getRefType(), dto.getFdaRefPoid() != null ? dto.getFdaRefPoid() : dto.getFdaDirectRefPoid());
+            if (jobStatus != null && (jobStatus.contains("CLOSED") || jobStatus.contains("ERROR"))) {
+                throw new ValidationException(jobStatus);
+            }
+        }
+
+        // P2: PROC_GL_DEBIT_NOTE_PTY_CMP_CHK — only when propertyInvoice is explicitly set
+        if (dto.getPropertyInvoice() != null) {
+            String ptyStatus = debitNoteProcedureRepository.validateDebitNotePartyCompany(
+                    gp, cp, up, Boolean.TRUE.equals(dto.getPropertyInvoice()) ? "Y" : "N");
+            if (ptyStatus != null && !ptyStatus.isBlank() && !isSuccess(ptyStatus)) {
+                if (dto.getWarnings() == null) dto.setWarnings(new java.util.ArrayList<>());
+                dto.getWarnings().add(ptyStatus);
+            }
+        }
+
+        // P3: PROC_DN_CHECK_GL_L_A — GENERAL / CUSTOM only; only cursor rows block save (STATUS ERROR is non-blocking in legacy)
+        if ("GENERAL".equals(rt) || "CUSTOM".equals(rt)) {
+            String glResult = debitNoteProcedureRepository.checkGlLedgerAccount(gp, cp, up, buildGlList(dto));
+            if (glResult != null && glResult.startsWith("ERROR:")) {
+                throw new ValidationException(glResult);
+            }
+        }
+
+        // P4: PROC_AR_DN_BEFORE_SAVE_VAL — only when partyPoid is set (required field, but guard matches legacy)
+        if (dto.getPartyPoid() != null) {
+            java.math.BigDecimal taxAmount = java.math.BigDecimal.ZERO;
+            if (("FDA".equals(rt) || "FDA_DIRECT".equals(rt)) && dto.getChargeDetails() != null) {
+                taxAmount = dto.getChargeDetails().stream()
+                        .filter(c -> c.getTaxAmount() != null)
+                        .map(c -> c.getTaxAmount())
+                        .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+            } else if ("OTHER_CHARGES".equals(rt) && dto.getOtherChargeDetails() != null) {
+                taxAmount = dto.getOtherChargeDetails().stream()
+                        .filter(c -> c.getTaxAmount() != null)
+                        .map(c -> c.getTaxAmount())
+                        .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+            }
+            String bsStatus = debitNoteProcedureRepository.validateBeforeSave(
+                    gp, cp, up, dto.getDocRef(), transactionPoid,
+                    dto.getPartyPoid(), taxAmount, dto.getTransactionDate());
+            if (bsStatus != null && bsStatus.contains("WARNING")) {
+                if (dto.getWarnings() == null) dto.setWarnings(new java.util.ArrayList<>());
+                dto.getWarnings().add(bsStatus);
+            } else if (bsStatus != null && bsStatus.contains("ERROR")) {
+                throw new ValidationException(bsStatus);
+            }
+        }
+
+        // NOTE: PROC_GL_VOUCHERS_VALIDATIONS is NOT called on save in legacy —
+        // it runs only on before-edit and LOV-change events, so it is excluded here.
+    }
+
+    private String buildGlList(DebitNoteHeaderDto dto) {
+        StringBuilder sb = new StringBuilder("0");
+        if (dto.getGlDetails() != null) {
+            for (DebitNoteGlDetailDto gl : dto.getGlDetails()) {
+                if (gl.getGlId() != null) {
+                    sb.append("~").append(gl.getGlId());
+                }
+            }
+        }
+        return sb.toString();
+    }
+
+    private boolean isSuccess(String status) {
+        if (status == null || status.trim().isEmpty()) return true;
+        String s = status.trim();
+        return "SUCCESS".equalsIgnoreCase(s) || "SUCESS".equalsIgnoreCase(s);
+    }
+
+    private boolean isFdaLike(String refType) {
+        if (refType == null) return false;
+        String rt = refType.toUpperCase();
+        return "FDA".equals(rt) || "FDA_DIRECT".equals(rt) || "FF".equals(rt);
+    }
+
+    // -------------------------------------------------------------------------
+    // New service-interface methods
+    // -------------------------------------------------------------------------
+
+    @Override
+    public Map<String, Object> processFdaCharges(ProcessFdaRequestDto req) {
+        if (req == null || req.getFdaPoid() == null) {
+            throw new ValidationException("FDA POID is required");
+        }
+        return debitNoteCustomRepository.loadFdaCharges(req.getFdaPoid());
+    }
+
+    @Override
+    public Map<String, Object> processFdaDirectCharges(ProcessFdaRequestDto req) {
+        if (req == null || req.getFdaPoid() == null) {
+            throw new ValidationException("FDA Direct POID is required");
+        }
+        return debitNoteCustomRepository.loadFdaCharges(req.getFdaPoid());
+    }
+
+    @Override
+    public Map<String, Object> getDnParameters() {
+        String groupPoidStr = UserContext.getGroupPoid() != null ? UserContext.getGroupPoid().toString() : "0";
+        Map<String, Object> params = new LinkedHashMap<>();
+        params.put("globalTaxApplicable",
+                globalParameterService.getParameterValue("GLOBAL_TAX_APPLICABLE", "GROUP", groupPoidStr, "N"));
+        params.put("creditPeriodValidationDays",
+                globalParameterService.getParameterValue("CREDIT_PERIOD_VALIDATION_DAYS", "GROUP", groupPoidStr, "120"));
+        params.put("voyageRefInDnCn",
+                globalParameterService.getParameterValue("VOYAGE_REF_IN_DN_CN", "GROUP", groupPoidStr, "N"));
+        params.put("debitNoteVoucherTypeValidationEnable",
+                globalParameterService.getParameterValue("DEBIT_NOTE_VOUCHER_TYPE_VALIDATION_ENABLE", "GROUP", groupPoidStr, "N"));
+        params.put("printCompanyInDn",
+                globalParameterService.getParameterValue("PRINT_COMPANY_IN_DN", "GROUP", groupPoidStr, "N"));
+        params.put("propertyInvoiceInDn",
+                globalParameterService.getParameterValue("PROPERTY_INVOICE_IN_DN", "GROUP", groupPoidStr, "N"));
+        return params;
+    }
+
+    @Override
+    @Transactional
+    public void releaseJobValues(Long transactionPoid) {
+        ArDebitNoteHdr entity = debitNoteHdrRepository.findById(transactionPoid)
+                .orElseThrow(() -> new ResourceNotFoundException("DebitNote", "transactionPoid", transactionPoid));
+        if (isFdaLike(entity.getRefType())) {
+            Long refPoid = "FDA_DIRECT".equalsIgnoreCase(entity.getRefType())
+                    ? parseLongSafely(entity.getFdaDirectRef())
+                    : parseLongSafely(entity.getFdaRef());
+            if (refPoid != null) {
+                try {
+                    debitNoteProcedureRepository.releaseJobOldValues(
+                            entity.getGroupPoid(), entity.getCompanyPoid(),
+                            UserContext.getUserPoid(), transactionPoid,
+                            entity.getRefType(), refPoid);
+                    log.info("Released job old values for transaction {} refType {} refPoid {}",
+                            transactionPoid, entity.getRefType(), refPoid);
+                } catch (Exception e) {
+                    log.error("releaseJobOldValues failed for transaction {}: {}", transactionPoid, e.getMessage(), e);
+                }
+            }
         }
     }
 

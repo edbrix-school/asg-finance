@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="PettyCashPayment" language="groovy" pageWidth="595" pageHeight="842" columnWidth="535" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="51f26c1c-332c-43f0-beb9-5722768520c7">
 	<property name="ireport.zoom" value="1.210000000000002"/>
 	<property name="ireport.x" value="0"/>
@@ -157,7 +157,7 @@ WHERE PCP.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 				</textElement>
 				<text><![CDATA[Paid To :]]></text>
 			</staticText>
-			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
 				<reportElement x="78" y="28" width="221" height="20" uuid="456129ed-38f8-4f3d-b048-08a8fe9567f6"/>
 				<textElement verticalAlignment="Middle">
 					<font isBold="true" pdfFontName="Helvetica-Bold"/>
@@ -165,15 +165,15 @@ WHERE PCP.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 				<textFieldExpression><![CDATA[$F{PAYING_TO}]]></textFieldExpression>
 			</textField>
 			<staticText>
-				<reportElement x="25" y="50" width="53" height="20" uuid="0c951a95-c08c-413d-969a-08bc7081d889"/>
-				<textElement verticalAlignment="Middle">
+				<reportElement x="25" y="50" width="68" height="20" uuid="0c951a95-c08c-413d-969a-08bc7081d889"/>
+				<textElement verticalAlignment="Top">
 					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Narration :]]></text>
 			</staticText>
-			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
 				<reportElement x="78" y="50" width="221" height="20" uuid="7a135243-1b80-4707-aa71-da038a60c52b"/>
-				<textElement verticalAlignment="Middle">
+				<textElement verticalAlignment="Top">
 					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{NARRATION}]]></textFieldExpression>
@@ -199,7 +199,7 @@ WHERE PCP.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 					<printWhenExpression><![CDATA[$F{REF_TYPE}!="GENERAL"]]></printWhenExpression>
 				</reportElement>
 			</rectangle>
-			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
 				<reportElement x="457" y="103" width="94" height="18" uuid="14bfbf60-f643-4864-b651-88e1fd0b3ea3">
 					<printWhenExpression><![CDATA[$F{REF_TYPE}!="GENERAL"]]></printWhenExpression>
 				</reportElement>
@@ -357,7 +357,7 @@ WHERE PCP.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 				</textElement>
 				<text><![CDATA[Amount in Words(BHD):]]></text>
 			</staticText>
-			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
 				<reportElement x="145" y="18" width="244" height="20" uuid="9984b26b-40b6-4061-b23a-424fcb4573bb"/>
 				<textElement verticalAlignment="Middle">
 					<font size="9" isBold="true" isItalic="false" pdfFontName="Helvetica-Bold"/>

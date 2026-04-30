@@ -22,8 +22,6 @@ public class CreateScheduleRequest {
     
     @NotNull(message = "Start date is required")
     private LocalDate startDate;
-    
-    @Valid
-    @NotNull(message = "Details are required")
+
     private List<RecurringJvDetailRequest> details;
 }

@@ -70,7 +70,6 @@ public class InsuranceMaster extends BaseEntity {
     private Long currencyPoid;
 
     @Column(name = "EXCHANGE_RATE")
-    @AuditIgnore
     private BigDecimal exchangeRate;
 
     @Column(name = "INSURANCE_AMOUNT")

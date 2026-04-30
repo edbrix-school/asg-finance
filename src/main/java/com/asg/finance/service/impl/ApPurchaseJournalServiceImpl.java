@@ -10,6 +10,7 @@ import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.service.PrintService;
+import com.asg.common.lib.service.GlobalParameterService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.finance.annotation.PerformGlPosting;
@@ -74,6 +75,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
     private final GLMasterRepository glMasterRepository;
     private final GlPostingService glPostingService;
     private final ShipPrincipalMasterRepository shipPrincipalMasterRepository;
+    private final GlobalParameterService globalParameterService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -136,7 +138,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         apPurchaseInvoiceHdrDto.setPartyTinNumber(apPurchaseInvoiceHdrEntity.getPartyTinNumber());
         apPurchaseInvoiceHdrDto.setPaidAgainst(apPurchaseInvoiceHdrEntity.getPaidAgainst());
         apPurchaseInvoiceHdrDto.setFdaCoveringRef(apPurchaseInvoiceHdrEntity.getFdaCoveringRef());
-        if (apPurchaseInvoiceHdrEntity.getGroupPoid() != null) {
+       if (apPurchaseInvoiceHdrEntity.getGroupPoid() != null) {
             apPurchaseInvoiceHdrDto.setGroupDet(lovService.getDetailsByPoidAndLovName(apPurchaseInvoiceHdrEntity.getGroupPoid(), "GROUP"));
         }
         if (apPurchaseInvoiceHdrEntity.getCompanyPoid() != null) {
@@ -381,7 +383,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         apPurchaseInvoiceHdrEntity.setFdaCoveringRef(apPurchaseInvoiceHdrDto.getFdaCoveringRef());
 
         ApPurchaseInvoiceHdrEntity savedApPurchaseInvoiceHdrEntity = repository.save(apPurchaseInvoiceHdrEntity);
-        //entityManager.flush();
+        entityManager.flush();
         entityManager.refresh(savedApPurchaseInvoiceHdrEntity);
 
         Long transactionPoid = savedApPurchaseInvoiceHdrEntity.getTransactionPoid();
@@ -460,8 +462,11 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         saveRjvDetails(transactionPoid, apPurchaseInvoiceHdrDto);
 
         // Log the creation
-        String key = transactionPoid.toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, documentId, key);
+        loggingService.createLogSummaryEntry(
+            documentId, 
+            savedApPurchaseInvoiceHdrEntity.getTransactionPoid().toString(), 
+            String.format("%s %s", LogDetailsEnum.CREATED, savedApPurchaseInvoiceHdrEntity.getDocRef())
+        );
 
        /* repository.flush();
         apPurchaseInvoiceItemDtlRepository.flush();
@@ -672,6 +677,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                     dto1.setBillDetRowId(popup.getBillDetRowId());
                     dto1.setBillRefType(popup.getBillRefType());
                     dto1.setBillRef(popup.getBillRef());
+                    dto1.setGlCompanyPoid(popup.getGlCompanyPoid() != null ? popup.getGlCompanyPoid() : g.getCompanyPoid());
                     dto1.setBillDueDate(popup.getBillDueDate());
                     BigDecimal amount = popup.getAmount();
 
@@ -1107,6 +1113,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                                 dto1.setTransactionPoid(transactionPoid);
                                 dto1.setGlPoid(gdto.getGlPoid());
                                 dto1.setMainDetRowId(useDet);
+                                dto1.setGlCompanyPoid(popup.getGlCompanyPoid() != null ? popup.getGlCompanyPoid() : gdto.getCompanyPoid());
                                 dto1.setBillDetRowId(popup.getBillDetRowId());
                                 dto1.setBillRefType(popup.getBillRefType());
                                 dto1.setBillRef(popup.getBillRef());
@@ -1781,6 +1788,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                             popupDto.setBillRefType(item.getBillRefType());
                             popupDto.setBillRef(item.getBillRef());
                             popupDto.setBillDueDate(item.getBillDueDate());
+                            popupDto.setGlCompanyPoid(glDto.getCompanyPoid() != null ? glDto.getCompanyPoid() : UserContext.getCompanyPoid());
 
                             // Determine type and amount from drAmt/crAmt
                             if (item.getDrAmt() != null && item.getDrAmt().compareTo(BigDecimal.ZERO) > 0) {
@@ -2036,6 +2044,8 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
         validateGlDetails(dto, documentId);
 
+        validateCreditPeriod(dto);
+
         //validateVat(dto, documentId);
 
         String refType = dto.getRefType() == null
@@ -2089,6 +2099,31 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
     }
 
+    @Override
+    public String getSupplierGlPoid(
+            Long loginGroupPoid,
+            Long loginCompanyPoid,
+            Long loginUserPoid,
+            String partyType,
+            Long partyPoid
+    ) {
+
+        String glPoid = apPurchaseJournalRepositoryImpl.getSupplierGlPoid(
+                loginGroupPoid,
+                loginCompanyPoid,
+                loginUserPoid,
+                partyType,
+                partyPoid
+        );
+
+        // Optional: add business validation
+        if (glPoid == null) {
+            log.warn("No GL POID found for PartyType={} PartyPoid={}", partyType, partyPoid);
+        }
+
+        return glPoid;
+    }
+
     private void validateGlDetails(ApPurchaseInvoiceHdrDto dto, String documentId) {
 
         if (dto.getGlDtls() == null) return;
@@ -2117,6 +2152,28 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
                 throw new ValidationException(output.get("result"));
             }
+        }
+    }
+
+    private void validateCreditPeriod(ApPurchaseInvoiceHdrDto dto) {
+        if (dto.getCreditPeriod() == null) {
+            return;
+        }
+
+        String maxCreditPeriodStr = globalParameterService.getParameterValue(
+                "CREDIT_PERIOD_VALIDATION_DAYS", "GROUP", "1", "");
+
+        Long maxCreditPeriod = 120L;
+        if (maxCreditPeriodStr != null && !maxCreditPeriodStr.trim().isEmpty()) {
+            try {
+                maxCreditPeriod = Long.parseLong(maxCreditPeriodStr);
+            } catch (NumberFormatException e) {
+                log.warn("Invalid CREDIT_PERIOD_VALIDATION_DAYS parameter value: {}", maxCreditPeriodStr);
+            }
+        }
+
+        if (dto.getCreditPeriod() > maxCreditPeriod) {
+            throw new ValidationException("Credit Period is greater than " + maxCreditPeriod + " days...");
         }
     }
 
@@ -2438,7 +2495,19 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
         String type = diff.compareTo(BigDecimal.ZERO) > 0 ? "CR" : "DR";
 
-        Long partyGl = getPartyGlPoid(dto.getPartyType(), dto.getSupplierPoid());
+        String supplierGlStr = getSupplierGlPoid(
+                UserContext.getGroupPoid(),
+                UserContext.getCompanyPoid(),
+                UserContext.getUserPoid(),
+                dto.getPartyType(),
+                dto.getSupplierPoid()
+        );
+
+        if (supplierGlStr == null || supplierGlStr.trim().isEmpty()) {
+            throw new ValidationException("Supplier GL not found for party type: " + dto.getPartyType());
+        }
+
+        Long partyGl = Long.parseLong(supplierGlStr.trim());
 
         Long detRowId =
                 apPurchaseInvoiceGlDtlRepository
@@ -2535,6 +2604,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
         billDto.setGlPoid(supplierGl);
         billDto.setMainDetRowId(mainDetRowId);
+        billDto.setGlCompanyPoid(companyPoid);
 
         billDto.setBillRefType("NEW");
         billDto.setBillRef(dto.getSupplierInvNo());

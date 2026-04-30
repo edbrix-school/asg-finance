@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
 import com.asg.common.lib.exception.AsgException;
+import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.service.HsbcApiSyncService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,7 +37,8 @@ public class HsbcApiSyncServiceImpl implements HsbcApiSyncService {
     public String syncHsbcApiData(String accountNumber, LocalDate date) throws Exception {
         validateInput(accountNumber, date);
         String formattedDate = date.format(DateTimeFormatter.ofPattern("dd-MMM-yyyy")).toUpperCase();
-        hsbcApiClient.syncHsbcData(accountNumber, formattedDate);
+        hsbcApiClient.syncHsbcData(accountNumber, formattedDate,
+                UserContext.getGroupPoid(), UserContext.getCompanyPoid(), UserContext.getUserPoid(), "SERVICE");
         return "HSBC data synced successfully";
     }
     

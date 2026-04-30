@@ -23,6 +23,7 @@ public class FixedAssetCategoryResponseDto {
     private String faCategoryDescription;
     private String faCategoryDescription2;
     private String assetType;
+    private DetailsDto assetTypeDet;
     private Long faGlAccount;
     private DetailsDto faGlAccountDet;
     private Long faAccumulationAccount;

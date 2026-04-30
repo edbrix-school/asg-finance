@@ -25,6 +25,8 @@ import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.GLMasterCustomService;
 import com.asg.finance.service.GLMasterService;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,6 +75,9 @@ public class GLMasterServiceImpl implements GLMasterService {
 
     @Autowired
     private DocumentDeleteService documentDeleteService;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     private String getCurrentUser() {
         return ASGHelperUtils.getCurrentUser(); // dynamically fetch current user
@@ -154,7 +159,7 @@ public class GLMasterServiceImpl implements GLMasterService {
         entity.setDescription(req.getDescription());
         entity.setDescription2(req.getDescription2());
         entity.setType(req.getType());
-        entity.setGroupGlPoid(subOf);
+        entity.setSubOf(subOf);
         entity.setAccountType(req.getAccountType());
         entity.setControlAcType(req.getControlAcType());
         entity.setCostGroup(req.getCostGroup());
@@ -181,11 +186,11 @@ public class GLMasterServiceImpl implements GLMasterService {
                 entity.setGlCode(refreshedEntity.getGlCode());
             } else {
                 // Fallback: construct expected GL_CODE
-                entity.setGlCode(entity.getAccountType() + entity.getGlPoid());
+                entity.setGlCode(buildFallbackGlCode(entity.getAccountType(), entity.getGlPoid()));
             }
         } catch (Exception e) {
             log.warn("Failed to get generated GL_CODE, using fallback: {}", e.getMessage());
-            entity.setGlCode(entity.getAccountType() + entity.getGlPoid());
+            entity.setGlCode(buildFallbackGlCode(entity.getAccountType(), entity.getGlPoid()));
         }
 
 
@@ -257,6 +262,15 @@ public class GLMasterServiceImpl implements GLMasterService {
         GLMasterEntity entity = glMasterRepo.findById(glPoid)
                 .orElseThrow(() -> new RuntimeException("GL Master not found: " + glPoid));
 
+        String existingType = entity.getType();
+        if (isLockedSystemMainGroup(entity) && isAccountTypeChanged(entity.getAccountType(), req.getAccountType())) {
+            throw new ValidationException("GL Account Type cannot be changed for Main Groups (ASSETS, LIABILITIES, REVENUE ACCOUNTS, EXPENSES).");
+        }
+        String requestedType = req.getType();
+        if (isGroupType(existingType) && "LEDGER".equalsIgnoreCase(requestedType) && hasActiveChildren(glPoid)) {
+            throw new ValidationException("Cannot change GL Type to LEDGER because child GL accounts are already mapped under this group.");
+        }
+
         // Create a copy of the existing entity for logging
         GLMasterEntity oldEntity = new GLMasterEntity();
 
@@ -290,7 +304,7 @@ public class GLMasterServiceImpl implements GLMasterService {
         entity.setDescription(req.getDescription());
         entity.setDescription2(req.getDescription2());
         entity.setType(req.getType());
-        entity.setGroupGlPoid(subOf);
+        entity.setSubOf(subOf);
         entity.setAccountType(req.getAccountType());
         entity.setControlAcType(req.getControlAcType());
         entity.setCostGroup(req.getCostGroup());
@@ -417,6 +431,10 @@ public class GLMasterServiceImpl implements GLMasterService {
         GLMasterEntity entity = glMasterRepo.findById(glPoid)
                 .orElseThrow(() -> new RuntimeException("GL Master not found: " + glPoid));
 
+        if ("LEDGER".equalsIgnoreCase(entity.getType()) && hasPostedEntriesForLedger(glPoid)) {
+            throw new ValidationException("This ledger cannot be deleted because posting entries exist for this GL.");
+        }
+
         // Check if this GL Master has active children
         if (hasActiveChildren(glPoid)) {
             throw new ValidationException("This GL Master cannot be deleted as it has related child records.");
@@ -433,13 +451,59 @@ public class GLMasterServiceImpl implements GLMasterService {
     }
 
     private boolean hasActiveChildren(Long parentPoid) {
-        return glMasterRepo.existsByGroupGlPoidAndDeletedFlag(parentPoid, "N");
+        return glMasterRepo.existsBySubOfAndDeletedFlag(parentPoid, "N");
+    }
+
+    private boolean hasPostedEntriesForLedger(Long glPoid) {
+        Number count = (Number) entityManager.createNativeQuery(
+                        "SELECT COUNT(1) FROM GL_LEDGER WHERE GL_POID = :glPoid")
+                .setParameter("glPoid", glPoid)
+                .getSingleResult();
+        return count != null && count.longValue() > 0;
+    }
+
+    private boolean isGroupType(String type) {
+        return "MAIN_GROUP".equalsIgnoreCase(type) || "SUB_GROUP".equalsIgnoreCase(type);
+    }
+
+    private boolean isLockedSystemMainGroup(GLMasterEntity entity) {
+        if (entity == null || !"MAIN_GROUP".equalsIgnoreCase(entity.getType())) {
+            return false;
+        }
+        String accountType = entity.getAccountType() == null ? "" : entity.getAccountType().trim().toUpperCase();
+        return "ASSET".equals(accountType)
+                || "LIABILITY".equals(accountType)
+                || "REVENUE".equals(accountType)
+                || "EXPENSE".equals(accountType);
+    }
+
+    private boolean isAccountTypeChanged(String existingAccountType, String requestedAccountType) {
+        String existing = existingAccountType == null ? "" : existingAccountType.trim();
+        String requested = requestedAccountType == null ? "" : requestedAccountType.trim();
+        return !existing.equalsIgnoreCase(requested);
+    }
+
+    private String buildFallbackGlCode(String accountType, Long glPoid) {
+        String prefix = "";
+        if (accountType != null) {
+            String normalized = accountType.trim().toUpperCase();
+            if ("ASSET".equals(normalized)) {
+                prefix = "A";
+            } else if ("LIABILITY".equals(normalized)) {
+                prefix = "L";
+            } else if ("REVENUE".equals(normalized)) {
+                prefix = "R";
+            } else if ("EXPENSE".equals(normalized)) {
+                prefix = "E";
+            }
+        }
+        return prefix + glPoid;
     }
 
 
     private void propagateToChildren(GLMasterEntity parent) {
         GLMasterEntity probe = new GLMasterEntity();
-        probe.setGroupGlPoid(parent.getGlPoid());
+        probe.setSubOf(parent.getGlPoid());
         List<GLMasterEntity> children = glMasterRepo.findAll(Example.of(probe));
 
         if (children.isEmpty()) {
@@ -465,9 +529,9 @@ public class GLMasterServiceImpl implements GLMasterService {
         dto.setDescription(entity.getDescription());
         dto.setDescription2(entity.getDescription2());
         dto.setType(entity.getType());
-        dto.setSubOf(entity.getGroupGlPoid());
-        if (entity.getGroupGlPoid() != null) {
-            dto.setSubOfDet(lovService.getDetailsByPoidAndLovName(entity.getGroupGlPoid(), "GL_MASTER_GROUPS"));
+        dto.setSubOf(entity.getSubOf());
+        if (entity.getSubOf() != null) {
+            dto.setSubOfDet(lovService.getDetailsByPoidAndLovName(entity.getSubOf(), "GL_MASTER_GROUPS"));
         }
         dto.setAccountType(entity.getAccountType());
         dto.setControlAcType(entity.getControlAcType());
@@ -940,8 +1004,42 @@ public class GLMasterServiceImpl implements GLMasterService {
                 "GL_DESCRIPTION");
 
         Page<Map<String, Object>> page = new PageImpl<>(raw.records(), pageable, raw.totalRecords());
+        Map<String, Object> response = PaginationUtil.wrapPage(page, raw.displayFields());
+        if (isSearchRequest(filters)) {
+            response.put("totalElements", countLedgerRows(raw.records()));
+        } else {
+            response.put("totalElements", glMasterRepo.countActiveLedgers(UserContext.getGroupPoid()));
+        }
+        return response;
+    }
 
-        return PaginationUtil.wrapPage(page, raw.displayFields());
+    private boolean isSearchRequest(List<FilterDto> filters) {
+        if (filters == null || filters.isEmpty()) {
+            return false;
+        }
+        return filters.stream()
+                .anyMatch(filter -> filter != null
+                        && filter.searchValue() != null
+                        && !filter.searchValue().trim().isEmpty());
+    }
+
+    private long countLedgerRows(List<Map<String, Object>> records) {
+        if (records == null || records.isEmpty()) {
+            return 0L;
+        }
+        return records.stream()
+                .filter(Objects::nonNull)
+                .map(this::extractGlType)
+                .filter(type -> "LEDGER".equalsIgnoreCase(type))
+                .count();
+    }
+
+    private String extractGlType(Map<String, Object> row) {
+        Object glType = row.get("GL_TYPE");
+        if (glType == null) {
+            glType = row.get("TYPE");
+        }
+        return glType == null ? "" : glType.toString();
     }
 
     @Override
@@ -1005,7 +1103,7 @@ public class GLMasterServiceImpl implements GLMasterService {
             }
 
             // Determine level based on parent relationship
-            Integer level = (entity.getGroupGlPoid() == null) ? 0 : 1;
+            Integer level = (entity.getSubOf() == null) ? 0 : 1;
 
             GLMasterResponseDto dto = new GLMasterResponseDto();
             dto.setGlPoid(entity.getGlPoid());
@@ -1013,7 +1111,7 @@ public class GLMasterServiceImpl implements GLMasterService {
             dto.setDescription(entity.getDescription());
             dto.setType(entity.getType());
             dto.setAccountType(entity.getAccountType());
-            dto.setParentPoid(entity.getGroupGlPoid());
+            dto.setParentPoid(entity.getSubOf());
             dto.setLevel(level);
             dto.setActive("Y".equals(entity.getActiveFlag()));
             dto.setDeleted("Y".equals(entity.getDeletedFlag()));

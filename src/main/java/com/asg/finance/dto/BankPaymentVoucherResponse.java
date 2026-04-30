@@ -70,6 +70,7 @@ public class BankPaymentVoucherResponse {
     private String securityCheque;
     private String chqPrintedUserCode;
     private LocalDate chqPrintedDate;
+    private Long salesQtnRef;
     private Long availableBalance;
 
     // ===== Detail Sections =====

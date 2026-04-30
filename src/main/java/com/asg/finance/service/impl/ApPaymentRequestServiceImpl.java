@@ -12,17 +12,13 @@ import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.utility.PaginationUtil;
-import com.asg.finance.dto.ApPaymentRequestHdrRequestDto;
-import com.asg.finance.dto.ApPaymentRequestHdrResponseDto;
-import com.asg.finance.dto.ApPaymentRequestMapper;
-import com.asg.finance.entity.ApPaymentRequestDtl;
-import com.asg.finance.entity.ApPaymentRequestHdr;
-import com.asg.finance.entity.ApPaymentRequestStockDtl;
-import com.asg.finance.repository.ApPaymentRequestCustomRepository;
-import com.asg.finance.repository.ApPaymentRequestDtlRepository;
-import com.asg.finance.repository.ApPaymentRequestHdrRepository;
-import com.asg.finance.repository.ApPaymentRequestStockDtlRepository;
+import com.asg.finance.dto.*;
+import com.asg.finance.entity.*;
+import com.asg.finance.repository.*;
 import com.asg.finance.service.ApPaymentRequestService;
+import com.asg.finance.service.PurchaseOrderService;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
@@ -34,6 +30,8 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+
+import static com.asg.finance.utility.Constants.*;
 
 @Service
 @RequiredArgsConstructor
@@ -47,6 +45,16 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
     private final ApPaymentRequestCustomRepository aapPaymentRequestCustomRepository;
     private final LoggingService loggingService;
     private final DocumentDeleteService documentDeleteService;
+    private final PurchaseOrderRepository purchaseOrderRepository;
+    private final PurchaseOrderItemRepository purchaseOrderItemRepository;
+    private final FFManifestChargesDtlRepository manifestChargesDtlRepository;
+    private final PurchaseOrderService purchaseOrderService;
+    private final ObjectMapper objectMapper;
+    
+    private static final String DETROWID="detRowId";
+    private static final String TRANSACTION_POID="TRANSACTION_POID";
+    private static final String TRANSACTIONPOID="transactionPoid";
+    private static final String PAYMENT_REQUEST_NOT_FOUND="Payment request not found";
 
     @Override
     public ApPaymentRequestHdrResponseDto create(ApPaymentRequestHdrRequestDto requestDto) {
@@ -97,7 +105,7 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
         ApPaymentRequestHdr hdr = hdrRepository
                 .findById(transactionPoid)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException("Payment request not found", "transactionPoid", transactionPoid));
+                        new ResourceNotFoundException(PAYMENT_REQUEST_NOT_FOUND, TRANSACTIONPOID, transactionPoid));
 
         // Create a copy of the existing entity for logging
 
@@ -108,7 +116,7 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
         hdr.setRefType(requestDto.getRefType());
         hdr.setCurrencyCode(requestDto.getCurrencyCode());
         hdr.setCurrencyRate(requestDto.getCurrencyRate());
-        hdr.setPayeePoid(requestDto.getPayeePoid());
+        hdr.setPayeeName(requestDto.getPayeeName());
         hdr.setRequestedBy(requestDto.getRequestedBy());
         hdr.setRemarks(requestDto.getRemarks());
         hdr.setAccResponse(requestDto.getAccResponse());
@@ -125,7 +133,7 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
         // Log the update
         String key = savedEntity.getTransactionPoid().toString();
         loggingService.logChanges(oldEntity, savedEntity, ApPaymentRequestHdr.class,
-                UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+                UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, TRANSACTION_POID);
 
         List<ApPaymentRequestDtl> details = dtlRepository.findByIdTransactionPoid(transactionPoid);
         List<ApPaymentRequestStockDtl> stockDetails = stockDtlRepository.findByIdTransactionPoid(transactionPoid);
@@ -138,7 +146,7 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
 
         ApPaymentRequestHdr hdr = hdrRepository.findById(transactionPoid)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException("Payment request not found", "transactionPoid", transactionPoid));
+                        new ResourceNotFoundException(PAYMENT_REQUEST_NOT_FOUND, TRANSACTIONPOID, transactionPoid));
 
         List<ApPaymentRequestDtl> details = dtlRepository.findByIdTransactionPoid(transactionPoid);
         List<ApPaymentRequestStockDtl> stockDetails = stockDtlRepository.findByIdTransactionPoid(transactionPoid);
@@ -152,12 +160,12 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
         ApPaymentRequestHdr hdr = hdrRepository
                 .findById(transactionPoid)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException("Payment request not found", "transactionPoid", transactionPoid));
+                        new ResourceNotFoundException(PAYMENT_REQUEST_NOT_FOUND, TRANSACTIONPOID, transactionPoid));
 
         documentDeleteService.deleteDocument(
                 transactionPoid,
                 "AP_PAYMENT_REQUEST_HDR",
-                "TRANSACTION_POID",
+                TRANSACTION_POID,
                 deleteReasonDto,
                 hdr.getTransactionDate()
         );
@@ -172,7 +180,7 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
 
         RawSearchResult raw = documentService.search(documentId, filters, operator, pageable, isDeleted,
                 "DOC_REF",
-                "TRANSACTION_POID");
+                TRANSACTION_POID);
         Page<Map<String, Object>> page = new PageImpl<>(raw.records(), pageable, raw.totalRecords());
 
         return PaginationUtil.wrapPage(page, raw.displayFields());
@@ -223,6 +231,31 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
 
     }
 
+    @Override
+    public List<Map<String,Object>> findDetailsByRefId(Long transactionPoid, String refType) {
+
+        if (refType.equalsIgnoreCase("PO") || refType.equalsIgnoreCase("MTA")) {
+            return getPoItems(transactionPoid)
+                    .stream()
+                    .map(item -> objectMapper.convertValue(item, new TypeReference<Map<String, Object>>() {}))
+                    .toList();
+            
+        }else if (refType.equalsIgnoreCase("FDA")) {
+
+
+        } else if(refType.equalsIgnoreCase("FF")){
+            List<FFManifestChargesDtl> manifestChargesDtls= manifestChargesDtlRepository.findByTransactionPoid(transactionPoid);
+            
+        }else {
+            throw new IllegalArgumentException("Invalid RefType");
+        }
+        return null;
+    }
+
+    private List<PurchaseOrderItemResponseDto> getPoItems(Long transactionPoid){
+        return purchaseOrderService.findById(transactionPoid).getItems();
+    }
+
     private void processStockDetails(Long transactionPoid, List<com.asg.finance.dto.ApPaymentRequestStockDtlRequest> stockDetails) {
         if (stockDetails == null || stockDetails.isEmpty()) return;
 
@@ -235,17 +268,17 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
                 .max().orElse(0L);
 
         for (com.asg.finance.dto.ApPaymentRequestStockDtlRequest stockDetail : stockDetails) {
-            String actionType = stockDetail.getActionType() != null ? stockDetail.getActionType().toUpperCase() : "ISCREATED";
+            String actionType = stockDetail.getActionType() != null ? stockDetail.getActionType().toUpperCase() : ACTION_ISCREATED;
             switch (actionType) {
-                case "ISCREATED" -> {
+                case ACTION_ISCREATED -> {
                     stockDetail.setDetRowId(++maxDetRowId);
                     ApPaymentRequestStockDtl saved = stockDtlRepository.save(ApPaymentRequestMapper.toStockDtlEntity(transactionPoid, stockDetail));
                     loggingService.createLogSummaryEntry(docId, key, String.format("Row Created on AP Payment Request Stock Detail with detRowId: %s", saved.getId().getDetRowId()));
                 }
-                case "ISUPDATED" -> {
+                case ACTION_ISUPDATED -> {
                     ApPaymentRequestStockDtl existing = stockDtlRepository
                             .findByIdTransactionPoidAndIdDetRowId(transactionPoid, stockDetail.getDetRowId())
-                            .orElseThrow(() -> new ResourceNotFoundException("AP Payment Request Stock Detail", "detRowId", stockDetail.getDetRowId()));
+                            .orElseThrow(() -> new ResourceNotFoundException("AP Payment Request Stock Detail", DETROWID, stockDetail.getDetRowId()));
                     ApPaymentRequestStockDtl oldStock = new ApPaymentRequestStockDtl();
                     BeanUtils.copyProperties(existing, oldStock);
                     existing.setStockPoid(stockDetail.getStockPoid());
@@ -261,16 +294,16 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
                     String logDetail = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", transactionPoid, stockDetail.getDetRowId());
                     logRequests.add(new LogRequestDto<>(oldStock, existing, ApPaymentRequestStockDtl.class, docId, key, logDetail));
                 }
-                case "ISDELETED" -> stockDtlRepository
+                case ACTION_ISDELETED -> stockDtlRepository
                         .findByIdTransactionPoidAndIdDetRowId(transactionPoid, stockDetail.getDetRowId())
                         .ifPresent(entity -> {
                             stockDtlRepository.delete(entity);
                             loggingService.logDelete(stockDetail, docId, key);
                         });
-                case "NOCHANGE" -> {
+                case ACTION_NOCHANGES -> {
                     ApPaymentRequestStockDtl existing = stockDtlRepository
                             .findByIdTransactionPoidAndIdDetRowId(transactionPoid, stockDetail.getDetRowId())
-                            .orElseThrow(() -> new ResourceNotFoundException("AP Payment Request Stock Detail", "detRowId", stockDetail.getDetRowId()));
+                            .orElseThrow(() -> new ResourceNotFoundException("AP Payment Request Stock Detail", DETROWID, stockDetail.getDetRowId()));
                     stockDtlRepository.save(existing);
                 }
             }
@@ -291,10 +324,10 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
                 .max().orElse(0L);
 
         for (com.asg.finance.dto.ApPaymentRequestDtlRequestDto detail : details) {
-            String actionType = detail.getActionType() != null ? detail.getActionType().toUpperCase() : "ISCREATED";
+            String actionType = detail.getActionType() != null ? detail.getActionType().toUpperCase() : ACTION_ISCREATED;
 
             switch (actionType) {
-                case "ISCREATED" -> {
+                case ACTION_ISCREATED -> {
                     // Auto-generate detRowId for new records
                     detail.setDetRowId(++maxDetRowId);
                     ApPaymentRequestDtl entity = ApPaymentRequestMapper.toDtlEntity(transactionPoid, detail);
@@ -302,9 +335,9 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
                     String logDetail = String.format("Row Created on AP Payment Request Detail with detRowId: %s", entity.getId().getDetRowId());
                     loggingService.createLogSummaryEntry(docId, transactionPoid.toString(), logDetail);
                 }
-                case "ISUPDATED" -> {
+                case ACTION_ISUPDATED -> {
                     ApPaymentRequestDtl existing = dtlRepository.findByIdTransactionPoidAndIdDetRowId(transactionPoid, detail.getDetRowId())
-                            .orElseThrow(() -> new ResourceNotFoundException("AP Payment Request Detail", "detRowId", detail.getDetRowId()));
+                            .orElseThrow(() -> new ResourceNotFoundException("AP Payment Request Detail", DETROWID, detail.getDetRowId()));
 
                     ApPaymentRequestDtl oldEntity = new ApPaymentRequestDtl();
                     BeanUtils.copyProperties(existing, oldEntity);
@@ -320,16 +353,16 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
                     String logDetailForUpdate = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", transactionPoid, detail.getDetRowId());
                     logRequests.add(new LogRequestDto<>(oldEntity, existing, ApPaymentRequestDtl.class, docId, transactionPoid.toString(), logDetailForUpdate));
                 }
-                case "ISDELETED" -> {
+                case ACTION_ISDELETED -> 
                     dtlRepository.findByIdTransactionPoidAndIdDetRowId(transactionPoid, detail.getDetRowId())
                             .ifPresent(entity -> {
                                 dtlRepository.delete(entity);
                                 loggingService.logDelete(detail, docId, transactionPoid.toString());
                             });
-                }
-                case "NOCHANGE" -> {
+                
+                case ACTION_NOCHANGES -> {
                     ApPaymentRequestDtl existing = dtlRepository.findByIdTransactionPoidAndIdDetRowId(transactionPoid, detail.getDetRowId())
-                            .orElseThrow(() -> new ResourceNotFoundException("AP Payment Request Detail", "detRowId", detail.getDetRowId()));
+                            .orElseThrow(() -> new ResourceNotFoundException("AP Payment Request Detail", DETROWID, detail.getDetRowId()));
                     dtlRepository.save(existing);
                 }
             }

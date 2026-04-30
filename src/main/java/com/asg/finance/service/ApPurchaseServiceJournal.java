@@ -51,4 +51,12 @@ public interface ApPurchaseServiceJournal {
 
     String validateDuplicateInvoice(ApPurchaseInvoiceHdrDto dto, Long transactionPoid);
 
+    String getSupplierGlPoid(
+            Long loginGroupPoid,
+            Long loginCompanyPoid,
+            Long loginUserPoid,
+            String partyType,
+            Long partyPoid
+    );
+
 }

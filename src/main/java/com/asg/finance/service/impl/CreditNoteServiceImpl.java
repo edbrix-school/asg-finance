@@ -176,8 +176,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     entityManager.flush();
                     executeChargeTaxIfChanged(transactionPoid, creditNoteDto);
                 }
-
-                executePostSaveUpdates(transactionPoid, creditNoteDto);
+                //executePostSaveUpdatesAfterCommit(transactionPoid, creditNoteDto);
             } catch (Exception e) {
                 log.error("Error in post-save processing for transactionPoid {}: {}", transactionPoid, e.getMessage());
                 throw new ValidationException("Post-save processing failed: " + e.getMessage());
@@ -190,7 +189,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
             saveBillwiseForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111", false);
             saveCostCenterForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111", false);
-            executePostSaveUpdates(transactionPoid, creditNoteDto);
+            executePostSaveUpdatesAfterCommit(transactionPoid, creditNoteDto);
 
             loadBillwiseAndCostCenterBreakup(glDetailDtos, transactionPoid, "300-111");
             result.setGlDetails(glDetailDtos);
@@ -293,6 +292,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             saveCostCenterForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111", true);
             entityManager.flush();
             executePostSaveUpdates(transactionPoid, creditNoteDto);
+            entityManager.flush();  // As We are commenting flush from executePostSaveUpdates so to keep the usecase same in case of Edit, adding here
             // Execute post-commit tax recalculation and reference updates
             executePostCommitTaxUpdates(transactionPoid, creditNoteDto, oldFdaRef, oldFfRef, existing);
 
@@ -1345,6 +1345,27 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         DataSourceUtils.releaseConnection(connection, dataSource);
     }
 
+    private void executePostSaveUpdatesAfterCommit(Long transactionPoid, CreditNoteHeaderDto dto) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    try {
+                        executePostSaveUpdates(transactionPoid, dto);
+                    } catch (SQLException e) {
+                        log.error("Error executing post-save updates for transactionPoid {}: {}", transactionPoid, e.getMessage());
+                    }
+                }
+            });
+        } else {
+            try {
+                executePostSaveUpdates(transactionPoid, dto);
+            } catch (SQLException e) {
+                log.error("Error executing post-save updates for transactionPoid {}: {}", transactionPoid, e.getMessage());
+            }
+        }
+    }
+
     private void executePostSaveUpdates(Long transactionPoid, CreditNoteHeaderDto dto) throws SQLException {
         String refType = dto.getRefType();
 
@@ -1385,8 +1406,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         } else if ("FDA".equals(refType)) {
             executeFDAAmountUpdate(transactionPoid, dto.getDnFdaReference());
         }
-        entityManager.flush(); // Ensure all updates are flushed before tax recalculation
-        
+        //entityManager.flush(); // Ensure all updates are flushed before tax recalculation
     }
 
     private void executePostCommitTaxUpdates(Long transactionPoid, CreditNoteHeaderDto creditNoteDto, 

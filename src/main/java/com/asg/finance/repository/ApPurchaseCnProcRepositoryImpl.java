@@ -31,6 +31,7 @@ public class ApPurchaseCnProcRepositoryImpl implements ApPurchaseCnProcRepositor
     private static final String P_CN_PJ_PARTY_POID = "P_CN_PJ_PARTY_POID";
     private static final String P_CN_PJ_REF_TYPE = "P_CN_PJ_REF_TYPE";
     private static final String ERROR = "ERROR";
+    private static final String WARNING = "WARNING";
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -134,7 +135,7 @@ public class ApPurchaseCnProcRepositoryImpl implements ApPurchaseCnProcRepositor
 
     private void validateResult(StoredProcedureQuery query) {
         String result = (String) query.getOutputParameterValue(P_RESULT);
-        if (result != null && result.contains(ERROR)) {
+        if (result != null && (result.contains(ERROR) || result.contains(WARNING))) {
             throw new ValidationException(result);
         }
     }

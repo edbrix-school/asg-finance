@@ -782,9 +782,13 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 
             if (costCenter != null && curr.getPercent() != null) {
                 dto.getCostCenterMap().put(costCenter, curr.getPercent());
-                dto.getCostCenterMap().put("TOTAL",dto.getCostCenterMap().values().stream()
-                        .map(val -> val != null ? val : BigDecimal.ZERO)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add));
+                BigDecimal existingTotal = dto.getCostCenterMap()
+                        .getOrDefault("TOTAL", BigDecimal.ZERO);
+
+                dto.getCostCenterMap().put(
+                        "TOTAL",
+                        existingTotal.add(curr.getPercent() != null ? curr.getPercent() : BigDecimal.ZERO)
+                );
             }
 
         }

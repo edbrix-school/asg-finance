@@ -187,7 +187,7 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
     }
 
     @Override
-    public Map<String, Object> createFromPo(String poPoid) {
+    public ApPaymentRequestResponse createFromPo(String poPoid) {
 
         return aapPaymentRequestCustomRepository.createFromPo(
                 UserContext.getGroupPoid(),
@@ -198,7 +198,7 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
     }
 
     @Override
-    public Map<String, Object> createFromFf(String ffPoid) {
+    public ApPaymentRequestResponse createFromFf(String ffPoid) {
 
         return aapPaymentRequestCustomRepository.createFromFf(
                 UserContext.getGroupPoid(),
@@ -209,7 +209,7 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
     }
 
     @Override
-    public Map<String, Object> createFromFda(String fdaPoid) {
+    public ApPaymentRequestResponse createFromFda(String fdaPoid) {
 
         return aapPaymentRequestCustomRepository.createFromFda(
                 UserContext.getGroupPoid(),
@@ -220,7 +220,7 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
     }
 
     @Override
-    public Map<String, Object> createFromMta(String poPoid) {
+    public ApPaymentRequestResponse createFromMta(String poPoid) {
 
         return aapPaymentRequestCustomRepository.createFromMta(
                 UserContext.getGroupPoid(),
@@ -229,31 +229,6 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
                 poPoid
         );
 
-    }
-
-    @Override
-    public List<Map<String,Object>> findDetailsByRefId(Long transactionPoid, String refType) {
-
-        if (refType.equalsIgnoreCase("PO") || refType.equalsIgnoreCase("MTA")) {
-            return getPoItems(transactionPoid)
-                    .stream()
-                    .map(item -> objectMapper.convertValue(item, new TypeReference<Map<String, Object>>() {}))
-                    .toList();
-            
-        }else if (refType.equalsIgnoreCase("FDA")) {
-
-
-        } else if(refType.equalsIgnoreCase("FF")){
-            List<FFManifestChargesDtl> manifestChargesDtls= manifestChargesDtlRepository.findByTransactionPoid(transactionPoid);
-            
-        }else {
-            throw new IllegalArgumentException("Invalid RefType");
-        }
-        return null;
-    }
-
-    private List<PurchaseOrderItemResponseDto> getPoItems(Long transactionPoid){
-        return purchaseOrderService.findById(transactionPoid).getItems();
     }
 
     private void processStockDetails(Long transactionPoid, List<com.asg.finance.dto.ApPaymentRequestStockDtlRequest> stockDetails) {

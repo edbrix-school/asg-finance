@@ -478,8 +478,11 @@ public class BankPaymentVoucherController {
     public ResponseEntity<?> createFromMta(
             @RequestParam String rfqPoid) {
 
-        BankPayCreateFromMtaResponse response = service.createBankPayment(rfqPoid);
         try {
+            BankPayCreateFromMtaResponse response = service.createBankPayment(rfqPoid);
+            if (response == null || response.getItems() == null || response.getItems().isEmpty()) {
+                return internalServerError("WARNING : No more items marked as Cheque Supplier for making payment or PO's are created for these items");
+            }
             return success("MTA charges loaded successfully", response);
         } catch (Exception ex) {
             return internalServerError("Failed to load MTA charges: " + ex.getMessage());

@@ -231,7 +231,7 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
 
     @Override
     @Transactional
-    public String regenerateTelexFile(Long debitVoucherPoid) {
+    public String regenerateTelexFile(Long telexTransactionPoid, Long debitVoucherPoid) {
         glBankDebitHdrRepository.findByTransactionPoid(debitVoucherPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Telex File", "transactionPoid", debitVoucherPoid));
 
@@ -239,12 +239,18 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
         String result = procRepository.regenerateTelexFile(UserContext.getGroupPoid(), UserContext.getCompanyPoid(),
                 userId, debitVoucherPoid);
 
-        // Create log summary entry for regenerate action
+        // Log against telex transaction POID (matching legacy behavior)
         String docId = UserContext.getDocumentId();
-        String key = debitVoucherPoid.toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.MODIFIED, docId, key);
+        String key = telexTransactionPoid.toString();
+        loggingService.createLogSummaryEntry(docId, key, result);
 
         return result;
+    }
+
+    @Override
+    @Transactional
+    public String regenerateTelexFile(Long debitVoucherPoid) {
+        return regenerateTelexFile(debitVoucherPoid, debitVoucherPoid);
     }
 
     @Override

@@ -242,13 +242,15 @@ public class TelexFileGenerateController {
             description = "Regenerates the telex file for a given transaction"
     )
     @AllowedAction(UserRolesRightsEnum.CREATE)
-    @PostMapping("/{debitVoucherPoid}/regenerate")
+    @PostMapping("/{telexTransactionPoid}/regenerate/{debitVoucherPoid}")
     public ResponseEntity<?> regenerateTelexFile(
-            @Parameter(description = "Debit Voucher POID", required = true)
+            @Parameter(description = "Telex Transaction POID (current telex document)", required = true)
+            @PathVariable Long telexTransactionPoid,
+            @Parameter(description = "Debit Voucher POID (voucher to regenerate)", required = true)
             @PathVariable Long debitVoucherPoid
     ) {
         try {
-            String result = service.regenerateTelexFile(debitVoucherPoid);
+            String result = service.regenerateTelexFile(telexTransactionPoid, debitVoucherPoid);
             if (result != null && result.contains("ERROR")) {
                 return internalServerError("Error regenerating telex file: " + result);
             }

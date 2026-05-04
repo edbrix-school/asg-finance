@@ -33,6 +33,7 @@ public class ExpenseReallocationResponse {
     private LocalDate fromDate;
     private LocalDate toDate;
     private String costPoid;
+    private String costCode;
     private String reportGeneration;
     private String allocationType;
     private String createdBy;

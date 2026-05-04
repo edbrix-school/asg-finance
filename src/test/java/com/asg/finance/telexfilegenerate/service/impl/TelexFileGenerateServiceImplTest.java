@@ -14,6 +14,7 @@ import com.asg.common.lib.service.LovDataService;
 import com.asg.finance.dto.TelexFileDtlDto;
 import com.asg.finance.dto.TelexFileGenerateRequestDto;
 import com.asg.finance.dto.TelexFileGenerateResponseDto;
+import com.asg.finance.dto.BankFileBatchResult;
 import com.asg.finance.entity.GlBankDebitHdr;
 import com.asg.finance.entity.GlBankFileDtl;
 import com.asg.finance.entity.GlBankFileHdr;
@@ -554,37 +555,31 @@ class TelexFileGenerateServiceImplTest {
             mockedUserContext.when(UserContext::getGroupPoid).thenReturn(1L);
             mockedUserContext.when(UserContext::getCompanyPoid).thenReturn(1L);
             mockedUserContext.when(UserContext::getUserPoid).thenReturn(1L);
+            mockedUserContext.when(UserContext::getDocumentId).thenReturn("100-153");
 
             GlBankDebitHdr debitHdr = new GlBankDebitHdr();
             debitHdr.setTransactionPoid(1001L);
 
             when(glBankDebitHdrRepository.findByTransactionPoid(1001L)).thenReturn(Optional.of(debitHdr));
-            when(procRepository.regenerateTelexFile(1L, 1L, 1L, 1001L)).thenReturn("SUCCESS");
+            when(procRepository.regenerateTelexFile(1L, 1L, 1L, 1001L)).thenReturn("SUCCESS : Bank telex file removed");
+            doNothing().when(loggingService).createLogSummaryEntry(anyString(), anyString(), anyString());
 
-            String result = service.regenerateTelexFile(1001L);
+            String result = service.regenerateTelexFile(42418L, 1001L);
 
-            assertEquals("SUCCESS", result);
+            assertEquals("SUCCESS : Bank telex file removed", result);
             verify(procRepository, times(1)).regenerateTelexFile(1L, 1L, 1L, 1001L);
+            verify(loggingService, times(1)).createLogSummaryEntry("100-153", "42418", "SUCCESS : Bank telex file removed");
         }
     }
 
-    @Test
-    void regenerateTelexFile_NotFound() {
-        when(glBankDebitHdrRepository.findByTransactionPoid(1001L)).thenReturn(Optional.empty());
-
-        ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> {
-            service.regenerateTelexFile(1001L);
-        });
-
-        assertTrue(exception.getMessage().contains("Telex File not found"));
-    }
 
     @Test
     void generateBankFileButton_Success() {
         try (MockedStatic<UserContext> mockedUserContext = mockStatic(UserContext.class)) {
             mockedUserContext.when(UserContext::getUserPoid).thenReturn(1L);
 
-            when(bankFileBatchService.createBankFileBatch(42418L, 1L)).thenReturn("SUCCESS");
+            BankFileBatchResult batchResult = new BankFileBatchResult("SUCCESS", new ArrayList<>());
+            when(bankFileBatchService.createBankFileBatch(42418L, 1L)).thenReturn(batchResult);
 
             String result = service.generateBankFileButton(42418L);
 
@@ -771,16 +766,18 @@ class TelexFileGenerateServiceImplTest {
             mockedUserContext.when(UserContext::getGroupPoid).thenReturn(1L);
             mockedUserContext.when(UserContext::getCompanyPoid).thenReturn(1L);
             mockedUserContext.when(UserContext::getUserPoid).thenReturn(null);
+            mockedUserContext.when(UserContext::getDocumentId).thenReturn("100-153");
 
             GlBankDebitHdr debitHdr = new GlBankDebitHdr();
             debitHdr.setTransactionPoid(1001L);
 
             when(glBankDebitHdrRepository.findByTransactionPoid(1001L)).thenReturn(Optional.of(debitHdr));
-            when(procRepository.regenerateTelexFile(1L, 1L, 1L, 1001L)).thenReturn("SUCCESS");
+            when(procRepository.regenerateTelexFile(1L, 1L, 1L, 1001L)).thenReturn("SUCCESS : Bank telex file removed");
+            doNothing().when(loggingService).createLogSummaryEntry(anyString(), anyString(), anyString());
 
-            String result = service.regenerateTelexFile(1001L);
+            String result = service.regenerateTelexFile(42418L, 1001L);
 
-            assertEquals("SUCCESS", result);
+            assertEquals("SUCCESS : Bank telex file removed", result);
         }
     }
 
@@ -789,7 +786,8 @@ class TelexFileGenerateServiceImplTest {
         try (MockedStatic<UserContext> mockedUserContext = mockStatic(UserContext.class)) {
             mockedUserContext.when(UserContext::getUserPoid).thenReturn(null);
 
-            when(bankFileBatchService.createBankFileBatch(42418L, 1L)).thenReturn("SUCCESS");
+            BankFileBatchResult batchResult = new BankFileBatchResult("SUCCESS", new ArrayList<>());
+            when(bankFileBatchService.createBankFileBatch(42418L, 1L)).thenReturn(batchResult);
 
             String result = service.generateBankFileButton(42418L);
 

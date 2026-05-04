@@ -326,56 +326,83 @@ class TelexFileGenerateControllerTest {
     }
 
     @Test
-    void regenerateTelexFile_Success() throws Exception {
-        when(service.regenerateTelexFile(1001L)).thenReturn("SUCCESS");
+    void regenerateTelexFile_WithTelexPoid_Success() throws Exception {
+        when(service.regenerateTelexFile(42418L, 1001L)).thenReturn("SUCCESS : Bank telex file removed");
 
-        mockMvc.perform(post("/v1/telex-file-generate/1001/regenerate"))
+        mockMvc.perform(post("/v1/telex-file-generate/42418/regenerate/1001"))
                 .andExpect(status().isOk());
 
-        verify(service, times(1)).regenerateTelexFile(1001L);
+        verify(service, times(1)).regenerateTelexFile(42418L, 1001L);
     }
 
     @Test
-    void regenerateTelexFile_Error() throws Exception {
-        when(service.regenerateTelexFile(1001L)).thenReturn("ERROR: Failed");
+    void regenerateTelexFile_WithTelexPoid_Error() throws Exception {
+        when(service.regenerateTelexFile(42418L, 1001L)).thenReturn("ERROR: Failed to regenerate");
 
-        mockMvc.perform(post("/v1/telex-file-generate/1001/regenerate"))
+        mockMvc.perform(post("/v1/telex-file-generate/42418/regenerate/1001"))
                 .andExpect(status().isInternalServerError());
 
-        verify(service, times(1)).regenerateTelexFile(1001L);
+        verify(service, times(1)).regenerateTelexFile(42418L, 1001L);
     }
 
     @Test
-    void regenerateTelexFile_Exception() throws Exception {
-        when(service.regenerateTelexFile(1001L)).thenThrow(new RuntimeException("Exception"));
+    void regenerateTelexFile_WithTelexPoid_Exception() throws Exception {
+        when(service.regenerateTelexFile(42418L, 1001L)).thenThrow(new RuntimeException("Exception occurred"));
 
-        mockMvc.perform(post("/v1/telex-file-generate/1001/regenerate"))
+        mockMvc.perform(post("/v1/telex-file-generate/42418/regenerate/1001"))
                 .andExpect(status().isInternalServerError());
+
+        verify(service, times(1)).regenerateTelexFile(42418L, 1001L);
     }
 
     @Test
     void generateBankFileButton_Success() throws Exception {
-        when(service.regenerateTelexFile(42418L)).thenReturn("SUCCESS");
+        when(service.generateBankFileButton(42418L)).thenReturn("SUCCESS");
 
         mockMvc.perform(post("/v1/telex-file-generate/42418/generate"))
                 .andExpect(status().isOk());
 
-        verify(service, times(1)).regenerateTelexFile(42418L);
+        verify(service, times(1)).generateBankFileButton(42418L);
     }
 
     @Test
     void generateBankFileButton_Error() throws Exception {
-        when(service.regenerateTelexFile(42418L)).thenReturn("ERROR: Generation failed");
+        when(service.generateBankFileButton(42418L)).thenReturn("ERROR: Generation failed");
 
         mockMvc.perform(post("/v1/telex-file-generate/42418/generate"))
                 .andExpect(status().isInternalServerError());
+
+        verify(service, times(1)).generateBankFileButton(42418L);
     }
 
     @Test
     void generateBankFileButton_Exception() throws Exception {
-        when(service.regenerateTelexFile(42418L)).thenThrow(new RuntimeException("Exception"));
+        when(service.generateBankFileButton(42418L)).thenThrow(new RuntimeException("Exception"));
 
         mockMvc.perform(post("/v1/telex-file-generate/42418/generate"))
                 .andExpect(status().isInternalServerError());
+
+        verify(service, times(1)).generateBankFileButton(42418L);
     }
+
+    @Test
+    void checkBankBalance_Success() throws Exception {
+        when(service.checkBankBalance(42418L)).thenReturn("Balance check passed");
+
+        mockMvc.perform(get("/v1/telex-file-generate/42418/check-balance"))
+                .andExpect(status().isOk());
+
+        verify(service, times(1)).checkBankBalance(42418L);
+    }
+
+    @Test
+    void checkBankBalance_Exception() throws Exception {
+        when(service.checkBankBalance(42418L)).thenThrow(new RuntimeException("Balance check failed"));
+
+        mockMvc.perform(get("/v1/telex-file-generate/42418/check-balance"))
+                .andExpect(status().isInternalServerError());
+
+        verify(service, times(1)).checkBankBalance(42418L);
+    }
+
 }

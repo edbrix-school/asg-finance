@@ -18,7 +18,7 @@ public interface TelexFileGenerateService {
     void softDeleteTelexFile(Long transactionPoid, DeleteReasonDto reasonDto);
     Map<String, Object> listTelexFiles(String documentId, FilterRequestDto filters, LocalDate startDate, LocalDate endDate, Pageable pageable);
     List<TelexFileDtlDto> loadTelexTransferData(String bankList);
-    String regenerateTelexFile(Long debitVoucherPoid);
+    String regenerateTelexFile(Long telexTransactionPoid, Long debitVoucherPoid);
     String generateBankFileButton(Long transactionPoid);
     String checkBankBalance(Long transactionPoid);
 }

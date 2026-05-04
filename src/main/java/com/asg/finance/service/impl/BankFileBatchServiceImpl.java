@@ -99,8 +99,8 @@ public class BankFileBatchServiceImpl implements BankFileBatchService {
 //                addMessage(messages, "Checking bank balance...", "INFO");
                 String odStatus = procRepository.checkOverdraft(transactionPoid);
                 if (odStatus != null && odStatus.toUpperCase().contains("WARNING : AMOUNT IS GREATER THAN OUR")) {
-                    addMessage(messages, "Insufficient balance: " + odStatus, "WARNING");
                     addMessage(messages, odStatus, "COMPLETED_ERROR");
+                    return new BankFileBatchResult(odStatus, messages);
                 }
 //                addMessage(messages, "Bank balance check passed", "SUCCESS");
             } else {
@@ -153,7 +153,7 @@ public class BankFileBatchServiceImpl implements BankFileBatchService {
                     String paymentStatus = processPayment(detail, transactionPoid, userPoid, ++seqNo);
                     if (paymentStatus != null && paymentStatus.toUpperCase().contains("WARNING")) {
                         statusMessages.add(paymentStatus);
-                        addMessage(messages, "Payment warning for " + detail.getDebitDocRef() + ": " + paymentStatus, "WARNING");
+                        // Don't add duplicate warning message here - it's already handled in the balance check
                     } else {
                         addMessage(messages, "Payment processed successfully for: " + detail.getDebitDocRef(), "SUCCESS");
                     }

@@ -247,11 +247,6 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
         return result;
     }
 
-    @Override
-    @Transactional
-    public String regenerateTelexFile(Long debitVoucherPoid) {
-        return regenerateTelexFile(debitVoucherPoid, debitVoucherPoid);
-    }
 
     @Override
     @Transactional

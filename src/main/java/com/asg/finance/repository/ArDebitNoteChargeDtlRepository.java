@@ -3,7 +3,9 @@ package com.asg.finance.repository;
 import com.asg.finance.entity.ArDebitNoteChargeDtl;
 import com.asg.finance.entity.ArDebitNoteChargeDtlId;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -15,7 +17,9 @@ public interface ArDebitNoteChargeDtlRepository extends JpaRepository<ArDebitNot
 
     void deleteByTransactionPoid(Long transactionPoid);
 
-    void deleteByTransactionPoidAndDetRowIdIn(Long transactionPoid, List<Long> detRowIds);
+    @Modifying
+    @Query("DELETE FROM ArDebitNoteChargeDtl d WHERE d.transactionPoid = :transactionPoid AND d.detRowId IN :detRowIds")
+    void deleteByTransactionPoidAndDetRowIdIn(@Param("transactionPoid") Long transactionPoid, @Param("detRowIds") List<Long> detRowIds);
 
     @Query("SELECT MAX(d.detRowId) FROM ArDebitNoteChargeDtl d WHERE d.transactionPoid = :transactionPoid")
     Long findMaxDetRowIdByTransactionPoid(Long transactionPoid);

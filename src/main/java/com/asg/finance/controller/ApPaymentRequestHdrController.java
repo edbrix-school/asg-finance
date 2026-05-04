@@ -10,6 +10,7 @@ import com.asg.common.lib.service.LoggingService;
 import com.asg.finance.dto.ApPaymentRequestDetailResponse;
 import com.asg.finance.dto.ApPaymentRequestHdrRequestDto;
 import com.asg.finance.dto.ApPaymentRequestHdrResponseDto;
+import com.asg.finance.dto.ApPaymentRequestResponse;
 import com.asg.finance.service.ApPaymentRequestService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -140,41 +141,6 @@ public class ApPaymentRequestHdrController {
         return success("AP Payment Request fetched successfully", response);
     }
 
-
-    /*================== GET CHILD DETAILS===========     */
-
-    @Operation(
-            summary = "Get details document Reference",
-            description = "Fetches details by document reference",
-            responses = {
-                    @ApiResponse(
-                            responseCode = "200",
-                            description = "Successfully fetched details",
-                            content = @Content(
-                                    mediaType = "application/json",
-                                    schema = @Schema(implementation = ApPaymentRequestHdrResponseDto.class)
-                            )
-                    ),
-                    @ApiResponse(
-                            responseCode = "404",
-                            description = "details not found",
-                            content = @Content(mediaType = "application/json")
-                    )
-            }
-    )
-    @AllowedAction(UserRolesRightsEnum.VIEW)
-    @GetMapping("/details")
-    public ResponseEntity<?> getdetailsByRefId(
-            @Parameter(description = "Transaction POID", required = true)
-            @RequestParam(name = "transactionPoid") Long transactionPoid,
-            @RequestParam(name = "refType") String refType
-    ) {
-        List<Map<String,Object>> response =
-                service.findDetailsByRefId(transactionPoid,refType);
-
-        return success("AP Payment Request fetched successfully", response);
-    }
-
     /* ================= SOFT DELETE ================= */
 
     @Operation(
@@ -257,8 +223,8 @@ public class ApPaymentRequestHdrController {
             @Parameter(description = "PO POID", required = true)
             @RequestParam String poPoid
     ) {
-        Map<String, Object> response = service.createFromPo(poPoid);
-        return success("AP Payment Request processed from PO", response);
+        ApPaymentRequestResponse response = service.createFromPo(poPoid);
+        return success(response.getMessage(), response.getRecords());
     }
 
     @Operation(
@@ -276,8 +242,8 @@ public class ApPaymentRequestHdrController {
             @Parameter(description = "FF POID", required = true)
             @RequestParam String ffPoid
     ) {
-        Map<String, Object> response = service.createFromFf(ffPoid);
-        return success("AP Payment Request processed from FF", response);
+        ApPaymentRequestResponse response = service.createFromFf(ffPoid);
+        return success(response.getMessage(), response.getRecords());
     }
 
 
@@ -296,8 +262,8 @@ public class ApPaymentRequestHdrController {
             @Parameter(description = "FDA POID", required = true)
             @RequestParam String fdaPoid
     ) {
-        Map<String, Object> response = service.createFromFda(fdaPoid);
-        return success("AP Payment Request processed from FDA", response);
+        ApPaymentRequestResponse response = service.createFromFda(fdaPoid);
+        return success(response.getMessage(), response.getRecords());
     }
 
     @Operation(
@@ -315,8 +281,8 @@ public class ApPaymentRequestHdrController {
             @Parameter(description = "PO POID", required = true)
             @RequestParam String poPoid
     ) {
-        Map<String, Object> response = service.createFromMta(poPoid);
-        return success("AP Payment Request processed from MTA", response);
+        ApPaymentRequestResponse response = service.createFromMta(poPoid);
+        return success(response.getMessage(), response.getRecords());
     }
 
 }

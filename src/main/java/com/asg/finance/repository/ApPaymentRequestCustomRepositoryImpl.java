@@ -1,5 +1,6 @@
 package com.asg.finance.repository;
 
+import com.asg.finance.dto.ApPaymentRequestResponse;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.ParameterMode;
 import jakarta.persistence.PersistenceContext;
@@ -15,18 +16,18 @@ public class ApPaymentRequestCustomRepositoryImpl implements ApPaymentRequestCus
 
     @PersistenceContext
     private EntityManager entityManager;
-    
-    private static final String REMARKS="REMARKS";
-    private static final String TAX_AMOUNT="TAX_AMOUNT";
-    private static final String REF_DOC_ID="REF_DOC_ID";
-    private static final String TAX_POID="TAX_POID";
-    private static final String REF_DOC_POID="REF_DOC_POID";
-    private static final String TAX_PERCENTAGE="TAX_PERCENTAGE";
-    private static final String P_LOGIN_COMPANY_POID="P_LOGIN_COMPANY_POID";
-    private static final String P_LOGIN_GROUP_POID="P_LOGIN_GROUP_POID";
-    private static final String P_LOGIN_USER_POID="P_LOGIN_USER_POID";
 
-    private Map<String, Object> executeProcedure(
+    private static final String REMARKS = "REMARKS";
+    private static final String TAX_AMOUNT = "TAX_AMOUNT";
+    private static final String REF_DOC_ID = "REF_DOC_ID";
+    private static final String TAX_POID = "TAX_POID";
+    private static final String REF_DOC_POID = "REF_DOC_POID";
+    private static final String TAX_PERCENTAGE = "TAX_PERCENTAGE";
+    private static final String P_LOGIN_COMPANY_POID = "P_LOGIN_COMPANY_POID";
+    private static final String P_LOGIN_GROUP_POID = "P_LOGIN_GROUP_POID";
+    private static final String P_LOGIN_USER_POID = "P_LOGIN_USER_POID";
+
+    private ApPaymentRequestResponse executeProcedure(
             String procedureName,
             Map<String, Object> inParams,
             List<String> outColumns
@@ -68,16 +69,16 @@ public class ApPaymentRequestCustomRepositoryImpl implements ApPaymentRequestCus
             }
         }
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("message", resultMessage);
-        response.put("records", records);
-
-        return response;
+        return ApPaymentRequestResponse
+                .builder()
+                .message(resultMessage)
+                .records(records)
+                .build();
     }
 
     // ================= CREATE FROM PO =================
     @Override
-    public Map<String, Object> createFromPo(
+    public ApPaymentRequestResponse createFromPo(
             Long loginGroupPoid,
             Long loginCompanyPoid,
             Long loginUserPoid,
@@ -104,7 +105,7 @@ public class ApPaymentRequestCustomRepositoryImpl implements ApPaymentRequestCus
 
     // ================= CREATE FROM MTA =================
     @Override
-    public Map<String, Object> createFromMta(
+    public ApPaymentRequestResponse createFromMta(
             Long groupPoid,
             Long companyPoid,
             Long userPoid,
@@ -131,7 +132,7 @@ public class ApPaymentRequestCustomRepositoryImpl implements ApPaymentRequestCus
 
     // ================= CREATE FROM FF =================
     @Override
-    public Map<String, Object> createFromFf(
+    public ApPaymentRequestResponse createFromFf(
             Long loginGroupPoid,
             Long loginCompanyPoid,
             Long loginUserPoid,
@@ -157,7 +158,7 @@ public class ApPaymentRequestCustomRepositoryImpl implements ApPaymentRequestCus
 
     // ================= CREATE FROM FDA =================
     @Override
-    public Map<String, Object> createFromFda(
+    public ApPaymentRequestResponse createFromFda(
             Long groupPoid,
             Long companyPoid,
             Long userPoid,

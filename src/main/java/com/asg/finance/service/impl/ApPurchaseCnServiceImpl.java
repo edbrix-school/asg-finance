@@ -1835,11 +1835,14 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
             throw new ValidationException("Currency Rate must be greater than zero");
         }
 
-        BigDecimal expectedBhdAmount = dto.getCurrencyRate().multiply(dto.getSupplierCnAmount());
-        if (dto.getBhdAmount() != null && dto.getBhdAmount().compareTo(expectedBhdAmount) != 0) {
-            throw new ValidationException(
-                    "BHD Amount (" + dto.getBhdAmount() + ") does not match Currency Rate x Supplier CN Amount (" + expectedBhdAmount + ")"
-            );
+        BigDecimal expectedBhdAmount = dto.getCurrencyRate().multiply(dto.getSupplierCnAmount()).setScale(3, RoundingMode.HALF_UP);
+        if (dto.getBhdAmount() != null) {
+            BigDecimal roundedBhdAmount = dto.getBhdAmount().setScale(3, RoundingMode.HALF_UP);
+            if (roundedBhdAmount.compareTo(expectedBhdAmount) != 0) {
+                throw new ValidationException(
+                        "BHD Amount (" + dto.getBhdAmount() + ") does not match Currency Rate x Supplier CN Amount (" + expectedBhdAmount + ")"
+                );
+            }
         }
 
         if (dto.getGrandTotal() != null && dto.getGrandTotal().compareTo(BigDecimal.ZERO) < 0) {

@@ -957,6 +957,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         List<LogRequestDto<GlExpenseReallocationXlDtl>> logRequests = new ArrayList<>();
         String docId = UserContext.getDocumentId();
 
+        xlDtlRepository.deleteByTransactionPoid(transactionPoid);
         // Auto-generate detRowId for new records
         Long maxDetRowId = xlDtlRepository.findMaxDetRowIdByTransactionPoid(transactionPoid);
         AtomicLong detRowIdSeq = new AtomicLong(maxDetRowId != null ? maxDetRowId + 1 : 1);
@@ -1025,7 +1026,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         return request.stream()
                 .flatMap(val -> {
 
-                    Long detRowValue=detRowId != null ? detRowId.getAndIncrement() : val.getDetRowId();
+                    Long detRowValue=detRowId != null ? (Long)detRowId.getAndIncrement() : val.getDetRowId();
 
                    return val.getCostCenterMap().entrySet().stream()
                             .map(entry -> {

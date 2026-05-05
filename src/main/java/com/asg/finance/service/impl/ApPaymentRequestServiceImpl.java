@@ -1,9 +1,6 @@
 package com.asg.finance.service.impl;
 
-import com.asg.common.lib.dto.DeleteReasonDto;
-import com.asg.common.lib.dto.FilterDto;
-import com.asg.common.lib.dto.FilterRequestDto;
-import com.asg.common.lib.dto.RawSearchResult;
+import com.asg.common.lib.dto.*;
 import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
@@ -11,13 +8,13 @@ import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.dto.*;
 import com.asg.finance.entity.*;
 import com.asg.finance.repository.*;
 import com.asg.finance.service.ApPaymentRequestService;
 import com.asg.finance.service.PurchaseOrderService;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -27,9 +24,11 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static com.asg.finance.utility.Constants.*;
 
@@ -50,11 +49,15 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
     private final FFManifestChargesDtlRepository manifestChargesDtlRepository;
     private final PurchaseOrderService purchaseOrderService;
     private final ObjectMapper objectMapper;
-    
-    private static final String DETROWID="detRowId";
-    private static final String TRANSACTION_POID="TRANSACTION_POID";
-    private static final String TRANSACTIONPOID="transactionPoid";
-    private static final String PAYMENT_REQUEST_NOT_FOUND="Payment request not found";
+    private final LovDataService lovDataService;
+
+    private static final String DETROWID = "detRowId";
+    private static final String TRANSACTION_POID = "TRANSACTION_POID";
+    private static final String TRANSACTIONPOID = "transactionPoid";
+    private static final String PAYMENT_REQUEST_NOT_FOUND = "Payment request not found";
+    private static final String TAX_POID = "taxPoid";
+    private static final String TAX_LOV = "taxLov";
+
 
     @Override
     public ApPaymentRequestHdrResponseDto create(ApPaymentRequestHdrRequestDto requestDto) {
@@ -68,25 +71,26 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
 
         // Auto-generate detRowId for new records
         List<ApPaymentRequestDtl> details = new java.util.ArrayList<>();
-        long detRowId = 1;
 
-        for (var detailDto : requestDto.getDetails()) {
-            detailDto.setDetRowId(detRowId++); // Auto-generate detRowId
-            ApPaymentRequestDtl detail = ApPaymentRequestMapper.toDtlEntity(transactionPoid, detailDto);
-            details.add(detail);
-        }
-
-        dtlRepository.saveAll(details);
 
         // Save stock details
         List<ApPaymentRequestStockDtl> stockDetails = new java.util.ArrayList<>();
-        if (requestDto.getStockDetails() != null) {
-            long stockRowId = 1;
-            for (var stockDto : requestDto.getStockDetails()) {
-                stockDto.setDetRowId(stockRowId++);
+
+        if (requestDto.getRefType().equalsIgnoreCase("MTA")) {
+            AtomicLong stockRowId = new AtomicLong(1);
+            requestDto.getStockDetails().forEach(stockDto->{
+                stockDto.setDetRowId(stockRowId.getAndIncrement());
                 stockDetails.add(ApPaymentRequestMapper.toStockDtlEntity(transactionPoid, stockDto));
-            }
+            });
             stockDtlRepository.saveAll(stockDetails);
+        } else {
+            AtomicLong detRowId = new AtomicLong(1);
+            requestDto.getDetails().forEach(detailDto->{
+                detailDto.setDetRowId(detRowId.getAndIncrement());
+                details.add(ApPaymentRequestMapper.toDtlEntity(transactionPoid, detailDto));
+            });
+            dtlRepository.saveAll(details);
+
         }
 
         String docId = UserContext.getDocumentId();
@@ -189,45 +193,79 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
     @Override
     public ApPaymentRequestResponse createFromPo(String poPoid) {
 
-        return aapPaymentRequestCustomRepository.createFromPo(
+        ApPaymentRequestResponse response=aapPaymentRequestCustomRepository.createFromPo(
                 UserContext.getGroupPoid(),
                 UserContext.getCompanyPoid(),
                 UserContext.getUserPoid(),
                 poPoid
         );
+
+        response.setRecords(enrichRecords(
+                response.getRecords(),
+                "stockPoid",
+                "STOCK_MASTER",
+                "stockLov"
+        ));
+
+        return response;
     }
 
     @Override
     public ApPaymentRequestResponse createFromFf(String ffPoid) {
 
-        return aapPaymentRequestCustomRepository.createFromFf(
+        ApPaymentRequestResponse response= aapPaymentRequestCustomRepository.createFromFf(
                 UserContext.getGroupPoid(),
                 UserContext.getCompanyPoid(),
                 UserContext.getUserPoid(),
                 ffPoid
         );
+
+        response.setRecords(enrichRecords(
+                response.getRecords(),
+                "chargePoid",
+                "CHARGE_MASTER_FF",
+                "chargeLov"
+        ));
+        return response;
     }
 
     @Override
     public ApPaymentRequestResponse createFromFda(String fdaPoid) {
 
-        return aapPaymentRequestCustomRepository.createFromFda(
+        ApPaymentRequestResponse response=  aapPaymentRequestCustomRepository.createFromFda(
                 UserContext.getGroupPoid(),
                 UserContext.getCompanyPoid(),
                 UserContext.getUserPoid(),
                 fdaPoid
         );
+
+        response.setRecords(enrichRecords(
+                response.getRecords(),
+                "chargePoid",
+                "CHARGE_MASTER_FOR_PDA",
+                "chargeLov"
+        ));
+        return response;
     }
 
     @Override
-    public ApPaymentRequestResponse createFromMta(String poPoid) {
+    public ApPaymentRequestResponse createFromMta(String mtaPoid) {
 
-        return aapPaymentRequestCustomRepository.createFromMta(
+        ApPaymentRequestResponse response=  aapPaymentRequestCustomRepository.createFromMta(
                 UserContext.getGroupPoid(),
                 UserContext.getCompanyPoid(),
                 UserContext.getUserPoid(),
-                poPoid
+                mtaPoid
         );
+
+        response.setRecords(enrichRecords(
+                response.getRecords(),
+                "stockPoid",
+                "STOCK_MASTER",
+                "stockLov"
+        ));
+
+        return response;
 
     }
 
@@ -328,13 +366,13 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
                     String logDetailForUpdate = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", transactionPoid, detail.getDetRowId());
                     logRequests.add(new LogRequestDto<>(oldEntity, existing, ApPaymentRequestDtl.class, docId, transactionPoid.toString(), logDetailForUpdate));
                 }
-                case ACTION_ISDELETED -> 
-                    dtlRepository.findByIdTransactionPoidAndIdDetRowId(transactionPoid, detail.getDetRowId())
-                            .ifPresent(entity -> {
-                                dtlRepository.delete(entity);
-                                loggingService.logDelete(detail, docId, transactionPoid.toString());
-                            });
-                
+                case ACTION_ISDELETED ->
+                        dtlRepository.findByIdTransactionPoidAndIdDetRowId(transactionPoid, detail.getDetRowId())
+                                .ifPresent(entity -> {
+                                    dtlRepository.delete(entity);
+                                    loggingService.logDelete(detail, docId, transactionPoid.toString());
+                                });
+
                 case ACTION_NOCHANGES -> {
                     ApPaymentRequestDtl existing = dtlRepository.findByIdTransactionPoidAndIdDetRowId(transactionPoid, detail.getDetRowId())
                             .orElseThrow(() -> new ResourceNotFoundException("AP Payment Request Detail", DETROWID, detail.getDetRowId()));
@@ -346,6 +384,40 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
         if (!logRequests.isEmpty()) {
             loggingService.createLogBatch(logRequests);
         }
+    }
+
+    private List<Map<String, Object>> enrichRecords(
+            List<Map<String, Object>> records,
+            String primaryKey,
+            String primaryLovName,
+            String primaryLovField
+    ) {
+        return records.stream()
+                .map(record -> {
+                    Long primaryPoid = convertToLong(record.get(primaryKey));
+                    record.put(primaryLovField, getLov(primaryPoid, primaryLovName));
+
+                    Long taxPoid = convertToLong(record.get(TAX_POID));
+                    record.put(TAX_LOV, getLov(taxPoid, "DR_TAX_MASTER"));
+
+                    return record;
+                })
+                .toList();
+    }
+
+    private  LovGetListDto getLov(Long poid, String lovName) {
+        if (poid == null) return null;
+        return lovDataService.getDetailsByPoidAndLovNameFast(poid, lovName);
+    }
+
+    private Long convertToLong(Object value) {
+        if (value == null) return null;
+
+        if (value instanceof Long l) return l;
+        if (value instanceof Integer i) return i.longValue();
+        if (value instanceof BigDecimal bd) return bd.longValue();
+
+        return Long.valueOf(value.toString());
     }
 
 

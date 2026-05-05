@@ -31,5 +31,5 @@ public interface ApPaymentRequestService {
 
     ApPaymentRequestResponse createFromFda(String fdaPoid);
 
-    ApPaymentRequestResponse createFromMta(String poPoid);
+    ApPaymentRequestResponse createFromMta(String mtaPoid);
 }

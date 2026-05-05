@@ -2,78 +2,109 @@ package com.asg.finance.repository;
 
 import com.asg.finance.dto.ApPaymentRequestResponse;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.ParameterMode;
 import jakarta.persistence.PersistenceContext;
-import jakarta.persistence.StoredProcedureQuery;
 import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
+import org.hibernate.dialect.OracleTypes;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.CallableStatementCallback;
+import org.springframework.jdbc.core.CallableStatementCreator;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import java.sql.CallableStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Types;
 import java.util.*;
+import java.util.stream.Collectors;
 
+
+@Slf4j
 @Repository
 @Transactional
 public class ApPaymentRequestCustomRepositoryImpl implements ApPaymentRequestCustomRepository {
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
     @PersistenceContext
     private EntityManager entityManager;
 
-    private static final String REMARKS = "REMARKS";
-    private static final String TAX_AMOUNT = "TAX_AMOUNT";
-    private static final String REF_DOC_ID = "REF_DOC_ID";
-    private static final String TAX_POID = "TAX_POID";
-    private static final String REF_DOC_POID = "REF_DOC_POID";
-    private static final String TAX_PERCENTAGE = "TAX_PERCENTAGE";
-    private static final String P_LOGIN_COMPANY_POID = "P_LOGIN_COMPANY_POID";
-    private static final String P_LOGIN_GROUP_POID = "P_LOGIN_GROUP_POID";
-    private static final String P_LOGIN_USER_POID = "P_LOGIN_USER_POID";
+    private static final String REMARKS = "remarks";
+    private static final String TAX_AMOUNT = "taxAmount";
+    private static final String REF_DOC_ID = "refDocId";
+    private static final String TAX_POID = "taxPoid";
+    private static final String REF_DOC_POID = "refDocPoid";
+    private static final String TAX_PERCENTAGE = "taxPercentage";
 
     private ApPaymentRequestResponse executeProcedure(
             String procedureName,
-            Map<String, Object> inParams,
+            Map<Integer, Object> inParams,
             List<String> outColumns
     ) {
+        return jdbcTemplate.execute(
+                (CallableStatementCreator) con -> {
 
-        StoredProcedureQuery sp = entityManager.createStoredProcedureQuery(procedureName);
+                    CallableStatement cs =
+                            con.prepareCall("{call " + procedureName + "(?, ?, ?, ?, ?, ?)}");
 
-        // Register IN parameters
-        inParams.forEach((key, value) ->
-                sp.registerStoredProcedureParameter(key, value.getClass(), ParameterMode.IN)
-        );
+                    inParams.forEach((index, value) -> setSpValues(index, value, cs));
 
-        // Register OUT parameters
-        sp.registerStoredProcedureParameter("P_RESULT", String.class, ParameterMode.OUT);
-        sp.registerStoredProcedureParameter("OUTDATA", void.class, ParameterMode.REF_CURSOR);
+                    cs.registerOutParameter(5, Types.VARCHAR);
+                    cs.registerOutParameter(6, OracleTypes.CURSOR);
 
-        // Set IN parameters
-        inParams.forEach(sp::setParameter);
+                    return cs;
+                },
 
-        sp.execute();
+                (CallableStatementCallback<ApPaymentRequestResponse>) cs -> {
 
-        String resultMessage = (String) sp.getOutputParameterValue("P_RESULT");
+                    ApPaymentRequestResponse response = new ApPaymentRequestResponse();
+                    List<Map<String, Object>> records = new ArrayList<>();
 
-        List<Map<String, Object>> records = new ArrayList<>();
+                    cs.execute();
 
-        if (resultMessage != null && resultMessage.startsWith("Successfully")) {
+                    String resultMsg = cs.getString(5);
+                    response.setMessage(resultMsg);
 
-            @SuppressWarnings("unchecked")
-            List<Object[]> rows = sp.getResultList();
+                    if (resultMsg != null &&
+                            (resultMsg.toUpperCase().startsWith("WARNING")
+                                    || resultMsg.toUpperCase().startsWith("ERROR"))) {
 
-            for (Object[] row : rows) {
-                Map<String, Object> map = new LinkedHashMap<>();
+                        response.setRecords(Collections.emptyList());
+                        return response;
+                    }
 
-                for (int i = 0; i < outColumns.size(); i++) {
-                    map.put(outColumns.get(i), row[i]);
+                    ResultSet rs = (ResultSet) cs.getObject(6);
+
+                    if (rs == null) {
+                        response.setRecords(Collections.emptyList());
+                        return response;
+                    }
+                    Map<String, String> columnMapping = outColumns.stream()
+                            .collect(Collectors.toMap(
+                                    col -> col,
+                                    this::toDbColumn
+                            ));
+
+                    try (rs) {
+
+                        while (rs.next()) {
+
+                            Map<String, Object> row = new LinkedHashMap<>();
+
+                            for (String column : outColumns) {
+                                row.put(column, rs.getObject(columnMapping.get(column)));
+                            }
+
+                            records.add(row);
+                        }
+                    }
+
+                    response.setRecords(records);
+                    return response;
                 }
-
-                records.add(map);
-            }
-        }
-
-        return ApPaymentRequestResponse
-                .builder()
-                .message(resultMessage)
-                .records(records)
-                .build();
+        );
     }
 
     // ================= CREATE FROM PO =================
@@ -85,19 +116,19 @@ public class ApPaymentRequestCustomRepositoryImpl implements ApPaymentRequestCus
             String poPoid
     ) {
 
-        Map<String, Object> inParams = Map.of(
-                P_LOGIN_GROUP_POID, loginGroupPoid,
-                P_LOGIN_COMPANY_POID, loginCompanyPoid,
-                P_LOGIN_USER_POID, loginUserPoid,
-                "P_PO_POID", poPoid
+        Map<Integer, Object> inParams = Map.of(
+                1, loginGroupPoid,
+                2, loginCompanyPoid,
+                3, loginUserPoid,
+                4, poPoid
         );
 
         // column names based on SP
         List<String> columns = List.of(
-                "STOCK_POID", "STOCK_UNIT_POID", "PO_QTY", "PRICE",
-                "DISCOUNT", "BASE_AMOUNT", TAX_POID, TAX_PERCENTAGE,
-                TAX_AMOUNT, "AMOUNT", REMARKS, REF_DOC_ID,
-                REF_DOC_POID, "REF_DET_ROW_ID"
+                "stockPoid", "stockUnitPoid", "PoQty", "price",
+                "discount", "baseAmount", TAX_POID, TAX_PERCENTAGE,
+                TAX_AMOUNT, "amount", REMARKS, REF_DOC_ID,
+                REF_DOC_POID, "refDetRowId"
         );
 
         return executeProcedure("PROC_AP_PR_CREATE_FROM_PO", inParams, columns);
@@ -109,22 +140,22 @@ public class ApPaymentRequestCustomRepositoryImpl implements ApPaymentRequestCus
             Long groupPoid,
             Long companyPoid,
             Long userPoid,
-            String poPoid
+            String mtaPoid
     ) {
 
-        Map<String, Object> inParams = Map.of(
-                P_LOGIN_GROUP_POID, groupPoid,
-                P_LOGIN_COMPANY_POID, companyPoid,
-                P_LOGIN_USER_POID, userPoid,
-                "P_PO_POID", poPoid
+        Map<Integer, Object> inParams = Map.of(
+                1, groupPoid,
+                2, companyPoid,
+                3, userPoid,
+                4, mtaPoid
         );
 
         // column names based on SP
         List<String> columns = List.of(
-                "STOCK_POID", "STOCK_UNIT_POID", "PO_QTY", "PRICE",
-                "DISCOUNT", "BASE_AMOUNT", TAX_POID, TAX_PERCENTAGE,
-                TAX_AMOUNT, "AMOUNT", REMARKS, REF_DOC_ID,
-                REF_DOC_POID, "REF_DET_ROW_ID"
+                "stockPoid", "stockUnitPoid", "PoQty", "price",
+                "discount", "baseAmount", TAX_POID, TAX_PERCENTAGE,
+                TAX_AMOUNT, "amount", REMARKS, REF_DOC_ID,
+                REF_DOC_POID, "refDetRowId"
         );
 
         return executeProcedure("PROC_AP_PR_CREATE_FROM_MTA", inParams, columns);
@@ -139,18 +170,18 @@ public class ApPaymentRequestCustomRepositoryImpl implements ApPaymentRequestCus
             String ffPoid
     ) {
 
-        Map<String, Object> inParams = Map.of(
-                P_LOGIN_GROUP_POID, loginGroupPoid,
-                P_LOGIN_COMPANY_POID, loginCompanyPoid,
-                P_LOGIN_USER_POID, loginUserPoid,
-                "P_FF_POID", ffPoid
+        Map<Integer, Object> inParams = Map.of(
+                1, loginGroupPoid,
+                2, loginCompanyPoid,
+                3, loginUserPoid,
+                4, ffPoid
         );
 
         // column name based on SP
         List<String> columns = List.of(
-                "CHARGE_POID", "CHARGE_BASE_AMOUNT", "FF_AMOUNT",
-                REF_DOC_ID, REF_DOC_POID, "FDA_DET_ROW_ID",
-                TAX_POID, TAX_PERCENTAGE, TAX_AMOUNT, "CHARGE_AMOUNT"
+                "chargePoid", "chargeBaseAmount", "ffAmount",
+                REF_DOC_ID, REF_DOC_POID, "fdaDetRowId",
+                TAX_POID, TAX_PERCENTAGE, TAX_AMOUNT, "chargeAmount"
         );
 
         return executeProcedure("PROC_AP_PR_CREATE_FROM_FF", inParams, columns);
@@ -165,21 +196,46 @@ public class ApPaymentRequestCustomRepositoryImpl implements ApPaymentRequestCus
             String fdaPoid
     ) {
 
-        Map<String, Object> inParams = Map.of(
-                P_LOGIN_GROUP_POID, groupPoid,
-                P_LOGIN_COMPANY_POID, companyPoid,
-                P_LOGIN_USER_POID, userPoid,
-                "P_FDA_POID", fdaPoid
+        Map<Integer, Object> inParams = Map.of(
+                1, groupPoid,
+                2, companyPoid,
+                3, userPoid,
+                4, fdaPoid
         );
 
         // column name based on SP
         List<String> columns = List.of(
-                "CHARGE_POID", "CHARGE_BASE_AMOUNT", "PDA_AMOUNT",
+                "chargePoid", "chargeBaseAmount", "pdaAmount",
                 REMARKS, REF_DOC_ID, REF_DOC_POID,
-                "FDA_DET_ROW_ID", TAX_POID, TAX_PERCENTAGE,
-                TAX_AMOUNT, "CHARGE_AMOUNT"
+                "fdaDetRowId", TAX_POID, TAX_PERCENTAGE,
+                TAX_AMOUNT, "chargeAmount"
         );
 
         return executeProcedure("PROC_AP_PR_CREATE_FROM_FDA", inParams, columns);
+    }
+
+    private void setSpValues(int index, Object value, CallableStatement cs) {
+        try {
+            if (value == null) {
+                cs.setNull(index, Types.NULL);
+            } else if (value instanceof Long l) {
+                cs.setLong(index, l);
+            } else if (value instanceof Integer i) {
+                cs.setInt(index, i);
+            } else if (value instanceof String s) {
+                cs.setString(index, s);
+            } else {
+                cs.setObject(index, value);
+            }
+        } catch (SQLException e) {
+            throw new IllegalArgumentException("Error setting SP parameter", e);
+        }
+    }
+
+
+    private String toDbColumn(String camelCase) {
+        return camelCase
+                .replaceAll("([a-z])([A-Z])", "$1_$2")
+                .toUpperCase();
     }
 }

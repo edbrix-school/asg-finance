@@ -279,9 +279,9 @@ public class ApPaymentRequestHdrController {
     @GetMapping("/mta")
     public ResponseEntity<?> createFromMta(
             @Parameter(description = "PO POID", required = true)
-            @RequestParam String poPoid
+            @RequestParam String mtaPoid
     ) {
-        ApPaymentRequestResponse response = service.createFromMta(poPoid);
+        ApPaymentRequestResponse response = service.createFromMta(mtaPoid);
         return success(response.getMessage(), response.getRecords());
     }
 

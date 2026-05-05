@@ -42,6 +42,7 @@ public class DebitNoteOtherChargeDto {
     private LovGetListDto chargeDetails;
     private LovGetListDto taxDetails;
     private LovGetListDto costCenterDetails;
+    private String actionType;
 
     public boolean isEmpty() {
         return id == null && chargeId == null && saleAmount == null && taxId == null &&

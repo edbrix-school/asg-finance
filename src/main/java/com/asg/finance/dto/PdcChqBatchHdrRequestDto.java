@@ -19,7 +19,7 @@ public class PdcChqBatchHdrRequestDto {
     private Long companyPoid;
     @NotNull(message = "payGlPoid is mandatory")
     private Long payGlPoid;
-    @NotBlank(message = "payingTo is mandatory")
+
     private String payingTo;
     private String payingType;
     private String divisionCode;

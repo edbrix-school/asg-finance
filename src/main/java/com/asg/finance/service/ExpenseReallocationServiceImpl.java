@@ -75,7 +75,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
                 .transactionDate(DateUtil.getCurrentDateInUserTimeZone()).groupPoid(groupPoid).companyPoid(companyPoid)
                 .expenseGroupGl(request.getExpenseGroupGlId()).fromCompany(request.getFromCompanyId())
                 .fromDate(request.getFromDate()).toDate(request.getToDate()).allocationType(request.getAllocationType())
-                .costPoid(request.getCostPoid()).remarks(request.getRemarks())
+                .costPoid(request.getCostCode()).remarks(request.getRemarks())
                 .deleted("N").reportGeneration("N")
                 .narration(request.getNarration()).build();
 
@@ -149,7 +149,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         header.setFromDate(request.getFromDate());
         header.setToDate(request.getToDate());
         header.setAllocationType(request.getAllocationType());
-        header.setCostPoid(request.getCostPoid());
+        header.setCostPoid(request.getCostCode());
         header.setRemarks(request.getRemarks());
 
         GlExpenseReallocationHdr savedHeader = hdrRepository.save(header);
@@ -721,6 +721,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         response.setFromDate(header.getFromDate());
         response.setToDate(header.getToDate());
         response.setCostPoid(header.getCostPoid());
+        response.setCostCode(header.getCostPoid());
         response.setReportGeneration(header.getReportGeneration());
         response.setAllocationType(header.getAllocationType());
         response.setCreatedBy(header.getCreatedBy());
@@ -782,9 +783,13 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 
             if (costCenter != null && curr.getPercent() != null) {
                 dto.getCostCenterMap().put(costCenter, curr.getPercent());
-                dto.getCostCenterMap().put("TOTAL",dto.getCostCenterMap().values().stream()
-                        .map(val -> val != null ? val : BigDecimal.ZERO)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add));
+                BigDecimal existingTotal = dto.getCostCenterMap()
+                        .getOrDefault("TOTAL", BigDecimal.ZERO);
+
+                dto.getCostCenterMap().put(
+                        "TOTAL",
+                        existingTotal.add(curr.getPercent() != null ? curr.getPercent() : BigDecimal.ZERO)
+                );
             }
 
         }

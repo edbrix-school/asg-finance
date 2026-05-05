@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -41,10 +42,10 @@ public class GLPaymentVoucherDtlGLEntity extends BaseEntity {
     private Long ffPdaChargeDetRowId;
 
     @Column(name = "DR_AMT")
-    private Double drAmt;
+    private BigDecimal drAmt;
 
     @Column(name = "CR_AMT")
-    private Double crAmt;
+    private BigDecimal crAmt;
 
     @Column(name = "REMARKS", length = 500)
     private String remarks;
@@ -59,13 +60,13 @@ public class GLPaymentVoucherDtlGLEntity extends BaseEntity {
     private Long taxPoid;
 
     @Column(name = "TAX_PERCENTAGE")
-    private Double taxPercentage;
+    private BigDecimal taxPercentage;
 
     @Column(name = "TAX_AMOUNT")
-    private Double taxAmount;
+    private BigDecimal taxAmount;
 
     @Column(name = "TOTAL_AMOUNT")
-    private Double totalAmount;
+    private BigDecimal totalAmount;
 
     @Column(name = "PARTY_INV_NUMBER", length = 50)
     private String partyInvNumber;

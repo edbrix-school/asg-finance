@@ -40,6 +40,9 @@ public class UpdateExpenseReallocationRequest {
     @Size(max = 100, message = "Cost POID must not exceed 100 characters")
     private String costPoid;
 
+    @Size(max = 100, message = "Cost Code must not exceed 100 characters")
+    private String costCode;
+
     @Size(max = 1000, message = "Remarks must not exceed 1000 characters")
     private String remarks;
 

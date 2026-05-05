@@ -89,6 +89,8 @@ public class BankReconciliationController {
         String response = service.saveReconciliation(dto);
         if (response.toLowerCase().startsWith(ERROR))
             return error(response, 500);
+        if(response.toLowerCase().startsWith("warning"))
+            return error(response,400);
 
         return success(response);
 

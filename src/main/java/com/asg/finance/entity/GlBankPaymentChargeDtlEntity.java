@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -26,7 +27,7 @@ public class GlBankPaymentChargeDtlEntity extends BaseEntity implements Serializ
     private Long chargePoid;
 
     @Column(name = "CHARGE_AMOUNT")
-    private Long chargeAmount;
+    private BigDecimal chargeAmount;
 
     @Column(name = "DESCRIPTION", length = 500)
     private String description;
@@ -47,9 +48,9 @@ public class GlBankPaymentChargeDtlEntity extends BaseEntity implements Serializ
     private String checkAll;
 
     @Column(name = "PDA_AMOUNT")
-    private Long pdaAmount;
+    private BigDecimal pdaAmount;
 
     @Column(name = "FF_AMOUNT")
-    private Long ffAmount;
+    private BigDecimal ffAmount;
 
 }

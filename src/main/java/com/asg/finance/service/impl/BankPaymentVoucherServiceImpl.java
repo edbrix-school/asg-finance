@@ -585,21 +585,20 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         }
     }
 
-    private void validateTax(Double amount, BankPaymentGLDetailRequest row,
+    private void validateTax(BigDecimal amount, BankPaymentGLDetailRequest row,
                              BigDecimal limit, int rowNum) {
 
         if (amount == null || row.getTaxPercentage() == null) return;
 
-        BigDecimal amt = BigDecimal.valueOf(amount);
-        if (amt.compareTo(BigDecimal.ZERO) == 0) return;
+        if (amount.compareTo(BigDecimal.ZERO) == 0) return;
 
-        BigDecimal taxPerc = BigDecimal.valueOf(row.getTaxPercentage())
+        BigDecimal taxPerc = row.getTaxPercentage()
                 .divide(BigDecimal.valueOf(100), 10, RoundingMode.HALF_UP);
 
-        BigDecimal expectedTax = amt.multiply(taxPerc).setScale(3, RoundingMode.HALF_UP);
+        BigDecimal expectedTax = amount.multiply(taxPerc).setScale(3, RoundingMode.HALF_UP);
 
         BigDecimal enteredTax = row.getTaxAmount() != null
-                ? BigDecimal.valueOf(row.getTaxAmount()).setScale(3, RoundingMode.HALF_UP)
+                ? row.getTaxAmount().setScale(3, RoundingMode.HALF_UP)
                 : BigDecimal.ZERO.setScale(3);
 
         BigDecimal difference = enteredTax.subtract(expectedTax).abs();

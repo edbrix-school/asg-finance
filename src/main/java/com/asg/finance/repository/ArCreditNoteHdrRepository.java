@@ -13,7 +13,10 @@ public interface ArCreditNoteHdrRepository extends JpaRepository<ArCreditNoteHdr
     
     @Query("SELECT h FROM ArCreditNoteHdr h WHERE h.transactionPoid = :transactionPoid AND (h.deleted IS NULL OR h.deleted = :deleted)")
     Optional<ArCreditNoteHdr> findByTransactionPoidAndDeleted(@Param("transactionPoid") Long transactionPoid, @Param("deleted") String deleted);
-    
+
+    @Query("SELECT h FROM ArCreditNoteHdr h WHERE h.transactionPoid = :transactionPoid")
+    Optional<ArCreditNoteHdr> findByTransactionPoid(@Param("transactionPoid") Long transactionPoid);
+
     @Query("SELECT h FROM ArCreditNoteHdr h WHERE h.docRef = :docRef AND h.deleted = 'N'")
     Optional<ArCreditNoteHdr> findByDocRef(@Param("docRef") String docRef);
     

@@ -1164,6 +1164,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         var costCenterResponse = costCenterBreakupService.loadCostCenterData(debitNoteDocId, transactionPoid, groupPoid, companyPoid, userPoid);
 
         for (DebitNoteGlDetailDto gl : dto.getGlDetails()) {
+            if ("ISDELETED".equals(gl.getActionType() != null ? gl.getActionType().trim().toUpperCase() : "")) continue;
             Long detRowId = gl.getDetRowId();
 
             // map billwise breakup
@@ -1707,6 +1708,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         // V4 — chargeAmount >= pdaAmount per charge row
         if (dto.getChargeDetails() != null) {
             for (DebitNoteChargeDetailDto charge : dto.getChargeDetails()) {
+                if ("ISDELETED".equals(charge.getActionType() != null ? charge.getActionType().trim().toUpperCase() : "")) continue;
                 if (charge.getChargeAmount() != null && charge.getCostAmount() != null
                         && charge.getChargeAmount().compareTo(charge.getCostAmount()) < 0) {
                     throw new ValidationException("Charge Amount cannot be less than PDA Amount for charge ID: " + charge.getChargeId());
@@ -1718,6 +1720,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         if ("FDA".equals(rt) || "FDA_DIRECT".equals(rt) || "OTHER_CHARGES".equals(rt)) {
             if (dto.getChargeDetails() != null && !dto.getChargeDetails().isEmpty() && dto.getGrandTotal() != null) {
                 BigDecimal chargesTotal = dto.getChargeDetails().stream()
+                        .filter(c -> !"ISDELETED".equals(c.getActionType() != null ? c.getActionType().trim().toUpperCase() : ""))
                         .filter(c -> c.getTotalAmount() != null)
                         .map(DebitNoteChargeDetailDto::getTotalAmount)
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -1797,11 +1800,13 @@ public class DebitNoteServiceImpl implements DebitNoteService {
             java.math.BigDecimal taxAmount = java.math.BigDecimal.ZERO;
             if (("FDA".equals(rt) || "FDA_DIRECT".equals(rt)) && dto.getChargeDetails() != null) {
                 taxAmount = dto.getChargeDetails().stream()
+                        .filter(c -> !"ISDELETED".equals(c.getActionType() != null ? c.getActionType().trim().toUpperCase() : ""))
                         .filter(c -> c.getTaxAmount() != null)
                         .map(c -> c.getTaxAmount())
                         .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
             } else if ("OTHER_CHARGES".equals(rt) && dto.getOtherChargeDetails() != null) {
                 taxAmount = dto.getOtherChargeDetails().stream()
+                        .filter(c -> !"ISDELETED".equals(c.getActionType() != null ? c.getActionType().trim().toUpperCase() : ""))
                         .filter(c -> c.getTaxAmount() != null)
                         .map(c -> c.getTaxAmount())
                         .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
@@ -1825,6 +1830,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         StringBuilder sb = new StringBuilder("0");
         if (dto.getGlDetails() != null) {
             for (DebitNoteGlDetailDto gl : dto.getGlDetails()) {
+                if ("ISDELETED".equals(gl.getActionType() != null ? gl.getActionType().trim().toUpperCase() : "")) continue;
                 if (gl.getGlId() != null) {
                     sb.append("~").append(gl.getGlId());
                 }

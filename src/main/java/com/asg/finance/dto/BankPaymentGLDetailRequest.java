@@ -1,6 +1,7 @@
 package com.asg.finance.dto;
 
 import lombok.Data;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -20,12 +21,12 @@ public class BankPaymentGLDetailRequest {
     private Long glPoid;                // GL_POID (from GL search field)
 
     // === Financial values ===
-    private Double drAmt;               // Debit Amount
-    private Double crAmt;               // Credit Amount
+    private BigDecimal drAmt;               // Debit Amount
+    private BigDecimal crAmt;               // Credit Amount
     private Long taxPoid;               // TAX_POID (Tax Slab selected)
-    private Double taxPercentage;       // TAX_PERCENTAGE
-    private Double taxAmount;           // TAX_AMOUNT
-    private Double totalAmount;         // TOTAL_AMOUNT (DR/CR + tax)
+    private BigDecimal taxPercentage;       // TAX_PERCENTAGE
+    private BigDecimal taxAmount;           // TAX_AMOUNT
+    private BigDecimal totalAmount;         // TOTAL_AMOUNT (DR/CR + tax)
 
     // === Invoice Info ===
     private String partyInvNumber;      // VAT Inv Number

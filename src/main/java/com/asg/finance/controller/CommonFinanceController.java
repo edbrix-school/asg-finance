@@ -2,6 +2,7 @@ package com.asg.finance.controller;
 
 import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
+import com.asg.finance.dto.DefaultCreditValuesDto;
 import com.asg.finance.service.CreditNoteService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -55,6 +56,39 @@ public class CommonFinanceController {
         } catch (Exception e) {
             log.error("Error fetching party GL POID for partyPoid: {}, partyType: {}", partyPoid, partyType, e);
             return internalServerError("Failed to fetch party GL POID: " + e.getMessage());
+        }
+    }
+
+    @Operation(
+            summary = "Get Default Credit Values",
+            description = """
+                    Fetches default credit values for a selected party using PROC_PI_SET_DEFAULT_CREDIT.
+                    Used across AR/AP modules when setting up credit terms for a party.
+
+                    ### Input
+                    - **partyPoid** — Party identifier
+                    - **partyType** — SUPPLIER, CUSTOMER, or PRINCIPAL
+
+                    ### Output
+                    - Credit Period
+                    - Currency Code & Rate
+                    - TIN Number
+                    - Due Date (calculated)
+                    """
+    )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
+    @GetMapping("/default-credit/{partyPoid}")
+    public ResponseEntity<?> getDefaultCreditValues(
+            @Parameter(description = "Party POID", example = "1001")
+            @PathVariable Long partyPoid,
+            @Parameter(description = "Party Type: SUPPLIER, CUSTOMER, PRINCIPAL", example = "SUPPLIER")
+            @RequestParam String partyType) {
+        try {
+            DefaultCreditValuesDto result = creditNoteService.getDefaultCreditValues(partyPoid, partyType);
+            return success("Default credit values fetched successfully", result);
+        } catch (Exception e) {
+            log.error("Error fetching default credit values for partyPoid: {}, partyType: {}", partyPoid, partyType, e);
+            return internalServerError("Failed to fetch default credit values: " + e.getMessage());
         }
     }
 }

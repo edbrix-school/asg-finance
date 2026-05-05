@@ -2,9 +2,9 @@ package com.asg.finance.service;
 
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
-import com.asg.finance.dto.ApPaymentRequestDetailResponse;
 import com.asg.finance.dto.ApPaymentRequestHdrRequestDto;
 import com.asg.finance.dto.ApPaymentRequestHdrResponseDto;
+import com.asg.finance.dto.ApPaymentRequestResponse;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
@@ -20,19 +20,16 @@ public interface ApPaymentRequestService {
 
     ApPaymentRequestHdrResponseDto findById(Long transactionPoid);
 
-    List<Map<String,Object>> findDetailsByRefId(Long transactionPoid, String refType);
-//    ApPaymentRequestDetailResponse findDetailsByRefId(Long transactionPoid, String refType);
-
     void delete(Long transactionPoid, DeleteReasonDto deleteReasonDto);
 
     Map<String, Object> listPaymentRequest(String documentId, FilterRequestDto filters, Pageable pageable, LocalDate periodFrom, LocalDate periodTo);
 
-    Map<String, Object> createFromPo(String poPoid);
+    ApPaymentRequestResponse createFromPo(String poPoid);
 
-    Map<String, Object> createFromFf(String ffPoid);
+    ApPaymentRequestResponse createFromFf(String ffPoid);
 
 
-    Map<String, Object> createFromFda(String fdaPoid);
+    ApPaymentRequestResponse createFromFda(String fdaPoid);
 
-    Map<String, Object> createFromMta(String poPoid);
+    ApPaymentRequestResponse createFromMta(String poPoid);
 }

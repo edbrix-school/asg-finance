@@ -29,22 +29,22 @@ public class GlBankPaymentItemDtlEntity extends BaseEntity implements Serializab
     private Long stockUnitPoid;
 
     @Column(name = "PO_QTY")
-    private Long poQty;
+    private Double poQty;
 
     @Column(name = "DN_QTY")
-    private Long dnQty;
+    private Double dnQty;
 
     @Column(name = "QTY_RECEIVED")
-    private Long qtyReceived;
+    private Double qtyReceived;
 
     @Column(name = "PRICE")
-    private Long price;
+    private Double price;
 
     @Column(name = "DISCOUNT")
-    private Long discount;
+    private Double discount;
 
     @Column(name = "TOTAL")
-    private Long total;
+    private Double total;
 
     @Column(name = "REMARKS", length = 100)
     private String remarks;

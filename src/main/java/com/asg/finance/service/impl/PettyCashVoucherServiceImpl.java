@@ -478,8 +478,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     if (getActivePaymentDtls(requestDto.getGlPettyCashPaymentDtlRequestDtos()).isEmpty()) {
                         throw new ValidationException("At least one payment detail row is required.");
                     }
-                    List<GlPettyCashPaymentDtlRequestDto> effectiveDtls = ensurePettyCashGlAndValidateTally(requestDto);
                     var existingDtls = glPettyCashPaymentDtlRepository.findByTransactionPoid(transactionPoid);
+                    List<GlPettyCashPaymentDtlRequestDto> effectiveDtls = ensurePettyCashGlAndValidateTally(requestDto, existingDtls);
                     var merged = mergePaymentDtls(existingDtls, effectiveDtls, transactionPoid);
                     glPettyCashPaymentDtlRepository.saveAll(merged);
                     paymentDtls = mapPaymentResponse(merged);
@@ -557,8 +557,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     if (getActivePaymentDtls(requestDto.getGlPettyCashPaymentDtlRequestDtos()).isEmpty()) {
                         throw new ValidationException("At least one payment detail row is required.");
                     }
-                    List<GlPettyCashPaymentDtlRequestDto> effectiveDtls = ensurePettyCashGlAndValidateTally(requestDto);
                     var existingDtls = glPettyCashPaymentDtlRepository.findByTransactionPoid(transactionPoid);
+                    List<GlPettyCashPaymentDtlRequestDto> effectiveDtls = ensurePettyCashGlAndValidateTally(requestDto, existingDtls);
                     var merged = mergePaymentDtls(existingDtls, effectiveDtls, transactionPoid);
                     glPettyCashPaymentDtlRepository.saveAll(merged);
                     paymentDtls = mapPaymentResponse(merged);
@@ -2110,6 +2110,11 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
      */
     private List<GlPettyCashPaymentDtlRequestDto> ensurePettyCashGlAndValidateTally(
             PettyCashRequestBase requestDto) {
+        return ensurePettyCashGlAndValidateTally(requestDto, Collections.emptyList());
+    }
+
+    private List<GlPettyCashPaymentDtlRequestDto> ensurePettyCashGlAndValidateTally(
+            PettyCashRequestBase requestDto, List<GlPettyCashPaymentDtl> existingDbDtls) {
 
         List<GlPettyCashPaymentDtlRequestDto> allDtls = new ArrayList<>(
                 Optional.ofNullable(requestDto.getGlPettyCashPaymentDtlRequestDtos())
@@ -2125,27 +2130,51 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
         // Auto-insert CR row for petty cash GL if not already present;
         // if already present, assert its TotalAmount == header Amount (mirrors legacy line 1021).
         if (pettyCashGlPoid != null) {
-            Optional<GlPettyCashPaymentDtlRequestDto> existingCr = activeDtls.stream()
+            Optional<GlPettyCashPaymentDtlRequestDto> existingCrInRequest = activeDtls.stream()
                     .filter(d -> "Cr".equalsIgnoreCase(d.getType())
                             && pettyCashGlPoid.equals(d.getGlPoid()))
                     .findFirst();
-            if (existingCr.isEmpty()) {
-                long maxId = activeDtls.stream()
-                        .mapToLong(d -> d.getDetRowId() != null ? d.getDetRowId() : 0L)
-                        .max().orElse(0L);
-                GlPettyCashPaymentDtlRequestDto crRow = GlPettyCashPaymentDtlRequestDto.builder()
-                        .detRowId(maxId + 1)
-                        .type("Cr")
-                        .glPoid(pettyCashGlPoid)
-                        .crAmt(amount)
-                        .totalAmount(amount)
-                        .actionType("isCreated")
-                        .build();
-                allDtls.add(crRow);
-                activeDtls.add(crRow);
+            if (existingCrInRequest.isEmpty()) {
+                // FE did not send the CR row — check if it already exists in the DB
+                Optional<GlPettyCashPaymentDtl> existingCrInDb = existingDbDtls.stream()
+                        .filter(d -> "Cr".equalsIgnoreCase(d.getType())
+                                && pettyCashGlPoid.equals(d.getGlPoid()))
+                        .findFirst();
+
+                if (existingCrInDb.isPresent()) {
+                    GlPettyCashPaymentDtl dbRow = existingCrInDb.get();
+                    // Reuse the existing DB row; update its amount only if it changed
+                    String actionType = safe(dbRow.getTotalAmount()).compareTo(amount) == 0
+                            ? "noChanges" : "isUpdated";
+                    GlPettyCashPaymentDtlRequestDto crRow = GlPettyCashPaymentDtlRequestDto.builder()
+                            .detRowId(dbRow.getDetRowId())
+                            .type("Cr")
+                            .glPoid(pettyCashGlPoid)
+                            .crAmt(amount)
+                            .totalAmount(amount)
+                            .actionType(actionType)
+                            .build();
+                    allDtls.add(crRow);
+                    activeDtls.add(crRow);
+                } else {
+                    // Truly absent — create a new CR row
+                    long maxId = activeDtls.stream()
+                            .mapToLong(d -> d.getDetRowId() != null ? d.getDetRowId() : 0L)
+                            .max().orElse(0L);
+                    GlPettyCashPaymentDtlRequestDto crRow = GlPettyCashPaymentDtlRequestDto.builder()
+                            .detRowId(maxId + 1)
+                            .type("Cr")
+                            .glPoid(pettyCashGlPoid)
+                            .crAmt(amount)
+                            .totalAmount(amount)
+                            .actionType("isCreated")
+                            .build();
+                    allDtls.add(crRow);
+                    activeDtls.add(crRow);
+                }
             } else {
                 // Legacy assertion: the cash-CR row's TotalAmount must equal header Amount
-                BigDecimal cashCrTotal = safe(existingCr.get().getTotalAmount());
+                BigDecimal cashCrTotal = safe(existingCrInRequest.get().getTotalAmount());
                 if (cashCrTotal.compareTo(amount) != 0) {
                     throw new ValidationException(
                             "Paid Amount (" + amount.toPlainString()

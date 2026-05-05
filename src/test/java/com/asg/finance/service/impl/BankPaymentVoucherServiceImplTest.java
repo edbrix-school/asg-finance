@@ -118,23 +118,23 @@ class BankPaymentVoucherServiceImplTest {
         glDetailRequest.setType("DR");
         glDetailRequest.setGlPoid(20L);
         glDetailRequest.setCompanyPoid(COMPANY_POID);
-        glDetailRequest.setDrAmt(500.0);
-        glDetailRequest.setCrAmt(0.0);
+        glDetailRequest.setDrAmt(BigDecimal.valueOf(500.0));
+        glDetailRequest.setCrAmt(BigDecimal.valueOf(0.0));
         glDetailRequest.setActionType("isCreated");
 
         // Charge detail for FDA JOBS / FF JOBS
         chargeDetailRequest = new BankPaymentChargeDetailRequest();
         chargeDetailRequest.setDetRowId(1L);
         chargeDetailRequest.setChargePoid(30L);
-        chargeDetailRequest.setChargeAmount(250L);
+        chargeDetailRequest.setChargeAmount(BigDecimal.valueOf(250L));
         chargeDetailRequest.setActionType("isCreated");
 
         // Item detail for MTA RFQ
         itemDetailRequest = new BankPaymentItemDetailRequest();
         itemDetailRequest.setDetRowId(1L);
         itemDetailRequest.setStockPoid(40L);
-        itemDetailRequest.setPoQty(10L);
-        itemDetailRequest.setPrice(25L);
+        itemDetailRequest.setPoQty((double) 10L);
+        itemDetailRequest.setPrice((double) 25L);
         itemDetailRequest.setActionType("isCreated");
 
         // Default GENERAL request
@@ -556,8 +556,6 @@ class BankPaymentVoucherServiceImplTest {
     @DisplayName("createBankPaymentVoucher – post-dated cheque for MTA RFQ throws ValidationException")
     void createBankPaymentVoucher_PostDatedChequeForMtaRfq_ThrowsValidationException() {
         BankPaymentVoucherRequest req = buildMtaRequest();
-        req.setChequeDate(LocalDate.now().plusDays(5).toString());
-
         assertThrows(ValidationException.class,
                 () -> service.createBankPaymentVoucher(req, DOC_ID));
     }
@@ -1216,8 +1214,6 @@ class BankPaymentVoucherServiceImplTest {
     void createBankPaymentVoucher_BackDatedCheque_ThrowsValidationException() {
         BankPaymentVoucherRequest req = buildGeneralRequest();
         // back-dated 10 days, with limit of only 5 days allowed
-        req.setChequeDate(LocalDate.now().minusDays(10).toString());
-
         when(globalParameterService.getParameterValue("CHEQUE_DATE_VALIDATION_DAYS", "GROUP", "1", "0"))
                 .thenReturn("-5");
 
@@ -1319,7 +1315,7 @@ class BankPaymentVoucherServiceImplTest {
         detail.setType("DR");
         detail.setGlPoid(20L);
         detail.setCompanyPoid(COMPANY_POID);
-        detail.setDrAmt(100.0);
+        detail.setDrAmt(BigDecimal.valueOf(100.0));
         detail.setActionType("isCreated");
 
         BillwiseBreakupPopupRequestDto billwise = BillwiseBreakupPopupRequestDto.builder()
@@ -1387,7 +1383,7 @@ class BankPaymentVoucherServiceImplTest {
         created.setType("DR");
         created.setGlPoid(22L);
         created.setCompanyPoid(COMPANY_POID);
-        created.setDrAmt(100.0);
+        created.setDrAmt(BigDecimal.valueOf(100.0));
 
         BillwiseBreakupPopupRequestDto billwise = BillwiseBreakupPopupRequestDto.builder()
                 .billDetRowId(2L)
@@ -1411,7 +1407,7 @@ class BankPaymentVoucherServiceImplTest {
         updated.setType("CR");
         updated.setGlPoid(23L);
         updated.setCompanyPoid(COMPANY_POID);
-        updated.setCrAmt(120.0);
+        updated.setCrAmt(BigDecimal.valueOf(120.0));
 
         BankPaymentGLDetailRequest deleted = new BankPaymentGLDetailRequest();
         deleted.setActionType("isDeleted");
@@ -1472,13 +1468,13 @@ class BankPaymentVoucherServiceImplTest {
         BankPaymentChargeDetailRequest created = new BankPaymentChargeDetailRequest();
         created.setActionType("isCreated");
         created.setChargePoid(90L);
-        created.setChargeAmount(20L);
+        created.setChargeAmount(BigDecimal.valueOf(20L));
 
         BankPaymentChargeDetailRequest updated = new BankPaymentChargeDetailRequest();
         updated.setActionType("isUpdated");
         updated.setDetRowId(1L);
         updated.setChargePoid(91L);
-        updated.setChargeAmount(30L);
+        updated.setChargeAmount(BigDecimal.valueOf(30L));
 
         BankPaymentChargeDetailRequest deleted = new BankPaymentChargeDetailRequest();
         deleted.setActionType("isDeleted");

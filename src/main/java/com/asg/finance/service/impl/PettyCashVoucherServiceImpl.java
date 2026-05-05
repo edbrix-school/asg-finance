@@ -174,6 +174,12 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             entityManager.refresh(header);
             Long hdrPoid = savedHeader.getTransactionPoid();
 
+            loggingService.createLogSummaryEntry(
+                    documentId,
+                    savedHeader.getTransactionPoid().toString(),
+                    String.format("%s %s", LogDetailsEnum.CREATED.getDescription(), savedHeader.getDocRef())
+            );
+
 
             List<GlPettyCashPaymentDtlResponseDto> paymentDtls = new ArrayList<>();
             List<GlPettyCashChargeDtlResponseDto> chargeDtls = new ArrayList<>();
@@ -351,13 +357,6 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                 populateBillwiseCostCenter(paymentDtls, billwiseResponse, costCenterResponse);
             }
 
-
-            loggingService.createLogSummaryEntry(
-                    documentId,
-                    savedHeader.getTransactionPoid().toString(),
-                    String.format("%s %s", LogDetailsEnum.CREATED, savedHeader.getDocRef())
-            );
-
             entityManager.flush();
             String capturedDocId = hasText(UserContext.getDocumentId()) ? UserContext.getDocumentId()
                     : (hasText(requestDto.getDocId()) ? requestDto.getDocId() : "400-101");
@@ -462,6 +461,10 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             validateCashBalance(requestDto, documentId);
             updateHeaderFields(existingHdr, requestDto, userPoid);
             GlPettyCashPaymentHdr updatedHdr = glPettyCashPaymentHdrRepository.save(existingHdr);
+
+            // Logging for update operation
+            loggingService.logChanges(oldEntity, updatedHdr, GlPettyCashPaymentHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+
 
             //  Step 5: Merge & save child details partially
             String refType = updatedHdr.getRefType().toUpperCase();
@@ -629,10 +632,6 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             }
 
             //  Step 8: Return the final response DTO
-            
-            // Logging for update operation
-            loggingService.logChanges(oldEntity, updatedHdr, GlPettyCashPaymentHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
-
             entityManager.flush();
             return mapToResponseDto(updatedHdr, paymentDtls, chargeDtls, itemDtls);
 
@@ -687,6 +686,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
         List<GlPettyCashPaymentDtl> toSave = new ArrayList<>();
         List<GlPettyCashPaymentDtl> toDelete = new ArrayList<>();
+        List<GlPettyCashPaymentDtl> newEntities = new ArrayList<>();
         List<LogRequestDto<GlPettyCashPaymentDtl>> logRequests = new ArrayList<>();
         String documentId = UserContext.getDocumentId();
 
@@ -739,6 +739,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     newEntity.setChargePoid(dto.getChargePoid());
 
                     toSave.add(newEntity);
+                    newEntities.add(newEntity);
                     break;
 
                 case "ISUPDATED":
@@ -819,13 +820,11 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             loggingService.createLogBatch(logRequests);
         }
         
-        // Log creation for new records
-        savedEntities.stream()
-            .filter(entity -> entity.getCreatedDate() != null && entity.getCreatedDate().isAfter(LocalDateTime.now().minusMinutes(1)))
-            .forEach(entity -> {
-                String logDetail = String.format("Row Created on Payment Detail with detRowId: %s", entity.getDetRowId());
-                loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
-            });
+        // Log creation for new records only
+        newEntities.forEach(entity -> {
+            String logDetail = String.format("Row Created on Payment Detail with detRowId: %s", entity.getDetRowId());
+            loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
+        });
 
         return savedEntities;
     }
@@ -838,6 +837,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
         List<GlPettyCashChargeDtl> toSave = new ArrayList<>();
         List<GlPettyCashChargeDtl> toDelete = new ArrayList<>();
+        List<GlPettyCashChargeDtl> newEntities = new ArrayList<>();
         List<LogRequestDto<GlPettyCashChargeDtl>> logRequests = new ArrayList<>();
         String documentId = UserContext.getDocumentId();
 
@@ -891,6 +891,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     newEntity.setChargePoid(dto.getChargePoid());
 
                     toSave.add(newEntity);
+                    newEntities.add(newEntity);
                     break;
 
                 case "ISUPDATED":
@@ -971,13 +972,11 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             loggingService.createLogBatch(logRequests);
         }
         
-        // Log creation for new records
-        savedEntities.stream()
-            .filter(entity -> entity.getCreatedDate() != null && entity.getCreatedDate().isAfter(LocalDateTime.now().minusMinutes(1)))
-            .forEach(entity -> {
-                String logDetail = String.format("Row Created on Charge Detail with detRowId: %s", entity.getDetRowId());
-                loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
-            });
+        // Log creation for new records only
+        newEntities.forEach(entity -> {
+            String logDetail = String.format("Row Created on Charge Detail with detRowId: %s", entity.getDetRowId());
+            loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
+        });
 
         return savedEntities;
     }
@@ -990,6 +989,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
         List<GLPettyCashItemDtl> toSave = new ArrayList<>();
         List<GLPettyCashItemDtl> toDelete = new ArrayList<>();
+        List<GLPettyCashItemDtl> newEntities = new ArrayList<>();
         List<LogRequestDto<GLPettyCashItemDtl>> logRequests = new ArrayList<>();
         String documentId = UserContext.getDocumentId();
 
@@ -1045,6 +1045,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     newEntity.setStockUnitPoid(dto.getStockUnitPoid());
 
                     toSave.add(newEntity);
+                    newEntities.add(newEntity);
                     break;
 
                 case "ISUPDATED":
@@ -1127,13 +1128,11 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             loggingService.createLogBatch(logRequests);
         }
         
-        // Log creation for new records
-        savedEntities.stream()
-            .filter(entity -> entity.getCreatedDate() != null && entity.getCreatedDate().isAfter(LocalDateTime.now().minusMinutes(1)))
-            .forEach(entity -> {
-                String logDetail = String.format("Row Created on Item Detail with detRowId: %s", entity.getDetRowId());
-                loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
-            });
+        // Log creation for new records only
+        newEntities.forEach(entity -> {
+            String logDetail = String.format("Row Created on Item Detail with detRowId: %s", entity.getDetRowId());
+            loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
+        });
 
         return savedEntities;
     }

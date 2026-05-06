@@ -10,12 +10,18 @@ import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.utility.PaginationUtil;
-import com.asg.finance.dto.*;
-import com.asg.finance.entity.*;
-import com.asg.finance.repository.*;
+import com.asg.finance.dto.ApPaymentRequestHdrRequestDto;
+import com.asg.finance.dto.ApPaymentRequestHdrResponseDto;
+import com.asg.finance.dto.ApPaymentRequestMapper;
+import com.asg.finance.dto.ApPaymentRequestResponse;
+import com.asg.finance.entity.ApPaymentRequestDtl;
+import com.asg.finance.entity.ApPaymentRequestHdr;
+import com.asg.finance.entity.ApPaymentRequestStockDtl;
+import com.asg.finance.repository.ApPaymentRequestCustomRepository;
+import com.asg.finance.repository.ApPaymentRequestDtlRepository;
+import com.asg.finance.repository.ApPaymentRequestHdrRepository;
+import com.asg.finance.repository.ApPaymentRequestStockDtlRepository;
 import com.asg.finance.service.ApPaymentRequestService;
-import com.asg.finance.service.PurchaseOrderService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
@@ -44,11 +50,6 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
     private final ApPaymentRequestCustomRepository aapPaymentRequestCustomRepository;
     private final LoggingService loggingService;
     private final DocumentDeleteService documentDeleteService;
-    private final PurchaseOrderRepository purchaseOrderRepository;
-    private final PurchaseOrderItemRepository purchaseOrderItemRepository;
-    private final FFManifestChargesDtlRepository manifestChargesDtlRepository;
-    private final PurchaseOrderService purchaseOrderService;
-    private final ObjectMapper objectMapper;
     private final LovDataService lovDataService;
 
     private static final String DETROWID = "detRowId";
@@ -64,7 +65,6 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
         ApPaymentRequestHdr hdr =
                 ApPaymentRequestMapper.toEntity(requestDto, null);
 
-        // 🔑 ID GENERATED HERE
         hdr = hdrRepository.save(hdr);
 
         Long transactionPoid = hdr.getTransactionPoid();
@@ -78,14 +78,14 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
 
         if (requestDto.getRefType().equalsIgnoreCase("MTA")) {
             AtomicLong stockRowId = new AtomicLong(1);
-            requestDto.getStockDetails().forEach(stockDto->{
+            requestDto.getStockDetails().forEach(stockDto -> {
                 stockDto.setDetRowId(stockRowId.getAndIncrement());
                 stockDetails.add(ApPaymentRequestMapper.toStockDtlEntity(transactionPoid, stockDto));
             });
             stockDtlRepository.saveAll(stockDetails);
         } else {
             AtomicLong detRowId = new AtomicLong(1);
-            requestDto.getDetails().forEach(detailDto->{
+            requestDto.getDetails().forEach(detailDto -> {
                 detailDto.setDetRowId(detRowId.getAndIncrement());
                 details.add(ApPaymentRequestMapper.toDtlEntity(transactionPoid, detailDto));
             });
@@ -193,7 +193,7 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
     @Override
     public ApPaymentRequestResponse createFromPo(String poPoid) {
 
-        ApPaymentRequestResponse response=aapPaymentRequestCustomRepository.createFromPo(
+        ApPaymentRequestResponse response = aapPaymentRequestCustomRepository.createFromPo(
                 UserContext.getGroupPoid(),
                 UserContext.getCompanyPoid(),
                 UserContext.getUserPoid(),
@@ -213,7 +213,7 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
     @Override
     public ApPaymentRequestResponse createFromFf(String ffPoid) {
 
-        ApPaymentRequestResponse response= aapPaymentRequestCustomRepository.createFromFf(
+        ApPaymentRequestResponse response = aapPaymentRequestCustomRepository.createFromFf(
                 UserContext.getGroupPoid(),
                 UserContext.getCompanyPoid(),
                 UserContext.getUserPoid(),
@@ -232,7 +232,7 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
     @Override
     public ApPaymentRequestResponse createFromFda(String fdaPoid) {
 
-        ApPaymentRequestResponse response=  aapPaymentRequestCustomRepository.createFromFda(
+        ApPaymentRequestResponse response = aapPaymentRequestCustomRepository.createFromFda(
                 UserContext.getGroupPoid(),
                 UserContext.getCompanyPoid(),
                 UserContext.getUserPoid(),
@@ -251,7 +251,7 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
     @Override
     public ApPaymentRequestResponse createFromMta(String mtaPoid) {
 
-        ApPaymentRequestResponse response=  aapPaymentRequestCustomRepository.createFromMta(
+        ApPaymentRequestResponse response = aapPaymentRequestCustomRepository.createFromMta(
                 UserContext.getGroupPoid(),
                 UserContext.getCompanyPoid(),
                 UserContext.getUserPoid(),
@@ -328,6 +328,8 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
     }
 
     private void processDetails(Long transactionPoid, List<com.asg.finance.dto.ApPaymentRequestDtlRequestDto> details) {
+        if(details==null|| details.isEmpty()) return;
+
         List<LogRequestDto<ApPaymentRequestDtl>> logRequests = new java.util.ArrayList<>();
         String docId = UserContext.getDocumentId();
 
@@ -405,7 +407,7 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
                 .toList();
     }
 
-    private  LovGetListDto getLov(Long poid, String lovName) {
+    private LovGetListDto getLov(Long poid, String lovName) {
         if (poid == null) return null;
         return lovDataService.getDetailsByPoidAndLovNameFast(poid, lovName);
     }

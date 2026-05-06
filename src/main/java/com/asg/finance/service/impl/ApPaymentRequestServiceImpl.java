@@ -8,7 +8,6 @@ import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LoggingService;
-import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.dto.ApPaymentRequestHdrRequestDto;
 import com.asg.finance.dto.ApPaymentRequestHdrResponseDto;
@@ -50,7 +49,7 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
     private final ApPaymentRequestCustomRepository aapPaymentRequestCustomRepository;
     private final LoggingService loggingService;
     private final DocumentDeleteService documentDeleteService;
-    private final LovDataService lovDataService;
+    private final ApPaymentRequestMapper apPaymentRequestMapper;
 
     private static final String DETROWID = "detRowId";
     private static final String TRANSACTION_POID = "TRANSACTION_POID";
@@ -63,7 +62,7 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
     @Override
     public ApPaymentRequestHdrResponseDto create(ApPaymentRequestHdrRequestDto requestDto) {
         ApPaymentRequestHdr hdr =
-                ApPaymentRequestMapper.toEntity(requestDto, null);
+                apPaymentRequestMapper.toEntity(requestDto, null);
 
         hdr = hdrRepository.save(hdr);
 
@@ -80,14 +79,14 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
             AtomicLong stockRowId = new AtomicLong(1);
             requestDto.getStockDetails().forEach(stockDto -> {
                 stockDto.setDetRowId(stockRowId.getAndIncrement());
-                stockDetails.add(ApPaymentRequestMapper.toStockDtlEntity(transactionPoid, stockDto));
+                stockDetails.add(apPaymentRequestMapper.toStockDtlEntity(transactionPoid, stockDto));
             });
             stockDtlRepository.saveAll(stockDetails);
         } else {
             AtomicLong detRowId = new AtomicLong(1);
             requestDto.getDetails().forEach(detailDto -> {
                 detailDto.setDetRowId(detRowId.getAndIncrement());
-                details.add(ApPaymentRequestMapper.toDtlEntity(transactionPoid, detailDto));
+                details.add(apPaymentRequestMapper.toDtlEntity(transactionPoid, detailDto));
             });
             dtlRepository.saveAll(details);
 
@@ -98,7 +97,7 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
 
         loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, key);
 
-        return ApPaymentRequestMapper.toResponse(hdr, details, stockDetails);
+        return apPaymentRequestMapper.toResponse(hdr, details, stockDetails);
     }
 
     @Override
@@ -141,7 +140,7 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
 
         List<ApPaymentRequestDtl> details = dtlRepository.findByIdTransactionPoid(transactionPoid);
         List<ApPaymentRequestStockDtl> stockDetails = stockDtlRepository.findByIdTransactionPoid(transactionPoid);
-        return ApPaymentRequestMapper.toResponse(hdr, details, stockDetails);
+        return apPaymentRequestMapper.toResponse(hdr, details, stockDetails);
     }
 
     @Override
@@ -155,7 +154,7 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
         List<ApPaymentRequestDtl> details = dtlRepository.findByIdTransactionPoid(transactionPoid);
         List<ApPaymentRequestStockDtl> stockDetails = stockDtlRepository.findByIdTransactionPoid(transactionPoid);
 
-        return ApPaymentRequestMapper.toResponse(hdr, details, stockDetails);
+        return apPaymentRequestMapper.toResponse(hdr, details, stockDetails);
     }
 
     @Override
@@ -200,11 +199,13 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
                 poPoid
         );
 
-        response.setRecords(enrichRecords(
+        response.setRecords(apPaymentRequestMapper.enrichRecords(
                 response.getRecords(),
                 "stockPoid",
                 "STOCK_MASTER",
-                "stockLov"
+                "stockLov",
+                TAX_POID,
+                TAX_LOV
         ));
 
         return response;
@@ -220,11 +221,13 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
                 ffPoid
         );
 
-        response.setRecords(enrichRecords(
+        response.setRecords(apPaymentRequestMapper.enrichRecords(
                 response.getRecords(),
                 "chargePoid",
                 "CHARGE_MASTER_FF",
-                "chargeLov"
+                "chargeLov",
+                TAX_POID,
+                TAX_LOV
         ));
         return response;
     }
@@ -239,11 +242,13 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
                 fdaPoid
         );
 
-        response.setRecords(enrichRecords(
+        response.setRecords(apPaymentRequestMapper.enrichRecords(
                 response.getRecords(),
                 "chargePoid",
                 "CHARGE_MASTER_FOR_PDA",
-                "chargeLov"
+                "chargeLov",
+                TAX_POID,
+                TAX_LOV
         ));
         return response;
     }
@@ -258,11 +263,13 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
                 mtaPoid
         );
 
-        response.setRecords(enrichRecords(
+        response.setRecords(apPaymentRequestMapper.enrichRecords(
                 response.getRecords(),
                 "stockPoid",
                 "STOCK_MASTER",
-                "stockLov"
+                "stockLov",
+                TAX_POID,
+                TAX_LOV
         ));
 
         return response;
@@ -285,7 +292,7 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
             switch (actionType) {
                 case ACTION_ISCREATED -> {
                     stockDetail.setDetRowId(++maxDetRowId);
-                    ApPaymentRequestStockDtl saved = stockDtlRepository.save(ApPaymentRequestMapper.toStockDtlEntity(transactionPoid, stockDetail));
+                    ApPaymentRequestStockDtl saved = stockDtlRepository.save(apPaymentRequestMapper.toStockDtlEntity(transactionPoid, stockDetail));
                     loggingService.createLogSummaryEntry(docId, key, String.format("Row Created on AP Payment Request Stock Detail with detRowId: %s", saved.getId().getDetRowId()));
                 }
                 case ACTION_ISUPDATED -> {
@@ -345,7 +352,7 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
                 case ACTION_ISCREATED -> {
                     // Auto-generate detRowId for new records
                     detail.setDetRowId(++maxDetRowId);
-                    ApPaymentRequestDtl entity = ApPaymentRequestMapper.toDtlEntity(transactionPoid, detail);
+                    ApPaymentRequestDtl entity = apPaymentRequestMapper.toDtlEntity(transactionPoid, detail);
                     dtlRepository.save(entity);
                     String logDetail = String.format("Row Created on AP Payment Request Detail with detRowId: %s", entity.getId().getDetRowId());
                     loggingService.createLogSummaryEntry(docId, transactionPoid.toString(), logDetail);
@@ -387,40 +394,5 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
             loggingService.createLogBatch(logRequests);
         }
     }
-
-    private List<Map<String, Object>> enrichRecords(
-            List<Map<String, Object>> records,
-            String primaryKey,
-            String primaryLovName,
-            String primaryLovField
-    ) {
-        return records.stream()
-                .map(record -> {
-                    Long primaryPoid = convertToLong(record.get(primaryKey));
-                    record.put(primaryLovField, getLov(primaryPoid, primaryLovName));
-
-                    Long taxPoid = convertToLong(record.get(TAX_POID));
-                    record.put(TAX_LOV, getLov(taxPoid, "DR_TAX_MASTER"));
-
-                    return record;
-                })
-                .toList();
-    }
-
-    private LovGetListDto getLov(Long poid, String lovName) {
-        if (poid == null) return null;
-        return lovDataService.getDetailsByPoidAndLovNameFast(poid, lovName);
-    }
-
-    private Long convertToLong(Object value) {
-        if (value == null) return null;
-
-        if (value instanceof Long l) return l;
-        if (value instanceof Integer i) return i.longValue();
-        if (value instanceof BigDecimal bd) return bd.longValue();
-
-        return Long.valueOf(value.toString());
-    }
-
 
 }

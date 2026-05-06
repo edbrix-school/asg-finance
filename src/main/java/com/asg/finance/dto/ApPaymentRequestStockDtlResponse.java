@@ -1,5 +1,6 @@
 package com.asg.finance.dto;
 
+import com.asg.common.lib.dto.LovGetListDto;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -15,12 +16,14 @@ public class ApPaymentRequestStockDtlResponse {
     private Long detRowId;
 
     private Long stockPoid;
+    private LovGetListDto stockLov;
     private BigDecimal quantity;
     private BigDecimal price;
     private BigDecimal discount;
     private BigDecimal baseAmount;
 
     private Long taxPoid;
+    private LovGetListDto taxLov;
     private BigDecimal taxPercent;
     private BigDecimal taxAmount;
     private BigDecimal netSales;

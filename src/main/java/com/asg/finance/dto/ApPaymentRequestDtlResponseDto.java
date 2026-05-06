@@ -1,5 +1,6 @@
 package com.asg.finance.dto;
 
+import com.asg.common.lib.dto.LovGetListDto;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -16,6 +17,7 @@ public class ApPaymentRequestDtlResponseDto {
     private Long detRowId;
 
     private Long chargePoid;
+    private LovGetListDto chargeLov;
 
     private BigDecimal amount;
     private BigDecimal vatPer;

@@ -1,19 +1,26 @@
 package com.asg.finance.dto;
 
+import com.asg.common.lib.dto.LovGetListDto;
+import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.utility.DateUtil;
 import com.asg.finance.entity.ApPaymentRequestDtl;
 import com.asg.finance.entity.ApPaymentRequestDtlId;
 import com.asg.finance.entity.ApPaymentRequestHdr;
 import com.asg.finance.entity.ApPaymentRequestStockDtl;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
 
+@Component
+@RequiredArgsConstructor
 public class ApPaymentRequestMapper {
 
-    private ApPaymentRequestMapper(){}
+    private final LovDataService lovDataService;
 
-    public static ApPaymentRequestHdr toEntity(
+    public ApPaymentRequestHdr toEntity(
             ApPaymentRequestHdrRequestDto dto,
             Long transactionPoid
     ) {
@@ -36,7 +43,7 @@ public class ApPaymentRequestMapper {
                 .build();
     }
 
-    public static ApPaymentRequestHdrResponseDto toResponse(
+    public ApPaymentRequestHdrResponseDto toResponse(
             ApPaymentRequestHdr hdr,
             List<ApPaymentRequestDtl> details,
             List<ApPaymentRequestStockDtl> stockDetails
@@ -63,17 +70,17 @@ public class ApPaymentRequestMapper {
                 .lastModifiedBy(hdr.getLastModifiedBy())
                 .lastModifiedDate(hdr.getLastModifiedDate())
                 .details(details.stream()
-                        .map(ApPaymentRequestMapper::toDtlResponse)
-                        .collect(Collectors.toList()))
+                        .map(val -> toDtlResponse(val, hdr.getRefType()))
+                        .toList())
                 .stockDetails(stockDetails.stream()
-                        .map(ApPaymentRequestMapper::toStockDtlResponse)
-                        .collect(Collectors.toList()))
+                        .map(this::toStockDtlResponse)
+                        .toList())
                 .build();
     }
 
     /* ================= DETAIL ================= */
 
-    public static ApPaymentRequestDtl toDtlEntity(
+    public ApPaymentRequestDtl toDtlEntity(
             Long transactionPoid,
             ApPaymentRequestDtlRequestDto dto
     ) {
@@ -88,7 +95,7 @@ public class ApPaymentRequestMapper {
                 .build();
     }
 
-    public static ApPaymentRequestStockDtl toStockDtlEntity(
+    public ApPaymentRequestStockDtl toStockDtlEntity(
             Long transactionPoid,
             ApPaymentRequestStockDtlRequest dto
     ) {
@@ -106,13 +113,15 @@ public class ApPaymentRequestMapper {
                 .build();
     }
 
-    public static ApPaymentRequestDtlResponseDto toDtlResponse(
-            ApPaymentRequestDtl dtl
+    public ApPaymentRequestDtlResponseDto toDtlResponse(
+            ApPaymentRequestDtl dtl,
+            String refType
     ) {
         return ApPaymentRequestDtlResponseDto.builder()
                 .transactionPoid(dtl.getId().getTransactionPoid())
                 .detRowId(dtl.getId().getDetRowId())
                 .chargePoid(dtl.getChargePoid())
+                .chargeLov(getLov(dtl.getChargePoid(), refType.equalsIgnoreCase("FF") ? "CHARGE_MASTER_FF" : "CHARGE_MASTER_FOR_PDA"))
                 .amount(dtl.getAmount())
                 .vatPer(dtl.getVatPer())
                 .vatAmount(dtl.getVatAmount())
@@ -125,18 +134,20 @@ public class ApPaymentRequestMapper {
                 .build();
     }
 
-    public static ApPaymentRequestStockDtlResponse toStockDtlResponse(
+    public ApPaymentRequestStockDtlResponse toStockDtlResponse(
             ApPaymentRequestStockDtl dtl
     ) {
         return ApPaymentRequestStockDtlResponse.builder()
                 .transactionPoid(dtl.getId().getTransactionPoid())
                 .detRowId(dtl.getId().getDetRowId())
                 .stockPoid(dtl.getStockPoid())
+                .stockLov(getLov(dtl.getStockPoid(), "STOCK_MASTER"))
                 .quantity(dtl.getQuantity())
                 .price(dtl.getPrice())
                 .discount(dtl.getDiscount())
                 .baseAmount(dtl.getBaseAmount())
                 .taxPoid(dtl.getTaxPoid())
+                .taxLov(getLov(dtl.getTaxPoid(), "DR_TAX_MASTER"))
                 .taxPercent(dtl.getTaxPercent())
                 .taxAmount(dtl.getTaxAmount())
                 .netSales(dtl.getNetSales())
@@ -145,5 +156,41 @@ public class ApPaymentRequestMapper {
                 .lastModifiedBy(dtl.getLastModifiedBy())
                 .lastModifiedDate(dtl.getLastModifiedDate())
                 .build();
+    }
+
+    public List<Map<String, Object>> enrichRecords(
+            List<Map<String, Object>> records,
+            String primaryKey,
+            String primaryLovName,
+            String primaryLovField,
+            String taxkey,
+            String taxLovField
+    ) {
+        return records.stream()
+                .map(record -> {
+                    Long primaryPoid = convertToLong(record.get(primaryKey));
+                    record.put(primaryLovField, getLov(primaryPoid, primaryLovName));
+
+                    Long taxPoid = convertToLong(record.get(taxkey));
+                    record.put(taxLovField, getLov(taxPoid, "DR_TAX_MASTER"));
+
+                    return record;
+                })
+                .toList();
+    }
+
+    private Long convertToLong(Object value) {
+        if (value == null) return null;
+
+        if (value instanceof Long l) return l;
+        if (value instanceof Integer i) return i.longValue();
+        if (value instanceof BigDecimal bd) return bd.longValue();
+
+        return Long.valueOf(value.toString());
+    }
+
+    public LovGetListDto getLov(Long poid, String lovName) {
+        if (poid == null) return null;
+        return lovDataService.getDetailsByPoidAndLovNameFast(poid, lovName);
     }
 }

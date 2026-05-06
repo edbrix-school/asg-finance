@@ -41,7 +41,6 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -58,6 +57,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
     private final CostCenterRepository costCenterRepository;
     private final LovDataService lovService;
     private final LoggingService loggingService;
+    private final LovDataService lovDataService;
 
     private static final String TRANSACTION_POID = "TRANSACTION_POID";
     private static final String COMPANYCODE = "Company Code";
@@ -155,7 +155,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         GlExpenseReallocationHdr savedHeader = hdrRepository.save(header);
 
         // Process details based on actionType
-        processXlDetails(transactionPoid, mapXlDetailtoEntity(request.getDetails(),transactionPoid,null), userId);
+        processXlDetails(transactionPoid, mapXlDetailtoEntity(request.getDetails(), transactionPoid, null), userId);
 
         log.info("updateExpenseReallocation completed for transactionPoid={}", transactionPoid);
         String key = header.getTransactionPoid().toString();
@@ -284,7 +284,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
                 boolean exists = costCenterRepository.existsByCostCenterCode(costCenterCode);
 
                 if (!exists) {
-                    throw new ValidationException("Invalid Cost Center Code: "+costCenterCode);
+                    throw new ValidationException("Invalid Cost Center Code: " + costCenterCode);
                 }
 
                 headers.add(costCenterCode);
@@ -326,7 +326,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
                         LovGetListDto dto = mapLovDetails(companyCodeValue, "COMPANY", false);
 
                         if (dto == null || dto.getPoid() == null) {
-                            throw new ValidationException("Invalid Company Code Value: "+companyCodeValue);
+                            throw new ValidationException("Invalid Company Code Value: " + companyCodeValue);
                         }
                         rowMap.put("company", dto.getPoid());
                         rowMap.put("companyName", dto.getDescription());
@@ -732,33 +732,94 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         response.setGlPosting(false);
 
         response.setCompanyPoid(header.getCompanyPoid());
-        response.setCompanyName(getCompanyInfo(header.getCompanyPoid()));
 
-        response.setFromCompanyId(header.getFromCompany());
-        response.setFromCompanyName(getCompanyInfo(header.getFromCompany()));
+        Set<Long> companyPoids = new HashSet<>();
+        Map<Long, LovGetListDto> companyCache = new HashMap<>();
 
-        setExpenseGroupInfo(response, header.getExpenseGroupGl());
+        companyPoids.add(header.getCompanyPoid());
+        companyPoids.add(header.getFromCompany());
 
-        List<GlExpenseReallocationXlDtl> xlDetails = xlDtlRepository.findByTransactionPoid(header.getTransactionPoid()).orElse(new ArrayList<GlExpenseReallocationXlDtl>());
         List<ExpenseReallocationDetailResponseDto> details;
+
+        List<GlExpenseReallocationXlDtl> xlDetails =
+                xlDtlRepository.findByTransactionPoid(header.getTransactionPoid())
+                        .orElse(new ArrayList<>());
+
         if (!xlDetails.isEmpty()) {
-            details=modifyXlDetail(xlDetails);
+
+            List<ExpenseReallocationDetailResponseDto> xlDtos = modifyXlDetail(xlDetails);
+
+            companyPoids.addAll(
+                    xlDtos.stream()
+                            .map(ExpenseReallocationDetailResponseDto::getCompany)
+                            .toList()
+            );
+
+            loadCompanyCache(companyPoids, companyCache);
+
+            details = xlDtos.stream()
+                    .map(val -> {
+                        LovGetListDto company = companyCache.get(val.getCompany());
+                        val.setCompanyName(company.getDescription());
+                        return val;
+                    })
+                    .toList();
+
         } else {
-            List<GlExpenseReallocationDtl> oldDetails = dtlRepository.findByTransactionPoid(header.getTransactionPoid()).orElse(new ArrayList<GlExpenseReallocationDtl>());
+
+            List<GlExpenseReallocationDtl> oldDetails =
+                    dtlRepository.findByTransactionPoid(header.getTransactionPoid())
+                            .orElse(new ArrayList<>());
+
+            companyPoids.addAll(
+                    oldDetails.stream()
+                            .map(GlExpenseReallocationDtl::getCompany)
+                            .toList()
+            );
+
+            loadCompanyCache(companyPoids, companyCache);
+
             details = oldDetails.stream()
-                    .map(this::convertDetailToResponse)
+                    .map(val -> {
+                        ExpenseReallocationDetailResponseDto res = convertDetailToResponse(val);
+
+                        LovGetListDto company = companyCache.get(val.getCompany());
+
+                        res.setCompanyName(
+                                val.getCompanyName() != null
+                                        ? val.getCompanyName()
+                                        : company.getDescription()
+                        );
+                        res.setCompanyCode(company.getCode());
+
+                        return res;
+                    })
                     .toList();
         }
 
-        response.setDetails(details);
+        loadCompanyCache(companyPoids, companyCache);
 
-        Map<String, BigDecimal> detailTotals = calculateTotals(details);
-        response.setDetailTotals(detailTotals);
+        response.setCompanyName(companyCache.get(header.getCompanyPoid()).getDescription());
+        response.setFromCompanyId(header.getFromCompany());
+        response.setFromCompanyName(companyCache.get(header.getFromCompany()).getDescription());
+
+        setExpenseGroupInfo(response, header.getExpenseGroupGl());
+
+        response.setDetails(details);
+        response.setDetailTotals(calculateTotals(details));
 
         return response;
     }
 
-    private List<ExpenseReallocationDetailResponseDto> modifyXlDetail(List<GlExpenseReallocationXlDtl> xlDetails){
+    private void loadCompanyCache(Set<Long> companyPoids,
+                                  Map<Long, LovGetListDto> cache) {
+
+        companyPoids.forEach(poid -> {
+            cache.computeIfAbsent(poid, this::getCompanyInfo);
+        });
+    }
+
+    private List<ExpenseReallocationDetailResponseDto> modifyXlDetail(List<GlExpenseReallocationXlDtl> xlDetails) {
         Map<String, ExpenseReallocationDetailResponseDto> groupedMap = new LinkedHashMap<>();
 
         for (GlExpenseReallocationXlDtl curr : xlDetails) {
@@ -797,14 +858,8 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         return new ArrayList<>(groupedMap.values());
     }
 
-    private String getCompanyInfo(Long companyPoid) {
-        if (companyPoid == null) return null;
-
-        CompanyDto company = companyServiceClient.findById(companyPoid);
-        if (company != null) {
-            return company.getCompanyName();
-        }
-        return null;
+    private LovGetListDto getCompanyInfo(Long companyPoid) {
+        return getLov(companyPoid, "COMPANY");
     }
 
     private void setExpenseGroupInfo(ExpenseReallocationResponse response, Long expenseGroupGl) {
@@ -863,8 +918,8 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 
         response.setTransactionPoid(detail.getTransactionPoid());
         response.setDetRowId(detail.getDetRowId());
-        response.setCompany(detail.getCompany());
-        response.setCompanyCode(detail.getCompanyName());
+        Long companyPoid = detail.getCompany();
+        response.setCompany(companyPoid);
 
         Map<String, BigDecimal> costCenterMap = new HashMap<>();
 
@@ -877,8 +932,8 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
                 try {
                     BigDecimal value = (BigDecimal) field.get(detail);
 
-                        String key = field.getName().toUpperCase();
-                        costCenterMap.put(key, value);
+                    String key = field.getName().toUpperCase();
+                    costCenterMap.put(key, value);
 
                 } catch (IllegalAccessException e) {
                     throw new IllegalStateException("Error accessing field: " + field.getName(), e);
@@ -897,7 +952,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         try {
             switch (cell.getCellType()) {
 
-                case NUMERIC:
+                case NUMERIC, FORMULA:
                     return BigDecimal.valueOf(cell.getNumericCellValue());
 
                 case STRING:
@@ -906,9 +961,6 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
                         return BigDecimal.ZERO;
                     }
                     return new BigDecimal(value.trim());
-
-                case FORMULA:
-                    return BigDecimal.valueOf(cell.getNumericCellValue());
 
                 default:
                     return BigDecimal.ZERO;
@@ -1026,33 +1078,33 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         return request.stream()
                 .flatMap(val -> {
 
-                    Long detRowValue=detRowId != null ? (Long)detRowId.getAndIncrement() : val.getDetRowId();
+                            Long detRowValue = detRowId != null ? (Long) detRowId.getAndIncrement() : val.getDetRowId();
 
-                   return val.getCostCenterMap().entrySet().stream()
-                            .map(entry -> {
-                                if(!entry.getKey().equalsIgnoreCase("TOTAL")) {
-                                    ExpenseReallocationProcessedXlDetail detail = new ExpenseReallocationProcessedXlDetail();
+                            return val.getCostCenterMap().entrySet().stream()
+                                    .map(entry -> {
+                                        if (!entry.getKey().equalsIgnoreCase("TOTAL")) {
+                                            ExpenseReallocationProcessedXlDetail detail = new ExpenseReallocationProcessedXlDetail();
 
-                                    detail.setCompany(val.getCompany());
-                                    detail.setTransactionPoid(transactionPoid);
-                                    detail.setCompanyCode(val.getCompanyCode());
-                                    detail.setDetRowId(detRowValue);
-                                    detail.setCostCentre(entry.getKey());
-                                    detail.setPercent(entry.getValue());
-                                    detail.setRemarks(val.getRemarks());
-                                    detail.setActionType(val.getActionType());
+                                            detail.setCompany(val.getCompany());
+                                            detail.setTransactionPoid(transactionPoid);
+                                            detail.setCompanyCode(val.getCompanyCode());
+                                            detail.setDetRowId(detRowValue);
+                                            detail.setCostCentre(entry.getKey());
+                                            detail.setPercent(entry.getValue());
+                                            detail.setRemarks(val.getRemarks());
+                                            detail.setActionType(val.getActionType());
 
-                                    return detail;
-                                }
-                                return null;
-                            }).filter(Objects::nonNull);
+                                            return detail;
+                                        }
+                                        return null;
+                                    }).filter(Objects::nonNull);
                         }
                 )
                 .toList();
     }
 
-    private List<GlExpenseReallocationXlDtl> mapXlDtoToEnity(List<ExpenseReallocationProcessedXlDetail> dto){
-        return dto.stream().map(val->GlExpenseReallocationXlDtl.builder()
+    private List<GlExpenseReallocationXlDtl> mapXlDtoToEnity(List<ExpenseReallocationProcessedXlDetail> dto) {
+        return dto.stream().map(val -> GlExpenseReallocationXlDtl.builder()
                 .transactionPoid(val.getTransactionPoid())
                 .percent(val.getPercent())
                 .remarks(val.getRemarks())
@@ -1061,5 +1113,9 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
                 .companyCode(val.getCompanyCode())
                 .costCentre(val.getCostCentre())
                 .build()).toList();
+    }
+
+    private LovGetListDto getLov(Long poid, String lovName) {
+        return lovDataService.getDetailsByPoidAndLovNameFast(poid, lovName);
     }
 }

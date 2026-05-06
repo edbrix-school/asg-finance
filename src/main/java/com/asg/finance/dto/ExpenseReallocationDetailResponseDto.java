@@ -19,6 +19,7 @@ public class ExpenseReallocationDetailResponseDto {
     private Long detRowId;
     private Long company;
     private String companyCode;
+    private String companyName;
 
     @JsonIgnore
     private Map<String, BigDecimal> costCenterMap = new HashMap<>();

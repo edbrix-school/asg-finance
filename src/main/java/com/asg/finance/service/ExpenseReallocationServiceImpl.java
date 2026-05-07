@@ -70,6 +70,9 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         log.info("createExpenseReallocation started for groupPoid={} userId={}", groupPoid, userId);
 
         validateMandatoryFields(request);
+        if (request.getDetails() == null || request.getDetails().isEmpty()) {
+            throw new RuntimeException("At least one detail line is required");
+        }
 
         GlExpenseReallocationHdr header = GlExpenseReallocationHdr.builder()
                 .transactionDate(DateUtil.getCurrentDateInUserTimeZone()).groupPoid(groupPoid).companyPoid(companyPoid)
@@ -130,7 +133,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         BeanUtils.copyProperties(existingHeader, header);
 
         if ("Y".equals(header.getDeleted())) {
-            throw new RuntimeException("Cannot update soft-deleted expense reallocation");
+            throw new RuntimeException("Cannot update deleted expense reallocation");
         }
 
         validateMandatoryFieldsForUpdate(request);
@@ -383,7 +386,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         // Title Style
         CellStyle titleStyle = workbook.createCellStyle();
         Font titleFont = workbook.createFont();
-        titleFont.setFontName("Aptos Narrow");
+        titleFont.setFontName("Aptos Narrow Bold");
         titleFont.setBold(true);
         titleFont.setFontHeightInPoints((short) 18);
         titleStyle.setFont(titleFont);
@@ -401,7 +404,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         Font headerFont = workbook.createFont();
         headerFont.setBold(true);
         headerStyle.setFont(headerFont);
-        applyBorders(headerStyle);
+        applyBorders(headerStyle, BorderStyle.MEDIUM);
         headerStyle.setAlignment(HorizontalAlignment.CENTER);
 
         // Footer Style (Italic)
@@ -416,7 +419,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         Font dataFont = workbook.createFont();
         dataFont.setBold(true);
         dataStyle.setFont(dataFont);
-        applyBorders(dataStyle);
+        applyBorders(dataStyle, BorderStyle.MEDIUM);
         dataStyle.setAlignment(HorizontalAlignment.RIGHT);
 
         // TITLE ROW
@@ -433,9 +436,10 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 
         // HEADER ROW
         Row headerRow = sheet.createRow(2);
+        List<String> costCenterKeys=List.of("SH_","FF_","PROPERTIES_", "MTA_", "ADMIN_");
         List<String> headers = new ArrayList<>();
         headers.add(COMPANYCODE);
-        headers.addAll(allocationKeys()); // dynamic allocation columns
+        headers.addAll(costCenterKeys); // dynamic allocation columns
         headers.add(null);
         headers.add(null);
         headers.add(null);
@@ -452,9 +456,10 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         }
 
 
-        Object[][] data = {{"ASG", 10, 15, 5, 5, 10, 0, 0, 0, "", "", ""},
-                {"NSA", 15, 8, 0, 0, 0, 0, 0, 0, "", "", ""}, {"DSA", 10, 10, 0, 0, 0, 0, 0, 0, "", "", ""},
-                {"FSL", 5, 7, 0, 0, 0, 0, 0, 0, "", "", ""}};
+        Object[][] data = {{"ASG", "", "", "", "", "",  "", "",""},
+                {"NSA1", "", "", "", "", "",  "", "",""},
+                {"DSA", "", "", "", "", "",  "", "",""},
+                {"FSL", "", "", "", "", "",  "", "",""}};
 
         int rowIdx = 3;
 
@@ -467,10 +472,14 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
                 String header = headers.get(col);
 
                 if ("TOTAL".equals(header)) {
-                    cell.setCellValue(total);
+//                    cell.setCellValue(total);
                     cell.setCellStyle(dataStyle);
+                    cell.setCellFormula(String.format("SUM(B%d:I%d)",
+                            row.getRowNum() + 1,
+                            row.getRowNum() + 1));
                 } else if (header == null) {
                     cell.setBlank();
+                    cell.setCellStyle(dataStyle);
                 } else {
                     Object value = col < rowData.length ? rowData[col] : null;
 
@@ -478,7 +487,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
                         double num = ((Number) value).doubleValue();
                         cell.setCellValue(num); // includes 0
                         total += num;
-                    } else if (value != null && !value.toString().isEmpty()) {
+                    } else if (value != null) {
                         cell.setCellValue(value.toString());
                     } else {
                         cell.setCellValue(0); // numeric default
@@ -492,10 +501,23 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         footerTitle.setCellValue("Expense Allocation Template");
         footerTitle.setCellStyle(titleStyle);
 
-        Row finalRow = sheet.createRow(rowIdx++);
-        Cell cell = finalRow.createCell(headers.size() - 1);
+        Row finalRow = sheet.createRow(rowIdx+2);
+        Cell cell = finalRow.createCell(headers.size() - 3);
         cell.setCellValue("This should be always 100%");
         cell.setCellStyle(footerStyle);
+
+        Cell cell1 = finalRow.createCell(headers.size() - 1);
+        cell1.setCellStyle(footerStyle);
+        cell1.setCellFormula("SUM(J4:J9)");
+
+        Font grantTotal = workbook.createFont();
+        grantTotal.setBold(true);
+        CellStyle grantTotalStyle = workbook.createCellStyle();
+        applyBorders(grantTotalStyle,BorderStyle.THICK );
+        grantTotalStyle.setAlignment(HorizontalAlignment.RIGHT);
+        grantTotalStyle.setFont(grantTotal);
+
+        cell1.setCellStyle(grantTotalStyle);
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         try {
@@ -508,11 +530,11 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         return out.toByteArray();
     }
 
-    private void applyBorders(CellStyle style) {
-        style.setBorderTop(BorderStyle.THICK);
-        style.setBorderBottom(BorderStyle.THICK);
-        style.setBorderLeft(BorderStyle.THICK);
-        style.setBorderRight(BorderStyle.THICK);
+    private void applyBorders(CellStyle style, BorderStyle border) {
+        style.setBorderTop(border);
+        style.setBorderBottom(border);
+        style.setBorderLeft(border);
+        style.setBorderRight(border);
     }
 
     @Override
@@ -1009,7 +1031,9 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         List<LogRequestDto<GlExpenseReallocationXlDtl>> logRequests = new ArrayList<>();
         String docId = UserContext.getDocumentId();
 
-        xlDtlRepository.deleteByTransactionPoid(transactionPoid);
+        if(xlDetails.stream()
+                .anyMatch(val -> "isCreated".equalsIgnoreCase(val.getActionType())))
+            xlDtlRepository.deleteByTransactionPoid(transactionPoid);
         // Auto-generate detRowId for new records
         Long maxDetRowId = xlDtlRepository.findMaxDetRowIdByTransactionPoid(transactionPoid);
         AtomicLong detRowIdSeq = new AtomicLong(maxDetRowId != null ? maxDetRowId + 1 : 1);

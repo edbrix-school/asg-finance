@@ -1422,13 +1422,13 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
     }
 
     private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage) {
-        return createSummaryLogEntry(logDetailsEnum, docId, docKeyPoid, customMessage, null);
+        return createSummaryLogEntry(logDetailsEnum, docId, docKeyPoid, customMessage, LocalDateTime.now());
     }
 
     private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage, LocalDateTime logDateTime) {
         GlobalLogSummary summary = new GlobalLogSummary();
         summary.setLogUserPoid(UserContext.getUserPoid());
-        summary.setLogDateTime(logDateTime);
+        summary.setLogDateTime(logDateTime != null ? logDateTime : LocalDateTime.now());
         summary.setLogDocId(docId);
         summary.setLogDocKeyPoid(docKeyPoid);
         summary.setLogDetails(customMessage);

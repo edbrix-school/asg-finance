@@ -472,7 +472,7 @@ public class GLMasterServiceImpl implements GLMasterService {
         }
         String accountType = entity.getAccountType() == null ? "" : entity.getAccountType().trim().toUpperCase();
         return "ASSET".equals(accountType)
-                || "LIABILITY".equals(accountType)
+                || "LIABILITIES".equals(accountType)
                 || "REVENUE".equals(accountType)
                 || "EXPENSE".equals(accountType);
     }
@@ -489,7 +489,7 @@ public class GLMasterServiceImpl implements GLMasterService {
             String normalized = accountType.trim().toUpperCase();
             if ("ASSET".equals(normalized)) {
                 prefix = "A";
-            } else if ("LIABILITY".equals(normalized)) {
+            } else if ("LIABILITIES".equals(normalized)) {
                 prefix = "L";
             } else if ("REVENUE".equals(normalized)) {
                 prefix = "R";
@@ -786,7 +786,7 @@ public class GLMasterServiceImpl implements GLMasterService {
             if (glCode.startsWith("1")) {
                 return "Asset";
             } else if (glCode.startsWith("2")) {
-                return "Liability";
+                return "Liabilities";
             } else if (glCode.startsWith("3")) {
                 return "Equity";
             } else if (glCode.startsWith("4")) {
@@ -802,7 +802,7 @@ public class GLMasterServiceImpl implements GLMasterService {
             if (desc.contains("asset")) {
                 return "Asset";
             } else if (desc.contains("liability")) {
-                return "Liability";
+                return "Liabilities";
             } else if (desc.contains("equity")) {
                 return "Equity";
             } else if (desc.contains("revenue") || desc.contains("income")) {

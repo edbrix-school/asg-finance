@@ -977,7 +977,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
     
  
     private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage) {
-        return createSummaryLogEntry(logDetailsEnum, docId, docKeyPoid, customMessage, null);
+        return createSummaryLogEntry(logDetailsEnum, docId, docKeyPoid, customMessage, LocalDateTime.now());
     }
 
     private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage, LocalDateTime logDateTime) {

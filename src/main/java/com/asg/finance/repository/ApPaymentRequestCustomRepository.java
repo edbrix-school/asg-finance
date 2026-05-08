@@ -31,6 +31,6 @@ public interface ApPaymentRequestCustomRepository {
             Long groupPoid,
             Long companyPoid,
             Long userPoid,
-            String poPoid
+            String mtaPoid
     );
 }

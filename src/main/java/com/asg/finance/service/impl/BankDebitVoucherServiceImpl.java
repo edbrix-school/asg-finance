@@ -230,7 +230,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
     @Override
     public BankDebitVoucherResponse getBankDebitVoucher(Long transactionPoid, String documentId) {
-        GlBankDebitHdr header = headerRepository.findByTransactionPoidAndNotDeleted(transactionPoid)
+        GlBankDebitHdr header = headerRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Bank Debit Voucher", "transactionPoid", transactionPoid));
         ReconcileResultDto reconDto = fetchReconDate("400-111", transactionPoid);
 

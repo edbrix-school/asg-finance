@@ -174,6 +174,12 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             entityManager.refresh(header);
             Long hdrPoid = savedHeader.getTransactionPoid();
 
+            loggingService.createLogSummaryEntry(
+                    documentId,
+                    savedHeader.getTransactionPoid().toString(),
+                    String.format("%s %s", LogDetailsEnum.CREATED.getDescription(), savedHeader.getDocRef())
+            );
+
 
             List<GlPettyCashPaymentDtlResponseDto> paymentDtls = new ArrayList<>();
             List<GlPettyCashChargeDtlResponseDto> chargeDtls = new ArrayList<>();
@@ -351,13 +357,6 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                 populateBillwiseCostCenter(paymentDtls, billwiseResponse, costCenterResponse);
             }
 
-
-            loggingService.createLogSummaryEntry(
-                    documentId,
-                    savedHeader.getTransactionPoid().toString(),
-                    String.format("%s %s", LogDetailsEnum.CREATED, savedHeader.getDocRef())
-            );
-
             entityManager.flush();
             String capturedDocId = hasText(UserContext.getDocumentId()) ? UserContext.getDocumentId()
                     : (hasText(requestDto.getDocId()) ? requestDto.getDocId() : "400-101");
@@ -463,6 +462,10 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             updateHeaderFields(existingHdr, requestDto, userPoid);
             GlPettyCashPaymentHdr updatedHdr = glPettyCashPaymentHdrRepository.save(existingHdr);
 
+            // Logging for update operation
+            loggingService.logChanges(oldEntity, updatedHdr, GlPettyCashPaymentHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+
+
             //  Step 5: Merge & save child details partially
             String refType = updatedHdr.getRefType().toUpperCase();
 
@@ -475,8 +478,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     if (getActivePaymentDtls(requestDto.getGlPettyCashPaymentDtlRequestDtos()).isEmpty()) {
                         throw new ValidationException("At least one payment detail row is required.");
                     }
-                    List<GlPettyCashPaymentDtlRequestDto> effectiveDtls = ensurePettyCashGlAndValidateTally(requestDto);
                     var existingDtls = glPettyCashPaymentDtlRepository.findByTransactionPoid(transactionPoid);
+                    List<GlPettyCashPaymentDtlRequestDto> effectiveDtls = ensurePettyCashGlAndValidateTally(requestDto, existingDtls);
                     var merged = mergePaymentDtls(existingDtls, effectiveDtls, transactionPoid);
                     glPettyCashPaymentDtlRepository.saveAll(merged);
                     paymentDtls = mapPaymentResponse(merged);
@@ -554,8 +557,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     if (getActivePaymentDtls(requestDto.getGlPettyCashPaymentDtlRequestDtos()).isEmpty()) {
                         throw new ValidationException("At least one payment detail row is required.");
                     }
-                    List<GlPettyCashPaymentDtlRequestDto> effectiveDtls = ensurePettyCashGlAndValidateTally(requestDto);
                     var existingDtls = glPettyCashPaymentDtlRepository.findByTransactionPoid(transactionPoid);
+                    List<GlPettyCashPaymentDtlRequestDto> effectiveDtls = ensurePettyCashGlAndValidateTally(requestDto, existingDtls);
                     var merged = mergePaymentDtls(existingDtls, effectiveDtls, transactionPoid);
                     glPettyCashPaymentDtlRepository.saveAll(merged);
                     paymentDtls = mapPaymentResponse(merged);
@@ -629,10 +632,6 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             }
 
             //  Step 8: Return the final response DTO
-            
-            // Logging for update operation
-            loggingService.logChanges(oldEntity, updatedHdr, GlPettyCashPaymentHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
-
             entityManager.flush();
             return mapToResponseDto(updatedHdr, paymentDtls, chargeDtls, itemDtls);
 
@@ -687,6 +686,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
         List<GlPettyCashPaymentDtl> toSave = new ArrayList<>();
         List<GlPettyCashPaymentDtl> toDelete = new ArrayList<>();
+        List<GlPettyCashPaymentDtl> newEntities = new ArrayList<>();
         List<LogRequestDto<GlPettyCashPaymentDtl>> logRequests = new ArrayList<>();
         String documentId = UserContext.getDocumentId();
 
@@ -739,6 +739,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     newEntity.setChargePoid(dto.getChargePoid());
 
                     toSave.add(newEntity);
+                    newEntities.add(newEntity);
                     break;
 
                 case "ISUPDATED":
@@ -819,13 +820,11 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             loggingService.createLogBatch(logRequests);
         }
         
-        // Log creation for new records
-        savedEntities.stream()
-            .filter(entity -> entity.getCreatedDate() != null && entity.getCreatedDate().isAfter(LocalDateTime.now().minusMinutes(1)))
-            .forEach(entity -> {
-                String logDetail = String.format("Row Created on Payment Detail with detRowId: %s", entity.getDetRowId());
-                loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
-            });
+        // Log creation for new records only
+        newEntities.forEach(entity -> {
+            String logDetail = String.format("Row Created on Payment Detail with detRowId: %s", entity.getDetRowId());
+            loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
+        });
 
         return savedEntities;
     }
@@ -838,6 +837,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
         List<GlPettyCashChargeDtl> toSave = new ArrayList<>();
         List<GlPettyCashChargeDtl> toDelete = new ArrayList<>();
+        List<GlPettyCashChargeDtl> newEntities = new ArrayList<>();
         List<LogRequestDto<GlPettyCashChargeDtl>> logRequests = new ArrayList<>();
         String documentId = UserContext.getDocumentId();
 
@@ -891,6 +891,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     newEntity.setChargePoid(dto.getChargePoid());
 
                     toSave.add(newEntity);
+                    newEntities.add(newEntity);
                     break;
 
                 case "ISUPDATED":
@@ -971,13 +972,11 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             loggingService.createLogBatch(logRequests);
         }
         
-        // Log creation for new records
-        savedEntities.stream()
-            .filter(entity -> entity.getCreatedDate() != null && entity.getCreatedDate().isAfter(LocalDateTime.now().minusMinutes(1)))
-            .forEach(entity -> {
-                String logDetail = String.format("Row Created on Charge Detail with detRowId: %s", entity.getDetRowId());
-                loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
-            });
+        // Log creation for new records only
+        newEntities.forEach(entity -> {
+            String logDetail = String.format("Row Created on Charge Detail with detRowId: %s", entity.getDetRowId());
+            loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
+        });
 
         return savedEntities;
     }
@@ -990,6 +989,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
         List<GLPettyCashItemDtl> toSave = new ArrayList<>();
         List<GLPettyCashItemDtl> toDelete = new ArrayList<>();
+        List<GLPettyCashItemDtl> newEntities = new ArrayList<>();
         List<LogRequestDto<GLPettyCashItemDtl>> logRequests = new ArrayList<>();
         String documentId = UserContext.getDocumentId();
 
@@ -1045,6 +1045,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     newEntity.setStockUnitPoid(dto.getStockUnitPoid());
 
                     toSave.add(newEntity);
+                    newEntities.add(newEntity);
                     break;
 
                 case "ISUPDATED":
@@ -1127,13 +1128,11 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             loggingService.createLogBatch(logRequests);
         }
         
-        // Log creation for new records
-        savedEntities.stream()
-            .filter(entity -> entity.getCreatedDate() != null && entity.getCreatedDate().isAfter(LocalDateTime.now().minusMinutes(1)))
-            .forEach(entity -> {
-                String logDetail = String.format("Row Created on Item Detail with detRowId: %s", entity.getDetRowId());
-                loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
-            });
+        // Log creation for new records only
+        newEntities.forEach(entity -> {
+            String logDetail = String.format("Row Created on Item Detail with detRowId: %s", entity.getDetRowId());
+            loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
+        });
 
         return savedEntities;
     }
@@ -2111,6 +2110,11 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
      */
     private List<GlPettyCashPaymentDtlRequestDto> ensurePettyCashGlAndValidateTally(
             PettyCashRequestBase requestDto) {
+        return ensurePettyCashGlAndValidateTally(requestDto, Collections.emptyList());
+    }
+
+    private List<GlPettyCashPaymentDtlRequestDto> ensurePettyCashGlAndValidateTally(
+            PettyCashRequestBase requestDto, List<GlPettyCashPaymentDtl> existingDbDtls) {
 
         List<GlPettyCashPaymentDtlRequestDto> allDtls = new ArrayList<>(
                 Optional.ofNullable(requestDto.getGlPettyCashPaymentDtlRequestDtos())
@@ -2126,27 +2130,51 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
         // Auto-insert CR row for petty cash GL if not already present;
         // if already present, assert its TotalAmount == header Amount (mirrors legacy line 1021).
         if (pettyCashGlPoid != null) {
-            Optional<GlPettyCashPaymentDtlRequestDto> existingCr = activeDtls.stream()
+            Optional<GlPettyCashPaymentDtlRequestDto> existingCrInRequest = activeDtls.stream()
                     .filter(d -> "Cr".equalsIgnoreCase(d.getType())
                             && pettyCashGlPoid.equals(d.getGlPoid()))
                     .findFirst();
-            if (existingCr.isEmpty()) {
-                long maxId = activeDtls.stream()
-                        .mapToLong(d -> d.getDetRowId() != null ? d.getDetRowId() : 0L)
-                        .max().orElse(0L);
-                GlPettyCashPaymentDtlRequestDto crRow = GlPettyCashPaymentDtlRequestDto.builder()
-                        .detRowId(maxId + 1)
-                        .type("Cr")
-                        .glPoid(pettyCashGlPoid)
-                        .crAmt(amount)
-                        .totalAmount(amount)
-                        .actionType("isCreated")
-                        .build();
-                allDtls.add(crRow);
-                activeDtls.add(crRow);
+            if (existingCrInRequest.isEmpty()) {
+                // FE did not send the CR row — check if it already exists in the DB
+                Optional<GlPettyCashPaymentDtl> existingCrInDb = existingDbDtls.stream()
+                        .filter(d -> "Cr".equalsIgnoreCase(d.getType())
+                                && pettyCashGlPoid.equals(d.getGlPoid()))
+                        .findFirst();
+
+                if (existingCrInDb.isPresent()) {
+                    GlPettyCashPaymentDtl dbRow = existingCrInDb.get();
+                    // Reuse the existing DB row; update its amount only if it changed
+                    String actionType = safe(dbRow.getTotalAmount()).compareTo(amount) == 0
+                            ? "noChanges" : "isUpdated";
+                    GlPettyCashPaymentDtlRequestDto crRow = GlPettyCashPaymentDtlRequestDto.builder()
+                            .detRowId(dbRow.getDetRowId())
+                            .type("Cr")
+                            .glPoid(pettyCashGlPoid)
+                            .crAmt(amount)
+                            .totalAmount(amount)
+                            .actionType(actionType)
+                            .build();
+                    allDtls.add(crRow);
+                    activeDtls.add(crRow);
+                } else {
+                    // Truly absent — create a new CR row
+                    long maxId = activeDtls.stream()
+                            .mapToLong(d -> d.getDetRowId() != null ? d.getDetRowId() : 0L)
+                            .max().orElse(0L);
+                    GlPettyCashPaymentDtlRequestDto crRow = GlPettyCashPaymentDtlRequestDto.builder()
+                            .detRowId(maxId + 1)
+                            .type("Cr")
+                            .glPoid(pettyCashGlPoid)
+                            .crAmt(amount)
+                            .totalAmount(amount)
+                            .actionType("isCreated")
+                            .build();
+                    allDtls.add(crRow);
+                    activeDtls.add(crRow);
+                }
             } else {
                 // Legacy assertion: the cash-CR row's TotalAmount must equal header Amount
-                BigDecimal cashCrTotal = safe(existingCr.get().getTotalAmount());
+                BigDecimal cashCrTotal = safe(existingCrInRequest.get().getTotalAmount());
                 if (cashCrTotal.compareTo(amount) != 0) {
                     throw new ValidationException(
                             "Paid Amount (" + amount.toPlainString()

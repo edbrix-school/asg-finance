@@ -1,9 +1,6 @@
 package com.asg.finance.service.impl;
 
-import com.asg.common.lib.dto.DeleteReasonDto;
-import com.asg.common.lib.dto.FilterDto;
-import com.asg.common.lib.dto.FilterRequestDto;
-import com.asg.common.lib.dto.RawSearchResult;
+import com.asg.common.lib.dto.*;
 import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
@@ -12,13 +9,20 @@ import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.utility.PaginationUtil;
-import com.asg.finance.dto.*;
-import com.asg.finance.entity.*;
-import com.asg.finance.repository.*;
+import com.asg.finance.dto.ApPaymentRequestHdrRequestDto;
+import com.asg.finance.dto.ApPaymentRequestHdrResponseDto;
+import com.asg.finance.dto.ApPaymentRequestMapper;
+import com.asg.finance.dto.ApPaymentRequestResponse;
+import com.asg.finance.entity.ApPaymentRequestDtl;
+import com.asg.finance.entity.ApPaymentRequestHdr;
+import com.asg.finance.entity.ApPaymentRequestStockDtl;
+import com.asg.finance.repository.ApPaymentRequestCustomRepository;
+import com.asg.finance.repository.ApPaymentRequestDtlRepository;
+import com.asg.finance.repository.ApPaymentRequestHdrRepository;
+import com.asg.finance.repository.ApPaymentRequestStockDtlRepository;
 import com.asg.finance.service.ApPaymentRequestService;
-import com.asg.finance.service.PurchaseOrderService;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
@@ -27,9 +31,11 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static com.asg.finance.utility.Constants.*;
 
@@ -45,56 +51,57 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
     private final ApPaymentRequestCustomRepository aapPaymentRequestCustomRepository;
     private final LoggingService loggingService;
     private final DocumentDeleteService documentDeleteService;
-    private final PurchaseOrderRepository purchaseOrderRepository;
-    private final PurchaseOrderItemRepository purchaseOrderItemRepository;
-    private final FFManifestChargesDtlRepository manifestChargesDtlRepository;
-    private final PurchaseOrderService purchaseOrderService;
-    private final ObjectMapper objectMapper;
-    
-    private static final String DETROWID="detRowId";
-    private static final String TRANSACTION_POID="TRANSACTION_POID";
-    private static final String TRANSACTIONPOID="transactionPoid";
-    private static final String PAYMENT_REQUEST_NOT_FOUND="Payment request not found";
+    private final ApPaymentRequestMapper apPaymentRequestMapper;
+
+    private static final String DETROWID = "detRowId";
+    private static final String TRANSACTION_POID = "TRANSACTION_POID";
+    private static final String TRANSACTIONPOID = "transactionPoid";
+    private static final String PAYMENT_REQUEST_NOT_FOUND = "Payment request not found";
+    private static final String TAX_POID = "taxPoid";
+    private static final String TAX_LOV = "taxLov";
+
+
+    @PersistenceContext
+    private final EntityManager entityManager;
+
 
     @Override
     public ApPaymentRequestHdrResponseDto create(ApPaymentRequestHdrRequestDto requestDto) {
         ApPaymentRequestHdr hdr =
-                ApPaymentRequestMapper.toEntity(requestDto, null);
+                apPaymentRequestMapper.toEntity(requestDto, null);
 
-        // 🔑 ID GENERATED HERE
-        hdr = hdrRepository.save(hdr);
+        hdr = hdrRepository.saveAndFlush(hdr);
+        entityManager.refresh(hdr);
 
         Long transactionPoid = hdr.getTransactionPoid();
 
         // Auto-generate detRowId for new records
         List<ApPaymentRequestDtl> details = new java.util.ArrayList<>();
-        long detRowId = 1;
 
-        for (var detailDto : requestDto.getDetails()) {
-            detailDto.setDetRowId(detRowId++); // Auto-generate detRowId
-            ApPaymentRequestDtl detail = ApPaymentRequestMapper.toDtlEntity(transactionPoid, detailDto);
-            details.add(detail);
-        }
-
-        dtlRepository.saveAll(details);
 
         // Save stock details
         List<ApPaymentRequestStockDtl> stockDetails = new java.util.ArrayList<>();
-        if (requestDto.getStockDetails() != null) {
-            long stockRowId = 1;
-            for (var stockDto : requestDto.getStockDetails()) {
-                stockDto.setDetRowId(stockRowId++);
-                stockDetails.add(ApPaymentRequestMapper.toStockDtlEntity(transactionPoid, stockDto));
-            }
+
+        if (requestDto.getRefType().equalsIgnoreCase("MTA")) {
+            AtomicLong stockRowId = new AtomicLong(1);
+            requestDto.getStockDetails().forEach(stockDto -> {
+                stockDto.setDetRowId(stockRowId.getAndIncrement());
+                stockDetails.add(apPaymentRequestMapper.toStockDtlEntity(transactionPoid, stockDto));
+            });
             stockDtlRepository.saveAll(stockDetails);
+        } else {
+            AtomicLong detRowId = new AtomicLong(1);
+            requestDto.getDetails().forEach(detailDto -> {
+                detailDto.setDetRowId(detRowId.getAndIncrement());
+                details.add(apPaymentRequestMapper.toDtlEntity(transactionPoid, detailDto));
+            });
+            dtlRepository.saveAll(details);
+
         }
 
-        String docId = UserContext.getDocumentId();
-        String key = transactionPoid.toString();
+        loggingService.createLogSummaryEntry(UserContext.getDocumentId(),hdr.getTransactionPoid().toString(), String.format("%s %s", LogDetailsEnum.CREATED.getDescription(),hdr.getDocRef()));
 
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, key);
-
-        return ApPaymentRequestMapper.toResponse(hdr, details, stockDetails);
+        return apPaymentRequestMapper.toResponse(hdr, details, stockDetails);
     }
 
     @Override
@@ -137,7 +144,7 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
 
         List<ApPaymentRequestDtl> details = dtlRepository.findByIdTransactionPoid(transactionPoid);
         List<ApPaymentRequestStockDtl> stockDetails = stockDtlRepository.findByIdTransactionPoid(transactionPoid);
-        return ApPaymentRequestMapper.toResponse(hdr, details, stockDetails);
+        return apPaymentRequestMapper.toResponse(hdr, details, stockDetails);
     }
 
     @Override
@@ -151,7 +158,7 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
         List<ApPaymentRequestDtl> details = dtlRepository.findByIdTransactionPoid(transactionPoid);
         List<ApPaymentRequestStockDtl> stockDetails = stockDtlRepository.findByIdTransactionPoid(transactionPoid);
 
-        return ApPaymentRequestMapper.toResponse(hdr, details, stockDetails);
+        return apPaymentRequestMapper.toResponse(hdr, details, stockDetails);
     }
 
     @Override
@@ -189,45 +196,87 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
     @Override
     public ApPaymentRequestResponse createFromPo(String poPoid) {
 
-        return aapPaymentRequestCustomRepository.createFromPo(
+        ApPaymentRequestResponse response = aapPaymentRequestCustomRepository.createFromPo(
                 UserContext.getGroupPoid(),
                 UserContext.getCompanyPoid(),
                 UserContext.getUserPoid(),
                 poPoid
         );
+
+        response.setRecords(apPaymentRequestMapper.enrichRecords(
+                response.getRecords(),
+                "stockPoid",
+                "STOCK_MASTER",
+                "stockLov",
+                TAX_POID,
+                TAX_LOV
+        ));
+
+        return response;
     }
 
     @Override
     public ApPaymentRequestResponse createFromFf(String ffPoid) {
 
-        return aapPaymentRequestCustomRepository.createFromFf(
+        ApPaymentRequestResponse response = aapPaymentRequestCustomRepository.createFromFf(
                 UserContext.getGroupPoid(),
                 UserContext.getCompanyPoid(),
                 UserContext.getUserPoid(),
                 ffPoid
         );
+
+        response.setRecords(apPaymentRequestMapper.enrichRecords(
+                response.getRecords(),
+                "chargePoid",
+                "CHARGE_MASTER_FF",
+                "chargeLov",
+                TAX_POID,
+                TAX_LOV
+        ));
+        return response;
     }
 
     @Override
     public ApPaymentRequestResponse createFromFda(String fdaPoid) {
 
-        return aapPaymentRequestCustomRepository.createFromFda(
+        ApPaymentRequestResponse response = aapPaymentRequestCustomRepository.createFromFda(
                 UserContext.getGroupPoid(),
                 UserContext.getCompanyPoid(),
                 UserContext.getUserPoid(),
                 fdaPoid
         );
+
+        response.setRecords(apPaymentRequestMapper.enrichRecords(
+                response.getRecords(),
+                "chargePoid",
+                "CHARGE_MASTER_FOR_PDA",
+                "chargeLov",
+                TAX_POID,
+                TAX_LOV
+        ));
+        return response;
     }
 
     @Override
-    public ApPaymentRequestResponse createFromMta(String poPoid) {
+    public ApPaymentRequestResponse createFromMta(String mtaPoid) {
 
-        return aapPaymentRequestCustomRepository.createFromMta(
+        ApPaymentRequestResponse response = aapPaymentRequestCustomRepository.createFromMta(
                 UserContext.getGroupPoid(),
                 UserContext.getCompanyPoid(),
                 UserContext.getUserPoid(),
-                poPoid
+                mtaPoid
         );
+
+        response.setRecords(apPaymentRequestMapper.enrichRecords(
+                response.getRecords(),
+                "stockPoid",
+                "STOCK_MASTER",
+                "stockLov",
+                TAX_POID,
+                TAX_LOV
+        ));
+
+        return response;
 
     }
 
@@ -247,7 +296,7 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
             switch (actionType) {
                 case ACTION_ISCREATED -> {
                     stockDetail.setDetRowId(++maxDetRowId);
-                    ApPaymentRequestStockDtl saved = stockDtlRepository.save(ApPaymentRequestMapper.toStockDtlEntity(transactionPoid, stockDetail));
+                    ApPaymentRequestStockDtl saved = stockDtlRepository.save(apPaymentRequestMapper.toStockDtlEntity(transactionPoid, stockDetail));
                     loggingService.createLogSummaryEntry(docId, key, String.format("Row Created on AP Payment Request Stock Detail with detRowId: %s", saved.getId().getDetRowId()));
                 }
                 case ACTION_ISUPDATED -> {
@@ -290,6 +339,8 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
     }
 
     private void processDetails(Long transactionPoid, List<com.asg.finance.dto.ApPaymentRequestDtlRequestDto> details) {
+        if(details==null|| details.isEmpty()) return;
+
         List<LogRequestDto<ApPaymentRequestDtl>> logRequests = new java.util.ArrayList<>();
         String docId = UserContext.getDocumentId();
 
@@ -305,7 +356,7 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
                 case ACTION_ISCREATED -> {
                     // Auto-generate detRowId for new records
                     detail.setDetRowId(++maxDetRowId);
-                    ApPaymentRequestDtl entity = ApPaymentRequestMapper.toDtlEntity(transactionPoid, detail);
+                    ApPaymentRequestDtl entity = apPaymentRequestMapper.toDtlEntity(transactionPoid, detail);
                     dtlRepository.save(entity);
                     String logDetail = String.format("Row Created on AP Payment Request Detail with detRowId: %s", entity.getId().getDetRowId());
                     loggingService.createLogSummaryEntry(docId, transactionPoid.toString(), logDetail);
@@ -328,13 +379,13 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
                     String logDetailForUpdate = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", transactionPoid, detail.getDetRowId());
                     logRequests.add(new LogRequestDto<>(oldEntity, existing, ApPaymentRequestDtl.class, docId, transactionPoid.toString(), logDetailForUpdate));
                 }
-                case ACTION_ISDELETED -> 
-                    dtlRepository.findByIdTransactionPoidAndIdDetRowId(transactionPoid, detail.getDetRowId())
-                            .ifPresent(entity -> {
-                                dtlRepository.delete(entity);
-                                loggingService.logDelete(detail, docId, transactionPoid.toString());
-                            });
-                
+                case ACTION_ISDELETED ->
+                        dtlRepository.findByIdTransactionPoidAndIdDetRowId(transactionPoid, detail.getDetRowId())
+                                .ifPresent(entity -> {
+                                    dtlRepository.delete(entity);
+                                    loggingService.logDelete(detail, docId, transactionPoid.toString());
+                                });
+
                 case ACTION_NOCHANGES -> {
                     ApPaymentRequestDtl existing = dtlRepository.findByIdTransactionPoidAndIdDetRowId(transactionPoid, detail.getDetRowId())
                             .orElseThrow(() -> new ResourceNotFoundException("AP Payment Request Detail", DETROWID, detail.getDetRowId()));
@@ -347,6 +398,5 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
             loggingService.createLogBatch(logRequests);
         }
     }
-
 
 }

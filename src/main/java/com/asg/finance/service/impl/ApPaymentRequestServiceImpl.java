@@ -21,6 +21,8 @@ import com.asg.finance.repository.ApPaymentRequestDtlRepository;
 import com.asg.finance.repository.ApPaymentRequestHdrRepository;
 import com.asg.finance.repository.ApPaymentRequestStockDtlRepository;
 import com.asg.finance.service.ApPaymentRequestService;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
@@ -59,12 +61,17 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
     private static final String TAX_LOV = "taxLov";
 
 
+    @PersistenceContext
+    private final EntityManager entityManager;
+
+
     @Override
     public ApPaymentRequestHdrResponseDto create(ApPaymentRequestHdrRequestDto requestDto) {
         ApPaymentRequestHdr hdr =
                 apPaymentRequestMapper.toEntity(requestDto, null);
 
-        hdr = hdrRepository.save(hdr);
+        hdr = hdrRepository.saveAndFlush(hdr);
+        entityManager.refresh(hdr);
 
         Long transactionPoid = hdr.getTransactionPoid();
 
@@ -92,10 +99,7 @@ public class ApPaymentRequestServiceImpl implements ApPaymentRequestService {
 
         }
 
-        String docId = UserContext.getDocumentId();
-        String key = transactionPoid.toString();
-
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, key);
+        loggingService.createLogSummaryEntry(UserContext.getDocumentId(),hdr.getTransactionPoid().toString(), String.format("%s %s", LogDetailsEnum.CREATED.getDescription(),hdr.getDocRef()));
 
         return apPaymentRequestMapper.toResponse(hdr, details, stockDetails);
     }

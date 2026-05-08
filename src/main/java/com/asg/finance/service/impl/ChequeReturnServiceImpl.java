@@ -88,9 +88,16 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
                 .build();
 
         header = headerRepo.save(header);
+        headerRepo.flush();
+        entityManager.refresh(header);
+        
         Long trnPoid = header.getTransactionPoid();
         request.getChequeHeader().setTransactionPoid(trnPoid);
         request.getChequeHeader().setDocRef(header.getDocRef());
+
+        // Log the main entity creation
+        String key = trnPoid.toString();
+        loggingService.createLogSummaryEntry(DOC_ID_CHEQUE_RETURN, key, String.format("%s %s", LogDetailsEnum.CREATED.getDescription(), header.getDocRef()));
 
         List<ChequeReturnDetail> detailEntities = buildAndSaveDetails(trnPoid, header, request.getChequeDetails(),
                 dbDate, true);
@@ -113,9 +120,6 @@ public class ChequeReturnServiceImpl implements ChequeReturnService {
         if ("CLOSED".equalsIgnoreCase(header.getStatus())) {
             callClosedProcedure(trnPoid, header.getCloseDetail());
         }
-
-        String key = trnPoid.toString();
-        loggingService.createLogSummaryEntry(DOC_ID_CHEQUE_RETURN, key, String.format("%s %s", LogDetailsEnum.CREATED, header.getDocRef()));
 
         return toResponse(header, request, "Cheque Return created successfully.");
     }

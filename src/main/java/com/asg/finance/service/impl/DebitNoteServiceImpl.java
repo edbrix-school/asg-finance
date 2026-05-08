@@ -127,6 +127,13 @@ public class DebitNoteServiceImpl implements DebitNoteService {
 
         DocumentBeforeSaveBillwiseCostGroups(debitNoteDto);
 
+        // Log the header creation first, before any child record processing
+        loggingService.createLogSummaryEntry(
+                UserContext.getDocumentId(),
+                savedEntity.getTransactionPoid().toString(),
+                String.format("%s %s", LogDetailsEnum.CREATED.getDescription(), savedEntity.getDocRef())
+        );
+
         // Save details (GL + Charge) — GL will be saved if provided regardless of refType
         saveDetails(debitNoteDto, savedEntity.getTransactionPoid());
 
@@ -145,13 +152,8 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         // Load breakups into response
         loadBreakups(result, savedEntity.getTransactionPoid());
 
-        ArDebitNoteHdr refreshedEntity = debitNoteHdrRepository.findById(savedEntity.getTransactionPoid())
-                .orElseThrow(() -> new ResourceNotFoundException("DebitNote", "transactionPoid", savedEntity.getTransactionPoid()));
-        // Log the creation
-        loggingService.createLogSummaryEntry(UserContext.getDocumentId(), savedEntity.getTransactionPoid().toString(), String.format("%s %s", LogDetailsEnum.CREATED, refreshedEntity.getDocRef()));
-
         // Publish event for after-save processing (will run after transaction commit)
-        publishAfterSaveEvent(refreshedEntity, null, null);
+        publishAfterSaveEvent(savedEntity, null, null);
 
         DebitNoteHeaderDto finalResult = getDebitNote(savedEntity.getTransactionPoid());
         if (debitNoteDto.getWarnings() != null && !debitNoteDto.getWarnings().isEmpty()) {
@@ -228,7 +230,6 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         existingEntity.setPropertyInvoice(Boolean.TRUE.equals(debitNoteDto.getPropertyInvoice()) ? "Y" : "N");
         existingEntity.setPrintCompanyPoid(debitNoteDto.getPrintCompanyPoid());
         debitNoteHdrRepository.save(existingEntity);
-        entityManager.flush();
         entityManager.refresh(existingEntity);
 
         debitNoteDto.setDocRef(existingEntity.getDocRef());

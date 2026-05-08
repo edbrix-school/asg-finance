@@ -156,6 +156,13 @@ public class CreditNoteServiceImpl implements CreditNoteService {
 
             log.info("Credit note header saved with transactionPoid: {}", transactionPoid);
 
+            // Log the header creation first, before any child record processing
+            loggingService.createLogSummaryEntry(
+                    UserContext.getDocumentId(),
+                    savedHeader.getTransactionPoid().toString(),
+                    String.format("%s %s", LogDetailsEnum.CREATED.getDescription(), savedHeader.getDocRef())
+            );
+
             // Save GL details immediately after header to avoid FK constraint issues
             if (creditNoteDto.getGlDetails() != null) {
                 log.info("Starting to save GL details for transactionPoid: {}", transactionPoid);
@@ -197,8 +204,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             List<ArCreditNoteChargeDtl> chargeDetails = creditNoteChargeDtlRepository.findByTransactionPoidOrderByDetRowId(transactionPoid);
             result.setChargeDetails(chargeDetails.stream().map(charge -> mapChargeToDto(charge, result.getRefType())).collect(Collectors.toList()));
 
-            // Log the creation
-            loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString(), String.format("%s %s", LogDetailsEnum.CREATED, reloadedHeader.getDocRef()));
+            // Log child record creation after all processing is complete
             List<GlobalLogSummary> detailCreateLogs = buildCreateDetailSummaryLogs(creditNoteDto, transactionPoid);
             if (!detailCreateLogs.isEmpty()) {
                 globalLogSummaryRepository.saveAll(detailCreateLogs);

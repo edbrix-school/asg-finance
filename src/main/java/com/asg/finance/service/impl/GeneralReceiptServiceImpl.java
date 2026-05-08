@@ -99,6 +99,13 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
             log.info("Created receipt header with DOC_REF: {} and TRANSACTION_POID: {}",
                     header.getDocRef(), header.getTransactionPoid());
 
+            // Log header creation FIRST
+            loggingService.createLogSummaryEntry(
+                    UserContext.getDocumentId(),
+                    header.getTransactionPoid().toString(),
+                    String.format("%s %s", LogDetailsEnum.CREATED.getDescription(), header.getDocRef())
+            );
+
             // Check for duplicates after creation (in case of race condition)
             if (header.getDocRef() != null) {
                 Long duplicateCount = receiptHdrRepository.countByDocRef(header.getDocRef());
@@ -146,13 +153,6 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
 
         // 7. Flush all changes to commit the receipt data
         entityManager.flush();
-
-        // Log the creation
-        loggingService.createLogSummaryEntry(
-            UserContext.getDocumentId(),
-            header.getTransactionPoid().toString(),
-            String.format("%s %s", LogDetailsEnum.CREATED, header.getDocRef())
-        );
 
         log.info("Successfully created general receipt: {}", header.getDocRef());
 

@@ -73,7 +73,7 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
     private final DocumentDeleteService documentDeleteService;
 
     @PersistenceContext
-    private final EntityManager entityManager;
+    private EntityManager entityManager;
 
     private static final String RESOURCE_NAME = "Recurring JV";
     private static final String FIELD_TRANSACTION_POID = "transactionPoid";
@@ -339,14 +339,21 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
                 .deleted(FLAG_NO)
                 .build();
 
-        header = hdrRepository.saveAndFlush(header);
+        header = hdrRepository.save(header);
+
+        // Flush and refresh entity to get updated docRef
+        entityManager.flush();
         entityManager.refresh(header);
 
         Long transactionPoid = header.getTransactionPoid();
-        saveDetails(transactionPoid, request.getDetails(), header, true);
 
-        String key = transactionPoid.toString();
-        loggingService.createLogSummaryEntry(UserContext.getDocumentId(), key, String.format("%s %s", LogDetailsEnum.CREATED.getDescription(), header.getDocRef()));
+        loggingService.createLogSummaryEntry(
+                UserContext.getDocumentId(),
+                transactionPoid.toString(),
+                String.format("%s %s", LogDetailsEnum.CREATED.getDescription(), header.getDocRef())
+        );
+
+        saveDetails(transactionPoid, request.getDetails(), header, true);
 
         return new RecurringJvCreateResponse(transactionPoid, "Recurring JV created successfully");
     }

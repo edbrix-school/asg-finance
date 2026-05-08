@@ -68,15 +68,14 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
         entityManager.flush();
         entityManager.refresh(hdr);
 
-
+        // Log header creation first
         Long transactionPoid = hdr.getTransactionPoid();
+        String key = transactionPoid.toString();
+        String docRef = hdr.getDocRef();
+        loggingService.createLogSummaryEntry(DOC_ID, key, String.format("%s %s", LogDetailsEnum.CREATED.getDescription(), docRef));
 
         List<PdcChqBatchDtlResponseDto> dtlResponses =
                 saveDetailRows(dto.getChequeDetails(), transactionPoid);
-
-        // Log the creation
-        String key = transactionPoid.toString();
-        loggingService.createLogSummaryEntry( DOC_ID, key, String.format("%s %s", LogDetailsEnum.CREATED, hdr.getDocRef()));
 
         return mapHeaderEntityToResponseDto(hdr, dtlResponses);
     }

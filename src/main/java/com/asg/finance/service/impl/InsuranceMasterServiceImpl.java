@@ -20,6 +20,7 @@ import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.InsuranceMasterService;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,6 +50,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
     private final GlobalLogSummaryRepository globalLogSummaryRepository;
     private final HrEmployeeMasterRepository hrEmployeeMasterRepository;
     private final LovDataService lovService;
+    private final EntityManager entityManager;
 
     private String getCurrentUser() {
         return UserContext.getUserId() != null ? String.valueOf(UserContext.getUserId()) : "SYSTEM";
@@ -198,6 +200,9 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                     .build();
 
             InsuranceMaster saved = insuranceMasterRepository.save(insuranceMaster);
+            entityManager.flush();
+            entityManager.refresh(saved); // Get trigger-generated DOC_REF if any
+            
             buildAndSetChildDetails(request, saved);
             InsuranceMaster finalSaved = insuranceMasterRepository.save(saved);
             
@@ -205,8 +210,12 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
             String docKeyPoid = finalSaved.getTransactionPoid().toString();
             LocalDateTime now = LocalDateTime.now();
             
-            // Log header creation
-            loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, docKeyPoid);
+            // Log header creation FIRST
+            loggingService.createLogSummaryEntry(
+                    docId,
+                    docKeyPoid,
+                    String.format("%s %s", LogDetailsEnum.CREATED.getDescription(), finalSaved.getDocRef())
+            );
             
             // Log grid row creations
             List<GlobalLogSummary> gridLogs = new ArrayList<>();

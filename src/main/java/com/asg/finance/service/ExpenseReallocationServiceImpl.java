@@ -105,7 +105,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
             loggingService.createLogSummaryEntry(UserContext.getDocumentId(), hdrPoid.toString(), logDetail);
         });
         log.info("createExpenseReallocation completed for transactionPoid={}", savedHdr.getTransactionPoid());
-        loggingService.createLogSummaryEntry(UserContext.getDocumentId(),savedHdr.getTransactionPoid().toString(), String.format("%s %s", LogDetailsEnum.CREATED.getDescription(), savedHdr.getDocRef()));
+        loggingService.createLogSummaryEntry(UserContext.getDocumentId(), savedHdr.getTransactionPoid().toString(), String.format("%s %s", LogDetailsEnum.CREATED.getDescription(), savedHdr.getDocRef()));
         return buildResponse(savedHdr);
     }
 
@@ -311,7 +311,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
                     continue;
                 }
 
-                Map<String, Object> rowMap = new HashMap<>();
+                Map<String, Object> rowMap = new LinkedHashMap<>();
                 BigDecimal rowTotal = BigDecimal.ZERO;
 
                 for (int c = 0; c < headers.size(); c++) {

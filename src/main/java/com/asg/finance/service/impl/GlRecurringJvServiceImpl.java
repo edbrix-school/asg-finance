@@ -31,6 +31,8 @@ import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.BillwiseBreakupService;
 import com.asg.finance.service.CostCenterBreakupService;
 import com.asg.finance.service.GlRecurringJvService;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;
@@ -69,6 +71,9 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
     private final DataSource dataSource;
     private final LoggingService loggingService;
     private final DocumentDeleteService documentDeleteService;
+
+    @PersistenceContext
+    private final EntityManager entityManager;
 
     private static final String RESOURCE_NAME = "Recurring JV";
     private static final String FIELD_TRANSACTION_POID = "transactionPoid";
@@ -334,13 +339,14 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
                 .deleted(FLAG_NO)
                 .build();
 
-        header = hdrRepository.save(header);
+        header = hdrRepository.saveAndFlush(header);
+        entityManager.refresh(header);
 
         Long transactionPoid = header.getTransactionPoid();
         saveDetails(transactionPoid, request.getDetails(), header, true);
 
         String key = transactionPoid.toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), key);
+        loggingService.createLogSummaryEntry(UserContext.getDocumentId(), key, String.format("%s %s", LogDetailsEnum.CREATED, header.getDocRef()));
 
         return new RecurringJvCreateResponse(transactionPoid, "Recurring JV created successfully");
     }

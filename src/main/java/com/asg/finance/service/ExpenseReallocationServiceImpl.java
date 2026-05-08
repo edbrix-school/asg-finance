@@ -766,7 +766,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         List<ExpenseReallocationDetailResponseDto> details;
 
         List<GlExpenseReallocationXlDtl> xlDetails =
-                xlDtlRepository.findByTransactionPoid(header.getTransactionPoid())
+                xlDtlRepository.findByTransactionPoidOrderByCreatedDate(header.getTransactionPoid())
                         .orElse(new ArrayList<>());
 
         if (!xlDetails.isEmpty()) {

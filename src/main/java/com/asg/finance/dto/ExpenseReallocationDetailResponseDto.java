@@ -6,6 +6,7 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Getter
@@ -22,7 +23,7 @@ public class ExpenseReallocationDetailResponseDto {
     private String companyName;
 
     @JsonIgnore
-    private Map<String, BigDecimal> costCenterMap = new HashMap<>();
+    private Map<String, BigDecimal> costCenterMap = new LinkedHashMap<>();
 
     @JsonAnyGetter
     public Map<String, BigDecimal> getDynamicFields() {

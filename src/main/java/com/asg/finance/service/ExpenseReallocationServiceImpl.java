@@ -19,6 +19,8 @@ import com.asg.finance.entity.GlExpenseReallocationHdr;
 import com.asg.finance.entity.GlExpenseReallocationXlDtl;
 import com.asg.finance.repository.*;
 import jakarta.persistence.Column;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -59,6 +61,9 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
     private final LoggingService loggingService;
     private final LovDataService lovDataService;
 
+    @PersistenceContext
+    private final EntityManager entityManager;
+
     private static final String TRANSACTION_POID = "TRANSACTION_POID";
     private static final String COMPANYCODE = "Company Code";
 
@@ -82,7 +87,9 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
                 .deleted("N").reportGeneration("N")
                 .narration(request.getNarration()).build();
 
-        final GlExpenseReallocationHdr savedHdr = hdrRepository.save(header);
+        final GlExpenseReallocationHdr savedHdr = hdrRepository.saveAndFlush(header);
+        entityManager.refresh(savedHdr);
+
         final Long hdrPoid = savedHdr.getTransactionPoid();
 
         xlDtlRepository.deleteByTransactionPoid(hdrPoid);
@@ -98,7 +105,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
             loggingService.createLogSummaryEntry(UserContext.getDocumentId(), hdrPoid.toString(), logDetail);
         });
         log.info("createExpenseReallocation completed for transactionPoid={}", savedHdr.getTransactionPoid());
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), hdrPoid.toString());
+        loggingService.createLogSummaryEntry(UserContext.getDocumentId(),savedHdr.getTransactionPoid().toString(), String.format("%s %s", LogDetailsEnum.CREATED.getDescription(), savedHdr.getDocRef()));
         return buildResponse(savedHdr);
     }
 

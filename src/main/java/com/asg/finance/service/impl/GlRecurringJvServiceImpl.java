@@ -346,7 +346,7 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
         saveDetails(transactionPoid, request.getDetails(), header, true);
 
         String key = transactionPoid.toString();
-        loggingService.createLogSummaryEntry(UserContext.getDocumentId(), key, String.format("%s %s", LogDetailsEnum.CREATED, header.getDocRef()));
+        loggingService.createLogSummaryEntry(UserContext.getDocumentId(), key, String.format("%s %s", LogDetailsEnum.CREATED.getDescription(), header.getDocRef()));
 
         return new RecurringJvCreateResponse(transactionPoid, "Recurring JV created successfully");
     }

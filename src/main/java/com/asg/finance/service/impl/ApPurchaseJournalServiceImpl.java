@@ -2044,6 +2044,8 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
         validateGlDetails(dto, documentId);
 
+        validateSupplierCreditAmountForGeneralRefTypes(dto);
+
         validateCreditPeriod(dto);
 
         //validateVat(dto, documentId);
@@ -2152,6 +2154,51 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
                 throw new ValidationException(output.get("result"));
             }
+        }
+    }
+
+
+    private void validateSupplierCreditAmountForGeneralRefTypes(ApPurchaseInvoiceHdrDto dto) {
+
+        String refType = dto.getRefType() == null
+                ? ""
+                : dto.getRefType().trim().toUpperCase();
+
+        if (!refType.equals("GENERAL")
+                && !refType.equals("GENERAL PO")) {
+            return;
+        }
+
+        if (dto.getBhdAmount() == null || CollectionUtils.isEmpty(dto.getGlDtls())) {
+            return;
+        }
+
+        Long supplierGlPoid = getPartyGlPoid(dto.getPartyType(), dto.getSupplierPoid());
+        BigDecimal paidAmount = dto.getBhdAmount().setScale(3, RoundingMode.HALF_UP);
+        BigDecimal supplierCreditAmount = null;
+
+        for (ApPurchaseInvoiceGlDtlDto gl : dto.getGlDtls()) {
+
+            if ("ISDELETED".equalsIgnoreCase(gl.getActionType())) {
+                continue;
+            }
+
+            if (gl.getGlPoid() != null && supplierGlPoid.equals(gl.getGlPoid())) {
+                supplierCreditAmount = gl.getTotalAmount();
+            }
+        }
+
+        if (supplierCreditAmount == null) {
+            return;
+        }
+
+        supplierCreditAmount = supplierCreditAmount.setScale(3, RoundingMode.HALF_UP);
+
+        if (supplierCreditAmount.compareTo(paidAmount) != 0) {
+            throw new ValidationException(
+                    "WARNING : Paid Amount (" + paidAmount + ") is not matching with total supplier credit amount ("
+                            + supplierCreditAmount + ")..."
+            );
         }
     }
 

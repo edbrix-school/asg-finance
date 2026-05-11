@@ -319,7 +319,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
                     continue;
                 }
 
-                Map<String, Object> rowMap = new HashMap<>();
+                Map<String, Object> rowMap = new LinkedHashMap<>();
                 BigDecimal rowTotal = BigDecimal.ZERO;
 
                 for (int c = 0; c < headers.size(); c++) {
@@ -451,7 +451,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 
         // HEADER ROW
         Row headerRow = sheet.createRow(2);
-        List<String> costCenterKeys=List.of("SH_","FF_","PROPERTIES_", "MTA_", "ADMIN_");
+        List<String> costCenterKeys = List.of("SH_", "FF_", "PROPERTIES_", "MTA_", "ADMIN_");
         List<String> headers = new ArrayList<>();
         headers.add(COMPANYCODE);
         headers.addAll(costCenterKeys); // dynamic allocation columns
@@ -470,24 +470,20 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
             cell.setCellStyle(headerStyle);
         }
 
-
-        Object[][] data = {{"ASG", "", "", "", "", "",  "", "",""},
-                {"NSA1", "", "", "", "", "",  "", "",""},
-                {"DSA", "", "", "", "", "",  "", "",""},
-                {"FSL", "", "", "", "", "",  "", "",""}};
+        Object[][] data = {{"ASG", "", "", "", "", "", "", "", ""},
+                {"NSA1", "", "", "", "", "", "", "", ""},
+                {"DSA", "", "", "", "", "", "", "", ""},
+                {"FSL", "", "", "", "", "", "", "", ""}};
 
         int rowIdx = 3;
 
         for (Object[] rowData : data) {
             Row row = sheet.createRow(rowIdx++);
-            double total = 0;
-
             for (int col = 0; col < headers.size(); col++) {
                 Cell cell = row.createCell(col);
                 String header = headers.get(col);
 
                 if ("TOTAL".equals(header)) {
-//                    cell.setCellValue(total);
                     cell.setCellStyle(dataStyle);
                     cell.setCellFormula(String.format("SUM(B%d:I%d)",
                             row.getRowNum() + 1,
@@ -501,7 +497,6 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
                     if (value instanceof Number) {
                         double num = ((Number) value).doubleValue();
                         cell.setCellValue(num); // includes 0
-                        total += num;
                     } else if (value != null) {
                         cell.setCellValue(value.toString());
                     } else {
@@ -516,7 +511,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         footerTitle.setCellValue("Expense Allocation Template");
         footerTitle.setCellStyle(titleStyle);
 
-        Row finalRow = sheet.createRow(rowIdx+2);
+        Row finalRow = sheet.createRow(rowIdx + 2);
         Cell cell = finalRow.createCell(headers.size() - 3);
         cell.setCellValue("This should be always 100%");
         cell.setCellStyle(footerStyle);
@@ -528,7 +523,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         Font grantTotal = workbook.createFont();
         grantTotal.setBold(true);
         CellStyle grantTotalStyle = workbook.createCellStyle();
-        applyBorders(grantTotalStyle,BorderStyle.THICK );
+        applyBorders(grantTotalStyle, BorderStyle.THICK);
         grantTotalStyle.setAlignment(HorizontalAlignment.RIGHT);
         grantTotalStyle.setFont(grantTotal);
 
@@ -779,7 +774,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         List<ExpenseReallocationDetailResponseDto> details;
 
         List<GlExpenseReallocationXlDtl> xlDetails =
-                xlDtlRepository.findByTransactionPoid(header.getTransactionPoid())
+                xlDtlRepository.findByTransactionPoidOrderByCreatedDate(header.getTransactionPoid())
                         .orElse(new ArrayList<>());
 
         if (!xlDetails.isEmpty()) {
@@ -1046,7 +1041,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         List<LogRequestDto<GlExpenseReallocationXlDtl>> logRequests = new ArrayList<>();
         String docId = UserContext.getDocumentId();
 
-        if(xlDetails.stream()
+        if (xlDetails.stream()
                 .anyMatch(val -> "isCreated".equalsIgnoreCase(val.getActionType())))
             xlDtlRepository.deleteByTransactionPoid(transactionPoid);
         // Auto-generate detRowId for new records

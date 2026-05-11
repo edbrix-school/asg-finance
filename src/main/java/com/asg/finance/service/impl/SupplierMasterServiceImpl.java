@@ -239,10 +239,13 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
             throw new ResourceAlreadyExistsException(key, value);
         }
 
-        if (supplierMasterDto.getAddressPoid() == null && StringUtils.isNotBlank(supplierMasterDto.getAddressName())) {
+        if (supplierMasterDto.getAddressPoid() == null ) {
+            String addressName = StringUtils.isNotBlank(supplierMasterDto.getAddressName())
+                    ? supplierMasterDto.getAddressName()
+                    : supplierMasterDto.getSupplierName();
             AddressMasterUpsertDto addressRequest = new AddressMasterUpsertDto();
-            addressRequest.setAddressName(supplierMasterDto.getAddressName());
-            addressRequest.setAddressName2(supplierMasterDto.getAddressName());
+            addressRequest.setAddressName(addressName);
+            addressRequest.setAddressName2(addressName);
             addressRequest.setGroupPoid(UserContext.getGroupPoid());
             addressRequest.setCountryId(supplierMasterDto.getCountryPoid());
             addressRequest.setActive("Y");

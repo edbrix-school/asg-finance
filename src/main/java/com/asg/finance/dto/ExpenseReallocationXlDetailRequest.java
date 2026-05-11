@@ -8,7 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Data
@@ -30,7 +30,7 @@ public class ExpenseReallocationXlDetailRequest {
     private String actionType;
 
     // 🔥 Dynamic fields (SH, FFS, etc.)
-    private Map<String, BigDecimal> costCenterMap = new HashMap<>();
+    private Map<String, BigDecimal> costCenterMap = new LinkedHashMap<>();
 
     @JsonAnySetter
     public void setDynamicField(String key, Object value) {

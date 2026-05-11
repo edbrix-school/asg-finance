@@ -21,4 +21,6 @@ public interface GlExpenseReallocationXlDtlRepository
 
 	@Query("SELECT COALESCE(MAX(u.detRowId), 0) FROM GlExpenseReallocationXlDtl u WHERE u.transactionPoid = :transactionPoid")
 	Long findMaxDetRowIdByTransactionPoid(Long transactionPoid);
+
+    Optional<List<GlExpenseReallocationXlDtl>> findByTransactionPoidOrderByCreatedDate(Long transactionPoid);
 }

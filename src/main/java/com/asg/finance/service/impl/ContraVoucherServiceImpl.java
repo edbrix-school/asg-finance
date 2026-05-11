@@ -255,7 +255,7 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
 
         // Log the creation
         String key = savedHeader.getTransactionPoid().toString();
-        loggingService.createLogSummaryEntry(UserContext.getDocumentId(), key, String.format("%s %s", LogDetailsEnum.CREATED, savedHeader.getDocRef()));
+        loggingService.createLogSummaryEntry(UserContext.getDocumentId(), key, String.format("%s %s", LogDetailsEnum.CREATED.getDescription(), savedHeader.getDocRef()));
 
         // Process details from request
         if (request.getDetails() != null && !request.getDetails().isEmpty()) {

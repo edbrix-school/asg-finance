@@ -185,13 +185,12 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         entityManager.flush();
         entityManager.refresh(header);
 
-        // Post-save job cost updates (mirrors legacy DocumentAfterSave)
-
-        persistChildCollections(request, savedHeader.getTransactionPoid(), true, documentId);
-
-        // Log the creation
+        // Log the creation BEFORE child record processing
         String key = savedHeader.getTransactionPoid().toString();
-        loggingService.createLogSummaryEntry(documentId, key, String.format("%s %s", LogDetailsEnum.CREATED, savedHeader.getDocRef()));
+        loggingService.createLogSummaryEntry(UserContext.getDocumentId(), key, String.format("%s %s", LogDetailsEnum.CREATED.getDescription(), savedHeader.getDocRef()));
+
+        // Post-save job cost updates (mirrors legacy DocumentAfterSave)
+        persistChildCollections(request, savedHeader.getTransactionPoid(), true, documentId);
 
         BankDebitVoucherResponse response = mapEntityToResponse(savedHeader);
 

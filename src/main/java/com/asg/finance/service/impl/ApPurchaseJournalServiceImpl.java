@@ -388,6 +388,13 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
         Long transactionPoid = savedApPurchaseInvoiceHdrEntity.getTransactionPoid();
 
+        // Log the creation BEFORE child record processing
+        loggingService.createLogSummaryEntry(
+            UserContext.getDocumentId(), 
+            savedApPurchaseInvoiceHdrEntity.getTransactionPoid().toString(), 
+            String.format("%s %s", LogDetailsEnum.CREATED.getDescription(), savedApPurchaseInvoiceHdrEntity.getDocRef())
+        );
+
         String refType = apPurchaseInvoiceHdrDto.getRefType();
         if (refType != null) refType = refType.trim().toUpperCase();
 
@@ -460,13 +467,6 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         }
         saveAssetDetails(transactionPoid, apPurchaseInvoiceHdrDto);
         saveRjvDetails(transactionPoid, apPurchaseInvoiceHdrDto);
-
-        // Log the creation
-        loggingService.createLogSummaryEntry(
-            documentId, 
-            savedApPurchaseInvoiceHdrEntity.getTransactionPoid().toString(), 
-            String.format("%s %s", LogDetailsEnum.CREATED, savedApPurchaseInvoiceHdrEntity.getDocRef())
-        );
 
        /* repository.flush();
         apPurchaseInvoiceItemDtlRepository.flush();

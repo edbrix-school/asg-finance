@@ -87,7 +87,15 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
 
                         final GlImcoChequeRefundHdr savedHeader = hdrRepository.save(header);
                         hdrRepository.flush();
+                        entityManager.refresh(savedHeader); // Get trigger-generated DOC_REF
                         final Long hdrPoid = savedHeader.getTransactionPoid();
+
+                        // Log header creation FIRST
+                        loggingService.createLogSummaryEntry(
+                                UserContext.getDocumentId(),
+                                hdrPoid.toString(),
+                                String.format("%s %s", LogDetailsEnum.CREATED.getDescription(), savedHeader.getDocRef())
+                        );
 
                         List<GlImcoChequeRefundDtl> refundDetails = request.getChequeRefundDetails().stream()
                                         .map(dto -> GlImcoChequeRefundDtl.builder()
@@ -145,12 +153,8 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
 
                         dtlRepository.flush();
                         billDtlRepository.flush();
-                        entityManager.refresh(savedHeader);
 
                         callAfterSaveProcedure(savedHeader, request.getDocRef());
-
-                        loggingService.createLogSummaryEntry(UserContext.getDocumentId(), hdrPoid.toString(),
-                                        String.format("%s %s", LogDetailsEnum.CREATED, savedHeader.getDocRef()));
 
                         return buildResponse(savedHeader, savedRefundDetails, savedBillDetails);
                 } catch (Exception ex) {

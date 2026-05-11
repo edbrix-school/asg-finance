@@ -81,10 +81,6 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
         Long transactionPoid = tx.execute(status -> createHeaderAndDetails(request));
         callUpdatePaymentProcedure(transactionPoid, request.getType());
 
-        String key = transactionPoid != null ? transactionPoid.toString() : null;
-        GlBankDepositVoucherHdr hdr = getGlBankDepositVoucherHdr(transactionPoid);
-        loggingService.createLogSummaryEntry(UserContext.getDocumentId(), key, String.format("%s %s", LogDetailsEnum.CREATED, hdr.getDocRef()));
-
         BankDepositVoucherResponseDto response = getBankDepositVoucherById(transactionPoid);
         handlePostSaveWorkflow(transactionPoid, response.getDocRef(), response.getTransactionDate());
 
@@ -113,10 +109,15 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
                 .build();
 
         GlBankDepositVoucherHdr savedHdr = hdrRepository.save(hdr);
+        entityManager.flush();
+        entityManager.refresh(hdr);
+
+        // Log the creation BEFORE child record processing
+        String docId = UserContext.getDocumentId();
+        String key = savedHdr.getTransactionPoid().toString();
+        loggingService.createLogSummaryEntry(docId, key, String.format("%s %s", LogDetailsEnum.CREATED.getDescription(), savedHdr.getDocRef()));
 
         if (request.getDetails() != null) {
-            String docId = UserContext.getDocumentId();
-            String key = savedHdr.getTransactionPoid().toString();
             List<GlBankDepositVoucherDtl> details = new ArrayList<>();
             long rowId = 1;
             for (BankDepositVoucherDtlDto dto : request.getDetails()) {

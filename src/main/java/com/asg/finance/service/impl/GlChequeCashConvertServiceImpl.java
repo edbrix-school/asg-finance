@@ -256,6 +256,14 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
 
         GlChequeCashConvertHdrEntity savedHdr = glChequeCashConvertHdrRepository.save(hdrEntity);
         entityManager.flush();
+        entityManager.refresh(savedHdr); // Get trigger-generated DOC_REF
+
+        // Log header creation FIRST
+        loggingService.createLogSummaryEntry(
+                UserContext.getDocumentId(),
+                savedHdr.getTransactionPoid().toString(),
+                String.format("%s %s", LogDetailsEnum.CREATED.getDescription(), savedHdr.getDocRef())
+        );
 
         if (dto.getInDtls() != null && !dto.getInDtls().isEmpty()) {
             Long transactionPoid = savedHdr.getTransactionPoid();
@@ -343,8 +351,6 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
 
         String docId = UserContext.getDocumentId();
         String docKeyPoid = savedHdr.getTransactionPoid().toString();
-        //loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, docKeyPoid);
-        loggingService.createLogSummaryEntry("400-110", docKeyPoid, String.format("%s %s", LogDetailsEnum.CREATED, savedHdr.getDocRef()));
         eventPublisher.publishEvent(new GlChequeCashConvertSaveEvent(
                 this,
                 savedHdr,

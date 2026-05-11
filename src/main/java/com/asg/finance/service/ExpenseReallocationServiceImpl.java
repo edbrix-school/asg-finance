@@ -62,7 +62,8 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
     private final LovDataService lovDataService;
 
     @PersistenceContext
-    private final EntityManager entityManager;
+    private EntityManager entityManager;
+
 
     private static final String TRANSACTION_POID = "TRANSACTION_POID";
     private static final String COMPANYCODE = "Company Code";
@@ -87,10 +88,18 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
                 .deleted("N").reportGeneration("N")
                 .narration(request.getNarration()).build();
 
-        final GlExpenseReallocationHdr savedHdr = hdrRepository.saveAndFlush(header);
+        final GlExpenseReallocationHdr savedHdr = hdrRepository.save(header);
+        final Long hdrPoid = savedHdr.getTransactionPoid();
+
+        // Flush and refresh entity to get updated docRef
+        entityManager.flush();
         entityManager.refresh(savedHdr);
 
-        final Long hdrPoid = savedHdr.getTransactionPoid();
+        loggingService.createLogSummaryEntry(
+                UserContext.getDocumentId(),
+                savedHdr.getTransactionPoid().toString(),
+                String.format("%s %s", LogDetailsEnum.CREATED.getDescription(), savedHdr.getDocRef())
+        );
 
         xlDtlRepository.deleteByTransactionPoid(hdrPoid);
         AtomicLong xlDtlDetRowIdSeq = new AtomicLong(1);
@@ -105,7 +114,6 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
             loggingService.createLogSummaryEntry(UserContext.getDocumentId(), hdrPoid.toString(), logDetail);
         });
         log.info("createExpenseReallocation completed for transactionPoid={}", savedHdr.getTransactionPoid());
-        loggingService.createLogSummaryEntry(UserContext.getDocumentId(), savedHdr.getTransactionPoid().toString(), String.format("%s %s", LogDetailsEnum.CREATED.getDescription(), savedHdr.getDocRef()));
         return buildResponse(savedHdr);
     }
 
@@ -766,7 +774,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         List<ExpenseReallocationDetailResponseDto> details;
 
         List<GlExpenseReallocationXlDtl> xlDetails =
-                xlDtlRepository.findByTransactionPoid(header.getTransactionPoid())
+                xlDtlRepository.findByTransactionPoidOrderByCreatedDate(header.getTransactionPoid())
                         .orElse(new ArrayList<>());
 
         if (!xlDetails.isEmpty()) {

@@ -72,9 +72,19 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
         TaxPeriodHdr taxPeriodHdr = taxPeriodHdrRepository.save(entity);
         entityManager.flush();
         entityManager.refresh(entity);
+        
         Long transactionPoid = taxPeriodHdr.getTransactionPoid();
         String key = taxPeriodHdr.getTransactionPoid().toString();
         String docId = UserContext.getDocumentId();
+        String docRef = taxPeriodHdr.getDocRef();
+        
+        // Log header creation first
+        loggingService.createLogSummaryEntry(
+            docId, 
+            key, 
+            String.format("%s %s", LogDetailsEnum.CREATED.getDescription(), docRef)
+        );
+        
         if (request.getCharges() != null && !request.getCharges().isEmpty()) {
             List<GlobalTaxPeriodChargeDtlEntity> chargeEntities = request.getCharges().stream()
                     .map(dto -> GlobalTaxPeriodChargeDtlEntity.builder()
@@ -114,12 +124,6 @@ public class TaxPeriodHdrServiceImpl implements TaxPeriodHdrService {
                 loggingService.createLogSummaryEntry(UserContext.getDocumentId(), transactionPoid.toString() , logDetail);
             });
         }
-
-        loggingService.createLogSummaryEntry(
-            docId, 
-            key, 
-            String.format("%s %s", LogDetailsEnum.CREATED, taxPeriodHdr.getDocRef())
-        );
 
 
         return convertFromTaxPeriodHdrEntityToTaxPeriodHdrDto(taxPeriodHdr);

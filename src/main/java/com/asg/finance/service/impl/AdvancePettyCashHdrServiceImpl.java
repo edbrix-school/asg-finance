@@ -76,7 +76,7 @@ public class AdvancePettyCashHdrServiceImpl implements AdvancePettyCashHdrServic
             loggingService.createLogSummaryEntry(
                 UserContext.getDocumentId(), 
                 key, 
-                String.format("%s %s", LogDetailsEnum.CREATED, saved.getDocRef())
+                String.format("%s %s", LogDetailsEnum.CREATED.getDescription(), saved.getDocRef())
             );
             
             return convertFromEntityToDto(saved);

@@ -77,6 +77,14 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
 
             Long transactionPoid = savedPO.getTransactionPoid();
             
+            // Log header creation first
+            String docRef = savedPO.getDocRef();
+            loggingService.createLogSummaryEntry(
+                documentId, 
+                transactionPoid.toString(), 
+                String.format("%s %s", LogDetailsEnum.CREATED.getDescription(), docRef)
+            );
+            
             // Validate after save to get transaction POID
             validatePurchaseOrder(request, transactionPoid, documentId);
 
@@ -107,13 +115,6 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                 default ->
                         throw new IllegalArgumentException("Invalid RefType: " + refType);
             }
-
-            // Logging for create operation
-            loggingService.createLogSummaryEntry(
-                documentId, 
-                savedPO.getTransactionPoid().toString(), 
-                String.format("%s %s", LogDetailsEnum.CREATED, savedPO.getDocRef())
-            );
 
             return mapToPurchaseOrderResponse(savedPO, savedItems);
 

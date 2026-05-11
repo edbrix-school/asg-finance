@@ -263,14 +263,15 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
             log.info(LOG_MESSAGE_SAVED_HEADER, savedHdr.getTransactionPoid());
             documentBeforeSaveAutoBalance(dto);
 
-            saveDetails(savedHdr.getTransactionPoid(), dto);
-            log.info(LOG_MESSAGE_CREATED_SUCCESS, savedHdr.getTransactionPoid());
-            
             loggingService.createLogSummaryEntry(
                 UserContext.getDocumentId(), 
                 savedHdr.getTransactionPoid().toString(), 
-                String.format("%s %s", LogDetailsEnum.CREATED, savedHdr.getDocRef())
+                String.format("%s %s", LogDetailsEnum.CREATED.getDescription(), savedHdr.getDocRef())
             );
+
+            saveDetails(savedHdr.getTransactionPoid(), dto);
+            log.info(LOG_MESSAGE_CREATED_SUCCESS, savedHdr.getTransactionPoid());
+            
             log.info("logging Succeessfully", savedHdr.getDocRef());
             
             return fetchById(savedHdr.getTransactionPoid());

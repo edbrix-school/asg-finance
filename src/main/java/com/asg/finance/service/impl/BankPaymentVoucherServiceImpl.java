@@ -1059,14 +1059,8 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                 .orElseThrow(() -> new ValidationException("Voucher not found"));
 
         // Create a copy of the existing entity for logging
-        GLPaymentVoucherHDREntity oldEntity = GLPaymentVoucherHDREntity.builder()
-                .transactionPoid(header.getTransactionPoid())
-                .released(header.getReleased())
-                .releasedToPerson(header.getReleasedToPerson())
-                .releasedPersonAddress(header.getReleasedPersonAddress())
-                .releasedByUserCode(header.getReleasedByUserCode())
-                .releasedDate(header.getReleasedDate())
-                .build();
+        GLPaymentVoucherHDREntity oldEntity = new GLPaymentVoucherHDREntity();
+        BeanUtils.copyProperties(header, oldEntity);
 
         spRepository.releaseCheque(
                 header.getGroupPoid(),
@@ -1078,8 +1072,8 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         );
 
         // Reload entity to get updated values
-        GLPaymentVoucherHDREntity updatedHeader = paymentVoucherRepository.findById(transactionPoid)
-                .orElse(header);
+        entityManager.refresh(header);
+        GLPaymentVoucherHDREntity updatedHeader =header;
 
         // Log the update
         String key = transactionPoid.toString();
@@ -1095,14 +1089,8 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                 .orElseThrow(() -> new ValidationException("Voucher not found"));
 
         // Create a copy of the existing entity for logging
-        GLPaymentVoucherHDREntity oldEntity = GLPaymentVoucherHDREntity.builder()
-                .transactionPoid(header.getTransactionPoid())
-                .released(header.getReleased())
-                .releasedToPerson(header.getReleasedToPerson())
-                .releasedPersonAddress(header.getReleasedPersonAddress())
-                .releasedByUserCode(header.getReleasedByUserCode())
-                .releasedDate(header.getReleasedDate())
-                .build();
+        GLPaymentVoucherHDREntity oldEntity = new GLPaymentVoucherHDREntity();
+        BeanUtils.copyProperties(header, oldEntity);
 
         spRepository.unReleaseCheque(
                 UserContext.getGroupPoid(),
@@ -1112,8 +1100,8 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         );
 
         // Reload entity to get updated values
-        GLPaymentVoucherHDREntity updatedHeader = paymentVoucherRepository.findById(transactionPoid)
-                .orElse(header);
+        entityManager.refresh(header);
+        GLPaymentVoucherHDREntity updatedHeader = header;
 
         // Log the update
         String key = transactionPoid.toString();

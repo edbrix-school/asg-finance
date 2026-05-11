@@ -107,6 +107,11 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
             entityManager.flush();
             entityManager.refresh(header);
 
+            // Log header creation first
+            String key = header.getTransactionPoid().toString();
+            String docRef = header.getDocRef() != null ? header.getDocRef() : key;
+            loggingService.createLogSummaryEntry(docId, key, String.format("%s %s", LogDetailsEnum.CREATED.getDescription(), docRef));
+
             log.info("Journal Voucher header saved - TransactionPoid: {}, DocRef: {}",
                     header.getTransactionPoid(), header.getDocRef());
 
@@ -114,9 +119,6 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
 
             log.info("{} created successfully - TransactionPoid: {}, DocRef: {}, RefType: {}",
                     RES_JOURNAL_VOUCHER, header.getTransactionPoid(), header.getDocRef(), request.getRefType());
-
-            String key = header.getTransactionPoid().toString();
-            loggingService.createLogSummaryEntry(docId, key, String.format("%s %s", LogDetailsEnum.CREATED, header.getDocRef()));
 
             return JournalVoucherResponse.builder()
                     .transactionPoid(header.getTransactionPoid())

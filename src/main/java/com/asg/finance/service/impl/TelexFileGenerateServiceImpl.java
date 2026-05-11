@@ -95,12 +95,20 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
 
         GlBankFileHdr savedHdr = hdrRepository.saveAndFlush(hdr);
         entityManager.flush();
-        entityManager.refresh(hdr);
+        entityManager.refresh(savedHdr);
+
+        // Log header creation first
+        String key = savedHdr.getTransactionPoid().toString();
+        String docId = UserContext.getDocumentId();
+        String docRef = savedHdr.getDocRef();
+        loggingService.createLogSummaryEntry(
+            docId,
+            key,
+            String.format("%s %s", LogDetailsEnum.CREATED.getDescription(), docRef)
+        );
 
         if (request.getDetails() != null && !request.getDetails().isEmpty()) {
             List<GlBankFileDtl> details = new ArrayList<>();
-            String docId = UserContext.getDocumentId();
-            String key = savedHdr.getTransactionPoid().toString();
 
             for (int i = 0; i < request.getDetails().size(); i++) {
                 TelexFileDtlDto dto = request.getDetails().get(i);
@@ -119,14 +127,6 @@ public class TelexFileGenerateServiceImpl implements TelexFileGenerateService {
                 loggingService.createLogSummaryEntry(docId, key, logDetail);
             });
         }
-
-        String key = savedHdr.getTransactionPoid().toString();
-        String docId = UserContext.getDocumentId();
-        loggingService.createLogSummaryEntry(
-            docId,
-            key,
-            String.format("%s %s", LogDetailsEnum.CREATED, savedHdr.getDocRef())
-        );
 
         return savedHdr.getTransactionPoid();
     }

@@ -22,6 +22,7 @@ import com.asg.finance.service.TaxSubmissionService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.finance.service.TaxSubmissionStoredProcedureHelper;
+import jakarta.persistence.EntityManager;
 import org.springframework.lang.Nullable;
 
 import java.util.LinkedHashMap;
@@ -59,6 +60,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
     private final CompanyServiceClient companyServiceClient;
     private final LoggingService loggingService;
     private final DocumentDeleteService documentDeleteService;
+    private final EntityManager entityManager;
 
     @Override
     @Transactional
@@ -125,12 +127,16 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         header.setDeleted("N");
 
         GlobalTaxSubmissionHdr savedHeader = hdrRepository.save(header);
+        entityManager.flush();
+        entityManager.refresh(savedHeader);
+        
         log.info("createTaxSubmission persisted header transactionPoid={}", savedHeader.getTransactionPoid());
 
-        // Log the creation
+        // Log the creation first
         String key = savedHeader.getTransactionPoid().toString();
         String docId = UserContext.getDocumentId();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, docId, key);
+        String docRef = savedHeader.getDocRef();
+        loggingService.createLogSummaryEntry(docId, key, String.format("%s %s", LogDetailsEnum.CREATED.getDescription(), docRef));
 
         // Build response
         TaxSubmissionResponse response = buildResponse(savedHeader, new ArrayList<>());

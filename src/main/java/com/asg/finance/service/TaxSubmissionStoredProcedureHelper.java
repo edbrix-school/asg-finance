@@ -75,8 +75,7 @@ public class TaxSubmissionStoredProcedureHelper {
      */
     public String processAfterSave(Long groupPoid, Long companyPoid, String userPoid, Long transactionPoid) {
         try {
-            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("PROC_TAX_SUBMIN_AFTER_SAVE");
-            
+            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("PROC_TAX_SUBMIN_AFTER_SAVE_V2");
             query.registerStoredProcedureParameter("P_GROUP_POID", Long.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("P_COMPANY_POID", Long.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("P_USER_POID", String.class, ParameterMode.IN);

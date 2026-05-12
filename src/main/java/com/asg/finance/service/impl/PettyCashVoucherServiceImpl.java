@@ -2148,7 +2148,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                             ? "noChanges" : "isUpdated";
                     GlPettyCashPaymentDtlRequestDto crRow = GlPettyCashPaymentDtlRequestDto.builder()
                             .detRowId(dbRow.getDetRowId())
-                            .type("Cr")
+                            .type("CR")
                             .glPoid(pettyCashGlPoid)
                             .crAmt(amount)
                             .totalAmount(amount)
@@ -2163,7 +2163,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                             .max().orElse(0L);
                     GlPettyCashPaymentDtlRequestDto crRow = GlPettyCashPaymentDtlRequestDto.builder()
                             .detRowId(maxId + 1)
-                            .type("Cr")
+                            .type("CR")
+                            .companyPoid(requestDto.getCompanyDivPoid())
                             .glPoid(pettyCashGlPoid)
                             .crAmt(amount)
                             .totalAmount(amount)

@@ -1,14 +1,17 @@
 package com.asg.finance.repository;
 
+import com.asg.common.lib.dto.LovGetListDto;
+import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.utility.DateUtil;
+import com.asg.finance.dto.JournalVoucherAssetCapitalizationResponseDto;
 import com.asg.finance.dto.JournalVoucherAssetDetailDto;
 
 import com.asg.common.lib.exception.AsgException;
-import com.asg.finance.dto.JournalVoucherCapitalizationDto;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.ParameterMode;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.StoredProcedureQuery;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
 
@@ -26,6 +29,7 @@ import static com.asg.common.lib.utility.ASGHelperUtils.getGroupId;
 
 @Slf4j
 @Repository
+@RequiredArgsConstructor
 public class JournalVoucherProcRepositoryImpl implements JournalVoucherProcRepository {
 
     private static final String PROC_FA_DEPRE_DTL = "PROC_FA_DEPRE_DTL_FOR_DIS_JV";
@@ -37,6 +41,8 @@ public class JournalVoucherProcRepositoryImpl implements JournalVoucherProcRepos
     private static final String P_LOGIN_USER_POID = "P_LOGIN_USER_POID";
     private static final String P_FA_POID = "P_FA_POID";
     private static final String OUTDATA = "OUTDATA";
+
+    private final LovDataService lovDataService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -87,7 +93,7 @@ public class JournalVoucherProcRepositoryImpl implements JournalVoucherProcRepos
     }
 
     @Override
-    public List<JournalVoucherCapitalizationDto> fetchFixedAssetDetails(Long faPoid) {
+    public List<JournalVoucherAssetCapitalizationResponseDto> fetchFixedAssetDetails(Long faPoid) {
 
         try {
             StoredProcedureQuery query = entityManager
@@ -106,15 +112,28 @@ public class JournalVoucherProcRepositoryImpl implements JournalVoucherProcRepos
 
             query.execute();
 
-            List<JournalVoucherCapitalizationDto> list = new ArrayList<>();
+            List<JournalVoucherAssetCapitalizationResponseDto> list = new ArrayList<>();
 
             try (ResultSet rs = (ResultSet) query.getOutputParameterValue(OUTDATA)) {
                 while (rs != null && rs.next()) {
-                    list.add(JournalVoucherCapitalizationDto.builder()
+
+                    long faCategoryPoid = rs.getLong("FA_CATEGORY_POID");
+                    String assetTypeValue = rs.getString("ASSET_TYPE");
+
+                    LovGetListDto assetTypeDet = null;
+                    try {
+                        Long assetTypePoid = Long.parseLong(assetTypeValue);
+                        assetTypeDet = setAssetTypeLov(assetTypePoid);
+                    } catch (NumberFormatException e) {
+                    }
+
+                    list.add(JournalVoucherAssetCapitalizationResponseDto.builder()
                             .faPoid(faPoid)
                             .faDescription(rs.getString("FA_DESCRIPTION"))
-                            .faCategory(rs.getLong("FA_CATEGORY_POID"))
-                            .assetType(rs.getString("ASSET_TYPE"))
+                            .faCategory(faCategoryPoid)
+                            .fixedAssetCategoryDet(setAssetDetailLov(faCategoryPoid))
+                            .assetType(assetTypeValue)
+                            .assetTypeDet(assetTypeDet)
                             .assetValue(rs.getBigDecimal("GROSS_VALUE"))
                             .build());
                 }
@@ -126,6 +145,13 @@ public class JournalVoucherProcRepositoryImpl implements JournalVoucherProcRepos
         }
     }
 
+    private LovGetListDto setAssetTypeLov(Long assetTypePoid) {
+        return lovDataService.getDetailsByPoidAndLovName(assetTypePoid, "ASSET_TYPE");
+    }
+
+    private LovGetListDto setAssetDetailLov(Long faCategoryPoid) {
+        return lovDataService.getDetailsByPoidAndLovName(faCategoryPoid, "FIXED_ASSET_CATEGORY");
+    }
     @Override
     public void updateAssetDetail(Long transactionPoid) {
         StoredProcedureQuery query = entityManager

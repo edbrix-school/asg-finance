@@ -304,7 +304,7 @@ public class JournalVoucherController {
         @GetMapping("/asset-capitalization-details/{faPoid}")
         public ResponseEntity<?> getAssetCapitalizationDetails(
                         @Parameter(description = "Fixed Asset POID", required = true) @PathVariable Long faPoid) {
-                JournalVoucherCapitalizationDto response = journalVoucherService.getAssetCapitalizationDetails(faPoid);
+                JournalVoucherAssetCapitalizationResponseDto response = journalVoucherService.getAssetCapitalizationDetails(faPoid);
                 return success("Asset capitalization details retrieved successfully", response);
 
         }

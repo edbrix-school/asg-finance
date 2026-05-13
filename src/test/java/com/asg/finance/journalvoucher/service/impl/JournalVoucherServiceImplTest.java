@@ -124,7 +124,7 @@ class JournalVoucherServiceImplTest {
         when(glJournalVoucherHdrRepository.save(any())).thenReturn(hdr);
         when(fixedAssetRepository.existsById(anyLong())).thenReturn(true);
         when(glJournalVoucherHdrRepository.fetchFixedAssetDetails(anyLong()))
-                .thenReturn(Collections.singletonList(new JournalVoucherCapitalizationDto()));
+                .thenReturn(Collections.singletonList(new JournalVoucherAssetCapitalizationResponseDto()));
         
         GLMaster glMaster = new GLMaster();
         glMaster.setControlAcNature("FIXED_ASSET");
@@ -298,9 +298,9 @@ class JournalVoucherServiceImplTest {
     void getAssetCapitalizationDetails_Success() {
         Long poid = 1234L;
         when(glJournalVoucherHdrRepository.fetchFixedAssetDetails(poid))
-                .thenReturn(Collections.singletonList(new JournalVoucherCapitalizationDto()));
+                .thenReturn(Collections.singletonList(new JournalVoucherAssetCapitalizationResponseDto()));
 
-        JournalVoucherCapitalizationDto result = journalVoucherService.getAssetCapitalizationDetails(poid);
+        JournalVoucherAssetCapitalizationResponseDto result = journalVoucherService.getAssetCapitalizationDetails(poid);
 
         assertNotNull(result);
     }
@@ -417,7 +417,7 @@ class JournalVoucherServiceImplTest {
         when(glJournalVoucherHdrRepository.save(any())).thenReturn(existing);
         when(fixedAssetRepository.existsById(anyLong())).thenReturn(true);
         when(glJournalVoucherHdrRepository.fetchFixedAssetDetails(anyLong()))
-                .thenReturn(Collections.singletonList(new JournalVoucherCapitalizationDto()));
+                .thenReturn(Collections.singletonList(new JournalVoucherAssetCapitalizationResponseDto()));
         
         GLMaster glMaster = new GLMaster();
         glMaster.setControlAcNature("FIXED_ASSET");

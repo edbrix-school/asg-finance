@@ -231,6 +231,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         existingEntity.setPrintCompanyPoid(debitNoteDto.getPrintCompanyPoid());
         existingEntity.setRemarks(debitNoteDto.getRemarks());
         debitNoteHdrRepository.save(existingEntity);
+        entityManager.flush();
         entityManager.refresh(existingEntity);
 
         debitNoteDto.setDocRef(existingEntity.getDocRef());

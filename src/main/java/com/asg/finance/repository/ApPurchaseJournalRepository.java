@@ -160,5 +160,12 @@ public interface ApPurchaseJournalRepository {
             Long partyPoid
     );
 
+    Map<String, String> getGlJobRelOldValues(
+            Long loginGroupPoid,
+            Long loginUserPoid,
+            Long loginCompanyPoid,
+            String docId,
+            String transactionPoid
+    );
 
 }

@@ -191,7 +191,7 @@ class JournalVoucherControllerTest {
 
     @Test
     void getAssetCapitalizationDetails_Success() throws Exception {
-        JournalVoucherCapitalizationDto capDto = new JournalVoucherCapitalizationDto();
+        JournalVoucherAssetCapitalizationResponseDto capDto = new JournalVoucherAssetCapitalizationResponseDto();
 
         when(journalVoucherService.getAssetCapitalizationDetails(200L)).thenReturn(capDto);
 

@@ -16,10 +16,10 @@ import lombok.NoArgsConstructor;
 @Builder
 public class GlAccountDetailRequest {
 
-    @NotNull(message = "GL Account Poid is mandatory")
+    @NotNull(message = "Please Select the GL Account")
     private Long glAccountPoId;
 
-    @NotNull(message = "Company Poid is mandatory")
+    @NotNull(message = "Please Select the Company")
     private Long companyPoId;
 
     @NotNull(message = "View Category is mandatory")

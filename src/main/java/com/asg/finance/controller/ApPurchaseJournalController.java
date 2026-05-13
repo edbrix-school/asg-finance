@@ -602,4 +602,23 @@ public class ApPurchaseJournalController {
 
         return success("Party GL POID fetched successfully", glPoid);
     }
+
+    @AllowedAction(UserRolesRightsEnum.VIEW)
+    @GetMapping("/glJobRelOldValues")
+    @Operation(
+            summary = "Get GL Job Related Old Values",
+            description = "Calls PROC_GL_JOB_REL_OLD_VALUES to retrieve the old REF_TYPE and REF_POID for a given document and transaction. Supports DocId 200-103 (Purchase Journal)."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Old values fetched successfully", content = @Content(mediaType = "application/json"))
+    })
+    public ResponseEntity<?> getGlJobRelOldValues(
+            @Parameter(description = "Document ID (e.g. 200-103)", required = true, example = "200-103")
+            @RequestParam String docId,
+            @Parameter(description = "Transaction POID", required = true, example = "71031")
+            @RequestParam String transactionPoid
+    ) {
+        Map<String, String> result = service.getGlJobRelOldValues(docId, transactionPoid);
+        return success("GL job related old values fetched successfully", result);
+    }
 }

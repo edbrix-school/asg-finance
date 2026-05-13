@@ -59,4 +59,6 @@ public interface ApPurchaseServiceJournal {
             Long partyPoid
     );
 
+    Map<String, String> getGlJobRelOldValues(String docId, String transactionPoid);
+
 }

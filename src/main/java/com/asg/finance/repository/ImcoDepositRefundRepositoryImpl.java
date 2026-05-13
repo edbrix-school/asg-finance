@@ -123,7 +123,7 @@ public class ImcoDepositRefundRepositoryImpl implements  ImcoDepositRefundReposi
                 dto.setGlCode(rs.getString("GL_CODE"));
                 dto.setGlDescription(rs.getString("GL_DESCRIPTION"));
                 dto.setCostGroup(rs.getString("COST_GROUP"));
-                dto.setCostPoid(rs.getLong("COST_POID"));
+                dto.setCostPoid(rs.getString("COST_POID"));
                 dto.setAmt(rs.getBigDecimal("AMT"));
                 dto.setGlCompany(rs.getString("GL_COMPANY"));
                 entries.add(dto);

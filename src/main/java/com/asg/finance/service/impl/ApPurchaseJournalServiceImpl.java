@@ -2704,6 +2704,17 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         }
     }
 
+    @Override
+    public Map<String, String> getGlJobRelOldValues(String docId, String transactionPoid) {
+        return apPurchaseJournalRepositoryImpl.getGlJobRelOldValues(
+                UserContext.getGroupPoid(),
+                UserContext.getUserPoid(),
+                UserContext.getCompanyPoid(),
+                docId,
+                transactionPoid
+        );
+    }
+
     private void applyLegacyItemCalculation(ApPurchaseInvoiceItemDtlEntity item,
                                             BigDecimal price,
                                             BigDecimal discount,

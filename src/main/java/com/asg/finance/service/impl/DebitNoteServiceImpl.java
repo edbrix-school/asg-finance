@@ -229,6 +229,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         existingEntity.setFfRef(debitNoteDto.getFfRefPoid() != null ? debitNoteDto.getFfRefPoid().toString() : null);
         existingEntity.setPropertyInvoice(Boolean.TRUE.equals(debitNoteDto.getPropertyInvoice()) ? "Y" : "N");
         existingEntity.setPrintCompanyPoid(debitNoteDto.getPrintCompanyPoid());
+        existingEntity.setRemarks(debitNoteDto.getRemarks());
         debitNoteHdrRepository.save(existingEntity);
         entityManager.refresh(existingEntity);
 

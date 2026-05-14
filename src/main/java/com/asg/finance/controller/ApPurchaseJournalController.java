@@ -398,18 +398,24 @@ public class ApPurchaseJournalController {
         return success("FDA cost updated successfully", result);
     }
 
-    // mapping is incorrect
     @AllowedAction(UserRolesRightsEnum.CREATE)
     @GetMapping("/create-pi-from-po")
     public ResponseEntity<?> createPiFromPo(
-
-            @Parameter(description = "PO POID", required = true, example = "PO-5678")
             @RequestParam String poPoid
     ) {
-        List<ApPiFromPoResponseDto> response =
+
+        PiFromPoApiResponse response =
                 service.createPiFromPo(poPoid);
 
-        return success("PI created from PO successfully", response);
+        String message = response.getMessage();
+
+        if (message != null &&
+                message.toUpperCase().contains("WARNING")) {
+
+            return success(message, response.getData());
+        }
+
+        return success(message, response.getData());
     }
 
     // mapping is incorrect

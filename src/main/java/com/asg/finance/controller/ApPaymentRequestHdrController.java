@@ -7,7 +7,6 @@ import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.service.LoggingService;
-import com.asg.finance.dto.ApPaymentRequestDetailResponse;
 import com.asg.finance.dto.ApPaymentRequestHdrRequestDto;
 import com.asg.finance.dto.ApPaymentRequestHdrResponseDto;
 import com.asg.finance.dto.ApPaymentRequestResponse;

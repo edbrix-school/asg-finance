@@ -41,7 +41,8 @@ public class ApPaymentRequestCustomRepositoryImpl implements ApPaymentRequestCus
     private ApPaymentRequestResponse executeProcedure(
             String procedureName,
             Map<Integer, Object> inParams,
-            List<String> outColumns
+            List<String> outColumns,
+            String detail
     ) {
         return jdbcTemplate.execute(
                 (CallableStatementCreator) con -> {
@@ -101,6 +102,10 @@ public class ApPaymentRequestCustomRepositoryImpl implements ApPaymentRequestCus
                         }
                     }
 
+                    if(records.isEmpty()){
+                        throw new RuntimeException(String.format("No %s to display",detail));
+                    }
+
                     response.setRecords(records);
                     return response;
                 }
@@ -131,7 +136,7 @@ public class ApPaymentRequestCustomRepositoryImpl implements ApPaymentRequestCus
                 REF_DOC_POID, "refDetRowId"
         );
 
-        return executeProcedure("PROC_AP_PR_CREATE_FROM_PO", inParams, columns);
+        return executeProcedure("PROC_AP_PR_CREATE_FROM_PO", inParams, columns, "stocks");
     }
 
     // ================= CREATE FROM MTA =================
@@ -158,7 +163,7 @@ public class ApPaymentRequestCustomRepositoryImpl implements ApPaymentRequestCus
                 REF_DOC_POID, "refDetRowId"
         );
 
-        return executeProcedure("PROC_AP_PR_CREATE_FROM_MTA", inParams, columns);
+        return executeProcedure("PROC_AP_PR_CREATE_FROM_MTA", inParams, columns, "stocks");
     }
 
     // ================= CREATE FROM FF =================
@@ -184,7 +189,7 @@ public class ApPaymentRequestCustomRepositoryImpl implements ApPaymentRequestCus
                 TAX_POID, TAX_PERCENTAGE, TAX_AMOUNT, "chargeAmount"
         );
 
-        return executeProcedure("PROC_AP_PR_CREATE_FROM_FF", inParams, columns);
+        return executeProcedure("PROC_AP_PR_CREATE_FROM_FF", inParams, columns, "charges");
     }
 
     // ================= CREATE FROM FDA =================
@@ -211,7 +216,7 @@ public class ApPaymentRequestCustomRepositoryImpl implements ApPaymentRequestCus
                 TAX_AMOUNT, "chargeAmount"
         );
 
-        return executeProcedure("PROC_AP_PR_CREATE_FROM_FDA", inParams, columns);
+        return executeProcedure("PROC_AP_PR_CREATE_FROM_FDA", inParams, columns, "charges");
     }
 
     private void setSpValues(int index, Object value, CallableStatement cs) {

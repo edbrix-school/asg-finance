@@ -833,8 +833,9 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
     }
 
     @Override
-    public JournalVoucherCapitalizationDto getAssetCapitalizationDetails(Long faPoid) {
-        List<JournalVoucherCapitalizationDto> results = glJournalVoucherHdrRepository.fetchFixedAssetDetails(faPoid);
+    public JournalVoucherAssetCapitalizationResponseDto getAssetCapitalizationDetails(Long faPoid) {
+        List<JournalVoucherAssetCapitalizationResponseDto> results = glJournalVoucherHdrRepository.fetchFixedAssetDetails(faPoid);
+
 
         if (results == null || results.isEmpty()) {
             throw new ResourceNotFoundException(RES_ASSET, FIELD_FA_POID, faPoid);

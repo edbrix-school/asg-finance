@@ -20,7 +20,7 @@ public interface JournalVoucherService {
 
     JournalVoucherAssetDetailDto getAssetDepreciationDetails(Long faPoid);
 
-    JournalVoucherCapitalizationDto getAssetCapitalizationDetails(Long faPoid);
+    JournalVoucherAssetCapitalizationResponseDto getAssetCapitalizationDetails(Long faPoid);
 
     byte[] print(Long transactionPoid) throws Exception;
 }

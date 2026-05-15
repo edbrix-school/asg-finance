@@ -1103,6 +1103,51 @@ public class ApPurchaseJournalRepositoryImpl implements ApPurchaseJournalReposit
         return glPoid;
     }
 
+    @Override
+    public Map<String, String> getGlJobRelOldValues(
+            Long loginGroupPoid,
+            Long loginUserPoid,
+            Long loginCompanyPoid,
+            String docId,
+            String transactionPoid
+    ) {
+
+        Map<String, String> output = new HashMap<>();
+
+        try {
+            StoredProcedureQuery query =
+                    entityManager.createStoredProcedureQuery("PROC_GL_JOB_REL_OLD_VALUES");
+
+            query.registerStoredProcedureParameter("P_LOGIN_GROUP_POID", Long.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("P_LOGIN_USER_POID", Long.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("P_LOGIN_COMPANY_POID", Long.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("P_DOC_ID", String.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("P_TRANSACTION_POID", String.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("P_REF_TYPE", String.class, ParameterMode.OUT);
+            query.registerStoredProcedureParameter("P_REF_POID", String.class, ParameterMode.OUT);
+
+            query.setParameter("P_LOGIN_GROUP_POID", loginGroupPoid);
+            query.setParameter("P_LOGIN_USER_POID", loginUserPoid);
+            query.setParameter("P_LOGIN_COMPANY_POID", loginCompanyPoid);
+            query.setParameter("P_DOC_ID", docId);
+            query.setParameter("P_TRANSACTION_POID", transactionPoid);
+
+            query.execute();
+
+            output.put("refType", (String) query.getOutputParameterValue("P_REF_TYPE"));
+            output.put("refPoid", (String) query.getOutputParameterValue("P_REF_POID"));
+
+            log.info("PROC_GL_JOB_REL_OLD_VALUES executed → refType={}, refPoid={}",
+                    output.get("refType"), output.get("refPoid"));
+
+        } catch (Exception e) {
+            log.error("Error executing PROC_GL_JOB_REL_OLD_VALUES: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to fetch GL job related old values: " + e.getMessage(), e);
+        }
+
+        return output;
+    }
+
     private Long getLong(ResultSet rs, String col) throws SQLException {
         long v = rs.getLong(col);
         return rs.wasNull() ? null : v;

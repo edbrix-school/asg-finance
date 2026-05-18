@@ -1214,8 +1214,13 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                                     );
                                     if (StringUtils.isNotEmpty(x.getCostPoid()) && StringUtils.isNotEmpty(x.getCostGroup())) {
                                         try {
-                                            Long poid = Long.parseLong(x.getCostPoid());
-                                            cb.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(poid, x.getCostGroup()));
+                                            LovGetListDto codeDet  = lovService.getDetailsByCodeAndLovName(x.getCostPoid(), x.getCostGroup());
+                                            cb.setCostCenterDetails(codeDet);
+                                            if (codeDet.getPoid() == null) {
+                                                LovGetListDto det = lovService.getDetailsByPoidAndLovName(Long.valueOf(x.getCostPoid()), x.getCostGroup());
+                                                cb.setCostCenterDetails(det);
+                                                cb.setCostPoid(det.getCode());
+                                            }
                                         } catch (NumberFormatException e) {
                                             cb.setCostCenterDetails(lovService.getDetailsByCodeAndLovName(x.getCostPoid(), x.getCostGroup()));
                                         }

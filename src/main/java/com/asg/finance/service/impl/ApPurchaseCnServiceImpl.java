@@ -1299,8 +1299,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                 .companyPoid(companyPoid)
                 .currencyCode(dto.getCurrencyCode())
                 .currencyRate(dto.getCurrencyRate())
-                .supplierPoid(dto.getSupplierPoid())
-                .principalPoid(dto.getPrincipalPoid())
+                .supplierPoid(dto.getSupplierPoid() != null ? dto.getSupplierPoid() : dto.getPrincipalPoid())
                 .subTotal(dto.getSubTotal())
                 .discount(dto.getDiscount())
                 .grandTotal(dto.getGrandTotal())
@@ -1351,7 +1350,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         entity.setCompanyPoid(companyPoid);
         entity.setCurrencyCode(dto.getCurrencyCode());
         entity.setCurrencyRate(dto.getCurrencyRate());
-        entity.setSupplierPoid(dto.getSupplierPoid());
+        entity.setSupplierPoid(dto.getSupplierPoid() != null ? dto.getSupplierPoid() : dto.getPrincipalPoid());
         entity.setSubTotal(dto.getSubTotal());
         entity.setDiscount(dto.getDiscount());
         entity.setGrandTotal(dto.getGrandTotal());
@@ -1391,8 +1390,8 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         dto.setCompanyPoid(entity.getCompanyPoid());
         dto.setCurrencyCode(entity.getCurrencyCode());
         dto.setCurrencyRate(entity.getCurrencyRate());
-        dto.setSupplierPoid(entity.getSupplierPoid());
-        dto.setPrincipalPoid(entity.getPrincipalPoid());
+        dto.setSupplierPoid(entity.getPartyType() != null && PARTY_TYPE_SUPPLIER.equals(entity.getPartyType()) ? entity.getSupplierPoid() : null);
+        dto.setPrincipalPoid(entity.getPartyType() != null && !PARTY_TYPE_SUPPLIER.equals(entity.getPartyType()) ? entity.getSupplierPoid() : null);
         dto.setSubTotal(entity.getSubTotal());
         dto.setDiscount(entity.getDiscount());
         dto.setGrandTotal(entity.getGrandTotal());
@@ -1429,7 +1428,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         if (PARTY_TYPE_SUPPLIER.equals(entity.getPartyType()) && entity.getSupplierPoid() != null) {
             dto.setPartyDet(lovService.getDetailsByPoidAndLovName(entity.getSupplierPoid(), LOV_SUPPLIER_MASTER_FOR_PJ_CN));
         } else {
-            dto.setPartyDet(lovService.getDetailsByPoidAndLovName(entity.getPrincipalPoid(), LOV_PRINCIPAL_MASTER_FOR_PJ_CN));
+            dto.setPartyDet(lovService.getDetailsByPoidAndLovName(entity.getSupplierPoid(), LOV_PRINCIPAL_MASTER_FOR_PJ_CN));
         }
         
         return dto;

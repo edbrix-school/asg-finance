@@ -1300,6 +1300,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                 .currencyCode(dto.getCurrencyCode())
                 .currencyRate(dto.getCurrencyRate())
                 .supplierPoid(dto.getSupplierPoid())
+                .principalPoid(dto.getPrincipalPoid())
                 .subTotal(dto.getSubTotal())
                 .discount(dto.getDiscount())
                 .grandTotal(dto.getGrandTotal())
@@ -1391,6 +1392,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         dto.setCurrencyCode(entity.getCurrencyCode());
         dto.setCurrencyRate(entity.getCurrencyRate());
         dto.setSupplierPoid(entity.getSupplierPoid());
+        dto.setPrincipalPoid(entity.getPrincipalPoid());
         dto.setSubTotal(entity.getSubTotal());
         dto.setDiscount(entity.getDiscount());
         dto.setGrandTotal(entity.getGrandTotal());
@@ -1426,6 +1428,8 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         // Set party details based on party type
         if (PARTY_TYPE_SUPPLIER.equals(entity.getPartyType()) && entity.getSupplierPoid() != null) {
             dto.setPartyDet(lovService.getDetailsByPoidAndLovName(entity.getSupplierPoid(), LOV_SUPPLIER_MASTER_FOR_PJ_CN));
+        } else {
+            dto.setPartyDet(lovService.getDetailsByPoidAndLovName(entity.getPrincipalPoid(), LOV_PRINCIPAL_MASTER_FOR_PJ_CN));
         }
         
         return dto;

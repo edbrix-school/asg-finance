@@ -556,25 +556,23 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                         .map(ApPurchaseInvoiceItemDtlEntity::getTotal)
                         .reduce(BigDecimal.ZERO, BigDecimal::add);*/
 
-        BigDecimal itemTotal =
+        BigDecimal itemAmountTotal =
                 items.stream()
-                        .map(ApPurchaseInvoiceItemDtlEntity::getTotal)
+                        .map(ApPurchaseInvoiceItemDtlEntity::getAmount)
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal itemTotalRounded = itemTotal.setScale(3, RoundingMode.HALF_UP);
+        BigDecimal itemAmountTotalRounded = itemAmountTotal.setScale(3, RoundingMode.HALF_UP);
         BigDecimal invoiceTotalRounded = dto.getBhdAmount().setScale(3, RoundingMode.HALF_UP);
 
-        if (itemTotalRounded.compareTo(invoiceTotalRounded) != 0) {
+        if (dto.getRoundingAmount() != null) {
+            itemAmountTotalRounded = itemAmountTotalRounded.add(
+                    dto.getRoundingAmount().setScale(3, RoundingMode.HALF_UP)
+            );
+        }
 
-            BigDecimal difference = itemTotalRounded.subtract(invoiceTotalRounded);
-
+        if (itemAmountTotalRounded.compareTo(invoiceTotalRounded) != 0) {
             throw new ValidationException(
-                    "Item total mismatch. Calculated Item Total = "
-                            + itemTotalRounded
-                            + ", Invoice Total = "
-                            + invoiceTotalRounded
-                            + ", Difference = "
-                            + difference
+                    "Paid Amount(" + invoiceTotalRounded + ") is not matching with Total Amount(" + itemAmountTotalRounded + ")..."
             );
         }
 
@@ -1935,7 +1933,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
     }
 
     @Override
-    public List<ApPiFromPoResponseDto> createPiFromPo(String poPoid) {
+    public PiFromPoApiResponse createPiFromPo(String poPoid) {
 
         StringBuilder result = new StringBuilder();
 
@@ -1944,10 +1942,15 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                         UserContext.getGroupPoid(),
                         UserContext.getCompanyPoid(),
                         UserContext.getUserPoid(),
-                        poPoid, result);
+                        poPoid,
+                        result);
 
         log.info("Result from PROC_AP_PI_CREATE_FROM_PO → {}", result);
-        return list;
+
+        return PiFromPoApiResponse.builder()
+                .message(result.toString())
+                .data(list)
+                .build();
     }
 
     @Override

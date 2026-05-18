@@ -551,13 +551,28 @@ public class ApPurchaseJournalRepositoryImpl implements ApPurchaseJournalReposit
 
             query.execute();
 
-            String result = (String) query.getOutputParameterValue("P_RESULT");
+          /*  String result = (String) query.getOutputParameterValue("P_RESULT");
             if (resultMsg != null) {
                 resultMsg.append(result);
             }
 
             // 🔑 THIS LINE FIXES EVERYTHING
             @SuppressWarnings("unchecked")
+            List<Object[]> rows = query.getResultList();*/
+            String result = (String) query.getOutputParameterValue("P_RESULT");
+
+            if (resultMsg != null) {
+                resultMsg.append(result);
+            }
+
+            if (result != null &&
+                    (result.startsWith("WARNING") || result.startsWith("ERROR"))) {
+
+                log.warn("Procedure returned message: {}", result);
+                return responseList; // return empty list
+            }
+
+
             List<Object[]> rows = query.getResultList();
 
             for (Object[] row : rows) {

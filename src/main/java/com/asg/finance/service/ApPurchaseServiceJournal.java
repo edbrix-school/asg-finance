@@ -35,7 +35,7 @@ public interface ApPurchaseServiceJournal {
 
     String updateMtaPoBookingDetails(String poPoid, Long bookPoid);
 
-    List<ApPiFromPoResponseDto> createPiFromPo(String poPoid);
+    PiFromPoApiResponse  createPiFromPo(String poPoid);
 
     List<ApPiFromGeneralPoResponseDto> createPiFromGeneralPo(String poPoid);
 

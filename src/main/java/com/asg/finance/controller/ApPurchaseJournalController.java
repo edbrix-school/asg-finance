@@ -26,6 +26,7 @@ import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.HttpHeaders;
@@ -394,8 +395,16 @@ public class ApPurchaseJournalController {
             @PathVariable String fdaPoid,
             @RequestParam(required = false) Long piPoid
     ) {
-        String result = service.updateFdaCost(fdaPoid, piPoid);
-        return success("FDA cost updated successfully", result);
+        try {
+
+            String result = service.updateFdaCost(fdaPoid, piPoid);
+
+            return success("FDA cost updated successfully", result);
+
+        } catch (Exception e) {
+
+            return error(e.getMessage(), HttpStatus.BAD_REQUEST.value());
+        }
     }
 
     @AllowedAction(UserRolesRightsEnum.CREATE)

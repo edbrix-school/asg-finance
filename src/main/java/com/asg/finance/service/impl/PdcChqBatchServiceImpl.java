@@ -104,6 +104,7 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
         hdr.setChqStartNo(dto.getChqStartNo());
         hdr.setChqStartDate(dto.getChqStartDate() != null ? dto.getChqStartDate() : DateUtil.getCurrentDateInUserTimeZone());
         hdr.setChqAmount(dto.getChqAmount());
+        hdr.setConfidentialRemarks(dto.getConfidentialRemarks());
         hdr.setNoOfChqs(dto.getNoOfChqs());
         hdr.setTotalAmount(dto.getChqAmount() * dto.getNoOfChqs());
         hdr.setNarration(dto.getNarration());

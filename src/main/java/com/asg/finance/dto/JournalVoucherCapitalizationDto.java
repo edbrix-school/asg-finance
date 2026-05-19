@@ -1,5 +1,6 @@
 package com.asg.finance.dto;
 
+import com.asg.common.lib.dto.LovGetListDto;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,11 +19,12 @@ public class JournalVoucherCapitalizationDto {
 
     @NotNull(message = "Asset value is required")
     private BigDecimal assetValue;
-
+    private LovGetListDto fixedAssetCategoryDet;
     private Long detRowId;
     private String actionType;
     private String faDescription;
     private Long faCategory;
+    private LovGetListDto assetTypeDet;
     private String assetType;
     private String remarks;
 }

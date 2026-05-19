@@ -104,25 +104,6 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
             throw new ValidationException("Insufficient Data");
         }
 
-        StoredProcedureQuery sp = createSP("PROC_GL_BANK_RECONCILE_SAVE");
-        regIn(sp, P_TRANSACTION_GROUP_POID, Long.class);
-        regIn(sp, P_TRANSACTION_COMPANY_POID, Long.class);
-        regIn(sp, P_DOC_ID, String.class);
-        regIn(sp, P_TRANSACTION_POID, Long.class);
-        regIn(sp, "P_TRANSACTION_DATE", java.sql.Date.class);
-        regIn(sp, P_DOC_REF, String.class);
-        regIn(sp, "P_CHEQUE_REF", String.class);
-        regIn(sp, "P_DET_ROW_ID", Long.class);
-        regIn(sp, "P_NARRATION", String.class);
-        regIn(sp, "P_GL_COMPANY_POID", Long.class);
-        regIn(sp, P_GL_POID, Long.class);
-        regIn(sp, "P_DR_AMT", Double.class);
-        regIn(sp, "P_CR_AMT", Double.class);
-        regIn(sp, P_POSTED_BY, Long.class);
-        regIn(sp, "P_CLEARANCE_DATE", java.sql.Date.class);
-        regOut(sp, P_RESULT, String.class);
-        regIn(sp, "p_user_auto", String.class);
-
         String response = "Successfully Updated.";
 
         for (BankReconciliationRequest dto : req) {
@@ -136,6 +117,25 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
                     );
                 }
             }
+
+            StoredProcedureQuery sp = createSP("PROC_GL_BANK_RECONCILE_SAVE");
+            regIn(sp, P_TRANSACTION_GROUP_POID, Long.class);
+            regIn(sp, P_TRANSACTION_COMPANY_POID, Long.class);
+            regIn(sp, P_DOC_ID, String.class);
+            regIn(sp, P_TRANSACTION_POID, Long.class);
+            regIn(sp, "P_TRANSACTION_DATE", java.sql.Date.class);
+            regIn(sp, P_DOC_REF, String.class);
+            regIn(sp, "P_CHEQUE_REF", String.class);
+            regIn(sp, "P_DET_ROW_ID", Long.class);
+            regIn(sp, "P_NARRATION", String.class);
+            regIn(sp, "P_GL_COMPANY_POID", Long.class);
+            regIn(sp, P_GL_POID, Long.class);
+            regIn(sp, "P_DR_AMT", Double.class);
+            regIn(sp, "P_CR_AMT", Double.class);
+            regIn(sp, P_POSTED_BY, Long.class);
+            regIn(sp, "P_CLEARANCE_DATE", java.sql.Date.class);
+            regOut(sp, P_RESULT, String.class);
+            regIn(sp, "p_user_auto", String.class);
 
             set(sp, P_TRANSACTION_GROUP_POID, dto.getTransactionGroupPoid());
             set(sp, P_TRANSACTION_COMPANY_POID, dto.getTransactionCompanyPoid());

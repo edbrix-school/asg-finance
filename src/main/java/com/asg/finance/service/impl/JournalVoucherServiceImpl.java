@@ -1029,12 +1029,23 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
     }
 
     private JournalVoucherCapitalizationDto mapCapDetail(GlJournalFaCapitalization dtl) {
+        LovGetListDto assetTypeDet = null;
+        String assetTypeValue = dtl.getAssetType();
+
+        try {
+            Long assetTypePoid = Long.parseLong(assetTypeValue);
+            assetTypeDet = setAssetTypeLov(assetTypePoid);
+        } catch (NumberFormatException ignored) {
+        }
+
         return JournalVoucherCapitalizationDto.builder()
                 .detRowId(dtl.getDetRowId())
                 .faPoid(dtl.getFaPoid())
                 .faDescription(dtl.getFaDescription())
                 .faCategory(dtl.getFaCategory())
+                .fixedAssetCategoryDet(setAssetDetailLov(dtl.getFaCategory()))
                 .assetType(dtl.getAssetType())
+                .assetTypeDet(assetTypeDet)
                 .assetValue(dtl.getAssetValue())
                 .remarks(dtl.getRemarks())
                 .build();
@@ -1129,5 +1140,12 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         detail.setAssetType(dto.getAssetType());
         detail.setAssetValue(dto.getAssetValue());
         detail.setRemarks(dto.getRemarks());
+    }
+    private LovGetListDto setAssetTypeLov(Long assetTypePoid) {
+        return lovDataService.getDetailsByPoidAndLovName(assetTypePoid, "ASSET_TYPE");
+    }
+
+    private LovGetListDto setAssetDetailLov(Long faCategoryPoid) {
+        return lovDataService.getDetailsByPoidAndLovName(faCategoryPoid, "FIXED_ASSET_CATEGORY");
     }
 }

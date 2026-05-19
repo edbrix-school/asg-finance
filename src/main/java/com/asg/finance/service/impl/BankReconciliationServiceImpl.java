@@ -7,7 +7,6 @@ import com.asg.common.lib.service.PrintService;
 import com.asg.finance.dto.*;
 import com.asg.finance.repository.BankReconciliationRepository;
 import com.asg.finance.service.BankReconciliationService;
-import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JasperReport;
@@ -28,7 +27,6 @@ public class BankReconciliationServiceImpl implements BankReconciliationService 
     private final PrintService printService;
     private final DataSource dataSource;
     private final LoggingService loggingService;
-    private final EntityManager entityManager;
 
     @Override
     public List<BankReconciliationResponse> getReconciliationView(Long groupPoid, Long companyPoid, Long bankPoid,
@@ -45,8 +43,6 @@ public class BankReconciliationServiceImpl implements BankReconciliationService 
     @Override
     public String saveReconciliation(List<BankReconciliationRequest> dto) {
         String result = repository.saveReconciliation(dto);
-        entityManager.flush();
-        entityManager.refresh(dto);
 
         // Log the creation if successful
         if (result != null && !result.toLowerCase().startsWith("error")) {

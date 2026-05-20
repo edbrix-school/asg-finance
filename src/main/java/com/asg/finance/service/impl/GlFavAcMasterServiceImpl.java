@@ -41,6 +41,8 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static com.asg.finance.utility.Constants.*;
+
 /**
  * Service implementation for Key Favorite Account Master operations
  */
@@ -81,14 +83,8 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
             throw new ValidationException("At least one GL account must be mapped");
         }
 
-        // Validate Company and View Category are mandatory for all GL accounts
         for (GlAccountDetailRequest glAccount : request.getGlAccounts()) {
-            if (glAccount.getCompanyPoId() == null) {
-                throw new ValidationException("Company is mandatory for all GL accounts");
-            }
-            if (glAccount.getViewCategoryPoid() == null || glAccount.getViewCategoryPoid().isBlank()) {
-                throw new ValidationException("View Category is mandatory for all GL accounts");
-            }
+            validateViewCategory(glAccount.getViewCategory());
         }
 
         // Validate GL Account should not be duplicated
@@ -122,198 +118,72 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
         String docId = UserContext.getDocumentId();
         String docKeyPoid = savedMaster.getFavAcPoid().toString();
 
+        Long[] maxGlDetRowId = {0L};
         if (request.getGlAccounts() != null && !request.getGlAccounts().isEmpty()) {
             for (GlAccountDetailRequest glAccountRequest : request.getGlAccounts()) {
-                String rawAction = glAccountRequest.getActionType();
-                String action = (rawAction == null || rawAction.trim().isEmpty())
-                        ? "ISCREATED"  
-                        : rawAction.trim().toUpperCase();
-                
-                action = switch (action) {
-                    case "ISCREATED", "CREATED", "NEW" -> "ISCREATED";
-                    case "ISUPDATED", "UPDATED" -> "ISUPDATED";
-                    case "ISDELETED", "DELETED" -> "ISDELETED";
-                    default -> "NOCHANGES";
-                };
+                String action = normalizeDetailActionType(glAccountRequest.getActionType());
                 
                 switch (action) {
-                    case "NOCHANGES" -> {
+                    case ACTION_NOCHANGES -> {
                         continue;
                     }
-                    case "ISDELETED" -> {
+                    case ACTION_ISDELETED -> {
                         continue;
                     }
-                    case "ISCREATED" -> {
-                        if (glAccountRequest.getDetRowId() != null) {
-                            Optional<GlFavAcMasterGlAcDtl> existingEntityOpt = glAcDtlRepository
-                                    .findByFavAcPoidAndDetRowId(savedMaster.getFavAcPoid(), glAccountRequest.getDetRowId());
-                            
-                            if (existingEntityOpt.isPresent()) {
-                                GlFavAcMasterGlAcDtl existingEntity = existingEntityOpt.get();
-                                existingEntity.setGlPoid(glAccountRequest.getGlAccountPoId());
-                                existingEntity.setCompany(glAccountRequest.getCompanyPoId());
-                                existingEntity.setViewCategory(glAccountRequest.getViewCategoryPoid());
-                                existingEntity.setRemarks(glAccountRequest.getRemarks());
-                                existingEntity.setSeqNo(glAccountRequest.getSeqNo());
-                                glAcDtlRepository.save(existingEntity);
+                    case ACTION_ISCREATED -> {
+                        Long detRowId = glAccountRequest.getDetRowId() != null
+                                ? glAccountRequest.getDetRowId()
+                                : ++maxGlDetRowId[0];
+                        GlFavAcMasterGlAcDtl glAcDtl = GlFavAcMasterGlAcDtl.builder()
+                                .favAcPoid(savedMaster.getFavAcPoid())
+                                .detRowId(detRowId)
+                                .glPoid(glAccountRequest.getGlAccountPoId())
+                                .company(glAccountRequest.getCompanyPoId())
+                                .viewCategory(glAccountRequest.getViewCategory())
+                                .remarks(glAccountRequest.getRemarks())
+                                .seqNo(glAccountRequest.getSeqNo())
+                                .build();
+                        glAcDtlRepository.save(glAcDtl);
 
-                                String createSummaryMessage = String.format(
-                                        "Row Created on Favorite Account Master GL Account Detail with DetRowId: %s",
-                                        existingEntity.getDetRowId());
-                                detailSummaryLogs.add(createSummaryLogEntry(
-                                        LogDetailsEnum.CREATED, docId, docKeyPoid, createSummaryMessage, now));
-                            } else {
-                                GlFavAcMasterGlAcDtl glAcDtl = GlFavAcMasterGlAcDtl.builder()
-                                        .favAcPoid(savedMaster.getFavAcPoid())
-                                        .detRowId(glAccountRequest.getDetRowId()) // Frontend provides detRowId
-                                        .glPoid(glAccountRequest.getGlAccountPoId())
-                                        .company(glAccountRequest.getCompanyPoId())
-                                        .viewCategory(glAccountRequest.getViewCategoryPoid())
-                                        .remarks(glAccountRequest.getRemarks())
-                                        .seqNo(glAccountRequest.getSeqNo())
-                                        .build();
-                                glAcDtlRepository.save(glAcDtl);
-
-                                String createSummaryMessage = String.format(
-                                        "Row Created on Favorite Account Master GL Account Detail  with DetRowId: %s",
-                                        glAcDtl.getDetRowId());
-                                detailSummaryLogs.add(createSummaryLogEntry(
-                                        LogDetailsEnum.CREATED, docId, docKeyPoid, createSummaryMessage, now));
-                            }
-                        } else {
-                            throw new ValidationException("DetRowId is required for create operation");
-                        }
-                    }
-                    case "ISUPDATED" -> {
-                        if (glAccountRequest.getDetRowId() == null) {
-                            throw new ValidationException("DetRowId is required for update operation");
-                        }
-                        GlFavAcMasterGlAcDtl existingGlAcDtl = glAcDtlRepository
-                                .findByFavAcPoidAndDetRowId(savedMaster.getFavAcPoid(), glAccountRequest.getDetRowId())
-                                .orElse(null);
-                        
-                        if (existingGlAcDtl != null) {
-                            existingGlAcDtl.setGlPoid(glAccountRequest.getGlAccountPoId());
-                            existingGlAcDtl.setCompany(glAccountRequest.getCompanyPoId());
-                            existingGlAcDtl.setViewCategory(glAccountRequest.getViewCategoryPoid());
-                            existingGlAcDtl.setRemarks(glAccountRequest.getRemarks());
-                            existingGlAcDtl.setSeqNo(glAccountRequest.getSeqNo());
-                            glAcDtlRepository.save(existingGlAcDtl);
-
-                            String createSummaryMessage = String.format(
-                                    "Row Created on Favorite Account Master GL Account Detail with DetRowId: %s",
-                                    existingGlAcDtl.getDetRowId());
-                            detailSummaryLogs.add(createSummaryLogEntry(
-                                    LogDetailsEnum.CREATED, docId, docKeyPoid, createSummaryMessage, now));
-                        } else {
-                            GlFavAcMasterGlAcDtl glAcDtl = GlFavAcMasterGlAcDtl.builder()
-                                    .favAcPoid(savedMaster.getFavAcPoid())
-                                    .detRowId(glAccountRequest.getDetRowId())
-                                    .glPoid(glAccountRequest.getGlAccountPoId())
-                                    .company(glAccountRequest.getCompanyPoId())
-                                    .viewCategory(glAccountRequest.getViewCategoryPoid())
-                                    .remarks(glAccountRequest.getRemarks())
-                                    .seqNo(glAccountRequest.getSeqNo())
-                                    .build();
-                            glAcDtlRepository.save(glAcDtl);
-
-                            String createSummaryMessage = String.format(
-                                    "Row Created on Favorite Account Master GL Account Detail with DetRowId: %s",
-                                    glAcDtl.getDetRowId());
-                            detailSummaryLogs.add(createSummaryLogEntry(
-                                    LogDetailsEnum.CREATED, docId, docKeyPoid, createSummaryMessage, now));
-                        }
+                        String createSummaryMessage = String.format(
+                                "Row Created on Favorite Account Master GL Account Detail with DetRowId: %s",
+                                detRowId);
+                        detailSummaryLogs.add(createSummaryLogEntry(
+                                LogDetailsEnum.CREATED, docId, docKeyPoid, createSummaryMessage, now));
                     }
                 }
                             }
         }
 
         // Create user role detail records
+        Long[] maxUserRoleDetRowId = {0L};
         if (request.getUserRoles() != null && !request.getUserRoles().isEmpty()) {
             for (UserRoleDetailRequest userRoleRequest : request.getUserRoles()) {
-                String rawAction = userRoleRequest.getActionType();
-                String action = (rawAction == null || rawAction.trim().isEmpty())
-                        ? "ISCREATED"  
-                        : rawAction.trim().toUpperCase();
-                
-                action = switch (action) {
-                    case "ISCREATED", "CREATED", "NEW" -> "ISCREATED";
-                    case "ISUPDATED", "UPDATED" -> "ISUPDATED";
-                    case "ISDELETED", "DELETED" -> "ISDELETED";
-                    default -> "NOCHANGES";
-                };
+                String action = normalizeDetailActionType(userRoleRequest.getActionType());
                 
                 switch (action) {
-                    case "NOCHANGES" -> {
+                    case ACTION_NOCHANGES -> {
                         continue;
                     }
-                    case "ISDELETED" -> {
+                    case ACTION_ISDELETED -> {
                         continue;
                     }
-                    case "ISCREATED" -> {
-                        if (userRoleRequest.getDetRowId() != null) {
-                            Optional<GlFavAcMasterUserRoleDtl> existingEntityOpt = userRoleDtlRepository
-                                    .findByFavAcPoidAndDetRowId(savedMaster.getFavAcPoid(), userRoleRequest.getDetRowId());
-                            
-                            if (existingEntityOpt.isPresent()) {
-                                GlFavAcMasterUserRoleDtl existingEntity = existingEntityOpt.get();
-                                existingEntity.setUserRolePoid(userRoleRequest.getUserRolePoid());
-                                userRoleDtlRepository.save(existingEntity);
+                    case ACTION_ISCREATED -> {
+                        Long detRowId = userRoleRequest.getDetRowId() != null
+                                ? userRoleRequest.getDetRowId()
+                                : ++maxUserRoleDetRowId[0];
+                        GlFavAcMasterUserRoleDtl userRoleDtl = GlFavAcMasterUserRoleDtl.builder()
+                                .favAcPoid(savedMaster.getFavAcPoid())
+                                .detRowId(detRowId)
+                                .userRolePoid(userRoleRequest.getUserRolePoid())
+                                .build();
+                        userRoleDtlRepository.save(userRoleDtl);
 
-                                String createSummaryMessage = String.format(
-                                        "Row Created on Favorite Account Master User Role Detail with DetRowId: %s",
-                                        existingEntity.getDetRowId());
-                                detailSummaryLogs.add(createSummaryLogEntry(
-                                        LogDetailsEnum.CREATED, docId, docKeyPoid, createSummaryMessage, now));
-                            } else {
-                                GlFavAcMasterUserRoleDtl userRoleDtl = GlFavAcMasterUserRoleDtl.builder()
-                                        .favAcPoid(savedMaster.getFavAcPoid())
-                                        .detRowId(userRoleRequest.getDetRowId()) // Frontend provides detRowId
-                                        .userRolePoid(userRoleRequest.getUserRolePoid())
-                                        .build();
-                                userRoleDtlRepository.save(userRoleDtl);
-
-                                String createSummaryMessage = String.format(
-                                        "Row Created on Favorite Account Master User Role Detail with DetRowId: %s",
-                                        userRoleDtl.getDetRowId());
-                                detailSummaryLogs.add(createSummaryLogEntry(
-                                        LogDetailsEnum.CREATED, docId, docKeyPoid, createSummaryMessage, now));
-                            }
-                        } else {
-                            throw new ValidationException("DetRowId is required for create operation");
-                        }
-                    }
-                    case "ISUPDATED" -> {
-                        if (userRoleRequest.getDetRowId() == null) {
-                            throw new ValidationException("DetRowId is required for update operation");
-                        }
-                        GlFavAcMasterUserRoleDtl existingUserRoleDtl = userRoleDtlRepository
-                                .findByFavAcPoidAndDetRowId(savedMaster.getFavAcPoid(), userRoleRequest.getDetRowId())
-                                .orElse(null);
-                        
-                        if (existingUserRoleDtl != null) {
-                            existingUserRoleDtl.setUserRolePoid(userRoleRequest.getUserRolePoid());
-                            userRoleDtlRepository.save(existingUserRoleDtl);
-
-                            String createSummaryMessage = String.format(
-                                    "Row Created on Favorite Account Master User Role Detail with DetRowId: %s",
-                                    existingUserRoleDtl.getDetRowId());
-                            detailSummaryLogs.add(createSummaryLogEntry(
-                                    LogDetailsEnum.CREATED, docId, docKeyPoid, createSummaryMessage, now));
-                        } else {
-                            GlFavAcMasterUserRoleDtl userRoleDtl = GlFavAcMasterUserRoleDtl.builder()
-                                    .favAcPoid(savedMaster.getFavAcPoid())
-                                    .detRowId(userRoleRequest.getDetRowId())
-                                    .userRolePoid(userRoleRequest.getUserRolePoid())
-                                    .build();
-                            userRoleDtlRepository.save(userRoleDtl);
-
-                            String createSummaryMessage = String.format(
-                                    "Row Created on Favorite Account Master User Role Detail with DetRowId: %s",
-                                    userRoleDtl.getDetRowId());
-                            detailSummaryLogs.add(createSummaryLogEntry(
-                                    LogDetailsEnum.CREATED, docId, docKeyPoid, createSummaryMessage, now));
-                        }
+                        String createSummaryMessage = String.format(
+                                "Row Created on Favorite Account Master User Role Detail with DetRowId: %s",
+                                detRowId);
+                        detailSummaryLogs.add(createSummaryLogEntry(
+                                LogDetailsEnum.CREATED, docId, docKeyPoid, createSummaryMessage, now));
                     }
                 }
                 
@@ -357,14 +227,9 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
             throw new ValidationException("At least one GL account must be mapped");
         }
 
-        // Validate Company and View Category are mandatory for all GL accounts
+        // View Category is mandatory for each GL row (LOV code string); company is optional
         for (GlAccountDetailRequest glAccount : request.getGlAccounts()) {
-            if (glAccount.getCompanyPoId() == null) {
-                throw new ValidationException("Company is mandatory for all GL accounts");
-            }
-            if (glAccount.getViewCategoryPoid() == null || glAccount.getViewCategoryPoid().isBlank()) {
-                throw new ValidationException("View Category is mandatory for all GL accounts");
-            }
+            validateViewCategory(glAccount.getViewCategory());
         }
 
         // Validate GL Account should not be duplicated
@@ -397,6 +262,10 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
         List<GlFavAcMasterGlAcDtl> oldGlAcDtls = glAcDtlRepository.findByFavAcPoidOrderByDetRowId(favAcPoid);
         Map<Long, GlFavAcMasterGlAcDtl> oldGlAcMap = oldGlAcDtls.stream()
                 .collect(Collectors.toMap(GlFavAcMasterGlAcDtl::getDetRowId, Function.identity(), (first, second) -> first));
+        Long[] maxGlDetRowId = {oldGlAcDtls.stream()
+                .map(GlFavAcMasterGlAcDtl::getDetRowId)
+                .max(Long::compareTo)
+                .orElse(0L)};
         
         List<GlFavAcMasterGlAcDtl> toSave = new ArrayList<>();
         List<GlFavAcMasterGlAcDtl> toDelete = new ArrayList<>();
@@ -409,33 +278,34 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
             for (GlAccountDetailRequest glAccountRequest : request.getGlAccounts()) {
                 String actionTypeStr = glAccountRequest.getActionType();
                 if (actionTypeStr == null || actionTypeStr.trim().isEmpty()) {
-                    if (glAccountRequest.getDetRowId() == null || glAccountRequest.getDetRowId() == 0) {
-                        actionTypeStr = "isCreated";
-                    } else {
-                        actionTypeStr = "isUpdated";
-                    }
+                    actionTypeStr = (glAccountRequest.getDetRowId() == null || glAccountRequest.getDetRowId() == 0)
+                            ? ACTION_ISCREATED
+                            : ACTION_ISUPDATED;
                 }
                 String actionType = actionTypeStr.toUpperCase();
                 
                 switch (actionType) {
-                    case "ISCREATED":
+                    case ACTION_ISCREATED:
+                        Long glDetRowId = glAccountRequest.getDetRowId() != null
+                                ? glAccountRequest.getDetRowId()
+                                : ++maxGlDetRowId[0];
                         GlFavAcMasterGlAcDtl newGlAcDtl = GlFavAcMasterGlAcDtl.builder()
                                 .favAcPoid(favAcPoid)
-                                .detRowId(glAccountRequest.getDetRowId()) 
+                                .detRowId(glDetRowId)
                                 .glPoid(glAccountRequest.getGlAccountPoId())
                                 .company(glAccountRequest.getCompanyPoId())
-                                .viewCategory(glAccountRequest.getViewCategoryPoid())
+                                .viewCategory(glAccountRequest.getViewCategory())
                                 .remarks(glAccountRequest.getRemarks())
                                 .seqNo(glAccountRequest.getSeqNo())
                                 .build();
                         toSave.add(newGlAcDtl);
                         
-                        String createSummaryMessage = String.format("Row Created on Favorite Account Master Detail with DetRowId: %s", glAccountRequest.getDetRowId());
+                        String createSummaryMessage = String.format("Row Created on Favorite Account Master Detail with DetRowId: %s", glDetRowId);
                         GlobalLogSummary createSummaryLog = createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, createSummaryMessage);
                         glAcSummaryLogs.add(createSummaryLog);
                         break;
                         
-                    case "ISUPDATED":
+                    case ACTION_ISUPDATED:
                         if (glAccountRequest.getDetRowId() == null) {
                             throw new ValidationException("DetRowId is required for update operation");
                         }
@@ -449,7 +319,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                                     .detRowId(glAccountRequest.getDetRowId()) 
                                     .glPoid(glAccountRequest.getGlAccountPoId())
                                     .company(glAccountRequest.getCompanyPoId())
-                                    .viewCategory(glAccountRequest.getViewCategoryPoid())
+                                    .viewCategory(glAccountRequest.getViewCategory())
                                     .remarks(glAccountRequest.getRemarks())
                                     .seqNo(glAccountRequest.getSeqNo())
                                     .build();
@@ -468,7 +338,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                         
                         existingGlAcDtl.setGlPoid(glAccountRequest.getGlAccountPoId());
                         existingGlAcDtl.setCompany(glAccountRequest.getCompanyPoId());
-                        existingGlAcDtl.setViewCategory(glAccountRequest.getViewCategoryPoid());
+                        existingGlAcDtl.setViewCategory(glAccountRequest.getViewCategory());
                         existingGlAcDtl.setRemarks(glAccountRequest.getRemarks());
                         existingGlAcDtl.setSeqNo(glAccountRequest.getSeqNo());
                         toSave.add(existingGlAcDtl);
@@ -479,7 +349,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                             docId, docKeyPoid, logDetail));
                         break;
                         
-                    case "ISDELETED":
+                    case ACTION_ISDELETED:
                         if (glAccountRequest.getDetRowId() == null) {
                             throw new ValidationException("DetRowId is required for delete operation");
                         }
@@ -498,7 +368,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                         }
                         break;
                         
-                    case "NOCHANGES", "NOCHANGE":
+                    case ACTION_NOCHANGES, "NOCHANGE":
                         if (glAccountRequest.getDetRowId() != null) {
                             GlFavAcMasterGlAcDtl unchangedGlAcDtl = oldGlAcMap.get(glAccountRequest.getDetRowId());
                             if (unchangedGlAcDtl != null) {
@@ -530,6 +400,10 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
         List<GlFavAcMasterUserRoleDtl> oldUserRoleDtls = userRoleDtlRepository.findByFavAcPoidOrderByDetRowId(favAcPoid);
         Map<Long, GlFavAcMasterUserRoleDtl> oldUserRoleMap = oldUserRoleDtls.stream()
                 .collect(Collectors.toMap(GlFavAcMasterUserRoleDtl::getDetRowId, Function.identity(), (first, second) -> first));
+        Long[] maxUserRoleDetRowId = {oldUserRoleDtls.stream()
+                .map(GlFavAcMasterUserRoleDtl::getDetRowId)
+                .max(Long::compareTo)
+                .orElse(0L)};
         
         List<GlFavAcMasterUserRoleDtl> userRoleToSave = new ArrayList<>();
         List<GlFavAcMasterUserRoleDtl> userRoleToDelete = new ArrayList<>();
@@ -538,31 +412,27 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
         
         if (request.getUserRoles() != null && !request.getUserRoles().isEmpty()) {
             for (UserRoleDetailRequest userRoleRequest : request.getUserRoles()) {
-                String actionTypeStr = userRoleRequest.getActionType();
-                if (actionTypeStr == null || actionTypeStr.trim().isEmpty()) {
-                    if (userRoleRequest.getDetRowId() == null || userRoleRequest.getDetRowId() == 0) {
-                        actionTypeStr = "isCreated";
-                    } else {
-                        actionTypeStr = "isUpdated";
-                    }
-                }
-                String actionType = actionTypeStr.toUpperCase();
+                String actionType = resolveDetailActionType(
+                        userRoleRequest.getActionType(), userRoleRequest.getDetRowId());
                 
                 switch (actionType) {
-                    case "ISCREATED":
+                    case ACTION_ISCREATED:
+                        Long userRoleDetRowId = userRoleRequest.getDetRowId() != null
+                                ? userRoleRequest.getDetRowId()
+                                : ++maxUserRoleDetRowId[0];
                         GlFavAcMasterUserRoleDtl newUserRoleDtl = GlFavAcMasterUserRoleDtl.builder()
                                 .favAcPoid(favAcPoid)
-                                .detRowId(userRoleRequest.getDetRowId()) // Frontend provides detRowId
+                                .detRowId(userRoleDetRowId)
                                 .userRolePoid(userRoleRequest.getUserRolePoid())
                                 .build();
                         userRoleToSave.add(newUserRoleDtl);
                         
-                        String createSummaryMessage = String.format("Row Created on Favorite Account Master User Role Detail with DetRowId: %s", userRoleRequest.getDetRowId());
+                        String createSummaryMessage = String.format("Row Created on Favorite Account Master User Role Detail with DetRowId: %s", userRoleDetRowId);
                         GlobalLogSummary createSummaryLog = createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, createSummaryMessage);
                         userRoleSummaryLogs.add(createSummaryLog);
                         break;
                         
-                    case "ISUPDATED":
+                    case ACTION_ISUPDATED:
                         if (userRoleRequest.getDetRowId() == null) {
                             throw new ValidationException("DetRowId is required for update operation");
                         }
@@ -598,7 +468,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                             docId, docKeyPoid, logDetail));
                         break;
                         
-                    case "ISDELETED":
+                    case ACTION_ISDELETED:
                         if (userRoleRequest.getDetRowId() == null) {
                             throw new ValidationException("DetRowId is required for delete operation");
                         }
@@ -616,7 +486,7 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                         }
                         break;
                         
-                    case "NOCHANGES", "NOCHANGE":
+                    case ACTION_NOCHANGES, "NOCHANGE":
                         if (userRoleRequest.getDetRowId() != null) {
                             GlFavAcMasterUserRoleDtl unchangedUserRoleDtl = oldUserRoleMap.get(userRoleRequest.getDetRowId());
                             if (unchangedUserRoleDtl != null) {
@@ -707,7 +577,6 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
                 .sorted(Comparator.comparing(GlAccountDetailResponse::getDetRowId, Comparator.nullsLast(Comparator.naturalOrder())))
                 .collect(Collectors.toList());
         setCompanyDetails(glAccountResponses);
-        setViewCategoryDetails(glAccountResponses);
         response.setGlAccounts(glAccountResponses);
 
         List<GlFavAcMasterUserRoleDtl> userRoleDtls = userRoleDtlRepository.findByFavAcPoidOrderByDetRowId(favAcPoid);
@@ -796,6 +665,31 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
         });
 
         return response;
+    }
+
+    private String normalizeDetailActionType(String rawAction) {
+        String action = (rawAction == null || rawAction.trim().isEmpty())
+                ? ACTION_ISCREATED
+                : rawAction.trim().toUpperCase();
+        return switch (action) {
+            case ACTION_ISCREATED, "CREATED", "NEW" -> ACTION_ISCREATED;
+            case ACTION_ISUPDATED, "UPDATED" -> ACTION_ISUPDATED;
+            case ACTION_ISDELETED, "DELETED" -> ACTION_ISDELETED;
+            default -> ACTION_NOCHANGES;
+        };
+    }
+
+    private String resolveDetailActionType(String actionTypeStr, Long detRowId) {
+        if (actionTypeStr == null || actionTypeStr.trim().isEmpty()) {
+            return (detRowId == null || detRowId == 0) ? ACTION_ISCREATED : ACTION_ISUPDATED;
+        }
+        return actionTypeStr.toUpperCase();
+    }
+
+    private void validateViewCategory(String viewCategory) {
+        if (viewCategory == null || viewCategory.isBlank()) {
+            throw new ValidationException("View Category is mandatory for all GL accounts");
+        }
     }
 
     /**
@@ -940,42 +834,6 @@ public class GlFavAcMasterServiceImpl implements GlFavAcMasterService {
     }
 
 
-    @SuppressWarnings("unchecked")
-    private void setViewCategoryDetails(List<GlAccountDetailResponse> glAccountResponses) {
-        Map<String, Object> listValue = lovService.getLovList(
-                "", 0L, 0L, 0L,
-                "FAV_VIEW_CATEGORY",
-                0, 0,
-                "", ""
-        );
-
-        if (listValue == null) return;
-
-        List<LovGetListDto> lovGetListDtos = (List<LovGetListDto>) listValue.get("data");
-        if (lovGetListDtos == null || lovGetListDtos.isEmpty()) return;
-
-        // Build map of POID → LOV object
-        Map<Long, LovGetListDto> lovMap = lovGetListDtos.stream()
-                .collect(Collectors.toMap(LovGetListDto::getPoid, Function.identity()));
-
-        // Update existing list in-place (don’t reassign)
-        for (GlAccountDetailResponse gl : glAccountResponses) {
-            if (gl.getViewCategory() != null) {
-                try {
-                    Long viewCategoryId = Long.valueOf(gl.getViewCategory());
-                    LovGetListDto lovDto = lovMap.get(viewCategoryId);
-                    gl.setViewCategoryDetails(lovDto);
-                } catch (NumberFormatException e) {
-                    // In case viewCategory is not a number
-                    gl.setViewCategoryDetails(null);
-                }
-            } else {
-                gl.setViewCategoryDetails(null);
-            }
-        }
-    }
-    
- 
     private GlobalLogSummary createSummaryLogEntry(LogDetailsEnum logDetailsEnum, String docId, String docKeyPoid, String customMessage) {
         return createSummaryLogEntry(logDetailsEnum, docId, docKeyPoid, customMessage, LocalDateTime.now());
     }

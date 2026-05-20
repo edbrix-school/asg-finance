@@ -1609,6 +1609,10 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
         log.info("FDA Cost update result: {}", result);
 
+        if (result != null && result.startsWith("ERROR")) {
+            throw new RuntimeException(result);
+        }
+
         return result;
 
     }

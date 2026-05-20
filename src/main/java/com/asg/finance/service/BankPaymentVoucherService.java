@@ -39,7 +39,7 @@ public interface BankPaymentVoucherService {
 
     void resetChequeStatus(Long transactionPoid);
 
-    String revertReconciliation(Long transactionPoid, String documentId);
+    String revertReconciliation(Long transactionPoid, String documentId, String comments);
 
     ReconcileResultDto getReconciledDate(String documentId, Long transactionPoid);
 

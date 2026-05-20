@@ -34,7 +34,7 @@ public interface BankPaymentVoucherSpRepository {
     
     void resetChequeStatus(Long groupPoid, Long companyPoid, Long userPoid, Long docKeyPoid);
     
-    String revertReconciliation(Long groupPoid, Long companyPoid, Long userPoid, String docId, String transactionPoid, String mailAlert);
+    String revertReconciliation(Long groupPoid, Long companyPoid, Long userPoid, String docId, String transactionPoid, String mailAlert, String comments);
     
     void releaseOldJobValues(Long groupPoid, Long userPoid, Long companyPoid, String docId, String transactionPoid);
     

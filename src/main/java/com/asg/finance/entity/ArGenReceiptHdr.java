@@ -92,7 +92,6 @@ public class ArGenReceiptHdr extends BaseEntity {
     private String multicompany;
 
     @Column(name = "PRINT_DOC_COMP_ID")
-    @AuditIgnore
     private Long printDocCompId;
 
     @Column(name = "BANK_CHARGES")

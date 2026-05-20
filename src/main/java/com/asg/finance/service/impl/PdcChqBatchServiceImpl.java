@@ -6,6 +6,7 @@ import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.exception.ResourceNotFoundException;
+import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LoggingService;
@@ -161,6 +162,8 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
 
     private void validateSrsBusinessRules(PdcChqBatchHdrRequestDto dto) {
 
+        validateBillTypeRequiredForBillwisePayGl(dto);
+
         if ("Y".equalsIgnoreCase(dto.getPrePrinted()) &&
              (dto.getChqStartNo() == null || dto.getChqStartNo().trim().length() != 6)) {
                 throw new IllegalArgumentException("Cheque Start No must be 6 digits when Manual Cheque is selected.");
@@ -181,6 +184,24 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
         if (Math.abs(totalDr - totalCr) > 0.001) {
             throw new IllegalArgumentException("Debit and Credit total must be equal.");
         }
+    }
+
+    private void validateBillTypeRequiredForBillwisePayGl(PdcChqBatchHdrRequestDto dto) {
+        if (dto == null || dto.getPayGlPoid() == null) {
+            return;
+        }
+
+        PayGlBreakupCheckResponseDto breakupCheck = validatePayGl(dto.getPayGlPoid());
+        if (breakupCheck != null
+                && breakupCheck.getResult() != null
+                && breakupCheck.getResult().toUpperCase(Locale.ROOT).contains("BILL_WISE")
+                && (isBlank(dto.getBillType()) || isBlank(dto.getBillRef()))) {
+            throw new ValidationException("Bill Type and Bill Ref is mandatory when Billwise is enabled for the selected Pay GL.");
+        }
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
     }
 
     private PdcChqBatchHdrEntity mapHeaderDtoToEntity(PdcChqBatchHdrRequestDto dto) {

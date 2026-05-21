@@ -727,7 +727,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                             .chargeType(charge.getChargeType())
                             .glPoid(chargeGL.getGlPoid())
                             .amount(charge.getAmount())
-                            .bhdAmount(charge.getAmount().multiply(header.getCurrencyRate()))
+                            .bhdAmount(calculateChargeBhdAmount(charge.getAmount(), header.getCurrencyRate()))
                             .taxPoid(charge.getTaxPoid())
                             .taxPercentage(charge.getTaxPercent())
                             .taxAmount(charge.getTaxAmount())
@@ -762,7 +762,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                     existingCharge.setChargeType(charge.getChargeType());
                     existingCharge.setGlPoid(updatedChargeGL.getGlPoid());
                     existingCharge.setAmount(charge.getAmount());
-                    existingCharge.setBhdAmount(charge.getAmount().multiply(header.getCurrencyRate()));
+                    existingCharge.setBhdAmount(calculateChargeBhdAmount(charge.getAmount(), header.getCurrencyRate()));
                     existingCharge.setTaxPoid(charge.getTaxPoid());
                     existingCharge.setTaxPercentage(charge.getTaxPercent());
                     existingCharge.setTaxAmount(charge.getTaxAmount());
@@ -1316,21 +1316,18 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
             throw new ValidationException("Credit GL not found: " + dto.getCreditGL());
         }
 
-        BigDecimal receiptAmount = dto.getReceiptAmount();
-        BigDecimal invoiceAmount = dto.getInvoiceAmount();
-
-        // Apply legacy logic: receipt amount = invoice amount for all currencies
-        if (invoiceAmount != null) {
-            receiptAmount = invoiceAmount;
-        }
+        BigDecimal originalReceiptAmount = dto.getReceiptAmount() != null
+                ? dto.getReceiptAmount()
+                : dto.getInvoiceAmount();
+        BigDecimal storedReceiptAmount = calculateStoredReceiptAmount(originalReceiptAmount, dto.getRate());
 
         return ArGenReceiptHdr.builder()
                 .transactionDate(dto.getTransactionDate() != null ? dto.getTransactionDate() : LocalDate.now())
                 .groupPoid(DEFAULT_GROUP_POID)
                 .companyPoid(UserContext.getCompanyPoid())
                 .rcvdOthPoid(creditGlPoid)
-                .rcptAmount(receiptAmount)
-                .invoiceAmount(invoiceAmount)
+                .rcptAmount(storedReceiptAmount)
+                .invoiceAmount(originalReceiptAmount)
                 .remarks(dto.getNarration())
                 .rcvdFromDtlPrint(dto.getReceivedFrom())
                 .refType(dto.getRefType())
@@ -1364,17 +1361,14 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
             header.setTransactionDate(LocalDate.now());
         }
 
-        BigDecimal receiptAmount = dto.getReceiptAmount();
-        BigDecimal invoiceAmount = dto.getInvoiceAmount();
-
-        // Apply legacy logic: receipt amount = invoice amount for all currencies
-        if (invoiceAmount != null) {
-            receiptAmount = invoiceAmount;
-        }
+        BigDecimal originalReceiptAmount = dto.getReceiptAmount() != null
+                ? dto.getReceiptAmount()
+                : dto.getInvoiceAmount();
+        BigDecimal storedReceiptAmount = calculateStoredReceiptAmount(originalReceiptAmount, dto.getRate());
 
         header.setRcvdOthPoid(creditGlPoid);
-        header.setRcptAmount(receiptAmount);
-        header.setInvoiceAmount(invoiceAmount);
+        header.setRcptAmount(storedReceiptAmount);
+        header.setInvoiceAmount(originalReceiptAmount);
         header.setRemarks(dto.getNarration());
         header.setRcvdFromDtlPrint(dto.getReceivedFrom());
         header.setRefType(dto.getRefType());
@@ -1387,6 +1381,20 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         header.setLastModifiedBy(currentUser);
         header.setLastModifiedDate(now);
         header.setPrintDocCompId(dto.getPrintDocCompId());
+    }
+
+    private BigDecimal calculateStoredReceiptAmount(BigDecimal originalReceiptAmount, BigDecimal currencyRate) {
+        if (originalReceiptAmount == null || currencyRate == null) {
+            return originalReceiptAmount;
+        }
+        return originalReceiptAmount.multiply(currencyRate).setScale(3, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal calculateChargeBhdAmount(BigDecimal amount, BigDecimal currencyRate) {
+        if (amount == null || currencyRate == null) {
+            return amount;
+        }
+        return amount.multiply(currencyRate).setScale(3, RoundingMode.HALF_UP);
     }
 
     private void savePaymentDetails(ArGenReceiptHdr header, List<GeneralReceiptPaymentDto> payments,
@@ -1556,7 +1564,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
             GLMasterEntity chargeGL = chargeGLList.get(0);
 
             // Calculate BHD equivalent (amount * currency rate)
-            BigDecimal bhdEquivalent = charge.getAmount().multiply(header.getCurrencyRate());
+            BigDecimal bhdEquivalent = calculateChargeBhdAmount(charge.getAmount(), header.getCurrencyRate());
 
             // Handle cost center - can be Long or String
             String costPoidValue = null;
@@ -1825,13 +1833,8 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
             currencyRate = header.getCurrencyRate();
         }
 
-        // Calculate BHD Amount (receiptAmount * currencyRate)
-        BigDecimal bhdAmount = null;
-        if (header.getRcptAmount() != null && header.getCurrencyRate() != null) {
-            bhdAmount = header.getRcptAmount().multiply(header.getCurrencyRate());
-        }
+        BigDecimal bhdAmount = header.getRcptAmount();
 
-        // For response: receipt amount should equal invoice amount
         BigDecimal responseReceiptAmount = header.getInvoiceAmount();
         if (responseReceiptAmount == null) {
             responseReceiptAmount = header.getRcptAmount();

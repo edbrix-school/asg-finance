@@ -1609,6 +1609,10 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
         log.info("FDA Cost update result: {}", result);
 
+        if (result != null && result.startsWith("ERROR")) {
+            throw new RuntimeException(result);
+        }
+
         return result;
 
     }
@@ -1818,8 +1822,13 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                             popupDto.setAmount(item.getAmount());
                             if (StringUtils.isNotEmpty(item.getCostPoid()) && StringUtils.isNotEmpty(item.getCostGroup())) {
                                 try {
-                                    Long poid = Long.parseLong(item.getCostPoid());
-                                    popupDto.setCostCenterDetails(lovService.getDetailsByPoidAndLovName(poid, item.getCostGroup()));
+                                    LovGetListDto codeDet  = lovService.getDetailsByCodeAndLovName(item.getCostPoid(), item.getCostGroup());
+                                    popupDto.setCostCenterDetails(codeDet);
+                                    if (codeDet.getPoid() == null) {
+                                        LovGetListDto det = lovService.getDetailsByPoidAndLovName(Long.valueOf(item.getCostPoid()), item.getCostGroup());
+                                        popupDto.setCostCenterDetails(det);
+                                        popupDto.setCostPoid(det.getCode());
+                                    }
                                 } catch (NumberFormatException e) {
                                     popupDto.setCostCenterDetails(lovService.getDetailsByCodeAndLovName(item.getCostPoid(), item.getCostGroup()));
                                 }

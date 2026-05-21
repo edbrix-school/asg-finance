@@ -33,4 +33,5 @@ public class PropertyCostCenterResponse {
     private Long parentPropertyPoid;
     private Integer level;
     private String itemType;
+    private Integer childCount;
 }

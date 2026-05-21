@@ -19,12 +19,11 @@ public class GlAccountDetailRequest {
     @NotNull(message = "Please Select the GL Account")
     private Long glAccountPoId;
 
-    @NotNull(message = "Please Select the Company")
     private Long companyPoId;
 
     @NotNull(message = "View Category is mandatory")
     @Size(max = 50, message = "View Category must be at most 50 characters")
-    private String viewCategoryPoid;
+    private String viewCategory;
 
     @Size(max = 100, message = "Remarks must be at most 100 characters")
     private String remarks;

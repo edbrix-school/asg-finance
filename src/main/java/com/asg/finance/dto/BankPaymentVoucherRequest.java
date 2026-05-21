@@ -15,6 +15,7 @@ public class BankPaymentVoucherRequest {
     @JsonProperty("amount")
     private BigDecimal currencyAmount;
     private String chqDate;
+    private LocalDate transactionDate;
     private String chqCardNo;
     private String accountPayee;
     private String longNarration;

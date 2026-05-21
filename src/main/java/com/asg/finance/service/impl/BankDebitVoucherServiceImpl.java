@@ -1468,7 +1468,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                 UserContext.getUserPoid(),
                 header.getDocRef(),
                 String.valueOf(transactionPoid),
-                "Y"
+                "Y",comments
         );
     }
 

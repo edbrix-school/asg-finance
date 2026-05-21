@@ -94,18 +94,18 @@ public class PdcChqBatchController {
                             schema = @Schema(implementation = PdcChqBatchHdrRequestDto.class)
                     )
             )
-            @Parameter(description = "Pdc Batch details", required = true)
+            @Parameter(description = "PDC Batch details", required = true)
             @Valid @RequestBody PdcChqBatchHdrRequestDto request
     ) {
         try {
             PdcChqBatchHdrResponseDto response = service.createBatch(request);
-            return success("Pdc Batch created successfully", response);
+            return success("PDC Batch created successfully", response);
 
         } catch (ValidationException e) {
             return internalServerError(e.getMessage());
 
         } catch (Exception ex) {
-            return internalServerError("Failed to create Pdc Batch : " + ex.getMessage());
+            return internalServerError("Failed to create PDC Batch : " + ex.getMessage());
         }
     }
 

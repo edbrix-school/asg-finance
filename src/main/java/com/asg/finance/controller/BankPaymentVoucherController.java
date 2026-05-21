@@ -373,9 +373,10 @@ public class BankPaymentVoucherController {
     @AllowedAction(UserRolesRightsEnum.EDIT)
     @PostMapping("/{transactionPoid}/revert-reconciliation")
     public ResponseEntity<?> revertReconciliation(
-            @PathVariable Long transactionPoid) {
+            @PathVariable Long transactionPoid,
+            @Valid @RequestBody RevertReconciliationRequest request) {
         try {
-            String status = service.revertReconciliation(transactionPoid, UserContext.getDocumentId());
+            String status = service.revertReconciliation(transactionPoid, UserContext.getDocumentId(), request.getComments());
 
             if (status.startsWith("SUCCESS")) {
                 return success(status, null);

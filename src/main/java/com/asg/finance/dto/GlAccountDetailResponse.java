@@ -1,6 +1,5 @@
 package com.asg.finance.dto;
 
-import com.asg.common.lib.dto.LovGetListDto;
 import com.asg.common.lib.entity.Company;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -32,6 +31,5 @@ public class GlAccountDetailResponse {
     private Long company;
     private Company companyDetails;
     private String viewCategory;
-    private LovGetListDto viewCategoryDetails;
 }
 

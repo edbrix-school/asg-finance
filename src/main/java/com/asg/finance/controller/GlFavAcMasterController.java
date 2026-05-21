@@ -90,7 +90,7 @@ public class GlFavAcMasterController {
                                                   "detRowId": 1,
                                                   "glAccountPoId": 10010001,
                                                   "companyPoId": 1,
-                                                  "viewCategoryPoid": "BANK_ACC",
+                                                  "viewCategory": "BANK_ACC",
                                                   "seqNo": 1,
                                                   "remarks": "Primary bank account",
                                                   "actionType": "ISCREATED"

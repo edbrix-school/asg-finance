@@ -397,6 +397,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         entity.setGroupPoid(UserContext.getGroupPoid());
         entity.setCompanyPoid(UserContext.getCompanyPoid());
+        entity.setTransactionDate(req.getTransactionDate());
         entity.setBankPoid(req.getBankPoid());
         entity.setPayGlPoid(req.getPayGlPoid());
         entity.setPayingTo(req.getPayingTo());

@@ -342,7 +342,7 @@ public class BankPaymentVoucherSpRepositoryImpl implements BankPaymentVoucherSpR
 
     @Override
     public String revertReconciliation(Long groupPoid, Long companyPoid, Long userPoid, String docId, String transactionPoid, String mailAlert, String comments) {
-        StoredProcedureQuery query = em.createStoredProcedureQuery("PROC_GL_BANK_RECONCILE_REVERT_V2");
+        StoredProcedureQuery query = em.createStoredProcedureQuery("PROC_GL_BANK_RECON_REVERT_V2");
 
         query.registerStoredProcedureParameter(1, Long.class, ParameterMode.IN);
         query.registerStoredProcedureParameter(2, Long.class, ParameterMode.IN);

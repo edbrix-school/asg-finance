@@ -96,7 +96,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         List<String> periodErrors = periodValidationHelper.validatePeriodRules(
                 normalizedPeriodFrom, normalizedPeriodTo, vatFilingPeriod);
         if (!periodErrors.isEmpty()) {
-            throw new ValidationException("Period validation failed: " + String.join(", ", periodErrors));
+            throw new ValidationException(periodErrors.get(0));
         }
 
         // Check for overlapping periods (existing submissions)
@@ -203,7 +203,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         List<String> periodErrors = periodValidationHelper.validatePeriodRules(
                 normalizedPeriodFrom, normalizedPeriodTo, vatFilingPeriod);
         if (!periodErrors.isEmpty()) {
-            throw new ValidationException("Period validation failed: " + String.join(", ", periodErrors));
+            throw new ValidationException(periodErrors.get(0));
         }
 
         // Check for overlapping periods (excluding current record)
@@ -258,25 +258,43 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         GlobalTaxSubmissionHdr header = hdrRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Tax Submission", "transactionPoid", transactionPoid));
 
-        // Check if can be deleted
+        if ("Y".equalsIgnoreCase(header.getDeleted())) {
+            throw new ValidationException("Tax submission is already deleted");
+        }
         if (header.getPeriodClosedDate() != null) {
             throw new ValidationException("Cannot delete tax submission that has closed period");
         }
-        if ("APPROVED".equals(header.getApprovalStatus()) || "POSTED".equals(header.getStatus())) {
-            throw new ValidationException("Cannot delete tax submission that is already approved or posted");
+
+        // Remove detail rows first (legacy deletes child data before header soft-delete)
+        dtlRepository.deleteByTransactionPoid(transactionPoid);
+
+        header.setDeleted("Y");
+        hdrRepository.save(header);
+
+        try {
+            String deleteStatus = documentDeleteService.deleteDocument(
+                    transactionPoid,
+                    "GLOBAL_TAX_SUBMISSION_HDR",
+                    "TRANSACTION_POID",
+                    deleteReasonDto,
+                    resolveTransactionDate(header));
+            if (deleteStatus != null
+                    && (deleteStatus.toUpperCase().contains("ERROR") || deleteStatus.toUpperCase().contains("WARNING"))) {
+                throw new ValidationException(deleteStatus);
+            }
+        } catch (ValidationException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            log.error("deleteTaxSubmission failed for transactionPoid={}", transactionPoid, ex);
+            throw new ValidationException("Failed to delete tax submission: " + ex.getMessage());
         }
 
-        documentDeleteService.deleteDocument(
-                transactionPoid,
-                "GLOBAL_TAX_SUBMISSION_HDR",
-                "TRANSACTION_POID",
-                deleteReasonDto,
-                header.getTransactionDate().toLocalDate()
-        );
-        
-        // Log the deletion
-        loggingService.createLogSummaryEntry(LogDetailsEnum.DELETED, UserContext.getDocumentId(), transactionPoid.toString());
-
+        try {
+            loggingService.createLogSummaryEntry(
+                    LogDetailsEnum.DELETED, UserContext.getDocumentId(), transactionPoid.toString());
+        } catch (Exception ex) {
+            log.warn("Failed to write delete log summary for transactionPoid={}", transactionPoid, ex);
+        }
 
         log.info("deleteTaxSubmission completed for transactionPoid={}", transactionPoid);
     }
@@ -497,7 +515,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         if (errors.isEmpty()) {
             response.setMessage("Period is valid");
         } else {
-            response.setMessage("Period validation failed: " + String.join(", ", errors));
+            response.setMessage(errors.get(0));
         }
 
         log.info("validatePeriod completed valid={} errorCount={}", response.getValid(), errors.size());
@@ -867,6 +885,13 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
             return null;
         }
         return dateTime.toLocalDate().atStartOfDay();
+    }
+
+    private LocalDate resolveTransactionDate(GlobalTaxSubmissionHdr header) {
+        if (header.getTransactionDate() != null) {
+            return header.getTransactionDate().toLocalDate();
+        }
+        return DateUtil.getCurrentDateInUserTimeZone();
     }
 }
 

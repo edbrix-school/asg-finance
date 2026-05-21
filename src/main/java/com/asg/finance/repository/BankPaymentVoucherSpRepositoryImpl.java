@@ -341,8 +341,8 @@ public class BankPaymentVoucherSpRepositoryImpl implements BankPaymentVoucherSpR
     }
 
     @Override
-    public String revertReconciliation(Long groupPoid, Long companyPoid, Long userPoid, String docId, String transactionPoid, String mailAlert) {
-        StoredProcedureQuery query = em.createStoredProcedureQuery("PROC_GL_BANK_RECONCILE_REVERT");
+    public String revertReconciliation(Long groupPoid, Long companyPoid, Long userPoid, String docId, String transactionPoid, String mailAlert, String comments) {
+        StoredProcedureQuery query = em.createStoredProcedureQuery("PROC_GL_BANK_RECON_REVERT_V2");
 
         query.registerStoredProcedureParameter(1, Long.class, ParameterMode.IN);
         query.registerStoredProcedureParameter(2, Long.class, ParameterMode.IN);
@@ -351,6 +351,7 @@ public class BankPaymentVoucherSpRepositoryImpl implements BankPaymentVoucherSpR
         query.registerStoredProcedureParameter(5, String.class, ParameterMode.IN);
         query.registerStoredProcedureParameter(6, String.class, ParameterMode.OUT);
         query.registerStoredProcedureParameter(7, String.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(8, String.class, ParameterMode.IN);
 
         query.setParameter(1, groupPoid);
         query.setParameter(2, companyPoid);
@@ -358,6 +359,7 @@ public class BankPaymentVoucherSpRepositoryImpl implements BankPaymentVoucherSpR
         query.setParameter(4, docId);
         query.setParameter(5, transactionPoid);
         query.setParameter(7, mailAlert != null ? mailAlert : "Y");
+        query.setParameter(8, comments);
 
         query.execute();
 

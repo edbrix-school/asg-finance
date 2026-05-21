@@ -643,6 +643,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         entity.setCompanyPoid(UserContext.getCompanyPoid());
         entity.setBankPoid(req.getBankPoid());
         entity.setPayGlPoid(req.getPayGlPoid());
+        entity.setTransactionDate(req.getTransactionDate());
         entity.setPayingTo(req.getPayingTo());
         entity.setRemarks(req.getRemarks());
         entity.setRefType(req.getRefType());
@@ -1149,7 +1150,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
     @Override
     @Transactional
-    public String revertReconciliation(Long transactionPoid, String documentId) {
+    public String revertReconciliation(Long transactionPoid, String documentId, String comments) {
         GLPaymentVoucherHDREntity header = paymentVoucherRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ValidationException("Voucher not found"));
 
@@ -1165,7 +1166,8 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                 UserContext.getUserPoid(),
                 documentId,
                 String.valueOf(transactionPoid),
-                "Y"
+                "Y",
+                comments
         );
 
         // Reload entity to get updated values

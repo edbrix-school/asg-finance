@@ -258,6 +258,11 @@ public class PropertyCostCenterServiceImpl implements PropertyCostCenterService 
             }
         }
         
+        // Set child count for each node (including all descendants)
+        for (PropertyCostCenterTreeNodeDto item : itemMap.values()) {
+            item.setChildCount(countAllDescendants(item));
+        }
+        
         // Sort root items and their children recursively
         sortTreeNodes(rootItems);
         
@@ -357,6 +362,21 @@ public class PropertyCostCenterServiceImpl implements PropertyCostCenterService 
     }
     
     /**
+     * Count all descendants (children + grandchildren + etc.) of a node
+     */
+    private int countAllDescendants(PropertyCostCenterTreeNodeDto node) {
+        if (node.getChildren() == null || node.getChildren().isEmpty()) {
+            return 0;
+        }
+        
+        int count = node.getChildren().size();
+        for (PropertyCostCenterTreeNodeDto child : node.getChildren()) {
+            count += countAllDescendants(child);
+        }
+        return count;
+    }
+    
+    /**
      * Get sort order for property type
      */
     private int getPropertyTypeOrder(String propertyType) {
@@ -434,6 +454,10 @@ public class PropertyCostCenterServiceImpl implements PropertyCostCenterService 
             dto.setPropertyType(entity.getPropertyType());
             dto.setParentPropertyPoid(entity.getParentPropertyPoid());
             dto.setLevel(level);
+            
+            // Count direct children
+            long childCount = repository.countDirectChildren(entity.getPropertyCostCenterPoid());
+            dto.setChildCount((int) childCount);
             
             dto.setCostCenterPoid(entity.getCostCenterPoid());
             dto.setCompanyPoid(entity.getCompanyPoid());

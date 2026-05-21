@@ -53,4 +53,10 @@ public interface PropertyCostCenterRepository extends JpaRepository<PropertyCost
      */
     @Query("SELECT COUNT(p) FROM PropertyCostCenter p WHERE p.propertyType IS NOT NULL")
     long countByPropertyTypeNotNull();
+
+    /**
+     * Count direct children of a specific parent
+     */
+    @Query("SELECT COUNT(p) FROM PropertyCostCenter p WHERE p.parentPropertyPoid = :parentPoid AND p.deleted = 'N'")
+    long countDirectChildren(@Param("parentPoid") Long parentPoid);
 }

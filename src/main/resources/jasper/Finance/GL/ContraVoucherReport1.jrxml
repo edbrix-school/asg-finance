@@ -20,6 +20,7 @@
 	</parameter>
 	<parameter name="SUB_HEADER" class="net.sf.jasperreports.engine.JasperReport"/>
 	<parameter name="SUB_FOOTER" class="net.sf.jasperreports.engine.JasperReport"/>
+	<parameter name="SUB_FOOTER_ISO" class="net.sf.jasperreports.engine.JasperReport"/>
 	<parameter name="SUB_DETAIL" class="net.sf.jasperreports.engine.JasperReport"/>
 	<queryString>
 		<![CDATA[SELECT CVH.TRANSACTION_POID, CVH.TRANSACTION_DATE, CVH.COMPANY_POID, CVH.DOC_REF,
@@ -184,7 +185,7 @@ WHERE CVH.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 					<subreportParameterExpression><![CDATA[$P{LOGIN_COMP_POID}]]></subreportParameterExpression>
 				</subreportParameter>
 				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
-				<subreportExpression><![CDATA[$P{SUB_FOOTER}]]></subreportExpression>
+				<subreportExpression><![CDATA[$P{SUB_FOOTER_ISO}]]></subreportExpression>
 			</subreport>
 		</band>
 	</pageFooter>

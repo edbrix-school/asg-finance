@@ -58,6 +58,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
@@ -208,8 +209,7 @@ class TaxSubmissionServiceImplTest {
         GlobalTaxSubmissionHdr header = new GlobalTaxSubmissionHdr();
         header.setTransactionPoid(12L);
         header.setGroupPoid(1L);
-        header.setApprovalStatus("PENDING");
-        header.setStatus("DRAFT");
+        header.setDeleted("N");
         header.setTransactionDate(LocalDateTime.now());
 
         try (MockedStatic<UserContext> userContext = mockStatic(UserContext.class)) {
@@ -217,12 +217,28 @@ class TaxSubmissionServiceImplTest {
             userContext.when(UserContext::getDocumentId).thenReturn("400-118");
 
             when(hdrRepository.findByTransactionPoid(12L)).thenReturn(Optional.of(header));
+            when(documentDeleteService.deleteDocument(anyLong(), anyString(), anyString(), any(), any()))
+                    .thenReturn("SUCCESS");
 
             service.deleteTaxSubmission(12L, new DeleteReasonDto());
 
+            verify(dtlRepository).deleteByTransactionPoid(12L);
+            verify(hdrRepository).save(header);
+            assertEquals("Y", header.getDeleted());
             verify(documentDeleteService).deleteDocument(eq(12L), eq("GLOBAL_TAX_SUBMISSION_HDR"), eq("TRANSACTION_POID"), any(), any());
             verify(loggingService).createLogSummaryEntry(any(LogDetailsEnum.class), eq("400-118"), eq("12"));
         }
+    }
+
+    @Test
+    void deleteTaxSubmission_ThrowsWhenAlreadyDeleted() {
+        GlobalTaxSubmissionHdr header = new GlobalTaxSubmissionHdr();
+        header.setTransactionPoid(12L);
+        header.setDeleted("Y");
+
+        when(hdrRepository.findByTransactionPoid(12L)).thenReturn(Optional.of(header));
+
+        assertThrows(ValidationException.class, () -> service.deleteTaxSubmission(12L, new DeleteReasonDto()));
     }
 
     @Test

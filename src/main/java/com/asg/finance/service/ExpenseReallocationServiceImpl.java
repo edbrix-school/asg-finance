@@ -147,6 +147,9 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         GlExpenseReallocationHdr header = new GlExpenseReallocationHdr();
         BeanUtils.copyProperties(existingHeader, header);
 
+        GlExpenseReallocationHdr oldSnapshot = new GlExpenseReallocationHdr();
+        BeanUtils.copyProperties(header, oldSnapshot);
+
         if ("Y".equals(header.getDeleted())) {
             throw new RuntimeException("Cannot update deleted expense reallocation");
         }
@@ -178,7 +181,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         log.info("updateExpenseReallocation completed for transactionPoid={}", transactionPoid);
         String key = header.getTransactionPoid().toString();
         String docId = UserContext.getDocumentId();
-        loggingService.logChanges(existingHeader, header, GlExpenseReallocationHdr.class, docId, key,
+        loggingService.logChanges(oldSnapshot, header, GlExpenseReallocationHdr.class, docId, key,
                 LogDetailsEnum.MODIFIED, "SUPPLIER_POID");
         return buildResponse(savedHeader);
     }
@@ -188,7 +191,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
     public void deleteExpenseReallocation(Long transactionPoid, DeleteReasonDto deleteReasonDto) {
         log.info("deleteExpenseReallocation started for transactionPoid={}", transactionPoid);
 
-        hdrRepository.findByTransactionPoid(transactionPoid).orElseThrow(() -> new ResourceNotFoundException("Expense Reallocation", "transactionPoid",
+        GlExpenseReallocationHdr entity =hdrRepository.findByTransactionPoid(transactionPoid).orElseThrow(() -> new ResourceNotFoundException("Expense Reallocation", "transactionPoid",
                 transactionPoid));
 
         documentDeleteService.deleteDocument(
@@ -196,7 +199,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
                 "GL_EXPENSE_REALLOCATION_HDR",
                 TRANSACTION_POID,
                 deleteReasonDto,
-                null
+                entity.getTransactionDate()
         );
 
         log.info("deleteExpenseReallocation completed for transactionPoid={}", transactionPoid);

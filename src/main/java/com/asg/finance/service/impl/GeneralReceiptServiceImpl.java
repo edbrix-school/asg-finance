@@ -1387,7 +1387,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         if (originalReceiptAmount == null || currencyRate == null) {
             return originalReceiptAmount;
         }
-        return originalReceiptAmount.multiply(currencyRate).setScale(3, RoundingMode.HALF_UP);
+        return originalReceiptAmount.multiply(currencyRate).setScale(3, RoundingMode.DOWN);
     }
 
     private BigDecimal calculateChargeBhdAmount(BigDecimal amount, BigDecimal currencyRate) {

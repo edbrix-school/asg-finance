@@ -1442,7 +1442,8 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                     BillwiseBreakupRequestDto dto = new BillwiseBreakupRequestDto();
 
                     dto.setGroupPoid(UserContext.getGroupPoid());
-                    dto.setCompanyPoid(popup.getGlCompanyPoid() != null ? popup.getGlCompanyPoid() : UserContext.getCompanyPoid());
+                    dto.setCompanyPoid(UserContext.getCompanyPoid());
+                    dto.setGlCompanyPoid(popup.getGlCompanyPoid() != null ? popup.getGlCompanyPoid() : (glDetail.getCompanyPoid() != null ? glDetail.getCompanyPoid() : UserContext.getCompanyPoid()));
                     dto.setDocId(documentId);
                     dto.setLoginUserPoid(UserContext.getUserPoid());
                     dto.setTransactionPoid(transactionPoid);
@@ -1479,7 +1480,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                 for (CostCenterBreakupPopupRequestDto popup : glDetail.getCostCenterBreakup()) {
                     CostCenterBreakupRequestDto dto = new CostCenterBreakupRequestDto();
                     dto.setGroupPoid(UserContext.getGroupPoid());
-                    dto.setCompanyPoid(glDetail.getCompanyPoid() != null ? glDetail.getCompanyPoid() : UserContext.getCompanyPoid());
+                    dto.setCompanyPoid(UserContext.getCompanyPoid());
                     dto.setDocId(documentId);
                     dto.setTransactionPoid(transactionPoid);
                     dto.setMainDetRowId(glDetail.getDetRowId());
@@ -1522,7 +1523,8 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                     BillwiseBreakupRequestDto dto = new BillwiseBreakupRequestDto();
 
                     dto.setGroupPoid(UserContext.getGroupPoid());
-                    dto.setCompanyPoid(popup.getGlCompanyPoid() != null ? popup.getGlCompanyPoid() : UserContext.getCompanyPoid());
+                    dto.setCompanyPoid(UserContext.getCompanyPoid());
+                    dto.setGlCompanyPoid(popup.getGlCompanyPoid() != null ? popup.getGlCompanyPoid() : (glDetail.getCompanyPoid() != null ? glDetail.getCompanyPoid() : UserContext.getCompanyPoid()));
                     dto.setDocId(documentId);
                     dto.setTransactionPoid(transactionPoid); // SAME HDR POID
                     dto.setLoginUserPoid(userPoid);
@@ -1568,7 +1570,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                 for (CostCenterBreakupPopupRequestDto popup : glDetail.getCostCenterBreakup()) {
                     CostCenterBreakupRequestDto cc = new CostCenterBreakupRequestDto();
                     cc.setGroupPoid(UserContext.getGroupPoid());
-                    cc.setCompanyPoid(glDetail.getCompanyPoid() != null ? glDetail.getCompanyPoid() : UserContext.getCompanyPoid());
+                    cc.setCompanyPoid(UserContext.getCompanyPoid());
                     cc.setDocId(documentId);
                     cc.setTransactionPoid(transactionPoid);
                     cc.setMainDetRowId(glDetail.getDetRowId());

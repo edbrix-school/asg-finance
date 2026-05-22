@@ -338,7 +338,9 @@ public class BankPaymentVoucherController {
             @RequestParam String contact) {
         try {
             service.releaseCheque(transactionPoid, releasedTo, contact);
-            return success("Cheque released successfully", Map.of("releaseTime",DateUtil.getCurrentDateTimeInUserTimeZone()));
+            String formattedReleaseTime = DateUtil.getCurrentDateTimeInUserTimeZone()
+                    .format(java.time.format.DateTimeFormatter.ofPattern("dd-MMM-yyyy h:mm:ss a", java.util.Locale.US));
+            return success("Cheque released successfully", Map.of("releaseTime", formattedReleaseTime));
         } catch (Exception ex) {
             return internalServerError("Failed to release cheque: " + ex.getMessage());
         }

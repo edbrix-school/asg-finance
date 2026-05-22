@@ -1,0 +1,443 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="BankDebitVoucher_Billwise" language="groovy" pageWidth="595" pageHeight="842" columnWidth="535" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="51f26c1c-332c-43f0-beb9-5722768520c7">
+    <property name="ireport.zoom" value="1.3310000000000006"/>
+    <property name="ireport.x" value="0"/>
+    <property name="ireport.y" value="0"/>
+    <style name="Title" fontName="Times New Roman" fontSize="50" isBold="true" pdfFontName="Times-Bold"/>
+    <style name="SubTitle" forecolor="#736343" fontName="Arial" fontSize="18"/>
+    <style name="Column header" forecolor="#666666" fontName="Arial" fontSize="12" isBold="true"/>
+    <style name="Detail" fontName="Arial" fontSize="12"/>
+    <style name="Row" mode="Transparent">
+        <conditionalStyle>
+            <conditionExpression><![CDATA[$V{REPORT_COUNT}%2 == 0]]></conditionExpression>
+            <style backcolor="#E6DAC3"/>
+        </conditionalStyle>
+    </style>
+    <style name="table">
+        <box>
+            <pen lineWidth="1.0" lineColor="#000000"/>
+        </box>
+    </style>
+    <style name="table_TH" mode="Opaque" backcolor="#F0F8FF">
+        <box>
+            <topPen lineWidth="0.5" lineColor="#000000"/>
+            <bottomPen lineWidth="0.5" lineColor="#000000"/>
+        </box>
+    </style>
+    <style name="table_CH" mode="Opaque" backcolor="#BFE1FF">
+        <box>
+            <topPen lineWidth="0.5" lineColor="#000000"/>
+            <bottomPen lineWidth="0.5" lineColor="#000000"/>
+        </box>
+    </style>
+    <style name="table_TD" mode="Opaque" backcolor="#FFFFFF">
+        <box>
+            <topPen lineWidth="0.5" lineColor="#000000"/>
+            <bottomPen lineWidth="0.5" lineColor="#000000"/>
+        </box>
+    </style>
+    <style name="table 1">
+        <box>
+            <pen lineWidth="1.0" lineColor="#000000"/>
+        </box>
+    </style>
+    <style name="table 1_TH" mode="Opaque" backcolor="#F0F8FF">
+        <box>
+            <topPen lineWidth="0.5" lineColor="#000000"/>
+            <bottomPen lineWidth="0.5" lineColor="#000000"/>
+        </box>
+    </style>
+    <style name="table 1_CH" mode="Opaque" backcolor="#BFE1FF">
+        <box>
+            <topPen lineWidth="0.5" lineColor="#000000"/>
+            <bottomPen lineWidth="0.5" lineColor="#000000"/>
+        </box>
+    </style>
+    <style name="table 1_TD" mode="Opaque" backcolor="#FFFFFF">
+        <box>
+            <topPen lineWidth="0.5" lineColor="#000000"/>
+            <bottomPen lineWidth="0.5" lineColor="#000000"/>
+        </box>
+    </style>
+    <subDataset name="BillwiseDetail" uuid="dd44444c-27d6-4d0c-b595-783f0c2678b7">
+        <parameter name="DOC_KEY_POID" class="java.lang.String" isForPrompting="false"/>
+        <queryString>
+            <![CDATA[SELECT CM.COMPANY_CODE, BRKUP.BILL_REF DOCUMENT_NO , TO_CHAR(BRKUP.BILL_DUE_DATE,'DD-MON-YYYY') DOCUMENT_DATE ,
+       NVL(SUM(DR_AMT),SUM(NVL(CR_AMT,0))) AMOUNT,DECODE(SUM(DR_AMT),NULL,'Cr',0,'Cr','Dr') CRDR_TYPE
+FROM GL_BANK_DEBIT_HDR BHDR
+INNER JOIN GL_VOUCHER_BILL_BREAKUP_DTL BRKUP ON BHDR.TRANSACTION_POID = BRKUP.TRANSACTION_POID AND DOC_ID = '400-111'
+INNER JOIN GLOBAL_COMPANY_MASTER CM ON BRKUP.GL_COMPANY_POID = CM.COMPANY_POID
+LEFT JOIN(
+         SELECT GL_POID, BILL_REF, MIN(BILL_DUE_DATE) AS BILL_DUE_DATE
+         FROM  GL_LEDGER_BILLWISE_BREAKUP
+         WHERE BILL_REF_TYPE IN ('NEW', 'ON-ACCOUNT') AND BILL_DUE_DATE IS NOT NULL
+         GROUP BY GL_POID, BILL_REF
+         )GLB1 ON BRKUP.GL_POID = GLB1.GL_POID AND BRKUP.BILL_REF = GLB1.BILL_REF
+WHERE BHDR.TRANSACTION_POID = $P{DOC_KEY_POID} AND BRKUP.GL_POID!=24422
+GROUP BY BRKUP.BILL_REF, BRKUP.BILL_DUE_DATE, CM.COMPANY_CODE
+ORDER BY CM.COMPANY_CODE, BRKUP.BILL_DUE_DATE]]>
+        </queryString>
+        <field name="COMPANY_CODE" class="java.lang.String"/>
+        <field name="DOCUMENT_NO" class="java.lang.String"/>
+        <field name="DOCUMENT_DATE" class="java.lang.String"/>
+        <field name="AMOUNT" class="java.math.BigDecimal"/>
+        <field name="CRDR_TYPE" class="java.lang.String"/>
+        <variable name="TotAmount" class="java.math.BigDecimal" resetType="Group" resetGroup="group1" calculation="Sum">
+            <variableExpression><![CDATA[$F{AMOUNT}]]></variableExpression>
+            <initialValueExpression><![CDATA[]]></initialValueExpression>
+        </variable>
+        <group name="group1">
+            <groupExpression><![CDATA[$F{COMPANY_CODE}]]></groupExpression>
+        </group>
+    </subDataset>
+    <subDataset name="Total_amt" uuid="a5a41562-becc-4e5a-a7c7-f44ecc492d48">
+        <parameter name="DOC_KEY_POID" class="java.lang.String"/>
+        <queryString>
+            <![CDATA[SELECT SUM(NVL(DR_AMT,0))-SUM(NVL(CR_AMT,0)) TOTAL_AMT
+FROM GL_BANK_DEBIT_HDR BHDR
+INNER JOIN GL_VOUCHER_BILL_BREAKUP_DTL BRKUP ON BHDR.TRANSACTION_POID = BRKUP.TRANSACTION_POID AND DOC_ID = '400-111'
+LEFT JOIN(
+          SELECT GL_POID, BILL_REF, MIN(BILL_DUE_DATE) as BILL_DUE_DATE
+          FROM GL_LEDGER_BILLWISE_BREAKUP
+          WHERE BILL_REF_TYPE IN ('NEW','ON-ACCOUNT') AND BILL_DUE_DATE IS NOT NULL
+          GROUP BY GL_POID, BILL_REF
+         )
+        GLB1 ON BRKUP.GL_POID  = GLB1.GL_POID AND BRKUP.BILL_REF = GLB1.BILL_REF
+WHERE BHDR.TRANSACTION_POID = $P{DOC_KEY_POID} AND BRKUP.GL_POID!=24422]]>
+        </queryString>
+        <field name="TOTAL_AMT" class="java.math.BigDecimal"/>
+    </subDataset>
+    <subDataset name="AmountInWord" uuid="26abf9c9-bb2c-4706-9c10-fcfd714ad62d">
+        <parameter name="DOC_KEY_POID" class="java.lang.String"/>
+        <queryString>
+            <![CDATA[SELECT FN_AMOUNT_IN_WORDS_COMMON(SUM(NVL(DR_AMT,0))-SUM(NVL(CR_AMT,0)),'BHD') AS AMOUNT_IN_WORD
+FROM GL_BANK_DEBIT_HDR BHDR
+INNER JOIN GL_VOUCHER_BILL_BREAKUP_DTL BRKUP ON BHDR.TRANSACTION_POID = BRKUP.TRANSACTION_POID AND DOC_ID = '400-111'
+LEFT JOIN(
+        SELECT GL_POID, BILL_REF, MIN(BILL_DUE_DATE) as BILL_DUE_DATE
+        FROM GL_LEDGER_BILLWISE_BREAKUP
+        WHERE BILL_REF_TYPE IN ('NEW', 'ON-ACCOUNT') AND BILL_DUE_DATE IS NOT NULL
+        GROUP BY GL_POID, BILL_REF
+        )GLB1 ON BRKUP.GL_POID  = GLB1.GL_POID AND BRKUP.BILL_REF = GLB1.BILL_REF
+WHERE BHDR.TRANSACTION_POID = $P{DOC_KEY_POID} AND BRKUP.GL_POID!=24422]]>
+        </queryString>
+        <field name="AMOUNT_IN_WORD" class="java.lang.String"/>
+    </subDataset>
+    <parameter name="LOGIN_GROUP_POID" class="java.lang.String">
+        <defaultValueExpression><![CDATA[1]]></defaultValueExpression>
+    </parameter>
+    <parameter name="LOGIN_COMP_POID" class="java.lang.String">
+        <defaultValueExpression><![CDATA[1]]></defaultValueExpression>
+    </parameter>
+    <parameter name="LOGIN_USER_POID" class="java.lang.String"/>
+    <parameter name="DOC_ID" class="java.lang.String">
+        <defaultValueExpression><![CDATA["000-000"]]></defaultValueExpression>
+    </parameter>
+    <parameter name="DOC_KEY_POID" class="java.lang.String"/>
+    <parameter name="SUBREPORT_DIR" class="java.lang.String" isForPrompting="false">
+        <defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+    </parameter>
+    <parameter name="SUB_HEADER" class="net.sf.jasperreports.engine.JasperReport"/>
+    <parameter name="SUB_FOOTER" class="net.sf.jasperreports.engine.JasperReport"/>
+    <queryString>
+        <![CDATA[select doc_ref,transaction_date,GL_DESCRIPTION paying_to,hdr.created_by,hdr.company_poid
+                     from GL_BANK_debit_HDR hdr
+                     inner join gl_master glmast on hdr.PAY_GL_POID = glmast.gl_poid
+                     WHERE
+                        HDR.TRANSACTION_POID = $P{DOC_KEY_POID}]]>
+    </queryString>
+    <field name="DOC_REF" class="java.lang.String"/>
+    <field name="TRANSACTION_DATE" class="java.sql.Timestamp"/>
+    <field name="PAYING_TO" class="java.lang.String"/>
+    <field name="CREATED_BY" class="java.lang.String"/>
+    <field name="COMPANY_POID" class="java.math.BigDecimal"/>
+    <background>
+        <band splitType="Stretch"/>
+    </background>
+    <title>
+        <band height="151" splitType="Stretch">
+            <subreport>
+                <reportElement x="0" y="0" width="555" height="66" uuid="11dd97b8-4c92-45fe-85bb-3b9358474446"/>
+                <subreportParameter name="LOGIN_COMP_POID">
+                    <subreportParameterExpression><![CDATA[$F{COMPANY_POID}]]></subreportParameterExpression>
+                </subreportParameter>
+                <connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+                <subreportExpression><![CDATA[$P{SUB_HEADER}]]></subreportExpression>
+            </subreport>
+            <staticText>
+                <reportElement x="0" y="78" width="554" height="20" uuid="0bab3dde-54a7-4568-a69f-26fc726fba2a"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font size="14" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Bank Debit Voucher]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="0" y="105" width="66" height="20" uuid="428591de-f97a-4f4c-9ea6-a6bace06288f"/>
+                <textElement>
+                    <font isBold="true"/>
+                </textElement>
+                <text><![CDATA[Paying To :]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="396" y="105" width="45" height="20" uuid="4a72085d-f646-4a4c-bb75-4e6654361dc3"/>
+                <textElement textAlignment="Left">
+                    <font isBold="true"/>
+                </textElement>
+                <text><![CDATA[Ref No. ]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="396" y="125" width="45" height="20" uuid="03f4bade-0534-432a-a7a8-7374677683d9"/>
+                <textElement textAlignment="Left">
+                    <font isBold="true"/>
+                </textElement>
+                <text><![CDATA[Date  ]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="66" y="105" width="298" height="20" uuid="cab1f390-9ebe-40de-8f55-50d205aa04f2"/>
+                <textFieldExpression><![CDATA[$F{PAYING_TO}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="450" y="105" width="100" height="20" uuid="9ff007a2-494a-4bc7-803c-2ba47b19357b"/>
+                <textElement textAlignment="Right"/>
+                <textFieldExpression><![CDATA[$F{DOC_REF}]]></textFieldExpression>
+            </textField>
+            <textField pattern="dd-MMM-yyyy" isBlankWhenNull="true">
+                <reportElement x="450" y="125" width="100" height="20" uuid="47fe8a13-abc0-4427-a7f0-48b8dac0e127"/>
+                <textElement textAlignment="Right"/>
+                <textFieldExpression><![CDATA[$F{TRANSACTION_DATE}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement x="441" y="105" width="5" height="20" uuid="cc6b7de3-e163-48e4-bee5-ebb2e94ed215"/>
+                <text><![CDATA[:]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="441" y="125" width="5" height="20" uuid="1fc79081-aff5-440f-83f1-1671c1f3c0c7"/>
+                <text><![CDATA[:]]></text>
+            </staticText>
+            <line>
+                <reportElement x="0" y="147" width="555" height="1" forecolor="#999999" uuid="a3afecb6-7a83-4958-9ab5-0257e529dd4d"/>
+            </line>
+        </band>
+    </title>
+    <detail>
+        <band height="23" splitType="Stretch">
+            <componentElement>
+                <reportElement key="table 1" x="0" y="0" width="554" height="20" uuid="394bb604-6b17-4ca5-9878-d7093c016632"/>
+                <jr:table xmlns:jr="http://jasperreports.sourceforge.net/jasperreports/components" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports/components http://jasperreports.sourceforge.net/xsd/components.xsd">
+                    <datasetRun subDataset="BillwiseDetail" uuid="52e526e8-ea4a-42fc-8f05-72e90487ee83">
+                        <datasetParameter name="DOC_KEY_POID">
+                            <datasetParameterExpression><![CDATA[$P{DOC_KEY_POID}]]></datasetParameterExpression>
+                        </datasetParameter>
+                        <connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+                    </datasetRun>
+                    <jr:column width="220" uuid="bff28435-dc72-40fb-9a11-683b0738b5c5">
+                        <jr:columnHeader height="15" rowSpan="1">
+                            <staticText>
+                                <reportElement x="0" y="0" width="220" height="15" uuid="c764e65a-c3a1-4aa8-b9f6-247dff5dee74"/>
+                                <textElement>
+                                    <font isBold="true"/>
+                                </textElement>
+                                <text><![CDATA[Document No]]></text>
+                            </staticText>
+                        </jr:columnHeader>
+                        <jr:detailCell height="18" rowSpan="1">
+                            <textField>
+                                <reportElement x="43" y="0" width="177" height="18" uuid="e64a4839-706a-4834-8489-4cb9c964af55"/>
+                                <textFieldExpression><![CDATA[$F{DOCUMENT_NO}]]></textFieldExpression>
+                            </textField>
+                            <textField>
+                                <reportElement x="0" y="0" width="43" height="18" uuid="5fdc832b-e356-4304-8c98-91fd11b53c5d"/>
+                                <textFieldExpression><![CDATA[$F{COMPANY_CODE}]]></textFieldExpression>
+                            </textField>
+                        </jr:detailCell>
+                    </jr:column>
+                    <jr:column width="176" uuid="abc62878-17f0-4431-a411-f628f3b1a9bf">
+                        <jr:columnHeader height="15" rowSpan="1">
+                            <staticText>
+                                <reportElement x="0" y="0" width="176" height="15" uuid="ec0833e7-4c9f-4e1f-88a9-c89a300b381b"/>
+                                <textElement>
+                                    <font isBold="true"/>
+                                </textElement>
+                                <text><![CDATA[Doc Date]]></text>
+                            </staticText>
+                        </jr:columnHeader>
+                        <jr:detailCell height="18" rowSpan="1">
+                            <textField pattern="dd-MMM-yyyy" isBlankWhenNull="true">
+                                <reportElement x="0" y="0" width="176" height="18" uuid="9bedb8e3-bd1e-4857-bda5-2b35b359859e"/>
+                                <textFieldExpression><![CDATA[$F{DOCUMENT_DATE}]]></textFieldExpression>
+                            </textField>
+                        </jr:detailCell>
+                    </jr:column>
+                    <jr:column width="157" uuid="75a40ae6-b310-4dd9-b90f-e2ca390b6eea">
+                        <jr:columnHeader height="15" rowSpan="1">
+                            <staticText>
+                                <reportElement x="0" y="0" width="157" height="15" uuid="d565bf69-39cc-4f10-912d-7a52e5a0ea27"/>
+                                <textElement textAlignment="Right">
+                                    <font isBold="true"/>
+                                </textElement>
+                                <text><![CDATA[Amount]]></text>
+                            </staticText>
+                        </jr:columnHeader>
+                        <jr:detailCell height="18" rowSpan="1">
+                            <textField pattern="###,###,###,##0.000" isBlankWhenNull="true">
+                                <reportElement x="0" y="0" width="140" height="18" uuid="ad6411c1-9d94-4d4a-bb46-5ee226c7df2c"/>
+                                <textElement textAlignment="Right">
+                                    <font size="9"/>
+                                    <paragraph rightIndent="2"/>
+                                </textElement>
+                                <textFieldExpression><![CDATA[$F{AMOUNT}]]></textFieldExpression>
+                            </textField>
+                            <textField>
+                                <reportElement x="140" y="0" width="17" height="18" uuid="45932c52-858b-427d-b08d-8ba40c08dfb5"/>
+                                <textElement textAlignment="Right">
+                                    <font size="7"/>
+                                </textElement>
+                                <textFieldExpression><![CDATA[$F{CRDR_TYPE}]]></textFieldExpression>
+                            </textField>
+                        </jr:detailCell>
+                    </jr:column>
+                </jr:table>
+            </componentElement>
+        </band>
+    </detail>
+    <pageFooter>
+        <band height="14" splitType="Stretch">
+            <subreport>
+                <reportElement x="0" y="0" width="555" height="12" uuid="326ecd66-b7ad-4850-8e0f-10877494dc9d"/>
+                <subreportParameter name="DOC_ID">
+                    <subreportParameterExpression><![CDATA["400-111"]]></subreportParameterExpression>
+                </subreportParameter>
+                <subreportParameter name="LOGIN_COMP_POID">
+                    <subreportParameterExpression><![CDATA[$P{LOGIN_COMP_POID}]]></subreportParameterExpression>
+                </subreportParameter>
+                <connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+                <subreportExpression><![CDATA[$P{SUB_FOOTER}]]></subreportExpression>
+            </subreport>
+        </band>
+    </pageFooter>
+    <lastPageFooter>
+        <band height="87">
+            <line>
+                <reportElement x="222" y="48" width="73" height="1" uuid="4a2e8956-6ec0-4a52-8d5a-07c40d3f05ab"/>
+                <graphicElement>
+                    <pen lineWidth="0.5" lineColor="#999999"/>
+                </graphicElement>
+            </line>
+            <line>
+                <reportElement x="451" y="48" width="73" height="1" uuid="8065a9b1-820f-4b3d-a06a-d1fb076eb7ee"/>
+                <graphicElement>
+                    <pen lineWidth="0.5" lineColor="#999999"/>
+                </graphicElement>
+            </line>
+            <staticText>
+                <reportElement x="18" y="49" width="62" height="18" uuid="428df843-408a-4e49-b67e-a921ee19f2a3"/>
+                <textElement>
+                    <font isBold="true"/>
+                </textElement>
+                <text><![CDATA[Prepared By]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="228" y="49" width="64" height="18" uuid="55482443-46a5-4fc7-a985-f41fed973f38"/>
+                <textElement>
+                    <font isBold="true"/>
+                </textElement>
+                <text><![CDATA[Checked By]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="458" y="49" width="62" height="18" uuid="87bd3efa-bd56-4d2f-b09e-ba7d0ec2e24d"/>
+                <textElement>
+                    <font isBold="true"/>
+                </textElement>
+                <text><![CDATA[Received By]]></text>
+            </staticText>
+            <line>
+                <reportElement x="13" y="48" width="73" height="1" uuid="b880ba9b-6c59-4943-a27e-a6c3dc455f93"/>
+                <graphicElement>
+                    <pen lineWidth="0.5" lineColor="#999999"/>
+                </graphicElement>
+            </line>
+            <textField isBlankWhenNull="true">
+                <reportElement x="0" y="30" width="100" height="17" uuid="cb73dc53-f715-4d03-95ed-7b2ed9a99443"/>
+                <textElement textAlignment="Center">
+                    <font isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{CREATED_BY}]]></textFieldExpression>
+            </textField>
+            <componentElement>
+                <reportElement key="table 2" x="458" y="1" width="92" height="20" uuid="9d61f133-3b99-42bf-94de-0ac107c19999"/>
+                <jr:table xmlns:jr="http://jasperreports.sourceforge.net/jasperreports/components" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports/components http://jasperreports.sourceforge.net/xsd/components.xsd">
+                    <datasetRun subDataset="Total_amt" uuid="5a687fe0-d5c5-42a5-a51a-af1ba4d7dbdf">
+                        <datasetParameter name="DOC_KEY_POID">
+                            <datasetParameterExpression><![CDATA[$P{DOC_KEY_POID}]]></datasetParameterExpression>
+                        </datasetParameter>
+                        <connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+                    </datasetRun>
+                    <jr:column width="90" uuid="76b8cf94-486d-49ff-91de-47b728a49f85">
+                        <jr:detailCell height="20">
+                            <textField pattern="###,###,###,##0.000" isBlankWhenNull="true">
+                                <reportElement x="0" y="0" width="90" height="20" uuid="fe097049-e097-4fcf-b93b-668cc6ed5e63"/>
+                                <textElement textAlignment="Right">
+                                    <font isBold="true"/>
+                                </textElement>
+                                <textFieldExpression><![CDATA[$F{TOTAL_AMT}]]></textFieldExpression>
+                            </textField>
+                        </jr:detailCell>
+                    </jr:column>
+                </jr:table>
+            </componentElement>
+            <componentElement>
+                <reportElement key="table 2" stretchType="RelativeToBandHeight" x="105" y="1" width="320" height="20" uuid="965d88da-a12d-40be-aedf-7f853df84788"/>
+                <jr:table xmlns:jr="http://jasperreports.sourceforge.net/jasperreports/components" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports/components http://jasperreports.sourceforge.net/xsd/components.xsd">
+                    <datasetRun subDataset="AmountInWord" uuid="0658e1e5-1ec7-4374-9dad-28f6ccb31fe2">
+                        <datasetParameter name="DOC_KEY_POID">
+                            <datasetParameterExpression><![CDATA[$P{DOC_KEY_POID}]]></datasetParameterExpression>
+                        </datasetParameter>
+                        <connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+                    </datasetRun>
+                    <jr:column width="275" uuid="c978ca1d-1ef6-48fc-9cd0-38c2db8138c5">
+                        <jr:detailCell height="20" rowSpan="1">
+                            <textField isStretchWithOverflow="true" isBlankWhenNull="true">
+                                <reportElement stretchType="RelativeToBandHeight" x="0" y="0" width="275" height="20" uuid="fc481de4-962a-439f-9105-42c3336e3789"/>
+                                <textElement>
+                                    <font size="9" isBold="true"/>
+                                </textElement>
+                                <textFieldExpression><![CDATA[$F{AMOUNT_IN_WORD}]]></textFieldExpression>
+                            </textField>
+                        </jr:detailCell>
+                    </jr:column>
+                </jr:table>
+            </componentElement>
+            <subreport>
+                <reportElement x="0" y="68" width="554" height="12" uuid="71b4e121-5d8d-4b0a-bbed-e321d01786d3"/>
+                <subreportParameter name="DOC_ID">
+                    <subreportParameterExpression><![CDATA["400-111"]]></subreportParameterExpression>
+                </subreportParameter>
+                <subreportParameter name="LOGIN_COMP_POID">
+                    <subreportParameterExpression><![CDATA[$P{LOGIN_COMP_POID}]]></subreportParameterExpression>
+                </subreportParameter>
+                <connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+                <subreportExpression><![CDATA[$P{SUB_FOOTER}]]></subreportExpression>
+            </subreport>
+            <line>
+                <reportElement x="0" y="0" width="555" height="1" forecolor="#999999" uuid="1120e8f5-c8b7-4155-b79f-66c787a01801"/>
+            </line>
+            <staticText>
+                <reportElement x="0" y="1" width="105" height="20" uuid="babec854-7696-437b-a8df-046f14c45364"/>
+                <textElement>
+                    <font size="9" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Amount In Words(BHD):]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="425" y="1" width="33" height="20" uuid="49dc085e-4302-4d7d-9ad5-71290fa75a3e"/>
+                <textElement>
+                    <font isBold="true"/>
+                </textElement>
+                <text><![CDATA[Total :]]></text>
+            </staticText>
+        </band>
+    </lastPageFooter>
+    <summary>
+        <band splitType="Stretch"/>
+    </summary>
+</jasperReport>

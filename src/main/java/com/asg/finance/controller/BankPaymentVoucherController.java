@@ -8,6 +8,7 @@ import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.dto.ReconcileResultDto;
+import com.asg.common.lib.utility.DateUtil;
 import com.asg.finance.dto.*;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.finance.service.BankPaymentVoucherService;
@@ -337,7 +338,7 @@ public class BankPaymentVoucherController {
             @RequestParam String contact) {
         try {
             service.releaseCheque(transactionPoid, releasedTo, contact);
-            return success("Cheque released successfully", null);
+            return success("Cheque released successfully", Map.of("releaseTime",DateUtil.getCurrentDateTimeInUserTimeZone()));
         } catch (Exception ex) {
             return internalServerError("Failed to release cheque: " + ex.getMessage());
         }

@@ -465,4 +465,32 @@ public class BankDebitVoucherController {
         }
     }
 
+    @AllowedAction(UserRolesRightsEnum.PRINT)
+    @Operation(
+            summary = "Generate Billwise PDF for Bank Debit Voucher",
+            description = "Generate billwise PDF report for a specific Bank Debit Voucher transaction",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Billwise PDF generated successfully",
+                            content = @Content(mediaType = "application/pdf")),
+                    @ApiResponse(responseCode = "404", description = "Bank Debit Voucher not found"),
+                    @ApiResponse(responseCode = "500", description = "Failed to generate billwise PDF")
+            }
+    )
+    @GetMapping("/print-billwise/{transactionPoid}")
+    public ResponseEntity<?> printBillwise(
+            @Parameter(description = "Transaction POID", example = "21")
+            @PathVariable Long transactionPoid) {
+        try {
+            byte[] pdf = bankDebitVoucherService.printBillwise(transactionPoid);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=bank-debit-voucher-billwise-" + transactionPoid + ".pdf")
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .body(pdf);
+        } catch (Exception e) {
+            log.error("Failed to generate billwise PDF for Bank Debit Voucher: {}", transactionPoid, e);
+            return error("Failed to generate billwise PDF: " + e.getMessage(), 500);
+        }
+    }
+
 }

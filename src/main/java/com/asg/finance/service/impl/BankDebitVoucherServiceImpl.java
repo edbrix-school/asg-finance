@@ -1665,4 +1665,17 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         }
     }
 
+    @Override
+    public byte[] printBillwise(Long transactionPoid) throws Exception {
+
+        Map<String, Object> params = printService.buildBaseParams(transactionPoid, UserContext.getDocumentId());
+        JasperReport mainReport = printService.load("Finance/BankPayments/BankDebitVoucher_Billwise.jrxml");
+
+        // Add required subreport parameters
+        params.put("SUB_HEADER", printService.load("Templates/DocHeaderSubReport.jrxml"));
+        params.put("SUB_FOOTER", printService.load("Templates/DocFooterSubReport.jrxml"));
+
+        return printService.fillReportToPdf(mainReport, params, dataSource);
+    }
+
 }

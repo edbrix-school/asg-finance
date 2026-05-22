@@ -44,4 +44,6 @@ public interface BankDebitVoucherService {
     void revertReconciliation(Long transactionPoid, String comments);
 
     byte[] print(Long transactionPoid) throws Exception;
+
+    byte[] printBillwise(Long transactionPoid) throws Exception;
 }

@@ -1012,7 +1012,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
             }
             
             // Calculate Total Amount (Receipt Amount + Extra Charges)
-            BigDecimal bhdAmount = header.getBhdAmount() != null ? header.getBhdAmount() : header.getReceiptAmount().multiply(header.getRate());
+            BigDecimal bhdAmount = calculateHeaderBhdAmount(header);
             BigDecimal totalAmount = bhdAmount.add(extraChargesTotal);
             
             if (advanceTotal.compareTo(totalAmount) != 0) {
@@ -1032,8 +1032,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                     .filter(amount -> amount != null)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            BigDecimal bhdAmount = header.getBhdAmount() != null ? header.getBhdAmount()
-                    : header.getReceiptAmount().multiply(header.getRate());
+            BigDecimal bhdAmount = calculateHeaderBhdAmount(header);
 
             log.debug("Amount validation - BHD amount: {}, Payment total: {}",
                     bhdAmount, paymentTotal);
@@ -1047,8 +1046,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
 
         BigDecimal amountToCompare = "BHD".equalsIgnoreCase(header.getCurrency())
                 ? header.getReceiptAmount()
-                : (header.getBhdAmount() != null ? header.getBhdAmount()
-                        : header.getReceiptAmount().multiply(header.getRate()));
+                : calculateHeaderBhdAmount(header);
 
         // When extra charges are present, add charge total to receipt amount for
         // validation
@@ -1387,7 +1385,17 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         if (originalReceiptAmount == null || currencyRate == null) {
             return originalReceiptAmount;
         }
-        return originalReceiptAmount.multiply(currencyRate).setScale(3, RoundingMode.HALF_UP);
+        return originalReceiptAmount.multiply(currencyRate).setScale(3, 3);
+    }
+
+    private BigDecimal calculateHeaderBhdAmount(GeneralReceiptHeaderDto header) {
+        if (header == null) {
+            return null;
+        }
+        if ("BHD".equalsIgnoreCase(header.getCurrency())) {
+            return header.getReceiptAmount();
+        }
+        return calculateStoredReceiptAmount(header.getReceiptAmount(), header.getRate());
     }
 
     private BigDecimal calculateChargeBhdAmount(BigDecimal amount, BigDecimal currencyRate) {

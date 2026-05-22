@@ -1442,7 +1442,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                     BillwiseBreakupRequestDto dto = new BillwiseBreakupRequestDto();
 
                     dto.setGroupPoid(UserContext.getGroupPoid());
-                    dto.setCompanyPoid(UserContext.getCompanyPoid());
+                    dto.setCompanyPoid(popup.getGlCompanyPoid() != null ? popup.getGlCompanyPoid() : UserContext.getCompanyPoid());
                     dto.setDocId(documentId);
                     dto.setLoginUserPoid(UserContext.getUserPoid());
                     dto.setTransactionPoid(transactionPoid);
@@ -1479,7 +1479,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                 for (CostCenterBreakupPopupRequestDto popup : glDetail.getCostCenterBreakup()) {
                     CostCenterBreakupRequestDto dto = new CostCenterBreakupRequestDto();
                     dto.setGroupPoid(UserContext.getGroupPoid());
-                    dto.setCompanyPoid(UserContext.getCompanyPoid());
+                    dto.setCompanyPoid(glDetail.getCompanyPoid() != null ? glDetail.getCompanyPoid() : UserContext.getCompanyPoid());
                     dto.setDocId(documentId);
                     dto.setTransactionPoid(transactionPoid);
                     dto.setMainDetRowId(glDetail.getDetRowId());
@@ -1522,7 +1522,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                     BillwiseBreakupRequestDto dto = new BillwiseBreakupRequestDto();
 
                     dto.setGroupPoid(UserContext.getGroupPoid());
-                    dto.setCompanyPoid(UserContext.getCompanyPoid());
+                    dto.setCompanyPoid(popup.getGlCompanyPoid() != null ? popup.getGlCompanyPoid() : UserContext.getCompanyPoid());
                     dto.setDocId(documentId);
                     dto.setTransactionPoid(transactionPoid); // SAME HDR POID
                     dto.setLoginUserPoid(userPoid);
@@ -1568,7 +1568,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                 for (CostCenterBreakupPopupRequestDto popup : glDetail.getCostCenterBreakup()) {
                     CostCenterBreakupRequestDto cc = new CostCenterBreakupRequestDto();
                     cc.setGroupPoid(UserContext.getGroupPoid());
-                    cc.setCompanyPoid(UserContext.getCompanyPoid());
+                    cc.setCompanyPoid(glDetail.getCompanyPoid() != null ? glDetail.getCompanyPoid() : UserContext.getCompanyPoid());
                     cc.setDocId(documentId);
                     cc.setTransactionPoid(transactionPoid);
                     cc.setMainDetRowId(glDetail.getDetRowId());
@@ -1726,6 +1726,14 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
             throw new RuntimeException("Error reading reconcile date result", e);
         }
         return new ReconcileResultDto(null, null);
+    }
+
+    @Override
+    public Map<String, Object> getBankBeneficiary(String documentId, Long transactionPoid, Long payGlPoid) {
+        if (payGlPoid == null) {
+            return Collections.emptyMap();
+        }
+        return spRepository.getBankBeneficiary(documentId, transactionPoid, String.valueOf(payGlPoid));
     }
 
 }

@@ -39,4 +39,6 @@ public interface BankPaymentVoucherSpRepository {
     void releaseOldJobValues(Long groupPoid, Long userPoid, Long companyPoid, String docId, String transactionPoid);
     
     String validateVoucherStatus(Long groupPoid, Long userPoid, Long companyPoid, String docId, String refType, String refPoid);
+
+    java.util.Map<String, Object> getBankBeneficiary(String docId, Long docKeyPoid, String selectedPayGlPoid);
 }

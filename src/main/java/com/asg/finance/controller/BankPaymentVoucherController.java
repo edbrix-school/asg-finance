@@ -8,6 +8,7 @@ import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.dto.ReconcileResultDto;
+import com.asg.common.lib.utility.DateUtil;
 import com.asg.finance.dto.*;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.finance.service.BankPaymentVoucherService;
@@ -337,7 +338,9 @@ public class BankPaymentVoucherController {
             @RequestParam String contact) {
         try {
             service.releaseCheque(transactionPoid, releasedTo, contact);
-            return success("Cheque released successfully", null);
+            String formattedReleaseTime = DateUtil.getCurrentDateTimeInUserTimeZone()
+                    .format(java.time.format.DateTimeFormatter.ofPattern("dd-MMM-yyyy h:mm:ss a", java.util.Locale.US));
+            return success("Cheque released successfully", Map.of("releaseTime", formattedReleaseTime));
         } catch (Exception ex) {
             return internalServerError("Failed to release cheque: " + ex.getMessage());
         }
@@ -534,5 +537,22 @@ public class BankPaymentVoucherController {
         }
     }
 
+    @Operation(
+            summary = "Get Bank Beneficiary (Paying To)",
+            description = "Retrieves the beneficiary / paying to details for a given Pay GL by invoking PROC_GL_GET_BANK_BENEFICIARY."
+    )
+    @GetMapping("/beneficiary")
+    public ResponseEntity<?> getBankBeneficiary(
+            @Parameter(description = "Pay GL POID", required = true)
+            @RequestParam Long payGlPoid,
+            @Parameter(description = "Transaction POID (Optional)")
+            @RequestParam(required = false) Long transactionPoid) {
+        try {
+            Map<String, Object> data = service.getBankBeneficiary(UserContext.getDocumentId(), transactionPoid, payGlPoid);
+            return success("Beneficiary fetched successfully", data);
+        } catch (Exception ex) {
+            return internalServerError("Failed to fetch bank beneficiary: " + ex.getMessage());
+        }
+    }
 
 }

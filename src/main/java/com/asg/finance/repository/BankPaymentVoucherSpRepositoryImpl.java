@@ -8,9 +8,11 @@ import jakarta.persistence.StoredProcedureQuery;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
-import java.sql.Date;
+import java.sql.ResultSet;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Repository
@@ -416,5 +418,83 @@ public class BankPaymentVoucherSpRepositoryImpl implements BankPaymentVoucherSpR
         query.execute();
         
         return (String) query.getOutputParameterValue(7);
+    }
+
+    @Override
+    public Map<String, Object> getBankBeneficiary(String docId, Long docKeyPoid, String selectedPayGlPoid) {
+        StoredProcedureQuery query = em.createStoredProcedureQuery("PROC_GL_GET_BANK_BENEFICIARY");
+
+        query.registerStoredProcedureParameter(1, Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(2, Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(3, Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(4, String.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(5, Long.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(6, String.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(7, String.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(8, void.class, ParameterMode.REF_CURSOR);
+
+        query.setParameter(1, UserContext.getGroupPoid());
+        query.setParameter(2, UserContext.getCompanyPoid());
+        query.setParameter(3, UserContext.getUserPoid());
+        query.setParameter(4, docId);
+        query.setParameter(5, docKeyPoid);
+        query.setParameter(6, "GL_MASTER_LEDGERS");
+        query.setParameter(7, selectedPayGlPoid);
+
+        query.execute();
+
+        ResultSet rs = (ResultSet) query.getOutputParameterValue(8);
+        List<Map<String, Object>> data = parseResultSet(rs);
+
+        Map<String, Object> response = new HashMap<>();
+        if (!data.isEmpty()) {
+            Map<String, Object> firstRow = data.get(0);
+            for (Map.Entry<String, Object> entry : firstRow.entrySet()) {
+                response.put(toCamelCase(entry.getKey()), entry.getValue());
+            }
+        }
+        return response;
+    }
+
+    private List<Map<String, Object>> parseResultSet(ResultSet rs) {
+        List<Map<String, Object>> results = new ArrayList<>();
+        if (rs == null) return results;
+
+        try {
+            int columnCount = rs.getMetaData().getColumnCount();
+            while (rs.next()) {
+                Map<String, Object> row = new HashMap<>();
+                for (int i = 1; i <= columnCount; i++) {
+                    String columnName = rs.getMetaData().getColumnName(i);
+                    row.put(columnName, rs.getObject(i));
+                }
+                results.add(row);
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Error parsing procedure result: " + e.getMessage());
+        }
+        return results;
+    }
+
+    private String toCamelCase(String snakeCase) {
+        if (snakeCase == null || snakeCase.isEmpty()) {
+            return snakeCase;
+        }
+        StringBuilder sb = new StringBuilder();
+        boolean nextUpper = false;
+        for (int i = 0; i < snakeCase.length(); i++) {
+            char c = snakeCase.charAt(i);
+            if (c == '_') {
+                nextUpper = true;
+            } else {
+                if (nextUpper) {
+                    sb.append(Character.toUpperCase(c));
+                    nextUpper = false;
+                } else {
+                    sb.append(Character.toLowerCase(c));
+                }
+            }
+        }
+        return sb.toString();
     }
 }

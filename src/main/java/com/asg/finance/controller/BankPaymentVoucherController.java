@@ -537,5 +537,22 @@ public class BankPaymentVoucherController {
         }
     }
 
+    @Operation(
+            summary = "Get Bank Beneficiary (Paying To)",
+            description = "Retrieves the beneficiary / paying to details for a given Pay GL by invoking PROC_GL_GET_BANK_BENEFICIARY."
+    )
+    @GetMapping("/beneficiary")
+    public ResponseEntity<?> getBankBeneficiary(
+            @Parameter(description = "Pay GL POID", required = true)
+            @RequestParam Long payGlPoid,
+            @Parameter(description = "Transaction POID (Optional)")
+            @RequestParam(required = false) Long transactionPoid) {
+        try {
+            Map<String, Object> data = service.getBankBeneficiary(UserContext.getDocumentId(), transactionPoid, payGlPoid);
+            return success("Beneficiary fetched successfully", data);
+        } catch (Exception ex) {
+            return internalServerError("Failed to fetch bank beneficiary: " + ex.getMessage());
+        }
+    }
 
 }

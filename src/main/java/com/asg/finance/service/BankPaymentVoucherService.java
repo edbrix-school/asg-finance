@@ -49,4 +49,5 @@ public interface BankPaymentVoucherService {
     
     byte[] printchequeLeaf(Long transactionPoid) throws Exception;
 
+    Map<String, Object> getBankBeneficiary(String documentId, Long transactionPoid, Long payGlPoid);
 }

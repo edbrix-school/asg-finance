@@ -562,12 +562,8 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                 .orElse(null);
         
         if (existingItem != null) {
-            // Log detailed deletion for audit trail
-            String logDetail = String.format(LOG_KEY_ID_FORMAT, transactionPoid, itemDto.getDetRowId());
-            loggingService.logChanges(existingItem, null, ApPurchaseCnItemDtl.class, docId, docKeyPoid, LogDetailsEnum.DELETED, logDetail);
-            
             itemDtlRepository.deleteById(new com.asg.finance.entity.key.ApPurchaseCnItemDtlKey(transactionPoid, itemDto.getDetRowId()));
-            loggingService.logDelete(existingItem, docId, docKeyPoid);
+            loggingService.logDelete(itemDto, docId, docKeyPoid);
         }
     }
 
@@ -619,12 +615,8 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                 .orElse(null);
         
         if (existingCharge != null) {
-            // Log detailed deletion for audit trail
-            String logDetail = String.format(LOG_KEY_ID_FORMAT, transactionPoid, chargeDto.getDetRowId());
-            loggingService.logChanges(existingCharge, null, ApPurchaseCnChargeDtl.class, docId, docKeyPoid, LogDetailsEnum.DELETED, logDetail);
-            
             chargeDtlRepository.deleteById(new com.asg.finance.entity.key.ApPurchaseCnChargeDtlKey(transactionPoid, chargeDto.getDetRowId()));
-            loggingService.logDelete(existingCharge, docId, docKeyPoid);
+            loggingService.logDelete(chargeDto, docId, docKeyPoid);
         }
     }
 
@@ -676,12 +668,8 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                 .orElse(null);
         
         if (existingGl != null) {
-            // Log detailed deletion for audit trail
-            String logDetail = String.format(LOG_KEY_ID_FORMAT, transactionPoid, glDto.getDetRowId());
-            loggingService.logChanges(existingGl, null, ApPurchaseCnGlDtl.class, docId, docKeyPoid, LogDetailsEnum.DELETED, logDetail);
-            
             glDtlRepository.deleteById(new com.asg.finance.entity.key.ApPurchaseCnGlDtlKey(transactionPoid, glDto.getDetRowId()));
-            loggingService.logDelete(existingGl, docId, docKeyPoid);
+            loggingService.logDelete(glDto, docId, docKeyPoid);
         }
     }
 

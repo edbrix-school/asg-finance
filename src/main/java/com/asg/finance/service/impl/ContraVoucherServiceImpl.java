@@ -53,6 +53,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import javax.sql.DataSource;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -538,10 +539,10 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
         response.setCompanyPoid(header.getCompanyPoid());
         response.setCurrencyCode(header.getCurrencyCode());
         response.setCurrencyRate(header.getCurrencyRate());
-        response.setAmount(header.getAmount());
-        response.setBhdAmount(header.getBhdAmount());
-        response.setDrTotal(header.getDrTotal());
-        response.setCrTotal(header.getCrTotal());
+        response.setAmount(scaleToThreeDecimals(header.getAmount()));
+        response.setBhdAmount(scaleToThreeDecimals(header.getBhdAmount()));
+        response.setDrTotal(scaleToThreeDecimals(header.getDrTotal()));
+        response.setCrTotal(scaleToThreeDecimals(header.getCrTotal()));
         response.setApprovalStatus(null); // ApprovalStatus column doesn't exist in database
         response.setCreatedBy(header.getCreatedBy());
         response.setCreatedDate(header.getCreatedDate());
@@ -576,8 +577,8 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
         response.setCompanyPoidDetails(getCompanyDetails(detail.getCompanyPoid()));
         response.setGlPoid(detail.getGlPoid());
         response.setGlPoidDetails(getGlDetails(detail.getGlPoid()));
-        response.setDrAmt(detail.getDrAmt());
-        response.setCrAmt(detail.getCrAmt());
+        response.setDrAmt(scaleToThreeDecimals(detail.getDrAmt()));
+        response.setCrAmt(scaleToThreeDecimals(detail.getCrAmt()));
         response.setRemarks(detail.getRemarks());
         response.setBreakupList(loadBillwisePopupList(detail.getTransactionPoid(), detail.getDetRowId()));
         response.setCostCenterList(loadCostCenterPopupList(detail.getTransactionPoid(), detail.getDetRowId()));
@@ -908,8 +909,13 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
     public byte[] print(Long transactionPoid) throws Exception {
         Map<String, Object> params = printService.buildBaseParams(transactionPoid, DEFAULT_DOC_ID);
         params.put("SUB_DETAIL", printService.load("Finance/GL/ContraVoucherReportDtlSubreport1.jrxml"));
+        params.put("SUB_FOOTER_ISO", printService.load("Templates/DocFooterSubReport-ISO.jrxml"));
         JasperReport mainReport = printService.load("Finance/GL/ContraVoucherReport1.jrxml");
         return printService.fillReportToPdf(mainReport, params, dataSource);
+    }
+
+    private BigDecimal scaleToThreeDecimals(BigDecimal value) {
+        return value == null ? null : value.setScale(3, RoundingMode.HALF_UP);
     }
 
 }

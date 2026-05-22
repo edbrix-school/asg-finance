@@ -3,6 +3,7 @@
 	<property name="ireport.zoom" value="1.0"/>
 	<property name="ireport.x" value="0"/>
 	<property name="ireport.y" value="0"/>
+	<property name="net.sf.jasperreports.export.pdf.force.linebreak.policy" value="true"/>
 	<parameter name="DOC_KEY_POID" class="java.lang.String">
 		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
 	</parameter>
@@ -10,24 +11,44 @@
 		<defaultValueExpression><![CDATA[1]]></defaultValueExpression>
 	</parameter>
 	<queryString>
-		<![CDATA[SELECT 
+		<![CDATA[SELECT
     CVD.DET_ROW_ID,
     CVD.TYPE,
-    GM.GL_DESCRIPTION,
+    GM.GL_CODE,
+    TRIM(GM.GL_DESCRIPTION) AS GL_DESCRIPTION,
+    TRIM(CVD.REMARKS) AS REMARKS,
+    CASE
+        WHEN CVD.REMARKS IS NOT NULL AND LENGTH(TRIM(CVD.REMARKS)) > 0
+        THEN TRIM(CVD.REMARKS)
+        WHEN CVH.REMARKS IS NOT NULL AND LENGTH(TRIM(CVH.REMARKS)) > 0
+        THEN TRIM(CVH.REMARKS)
+        ELSE NULL
+    END AS LINE_REMARKS,
+    NVL(TRIM(GM.GL_DESCRIPTION), '') ||
+    CASE
+        WHEN CVD.REMARKS IS NOT NULL AND LENGTH(TRIM(CVD.REMARKS)) > 0
+        THEN CHR(10) || TRIM(CVD.REMARKS)
+        WHEN CVH.REMARKS IS NOT NULL AND LENGTH(TRIM(CVH.REMARKS)) > 0
+        THEN CHR(10) || TRIM(CVH.REMARKS)
+        ELSE ''
+    END AS GL_DESC_BLOCK,
     CVD.DR_AMT,
-    CVD.CR_AMT,
-    CVD.REMARKS
+    CVD.CR_AMT
 FROM GL_CONTRA_VOUCHER_DTL CVD
+INNER JOIN GL_CONTRA_VOUCHER_HDR CVH ON CVH.TRANSACTION_POID = CVD.TRANSACTION_POID
 LEFT JOIN GL_MASTER GM ON GM.GL_POID = CVD.GL_POID
 WHERE CVD.TRANSACTION_POID = $P{DOC_KEY_POID}
 ORDER BY CVD.DET_ROW_ID]]>
 	</queryString>
 	<field name="DET_ROW_ID" class="java.math.BigDecimal"/>
 	<field name="TYPE" class="java.lang.String"/>
+	<field name="GL_CODE" class="java.lang.String"/>
 	<field name="GL_DESCRIPTION" class="java.lang.String"/>
+	<field name="REMARKS" class="java.lang.String"/>
+	<field name="LINE_REMARKS" class="java.lang.String"/>
+	<field name="GL_DESC_BLOCK" class="java.lang.String"/>
 	<field name="DR_AMT" class="java.math.BigDecimal"/>
 	<field name="CR_AMT" class="java.math.BigDecimal"/>
-	<field name="REMARKS" class="java.lang.String"/>
 	<variable name="DR_TOTAL" class="java.math.BigDecimal" calculation="Sum">
 		<variableExpression><![CDATA[$F{DR_AMT}]]></variableExpression>
 	</variable>
@@ -35,7 +56,7 @@ ORDER BY CVD.DET_ROW_ID]]>
 		<variableExpression><![CDATA[$F{CR_AMT}]]></variableExpression>
 	</variable>
 	<columnHeader>
-		<band height="23" splitType="Stretch">
+		<band height="21" splitType="Stretch">
 			<staticText>
 				<reportElement x="0" y="0" width="30" height="20" uuid="ec07f2a0-fcf3-4dfc-a570-ff2e78328864"/>
 				<textElement verticalAlignment="Middle">
@@ -44,35 +65,37 @@ ORDER BY CVD.DET_ROW_ID]]>
 				<text><![CDATA[Sl No]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="30" y="0" width="200" height="20" uuid="5db4a7c2-d5e4-447f-94ea-43264811faf6"/>
-				<textElement verticalAlignment="Middle">
+				<reportElement x="30" y="0" width="88" height="20" uuid="d103d495-95b5-4d70-90d8-37e0e76bf420"/>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
 					<font isBold="true" pdfFontName="Helvetica-Bold"/>
+					<paragraph leftIndent="0" rightIndent="8"/>
+				</textElement>
+				<text><![CDATA[GL Code]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="126" y="0" width="263" height="20" uuid="5db4a7c2-d5e4-447f-94ea-43264811faf6"/>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
+					<paragraph leftIndent="0" rightIndent="0"/>
 				</textElement>
 				<text><![CDATA[GL Description]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="230" y="0" width="80" height="20" uuid="a8635280-ac84-470a-9121-8dd4dea23d56"/>
+				<reportElement x="389" y="0" width="70" height="20" uuid="a8635280-ac84-470a-9121-8dd4dea23d56"/>
 				<textElement textAlignment="Right" verticalAlignment="Middle">
 					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Debit [BHD]]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="310" y="0" width="80" height="20" uuid="c47df4be-698c-4db1-9786-c893f0188471"/>
+				<reportElement x="459" y="0" width="71" height="20" uuid="c47df4be-698c-4db1-9786-c893f0188471"/>
 				<textElement textAlignment="Right" verticalAlignment="Middle">
 					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Credit [BHD]]]></text>
 			</staticText>
-			<staticText>
-				<reportElement x="390" y="0" width="140" height="20" uuid="a8635280-ac84-470a-9121-8dd4dea23d57"/>
-				<textElement verticalAlignment="Middle">
-					<font isBold="true" pdfFontName="Helvetica-Bold"/>
-				</textElement>
-				<text><![CDATA[Remarks]]></text>
-			</staticText>
 			<line>
-				<reportElement x="0" y="21" width="530" height="1" forecolor="#999999" uuid="8458845f-d129-4596-b289-1b9df14f53b5"/>
+				<reportElement x="0" y="20" width="530" height="1" forecolor="#999999" uuid="8458845f-d129-4596-b289-1b9df14f53b5"/>
 			</line>
 			<line>
 				<reportElement x="0" y="0" width="530" height="1" forecolor="#999999" uuid="e40515e0-e5cb-4785-915c-583315d60e5d"/>
@@ -80,67 +103,71 @@ ORDER BY CVD.DET_ROW_ID]]>
 		</band>
 	</columnHeader>
 	<detail>
-		<band height="23" splitType="Stretch">
+		<band height="50" splitType="Stretch">
 			<textField isBlankWhenNull="true">
-				<reportElement x="0" y="0" width="30" height="20" uuid="d45120e1-e7d9-438b-b8f6-ccdee0250355"/>
-				<textElement verticalAlignment="Middle"/>
+				<reportElement x="0" y="2" width="30" height="40" uuid="d45120e1-e7d9-438b-b8f6-ccdee0250355" stretchType="RelativeToTallestObject"/>
+				<textElement verticalAlignment="Top"/>
 				<textFieldExpression><![CDATA[$V{REPORT_COUNT}]]></textFieldExpression>
 			</textField>
-			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
-				<reportElement x="30" y="0" width="200" height="20" uuid="b7968593-44a0-486f-b37a-3f7a4fa96a1e"/>
-				<textElement verticalAlignment="Middle"/>
-				<textFieldExpression><![CDATA[$F{GL_DESCRIPTION}]]></textFieldExpression>
+			<textField isStretchWithOverflow="false" isBlankWhenNull="true">
+				<reportElement x="30" y="2" width="88" height="14" uuid="085164d6-4cbd-4a8d-9905-a2594a73b79b" stretchType="RelativeToTallestObject"/>
+				<textElement textAlignment="Left" verticalAlignment="Top">
+					<paragraph leftIndent="0" rightIndent="8" firstLineIndent="0"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{GL_CODE}]]></textFieldExpression>
 			</textField>
-			<textField pattern="###0.000" isBlankWhenNull="true">
-				<reportElement x="230" y="0" width="80" height="20" uuid="6990998a-7fbf-44b4-be47-3451f249c56f"/>
-				<textElement textAlignment="Right" verticalAlignment="Middle"/>
+			<textField textAdjust="StretchHeight" isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement x="126" y="2" width="263" height="40" uuid="b7968593-44a0-486f-b37a-3f7a4fa96a1e" stretchType="RelativeToTallestObject"/>
+				<textElement textAlignment="Left" verticalAlignment="Top">
+					<font size="10"/>
+					<paragraph lineSpacing="Single" leftIndent="0" rightIndent="0" firstLineIndent="0"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{GL_DESC_BLOCK}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.000" isBlankWhenNull="true">
+				<reportElement x="389" y="2" width="70" height="36" uuid="6990998a-7fbf-44b4-be47-3451f249c56f" stretchType="RelativeToTallestObject"/>
+				<textElement textAlignment="Right" verticalAlignment="Top"/>
 				<textFieldExpression><![CDATA[$F{DR_AMT}]]></textFieldExpression>
 			</textField>
-			<textField pattern="###0.000" isBlankWhenNull="true">
-				<reportElement x="310" y="0" width="80" height="20" uuid="6990998a-7fbf-44b4-be47-3451f249c570"/>
-				<textElement textAlignment="Right" verticalAlignment="Middle"/>
+			<textField pattern="#,##0.000" isBlankWhenNull="true">
+				<reportElement x="459" y="2" width="71" height="36" uuid="6990998a-7fbf-44b4-be47-3451f249c570" stretchType="RelativeToTallestObject"/>
+				<textElement textAlignment="Right" verticalAlignment="Top"/>
 				<textFieldExpression><![CDATA[$F{CR_AMT}]]></textFieldExpression>
 			</textField>
-			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
-				<reportElement x="390" y="0" width="140" height="20" uuid="b7968593-44a0-486f-b37a-3f7a4fa96a22"/>
-				<textElement verticalAlignment="Middle"/>
-				<textFieldExpression><![CDATA[$F{REMARKS}]]></textFieldExpression>
-			</textField>
 			<line>
-				<reportElement positionType="FixRelativeToBottom" x="0" y="20" width="530" height="1" forecolor="#999999" uuid="756e3c60-d0d8-4a86-9c00-8e7219e2f86c"/>
+				<reportElement positionType="FixRelativeToBottom" x="0" y="48" width="530" height="1" forecolor="#999999" uuid="756e3c60-d0d8-4a86-9c00-8e7219e2f86c"/>
 				<graphicElement>
-					<pen lineWidth="0.5" lineStyle="Dashed"/>
+					<pen lineWidth="0.75" lineStyle="Dashed"/>
 				</graphicElement>
 			</line>
 		</band>
 	</detail>
 	<summary>
-		<band height="25">
+		<band height="23">
 			<staticText>
-				<reportElement x="30" y="2" width="200" height="20" uuid="34ac0baa-fc51-44df-bb48-354a47526f44"/>
-				<textElement textAlignment="Right" verticalAlignment="Middle">
+				<reportElement x="353" y="2" width="36" height="20" uuid="34ac0baa-fc51-44df-bb48-354a47526f44"/>
+				<textElement verticalAlignment="Middle">
 					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
-				<text><![CDATA[Total:]]></text>
+				<text><![CDATA[Total :-]]></text>
 			</staticText>
-			<textField pattern="###0.000" isBlankWhenNull="true">
-				<reportElement x="230" y="2" width="80" height="20" uuid="6990998a-7fbf-44b4-be47-3451f249c571"/>
+			<textField pattern="#,##0.000" isBlankWhenNull="true">
+				<reportElement x="389" y="2" width="70" height="20" uuid="6990998a-7fbf-44b4-be47-3451f249c571"/>
 				<textElement textAlignment="Right" verticalAlignment="Middle">
-					<font isBold="true" pdfFontName="Helvetica-Bold"/>
+					<font size="9" isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$V{DR_TOTAL}]]></textFieldExpression>
 			</textField>
-			<textField pattern="###0.000" isBlankWhenNull="true">
-				<reportElement x="310" y="2" width="80" height="20" uuid="6990998a-7fbf-44b4-be47-3451f249c572"/>
+			<textField pattern="#,##0.000" isBlankWhenNull="true">
+				<reportElement x="459" y="2" width="71" height="20" uuid="6990998a-7fbf-44b4-be47-3451f249c572"/>
 				<textElement textAlignment="Right" verticalAlignment="Middle">
-					<font isBold="true" pdfFontName="Helvetica-Bold"/>
+					<font size="9" isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$V{CR_TOTAL}]]></textFieldExpression>
 			</textField>
 			<line>
-				<reportElement x="0" y="0" width="530" height="1" forecolor="#999999" uuid="8458845f-d129-4596-b289-1b9df14f53b6"/>
+				<reportElement x="0" y="1" width="530" height="1" forecolor="#999999" uuid="8458845f-d129-4596-b289-1b9df14f53b6"/>
 			</line>
 		</band>
 	</summary>
 </jasperReport>
-

@@ -34,15 +34,15 @@ public class ApPurchaseInvoiceHdrEntity extends BaseEntity {
     @Column(name = "PO_REF")
     private String poRef;
 
-    @AuditIgnore
+
     @Column(name = "FDA_REF")
     private String fdaRef;
 
-    @AuditIgnore
+
     @Column(name = "FF_REF")
     private String ffRef;
 
-    @AuditIgnore
+
     @Column(name = "SHIP_REF")
     private String shipRef;
 
@@ -83,15 +83,15 @@ public class ApPurchaseInvoiceHdrEntity extends BaseEntity {
     @Column(name = "DELETED")
     private String deleted;
 
-    @AuditIgnore
+
     @Column(name = "ITEM_TOTAL")
     private Long itemTotal;
 
-    @AuditIgnore
+
     @Column(name = "CHARGE_TOTAL")
     private Long chargeTotal;
 
-    @AuditIgnore
+
     @Column(name = "GL_TOTAL")
     private Long glTotal;
 
@@ -119,7 +119,7 @@ public class ApPurchaseInvoiceHdrEntity extends BaseEntity {
     @Column(name = "REF_TYPE")
     private String refType;
 
-    @AuditIgnore
+
     @Column(name = "SALES_QTN_POID")
     private String salesQtnPoid;
 
@@ -138,7 +138,7 @@ public class ApPurchaseInvoiceHdrEntity extends BaseEntity {
     @Column(name = "MTA_REF")
     private String mtaRef;
 
-    @AuditIgnore
+
     @Column(name = "MULTI_COMPANY")
     private String multiCompany;
 
@@ -163,7 +163,7 @@ public class ApPurchaseInvoiceHdrEntity extends BaseEntity {
     @Column(name = "GRN_SUPPLIER_POID")
     private Long grnSupplierPoid;
 
-    @AuditIgnore
+
     @Column(name = "PARTY_TIN_NUMBER")
     private String partyTinNumber;
 

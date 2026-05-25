@@ -70,6 +70,7 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -1487,33 +1488,98 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
     }
 
     private void enrichFfLoadResponse(List<PettyCashFromFfDto> rows) {
-        if (rows == null) return;
-        rows.forEach(row -> {
+        if (rows == null || rows.isEmpty()) {
+            return;
+        }
+
+        Set<Long> chargePoids = new HashSet<>();
+        Set<Long> taxPoids = new HashSet<>();
+        Set<Long> refDocPoids = new HashSet<>();
+
+        for (PettyCashFromFfDto row : rows) {
             if (row.getChargePoid() != null) {
-                shipChargeRepository.findByChargePoid(row.getChargePoid()).ifPresent(c ->
-                        row.setChargePoidDtl(new DetailsDto(c.getChargePoid(), c.getChargeCode(),
-                                c.getChargeName(), c.getGroupPoid(), c.getChargeName2(), c.getSeqNo())));
+                chargePoids.add(row.getChargePoid());
             }
             if (row.getTaxPoid() != null) {
-                taxMasterRepository.findByTaxPoid(row.getTaxPoid()).ifPresent(t ->
-                        row.setTaxPoidDtl(new DetailsDto(t.getTaxPoid(), t.getTaxCode(),
-                                t.getTaxName(), t.getGroupPoid(), t.getTaxName2(), t.getSeqNo())));
+                taxPoids.add(row.getTaxPoid());
+            }
+            if (row.getRefDocPoid() != null) {
+                refDocPoids.add(row.getRefDocPoid());
+            }
+        }
+
+        Map<Long, ShipChargeEntity> chargeMap = chargePoids.isEmpty()
+                ? Collections.emptyMap()
+                : shipChargeRepository.findByChargePoidIn(chargePoids)
+                .stream()
+                .collect(Collectors.toMap(
+                        ShipChargeEntity::getChargePoid,
+                        Function.identity()
+                ));
+
+        Map<Long, TaxMaster> taxMap = taxPoids.isEmpty()
+                ? Collections.emptyMap()
+                : taxMasterRepository.findByTaxPoidIn(taxPoids)
+                .stream()
+                .collect(Collectors.toMap(
+                        TaxMaster::getTaxPoid,
+                        Function.identity()
+                ));
+
+        Map<Long, LovGetListDto> refDocMap = refDocPoids.isEmpty()
+                ? Collections.emptyMap()
+                : lovService.getDetailsByPoidsAndLovName(refDocPoids, "FF_JOBNO")
+                .stream()
+                .collect(Collectors.toMap(
+                        LovGetListDto::getPoid,
+                        Function.identity()
+                ));
+
+        for (PettyCashFromFfDto row : rows) {
+            ShipChargeEntity charge = chargeMap.get(row.getChargePoid());
+            if (charge != null) {
+                row.setChargePoidDtl(
+                        new DetailsDto(
+                                charge.getChargePoid(),
+                                charge.getChargeCode(),
+                                charge.getChargeName(),
+                                charge.getGroupPoid(),
+                                charge.getChargeName2(),
+                                charge.getSeqNo()
+                        )
+                );
             }
 
-            if (row.getRefDocPoid() != null) {
-                try {
-                    LovGetListDto lov = lovService.getDetailsByPoidAndLovName(row.getRefDocPoid(), "FF_JOBNO");
-                    if (lov != null && lov.getPoid() != null) {
-                        row.setRefDocPoidDtl(new DetailsDto(
-                                lov.getPoid(), lov.getCode(), lov.getLabel(),
-                                lov.getValue(), lov.getDescription(), lov.getSeqNo()));
-                    }
-                } catch (NumberFormatException ignored) {
-                    // refDocPoid is not a numeric POID — skip enrichment
-                }
+            TaxMaster tax = taxMap.get(row.getTaxPoid());
+            if (tax != null) {
+                row.setTaxPoidDtl(
+                        new DetailsDto(
+                                tax.getTaxPoid(),
+                                tax.getTaxCode(),
+                                tax.getTaxName(),
+                                tax.getGroupPoid(),
+                                tax.getTaxName2(),
+                                tax.getSeqNo()
+                        )
+                );
             }
-        });
+
+            LovGetListDto lov = refDocMap.get(row.getRefDocPoid());
+            if (lov != null) {
+                row.setRefDocPoidDtl(
+                        new DetailsDto(
+                                lov.getPoid(),
+                                lov.getCode(),
+                                lov.getLabel(),
+                                lov.getValue(),
+                                lov.getDescription(),
+                                lov.getSeqNo()
+                        )
+                );
+            }
+        }
     }
+
 
     private void enrichFdaLoadResponse(List<PettyCashFromFdaDto> rows) {
         if (rows == null) return;

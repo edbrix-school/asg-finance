@@ -1,5 +1,6 @@
 package com.asg.finance.dto;
 
+import com.asg.common.lib.dto.LovGetListDto;
 import lombok.*;
 
 import java.time.LocalDate;
@@ -36,7 +37,7 @@ public class PdcChqBatchDtlResponseDto {
     private Double crAmt;
 
     private String costPoid;
-
+    private LovGetListDto costCenterDet;
     private String createdBy;
     private LocalDateTime createdDate;
     private String lastModifiedBy;

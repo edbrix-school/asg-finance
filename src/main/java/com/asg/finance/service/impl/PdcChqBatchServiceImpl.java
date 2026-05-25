@@ -11,6 +11,7 @@ import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.utility.DateUtil;
 import com.asg.finance.dto.*;
 import com.asg.finance.entity.PdcBatchExcelUploadTemp;
@@ -53,6 +54,7 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
     private final PdcBatchExcelUploadTempRepository tempRepo;
     private final LoggingService loggingService;
     private final EntityManager entityManager;
+    private final LovDataService lovService;
 
     private static final String STATUS_SUCCESS = "SUCCESS";
     private static final String DOC_ID = "400-113";
@@ -365,7 +367,7 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
 
     private PdcChqBatchDtlResponseDto mapDtlEntityToResponseDto(PdcChqBatchDtlEntity e) {
 
-        return PdcChqBatchDtlResponseDto.builder()
+        PdcChqBatchDtlResponseDto response =  PdcChqBatchDtlResponseDto.builder()
                 .transactionPoid(e.getTransactionPoid())
                 .detRowId(e.getDetRowId())
                 .pdcChqDate(e.getPdcChqDate())
@@ -390,6 +392,14 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
                 .lastModifiedBy(e.getLastModifiedBy())
                 .lastModifiedDate(e.getLastModifiedDate())
                 .build();
+
+        if (e.getCostPoid() != null) {
+            response.setCostCenterDet(
+                    lovService.getDetailsByCodeAndLovName(e.getCostPoid(), "GL_COST_CENTRE_FOR_PDC")
+            );
+        }
+
+        return response;
     }
 
     private PdcChqBatchHdrResponseDto mapHeaderEntityToResponseDto(

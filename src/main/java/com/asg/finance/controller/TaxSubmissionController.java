@@ -114,7 +114,7 @@ public class TaxSubmissionController {
 
     @Operation(
             summary = "Update tax submission",
-            description = "Updates an existing tax submission. Cannot update if period is closed or submission is approved/posted.",
+            description = "Updates an existing tax submission. Cannot update if submission is approved or posted (closed period may still be edited).",
             responses = {
                     @ApiResponse(
                             responseCode = "200",

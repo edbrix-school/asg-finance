@@ -168,10 +168,6 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         GlobalTaxSubmissionHdr oldEntity = new GlobalTaxSubmissionHdr();
         BeanUtils.copyProperties(header ,oldEntity);
 
-        // Check if can be updated (not closed/approved/posted)
-        if (header.getPeriodClosedDate() != null) {
-            throw new ValidationException("Cannot update tax submission that has closed period");
-        }
         if ("APPROVED".equals(header.getApprovalStatus()) || "POSTED".equals(header.getStatus())) {
             throw new ValidationException("Cannot update tax submission that is already approved or posted");
         }

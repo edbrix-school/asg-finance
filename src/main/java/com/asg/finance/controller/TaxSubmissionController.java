@@ -114,7 +114,7 @@ public class TaxSubmissionController {
 
     @Operation(
             summary = "Update tax submission",
-            description = "Updates an existing tax submission. Cannot update if period is closed or submission is approved/posted.",
+            description = "Updates an existing tax submission. Cannot update if submission is approved or posted (closed period may still be edited).",
             responses = {
                     @ApiResponse(
                             responseCode = "200",
@@ -181,7 +181,7 @@ public class TaxSubmissionController {
 
     @Operation(
             summary = "List Tax Submission with Search and Sort (DocId: 400-118)",
-            description = "Provide search filters. Valid `searchField` values: GLOBALSEARCH or (TRANSACTION_POID, DOC_REF, CREATED_BY). Sorting default on transactionPoid, desc." +
+            description = "Provide search filters. Valid `searchField` values: GLOBALSEARCH or fields from list_of_records_sql (e.g. TRANSACTION_POID, DOC_REF, COMPANY_CODE, COMPANY_NAME, TRANSACTION_DATE). Sorting default on transactionPoid, desc." +
                     "Will be searched in all available fields given in list_of_records_sql or main_table field in doc_master table." +
                     "Sorting will be applied as specified in list_of_records_sql in doc_master table." +
                     "Display fields for showing columns can be customized through list_of_display_columns_and_types field in doc_master.",
@@ -338,8 +338,8 @@ public class TaxSubmissionController {
 
     @Operation(
             summary = "Run after-save processing for tax submission",
-            description = "Executes after-save logic (PROC_TAX_SUBMIN_AFTER_SAVE) for the given tax submission. " +
-                    "This endpoint is typically called after the header has been created or updated.",
+            description = "Executes after-save logic (PROC_TAX_SUBMIN_AFTER_SAVE_V2) for the given tax submission. " +
+                    "Create/update also run this automatically and return PERIOD_CLOSED_BY / PERIOD_CLOSED_DATE in the response.",
             responses = {
                     @ApiResponse(
                             responseCode = "200",

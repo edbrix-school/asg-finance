@@ -4,12 +4,10 @@ import com.asg.common.lib.dto.CompanyDto;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.FilterRequestDto;
-import com.asg.common.lib.entity.DocumentEntity;
+import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.exception.ValidationException;
-import com.asg.common.lib.repository.DocumentCommonRepository;
-import com.asg.common.lib.repository.TableMetaRepository;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
@@ -78,10 +76,6 @@ class TaxSubmissionServiceImplTest {
     private PeriodValidationHelper periodValidationHelper;
     @Mock
     private DocumentSearchService documentService;
-    @Mock
-    private TableMetaRepository tableMetaRepository;
-    @Mock
-    private DocumentCommonRepository documentRepository;
     @Mock
     private CompanyServiceClient companyServiceClient;
     @Mock
@@ -273,20 +267,12 @@ class TaxSubmissionServiceImplTest {
         when(documentService.resolveDateFilters(eq(filters), eq("TRANSACTION_DATE"), any(), any()))
                 .thenReturn(new ArrayList<>(filters.filters()));
 
-        when(tableMetaRepository.getColumnsFromTable("GLOBAL_TAX_SUBMISSION_HDR"))
-                .thenReturn(List.of("TRANSACTION_POID", "DOC_REF", "CREATED_BY", "TRANSACTION_DATE", "GROUP_POID", "COMPANY_POID"));
         HashMap<String, Object> mutableRow = new HashMap<>();
         mutableRow.put("TRANSACTION_POID", 1L);
         mutableRow.put("DOC_REF", "TS-001");
-        mutableRow.put("CREATED_BY", "tester");
-        when(tableMetaRepository.executeDynamicQuery(any(), any(), any()))
-            .thenReturn(List.of(mutableRow));
-        when(tableMetaRepository.executeCountQuery(any(), any())).thenReturn(1L);
-
-        DocumentEntity doc = new DocumentEntity();
-        doc.setDocId("400-118");
-        doc.setListOfDisplayColumnsAndTypes("<DOC_REF,Doc Ref>|<CREATED_BY,Created By>");
-        when(documentRepository.findByDocId("400-118")).thenReturn(doc);
+        when(documentService.search(eq("400-118"), any(), eq("OR"), eq(pageable), eq("N"),
+                eq("TRANSACTION_POID"), eq("DOC_REF")))
+                .thenReturn(new RawSearchResult(List.of(mutableRow), Map.of("DOC_REF", "Doc Ref"), 1L));
 
         try (MockedStatic<UserContext> userContext = mockStatic(UserContext.class)) {
             userContext.when(UserContext::getDocumentId).thenReturn("400-118");
@@ -295,7 +281,8 @@ class TaxSubmissionServiceImplTest {
                     LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31));
 
             assertNotNull(result);
-            verify(tableMetaRepository).executeDynamicQuery(any(), any(), any());
+            verify(documentService).search(eq("400-118"), any(), eq("OR"), eq(pageable), eq("N"),
+                    eq("TRANSACTION_POID"), eq("DOC_REF"));
         }
     }
 

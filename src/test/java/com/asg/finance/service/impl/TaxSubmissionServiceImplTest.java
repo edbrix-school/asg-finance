@@ -27,7 +27,9 @@ import com.asg.finance.entity.GlobalTaxSubmissionHdr;
 import com.asg.finance.repository.GlobalTaxSubmissionDtlRepository;
 import com.asg.finance.repository.GlobalTaxSubmissionHdrRepository;
 import com.asg.finance.service.PeriodValidationHelper;
+import com.asg.finance.service.TaxSubmissionAfterSaveRunner;
 import com.asg.finance.service.TaxSubmissionStoredProcedureHelper;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -82,6 +84,10 @@ class TaxSubmissionServiceImplTest {
     private LoggingService loggingService;
     @Mock
     private DocumentDeleteService documentDeleteService;
+    @Mock
+    private EntityManager entityManager;
+    @Mock
+    private TaxSubmissionAfterSaveRunner afterSaveRunner;
 
     @InjectMocks
     private TaxSubmissionServiceImpl service;
@@ -103,6 +109,12 @@ class TaxSubmissionServiceImplTest {
         saved.setTransactionPoid(101L);
         saved.setCompanyPoid(2L);
 
+        GlobalTaxSubmissionHdr afterSave = new GlobalTaxSubmissionHdr();
+        afterSave.setTransactionPoid(101L);
+        afterSave.setCompanyPoid(2L);
+        afterSave.setPeriodClosedBy("tester");
+        afterSave.setPeriodClosedDate(LocalDateTime.of(2026, 4, 1, 12, 0));
+
         try (MockedStatic<UserContext> userContext = mockStatic(UserContext.class);
              MockedStatic<DateUtil> dateUtil = mockStatic(DateUtil.class)) {
             userContext.when(UserContext::getGroupPoid).thenReturn(1L);
@@ -115,11 +127,15 @@ class TaxSubmissionServiceImplTest {
             when(periodValidationHelper.validatePeriodRules(any(), any(), eq(1))).thenReturn(List.of());
             when(hdrRepository.findOverlappingPeriods(anyLong(), anyLong(), any(), any())).thenReturn(List.of());
             when(storedProcedureHelper.validateBeforeSave(anyLong(), anyLong(), any(), any(), any(), any())).thenReturn("Success");
-            when(hdrRepository.save(any(GlobalTaxSubmissionHdr.class))).thenReturn(saved);
+            when(afterSaveRunner.persistHeader(any(GlobalTaxSubmissionHdr.class))).thenReturn(saved);
+            when(afterSaveRunner.runAfterSaveAndReload(eq(101L), eq(1L), eq(2L), eq("tester"))).thenReturn(afterSave);
 
             TaxSubmissionResponse response = service.createTaxSubmission(request);
 
             assertEquals(101L, response.getTransactionPoid());
+            assertEquals("tester", response.getPeriodClosedBy());
+            assertEquals(afterSave.getPeriodClosedDate(), response.getPeriodClosedDate());
+            verify(afterSaveRunner).runAfterSaveAndReload(101L, 1L, 2L, "tester");
             verify(loggingService).createLogSummaryEntry(any(LogDetailsEnum.class), eq("400-118"), eq("101"));
         }
     }
@@ -187,12 +203,14 @@ class TaxSubmissionServiceImplTest {
             when(periodValidationHelper.validatePeriodRules(any(), any(), eq(1))).thenReturn(List.of());
             when(hdrRepository.findOverlappingPeriodsExcluding(anyLong(), anyLong(), any(), any(), anyLong())).thenReturn(List.of());
             when(storedProcedureHelper.validateBeforeSave(anyLong(), anyLong(), any(), any(), any(), anyLong())).thenReturn("Success");
-            when(hdrRepository.save(any(GlobalTaxSubmissionHdr.class))).thenAnswer(inv -> inv.getArgument(0));
+            when(afterSaveRunner.persistHeader(any(GlobalTaxSubmissionHdr.class))).thenAnswer(inv -> inv.getArgument(0));
+            when(afterSaveRunner.runAfterSaveAndReload(eq(10L), eq(1L), eq(2L), eq("tester"))).thenReturn(header);
             when(dtlRepository.findByTransactionPoid(10L)).thenReturn(List.of());
 
             TaxSubmissionResponse response = service.updateTaxSubmission(10L, request);
 
             assertNotNull(response);
+            verify(afterSaveRunner).runAfterSaveAndReload(10L, 1L, 2L, "tester");
             verify(dtlRepository).deleteByTransactionPoid(10L);
             verify(loggingService).logChanges(any(), any(), any(), eq("400-118"), eq("10"), any(), eq("TRANSACTION_POID"));
         }
@@ -371,8 +389,9 @@ class TaxSubmissionServiceImplTest {
             userContext.when(UserContext::getGroupPoid).thenReturn(1L);
             userContext.when(UserContext::getUserId).thenReturn("tester");
 
-            when(hdrRepository.findByTransactionPoidAndGroupPoid(40L, 1L)).thenReturn(Optional.of(header));
-            when(storedProcedureHelper.processAfterSave(1L, 2L, "tester", 40L)).thenReturn("WARNING: data");
+            when(hdrRepository.findByTransactionPoid(40L)).thenReturn(Optional.of(header));
+            when(afterSaveRunner.runAfterSaveAndReload(40L, 1L, 2L, "tester"))
+                    .thenThrow(new ValidationException("WARNING: data"));
 
             assertThrows(ValidationException.class, () -> service.runAfterSave(40L));
         }
@@ -388,9 +407,8 @@ class TaxSubmissionServiceImplTest {
             userContext.when(UserContext::getGroupPoid).thenReturn(1L);
             userContext.when(UserContext::getUserId).thenReturn("tester");
 
-            when(hdrRepository.findByTransactionPoidAndGroupPoid(41L, 1L))
-                    .thenReturn(Optional.of(header), Optional.of(header));
-            when(storedProcedureHelper.processAfterSave(1L, 2L, "tester", 41L)).thenReturn("Success");
+            when(hdrRepository.findByTransactionPoid(41L)).thenReturn(Optional.of(header));
+            when(afterSaveRunner.runAfterSaveAndReload(41L, 1L, 2L, "tester")).thenReturn(header);
             when(dtlRepository.findByTransactionPoid(41L)).thenReturn(List.of());
 
             TaxSubmissionResponse response = service.runAfterSave(41L);

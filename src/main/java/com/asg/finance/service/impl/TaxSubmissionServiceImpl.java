@@ -15,6 +15,7 @@ import com.asg.finance.repository.GlobalTaxSubmissionHdrRepository;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.PeriodValidationHelper;
+import com.asg.finance.service.TaxSubmissionAfterSaveRunner;
 import com.asg.finance.service.TaxSubmissionService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.enums.LogDetailsEnum;
@@ -53,6 +54,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
     private final LoggingService loggingService;
     private final DocumentDeleteService documentDeleteService;
     private final EntityManager entityManager;
+    private final TaxSubmissionAfterSaveRunner afterSaveRunner;
 
     @Override
     @Transactional
@@ -100,7 +102,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
 
         // Call before save validation stored procedure
         String beforeSaveStatus = storedProcedureHelper.validateBeforeSave(
-                groupPoid, finalCompanyId, userId, normalizedPeriodFrom, normalizedPeriodTo, null);
+                groupPoid, finalCompanyId, resolveProcedureUserId(), normalizedPeriodFrom, normalizedPeriodTo, null);
         if (beforeSaveStatus != null && (beforeSaveStatus.contains("ERROR") || beforeSaveStatus.contains("WARNING"))) {
             throw new ValidationException(beforeSaveStatus);
         }
@@ -118,10 +120,10 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         header.setApprovalStatus("PENDING");
         header.setDeleted("N");
 
-        GlobalTaxSubmissionHdr savedHeader = hdrRepository.save(header);
-        entityManager.flush();
-        entityManager.refresh(savedHeader);
-        
+        GlobalTaxSubmissionHdr savedHeader = afterSaveRunner.persistHeader(header);
+        savedHeader = afterSaveRunner.runAfterSaveAndReload(
+                savedHeader.getTransactionPoid(), groupPoid, finalCompanyId, resolveProcedureUserId());
+
         log.info("createTaxSubmission persisted header transactionPoid={}", savedHeader.getTransactionPoid());
 
         // Log the creation first
@@ -203,7 +205,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
 
         // Call before save validation stored procedure
         String beforeSaveStatus = storedProcedureHelper.validateBeforeSave(
-                groupPoid, header.getCompanyPoid(), userId, normalizedPeriodFrom, normalizedPeriodTo, transactionPoid);
+                groupPoid, header.getCompanyPoid(), resolveProcedureUserId(), normalizedPeriodFrom, normalizedPeriodTo, transactionPoid);
         if (beforeSaveStatus != null && (beforeSaveStatus.contains("ERROR") || beforeSaveStatus.contains("WARNING"))) {
             throw new ValidationException(beforeSaveStatus);
         }
@@ -221,7 +223,9 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         header.setPeriodTo(normalizedPeriodTo);
         header.setRemarks(request.getRemarks());
 
-        GlobalTaxSubmissionHdr savedHeader = hdrRepository.save(header);
+        GlobalTaxSubmissionHdr savedHeader = afterSaveRunner.persistHeader(header);
+        savedHeader = afterSaveRunner.runAfterSaveAndReload(
+                transactionPoid, groupPoid, header.getCompanyPoid(), resolveProcedureUserId());
 
         // Log the update
         String key = savedHeader.getTransactionPoid().toString();
@@ -449,16 +453,8 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         GlobalTaxSubmissionHdr header = hdrRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Tax Submission", "transactionPoid", transactionPoid));
 
-        String afterSaveStatus = storedProcedureHelper.processAfterSave(
-                groupPoid, header.getCompanyPoid(), userId, header.getTransactionPoid());
-
-        if (afterSaveStatus != null && (afterSaveStatus.contains("ERROR") || afterSaveStatus.contains("WARNING"))) {
-            throw new ValidationException(afterSaveStatus);
-        }
-
-        // Reload header (procedure may have updated fields like PERIOD_CLOSED_BY/DATE)
-        GlobalTaxSubmissionHdr reloadedHeader = hdrRepository.findByTransactionPoid(transactionPoid)
-                .orElse(header);
+        GlobalTaxSubmissionHdr reloadedHeader = afterSaveRunner.runAfterSaveAndReload(
+                transactionPoid, groupPoid, header.getCompanyPoid(), resolveProcedureUserId());
         List<GlobalTaxSubmissionDtl> details = dtlRepository.findByTransactionPoid(transactionPoid);
 
         TaxSubmissionResponse response = buildResponse(reloadedHeader, details);
@@ -514,6 +510,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         TaxSubmissionResponse response = new TaxSubmissionResponse();
         BeanUtils.copyProperties(header, response);
         response.setCompanyId(header.getCompanyPoid());
+        response.setPeriodClosedBy(resolvePeriodClosedByDisplay(header.getPeriodClosedBy()));
         // TODO: Set companyName from lookup
 
         // Convert details
@@ -576,6 +573,30 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
             return header.getTransactionDate().toLocalDate();
         }
         return DateUtil.getCurrentDateInUserTimeZone();
+    }
+
+    
+    private String resolveProcedureUserId() {
+        String userId = UserContext.getUserId();
+        if (userId != null && !userId.isBlank()) {
+            return userId;
+        }
+        Long userPoid = UserContext.getUserPoid();
+        return userPoid != null ? String.valueOf(userPoid) : userId;
+    }
+
+    private String resolvePeriodClosedByDisplay(String periodClosedBy) {
+        if (periodClosedBy == null || periodClosedBy.isBlank() || !periodClosedBy.matches("\\d+")) {
+            return periodClosedBy;
+        }
+        Long userPoid = UserContext.getUserPoid();
+        if (userPoid != null && periodClosedBy.equals(String.valueOf(userPoid))) {
+            String userName = UserContext.getUserName();
+            if (userName != null && !userName.isBlank()) {
+                return userName;
+            }
+        }
+        return periodClosedBy;
     }
 }
 

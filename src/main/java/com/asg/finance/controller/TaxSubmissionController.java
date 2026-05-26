@@ -338,8 +338,8 @@ public class TaxSubmissionController {
 
     @Operation(
             summary = "Run after-save processing for tax submission",
-            description = "Executes after-save logic (PROC_TAX_SUBMIN_AFTER_SAVE) for the given tax submission. " +
-                    "This endpoint is typically called after the header has been created or updated.",
+            description = "Executes after-save logic (PROC_TAX_SUBMIN_AFTER_SAVE_V2) for the given tax submission. " +
+                    "Create/update also run this automatically and return PERIOD_CLOSED_BY / PERIOD_CLOSED_DATE in the response.",
             responses = {
                     @ApiResponse(
                             responseCode = "200",

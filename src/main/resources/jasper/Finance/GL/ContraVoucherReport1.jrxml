@@ -3,6 +3,7 @@
 	<property name="ireport.zoom" value="1.3310000000000004"/>
 	<property name="ireport.x" value="0"/>
 	<property name="ireport.y" value="0"/>
+	<property name="net.sf.jasperreports.export.pdf.force.linebreak.policy" value="true"/>
 	<parameter name="LOGIN_GROUP_POID" class="java.lang.String">
 		<defaultValueExpression><![CDATA[1]]></defaultValueExpression>
 	</parameter>
@@ -76,45 +77,47 @@ WHERE CVH.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
 				<text><![CDATA[Contra Voucher]]></text>
 			</staticText>
 			<rectangle radius="10">
-				<reportElement x="25" y="37" width="345" height="76" forecolor="#999999" uuid="744749b6-3b57-4ca8-82fe-7376055ff8ff"/>
+				<reportElement stretchType="RelativeToBandHeight" x="25" y="37" width="345" height="76" forecolor="#999999" uuid="744749b6-3b57-4ca8-82fe-7376055ff8ff"/>
 			</rectangle>
 			<rectangle radius="10">
-				<reportElement x="374" y="37" width="181" height="76" forecolor="#999999" uuid="88a6bfb0-d604-493e-be55-1a391cf8612d"/>
+				<reportElement stretchType="RelativeToBandHeight" x="374" y="37" width="181" height="76" forecolor="#999999" uuid="88a6bfb0-d604-493e-be55-1a391cf8612d"/>
 			</rectangle>
 			<staticText>
 				<reportElement x="29" y="43" width="56" height="20" uuid="2b575c67-bae1-4069-a55e-2c6519df06a3"/>
-				<textElement verticalAlignment="Middle">
+				<textElement verticalAlignment="Top">
 					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Narration]]></text>
 			</staticText>
-			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
-				<reportElement x="85" y="43" width="273" height="20" uuid="ee35b655-455f-4a29-bfc1-b3fcff182947"/>
-				<textElement verticalAlignment="Middle"/>
+			<textField textAdjust="StretchHeight" isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="85" y="43" width="273" height="40" uuid="ee35b655-455f-4a29-bfc1-b3fcff182947"/>
+				<textElement textAlignment="Left" verticalAlignment="Top">
+					<paragraph lineSpacing="Single"/>
+				</textElement>
 				<textFieldExpression><![CDATA[$F{POSTING_NARRATION}]]></textFieldExpression>
 			</textField>
 			<staticText>
 				<reportElement x="377" y="43" width="61" height="20" uuid="1401125a-1ed0-4bb2-94b9-0bf01635a6a1"/>
-				<textElement verticalAlignment="Middle">
+				<textElement verticalAlignment="Top">
 					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Doc Ref]]></text>
 			</staticText>
-			<textField isBlankWhenNull="true">
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
 				<reportElement x="438" y="43" width="100" height="20" uuid="85647e09-2d39-4efc-9f1f-5a6454489a44"/>
-				<textElement verticalAlignment="Middle"/>
+				<textElement textAlignment="Right" verticalAlignment="Top"/>
 				<textFieldExpression><![CDATA[$F{DOC_REF}]]></textFieldExpression>
 			</textField>
 			<staticText>
 				<reportElement x="377" y="67" width="61" height="20" uuid="c5af2dfc-63b4-4a3c-9e92-1d55e395bca9"/>
-				<textElement verticalAlignment="Middle">
+				<textElement verticalAlignment="Top">
 					<font isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
 				<text><![CDATA[Doc Date]]></text>
 			</staticText>
-			<textField pattern="dd-MMM-yyyy" isBlankWhenNull="true">
+			<textField pattern="dd-MMM-yyyy" isStretchWithOverflow="true" isBlankWhenNull="true">
 				<reportElement x="438" y="67" width="100" height="20" uuid="6afe54f7-614e-4a52-9fad-2fc4bfc5f010"/>
-				<textElement verticalAlignment="Middle"/>
+				<textElement textAlignment="Right" verticalAlignment="Top"/>
 				<textFieldExpression><![CDATA[$F{TRANSACTION_DATE}]]></textFieldExpression>
 			</textField>
 			<line>

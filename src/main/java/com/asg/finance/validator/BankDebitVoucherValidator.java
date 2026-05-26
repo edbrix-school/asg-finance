@@ -196,18 +196,10 @@ public class BankDebitVoucherValidator {
     private void validateBeneficiaryRules(BankDebitVoucherRequest req) {
         String payingType = trim(req.getPayingType());
 
-        // payingTo (Beneficiary A/C ID) required when PayingType = 1 or 3 (with conditions)
+        // payingTo (Beneficiary A/C ID) required ONLY when PayingType = 1 (TT) - as per legacy system
         if ("1".equals(payingType)) {
             if (isBlank(req.getPayingTo())) {
                 throw new ValidationException("Beneficiary A/C (payingTo) is required for TT (PayingType=1)");
-            }
-        }
-
-        if ("3".equals(payingType)) {
-            // For payingType 3 (credit card), payingTo required except when refType is FF/FDA/MTA/CUSTOM
-            String refType = trim(req.getRefType());
-            if (!isRefTypeNoPayGl(refType) && isBlank(req.getPayingTo())) {
-                throw new ValidationException("Beneficiary A/C (payingTo) is required for PayingType=3 for this RefType");
             }
         }
 

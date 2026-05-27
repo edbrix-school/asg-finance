@@ -3,6 +3,7 @@ package com.asg.finance.service.impl;
 import com.asg.common.lib.dto.*;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentDeleteService;
+import com.asg.common.lib.service.PrintService;
 import com.asg.common.lib.utility.DateUtil;
 import com.asg.finance.client.CompanyServiceClient;
 import com.asg.common.lib.service.DocumentSearchService;
@@ -24,6 +25,7 @@ import jakarta.persistence.EntityManager;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.sf.jasperreports.engine.JasperReport;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -35,6 +37,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import javax.sql.DataSource;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +47,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class TaxSubmissionServiceImpl implements TaxSubmissionService {
+    private static final String DOC_ID_TAX_SUBMISSION = "400-118";
 
     private final GlobalTaxSubmissionHdrRepository hdrRepository;
     private final GlobalTaxSubmissionDtlRepository dtlRepository;
@@ -55,6 +59,8 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
     private final DocumentDeleteService documentDeleteService;
     private final EntityManager entityManager;
     private final TaxSubmissionAfterSaveRunner afterSaveRunner;
+    private final PrintService printService;
+    private final DataSource dataSource;
 
     @Override
     @Transactional
@@ -297,7 +303,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
                                                  Pageable pageable, LocalDate periodFrom, LocalDate periodTo) {
         String documentId = UserContext.getDocumentId();
         if (documentId == null) {
-            documentId = "400-118"; // Default document ID for tax submission
+            documentId = DOC_ID_TAX_SUBMISSION; // Default document ID for tax submission
         }
         
         log.info("listTaxSubmission started for documentId={}", documentId);
@@ -461,6 +467,15 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
 
         log.info("runAfterSave completed for transactionPoid={}", transactionPoid);
         return response;
+    }
+
+    @Override
+    public byte[] print(Long transactionPoid) throws Exception {
+        Map<String, Object> params = printService.buildBaseParams(transactionPoid, DOC_ID_TAX_SUBMISSION);
+        params.put("SUB_HEADER", printService.load("Templates/DocHeaderSubReport.jrxml"));
+        params.put("SUB_FOOTER_ISO", printService.load("Templates/DocFooterSubReport-ISO.jrxml"));
+        JasperReport mainReport = printService.load("Finance/GL/TaxSubmissionReport.jrxml");
+        return printService.fillReportToPdf(mainReport, params, dataSource);
     }
 
     @Override

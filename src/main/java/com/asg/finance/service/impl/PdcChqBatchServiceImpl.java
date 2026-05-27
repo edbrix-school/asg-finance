@@ -534,14 +534,14 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
 
     public PdcBatchCreationProcResponse createBatchFromExcel(PdcBatchCreationExcelProcRequest request) {
 
-        boolean exists = hdrRepo.existsByTransactionPoid(request.getTransactionPoid());
-        if (!exists) {
-            throw new ResourceNotFoundException(
-                    "PDC Batch not found for: ",
-                    "TransactionPoid",
-                    request.getTransactionPoid()
-            );
-        }
+        PdcChqBatchHdrEntity hdr = hdrRepo.findById(request.getTransactionPoid())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "PDC Batch not found for: ",
+                        "TransactionPoid",
+                        request.getTransactionPoid()
+                ));
+
+        populateExcelProcedureRequestFromHeader(request, hdr);
 
         // Step 1: Call procedure
         PdcBatchCreationProcResponse procResponse =
@@ -566,6 +566,36 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
                 .status(status)
                 .chequeDetails(dtlList)
                 .build();
+    }
+
+    private void populateExcelProcedureRequestFromHeader(PdcBatchCreationExcelProcRequest request,
+                                                         PdcChqBatchHdrEntity hdr) {
+        if (request.getNoOfCheques() == null && hdr.getNoOfChqs() != null) {
+            request.setNoOfCheques(hdr.getNoOfChqs().intValue());
+        }
+        if (request.getChequeAmount() == null && hdr.getChqAmount() != null) {
+            request.setChequeAmount(java.math.BigDecimal.valueOf(hdr.getChqAmount()));
+        }
+        if (isBlank(request.getStartChequeNo())) {
+            request.setStartChequeNo(hdr.getChqStartNo());
+        }
+        if (request.getStartDate() == null) {
+            request.setStartDate(hdr.getChqStartDate());
+        }
+        if (isBlank(request.getPrePrinted())) {
+            request.setPrePrinted(hdr.getPrePrinted());
+        }
+        request.setPrePrinted(normalizeYesNo(request.getPrePrinted()));
+        if (isBlank(request.getNarration())) {
+            request.setNarration(hdr.getNarration());
+        }
+        if (isBlank(request.getBillRef())) {
+            request.setBillRef(hdr.getBillRef());
+        }
+    }
+
+    private String normalizeYesNo(String value) {
+        return "Y".equalsIgnoreCase(value) ? "Y" : "N";
     }
     
 

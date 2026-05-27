@@ -122,7 +122,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
 
         GlobalTaxSubmissionHdr savedHeader = afterSaveRunner.persistHeader(header);
         savedHeader = afterSaveRunner.runAfterSaveAndReload(
-                savedHeader.getTransactionPoid(), groupPoid, finalCompanyId, resolveProcedureUserId());
+                savedHeader.getTransactionPoid(), groupPoid, finalCompanyId, resolveProcedureUserPoidForAfterSave());
 
         log.info("createTaxSubmission persisted header transactionPoid={}", savedHeader.getTransactionPoid());
 
@@ -225,7 +225,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
 
         GlobalTaxSubmissionHdr savedHeader = afterSaveRunner.persistHeader(header);
         savedHeader = afterSaveRunner.runAfterSaveAndReload(
-                transactionPoid, groupPoid, header.getCompanyPoid(), resolveProcedureUserId());
+                transactionPoid, groupPoid, header.getCompanyPoid(), resolveProcedureUserPoidForAfterSave());
 
         // Log the update
         String key = savedHeader.getTransactionPoid().toString();
@@ -454,7 +454,7 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Tax Submission", "transactionPoid", transactionPoid));
 
         GlobalTaxSubmissionHdr reloadedHeader = afterSaveRunner.runAfterSaveAndReload(
-                transactionPoid, groupPoid, header.getCompanyPoid(), resolveProcedureUserId());
+                transactionPoid, groupPoid, header.getCompanyPoid(), resolveProcedureUserPoidForAfterSave());
         List<GlobalTaxSubmissionDtl> details = dtlRepository.findByTransactionPoid(transactionPoid);
 
         TaxSubmissionResponse response = buildResponse(reloadedHeader, details);
@@ -583,6 +583,14 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         }
         Long userPoid = UserContext.getUserPoid();
         return userPoid != null ? String.valueOf(userPoid) : userId;
+    }
+
+    private String resolveProcedureUserPoidForAfterSave() {
+        Long userPoid = UserContext.getUserPoid();
+        if (userPoid != null) {
+            return String.valueOf(userPoid);
+        }
+        return resolveProcedureUserId();
     }
 
     private String resolvePeriodClosedByDisplay(String periodClosedBy) {

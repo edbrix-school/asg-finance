@@ -274,6 +274,7 @@ public class PropertyCostCenterServiceImpl implements PropertyCostCenterService 
      */
     private PropertyCostCenterTreeNodeDto convertToTreeItem(Map<String, Object> row) {
         PropertyCostCenterTreeNodeDto item = new PropertyCostCenterTreeNodeDto();
+        item.setChildren(new ArrayList<>());
         
         // Get propertyCostCenterCode from procedure result (returns as 'CODE' column)
         String propertyCode = null;

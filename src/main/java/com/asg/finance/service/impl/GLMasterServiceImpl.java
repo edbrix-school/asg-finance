@@ -206,9 +206,8 @@ public class GLMasterServiceImpl implements GLMasterService {
 
         propagateToChildren(entity);
 
-        // Log the creation
-        String key = entity.getGlPoid().toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), key);
+        loggingService.createLogSummaryEntry(
+                LogDetailsEnum.CREATED, UserContext.getDocumentId(), resolveLogDocKey(entity));
 
         return toResponseDto(entity);
     }
@@ -1369,5 +1368,12 @@ public class GLMasterServiceImpl implements GLMasterService {
                 .orElseThrow(() -> new RuntimeException("GL Master not found with POID: " + subOf));
 
         return parentGl.getAccountType();
+    }
+
+    private String resolveLogDocKey(GLMasterEntity entity) {
+        if (entity.getGlCode() != null && !entity.getGlCode().isBlank()) {
+            return entity.getGlCode();
+        }
+        return entity.getGlPoid() != null ? entity.getGlPoid().toString() : "";
     }
 }

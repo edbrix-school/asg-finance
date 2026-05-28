@@ -259,9 +259,6 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         if ("Y".equalsIgnoreCase(header.getDeleted())) {
             throw new ValidationException("Tax submission is already deleted");
         }
-        if (header.getPeriodClosedDate() != null) {
-            throw new ValidationException("Cannot delete tax submission that has closed period");
-        }
 
         // Remove detail rows first (legacy deletes child data before header soft-delete)
         dtlRepository.deleteByTransactionPoid(transactionPoid);

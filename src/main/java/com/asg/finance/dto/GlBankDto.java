@@ -81,6 +81,7 @@ public class GlBankDto {
 
     private LovGetListDto companyDet;
     private LovGetListDto currencyDet;
+    private LovGetListDto bankPrefixDet;
     @Valid
     private List<GlBankChequeDtlDto> chequeDetails;
     @Valid

@@ -288,6 +288,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 
             int colIndex = 0;
             int span = getMergedColumnSpan(sheet, 1, 1);
+            Set<String> processedCostCenters = new HashSet<>(); // Track processed cost centers to detect duplicates
 
             for (int i = 0; i < span + 1; i++) {
 
@@ -307,6 +308,11 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
                     continue;
                 }
 
+                // Check for duplicate cost center codes (columns)
+                if (!processedCostCenters.add(costCenterCode.toUpperCase())) {
+                    throw new ValidationException("Duplicate cost center column found: " + costCenterCode + " at column " + colIndex + ". Each cost center can only appear once in the template.");
+                }
+
                 boolean exists = costCenterRepository.existsByCostCenterCode(costCenterCode);
 
                 if (!exists) {
@@ -315,6 +321,8 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 
                 headers.add(costCenterCode);
             }
+
+            Set<String> processedCompanies = new HashSet<>(); // Track processed companies to detect duplicate rows
 
             for (int r = 3; r <= sheet.getLastRowNum(); r++) {
 
@@ -325,6 +333,11 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 
                 if (companyCode == null || "Totals".equalsIgnoreCase(companyCode)) {
                     continue;
+                }
+
+                // Check for duplicate company codes (rows)
+                if (!processedCompanies.add(companyCode.toUpperCase())) {
+                    throw new ValidationException("Duplicate company row found: " + companyCode + " at row " + (r + 1) + ". Each company can only appear once in the template.");
                 }
 
                 Map<String, Object> rowMap = new LinkedHashMap<>();
@@ -459,7 +472,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 
         // HEADER ROW
         Row headerRow = sheet.createRow(2);
-        List<String> costCenterKeys = List.of("SH_", "FF_", "PROPERTIES_", "MTA_", "ADMIN_");
+        List<String> costCenterKeys = List.of("SH", "FF", "PROPERTIES", "MTA", "ADMIN");
         List<String> headers = new ArrayList<>();
         headers.add(COMPANYCODE);
         headers.addAll(costCenterKeys); // dynamic allocation columns
@@ -536,6 +549,22 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         grantTotalStyle.setFont(grantTotal);
 
         cell1.setCellStyle(grantTotalStyle);
+
+        // Auto-size columns for better visibility and ensure underscore characters are visible
+        for (int i = 0; i < headers.size(); i++) {
+            sheet.autoSizeColumn(i);
+            // Set minimum width only if current width is too small (for underscore visibility)
+            int currentWidth = sheet.getColumnWidth(i);
+            int minWidth = 1500; // Reduced minimum width (approximately 6 characters)
+            if (currentWidth < minWidth) {
+                sheet.setColumnWidth(i, minWidth);
+            }
+            // Set maximum width to prevent excessive expansion
+            int maxWidth = 3500; // Maximum width (approximately 14 characters)
+            if (currentWidth > maxWidth) {
+                sheet.setColumnWidth(i, maxWidth);
+            }
+        }
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         try {

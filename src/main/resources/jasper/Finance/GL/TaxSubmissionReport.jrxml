@@ -1,0 +1,327 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="TaxSubmissionReport" language="groovy" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="3f4fd1f0-64fb-4a35-81d8-b5d165e41db8">
+	<parameter name="LOGIN_GROUP_POID" class="java.lang.String">
+		<defaultValueExpression><![CDATA[1]]></defaultValueExpression>
+	</parameter>
+	<parameter name="LOGIN_COMP_POID" class="java.lang.String">
+		<defaultValueExpression><![CDATA[1]]></defaultValueExpression>
+	</parameter>
+	<parameter name="LOGIN_USER_POID" class="java.lang.String"/>
+	<parameter name="LOGIN_DIV_POID" class="java.lang.String"/>
+	<parameter name="DOC_ID" class="java.lang.String"/>
+	<parameter name="DOC_KEY_POID" class="java.lang.String"/>
+	<parameter name="SUB_HEADER" class="net.sf.jasperreports.engine.JasperReport"/>
+	<parameter name="SUB_FOOTER_ISO" class="net.sf.jasperreports.engine.JasperReport"/>
+	<queryString>
+		<![CDATA[SELECT H.TRANSACTION_POID,
+       H.DOC_REF,
+       H.TRANSACTION_DATE,
+       H.PERIOD_FROM,
+       H.PERIOD_TO,
+       H.REMARKS,
+       C.COMPANY_NAME,
+       D.DET_ROW_ID,
+       D.TAX_TYPE,
+       D.TAX_CODE,
+       D.TAX_DESCRIPTION,
+       D.TAX_BASE_AMOUNT,
+       D.TAX_AMOUNT,
+       D.TOTAL_AMOUNT
+  FROM GLOBAL_TAX_SUBMISSION_HDR H
+  LEFT JOIN GLOBAL_COMPANY_MASTER C
+    ON C.COMPANY_POID = H.COMPANY_POID
+  LEFT JOIN GLOBAL_TAX_SUBMISSION_DTL D
+    ON D.TRANSACTION_POID = H.TRANSACTION_POID
+ WHERE H.TRANSACTION_POID = $P{DOC_KEY_POID}
+ ORDER BY D.DET_ROW_ID]]>
+	</queryString>
+	<field name="TRANSACTION_POID" class="java.math.BigDecimal"/>
+	<field name="DOC_REF" class="java.lang.String"/>
+	<field name="TRANSACTION_DATE" class="java.sql.Timestamp"/>
+	<field name="PERIOD_FROM" class="java.sql.Timestamp"/>
+	<field name="PERIOD_TO" class="java.sql.Timestamp"/>
+	<field name="REMARKS" class="java.lang.String"/>
+	<field name="COMPANY_NAME" class="java.lang.String"/>
+	<field name="DET_ROW_ID" class="java.math.BigDecimal"/>
+	<field name="TAX_TYPE" class="java.lang.String"/>
+	<field name="TAX_CODE" class="java.lang.String"/>
+	<field name="TAX_DESCRIPTION" class="java.lang.String"/>
+	<field name="TAX_BASE_AMOUNT" class="java.math.BigDecimal"/>
+	<field name="TAX_AMOUNT" class="java.math.BigDecimal"/>
+	<field name="TOTAL_AMOUNT" class="java.math.BigDecimal"/>
+	<variable name="BASE_TOTAL" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$F{TAX_BASE_AMOUNT}]]></variableExpression>
+	</variable>
+	<variable name="TAX_TOTAL" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$F{TAX_AMOUNT}]]></variableExpression>
+	</variable>
+	<variable name="GRAND_TOTAL" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$F{TOTAL_AMOUNT}]]></variableExpression>
+	</variable>
+	<title>
+		<band height="53" splitType="Stretch">
+			<subreport>
+				<reportElement x="0" y="0" width="555" height="51" uuid="5bc08756-f87d-4eef-b64f-78eb4f6fbd0a"/>
+				<subreportParameter name="LOGIN_DIV_POID">
+					<subreportParameterExpression><![CDATA[$P{LOGIN_DIV_POID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="LOGIN_COMP_POID">
+					<subreportParameterExpression><![CDATA[$P{LOGIN_COMP_POID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUB_HEADER}]]></subreportExpression>
+			</subreport>
+		</band>
+	</title>
+	<pageHeader>
+		<band height="118" splitType="Stretch">
+			<staticText>
+				<reportElement x="210" y="0" width="135" height="25" uuid="2a02b151-3642-4f6e-a16c-bf064102154d"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="16" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Tax Submission]]></text>
+			</staticText>
+			<rectangle radius="10">
+				<reportElement stretchType="RelativeToBandHeight" x="25" y="37" width="345" height="76" forecolor="#999999" uuid="ef8f3dc7-380d-4f89-9b7a-b0350c1503fd"/>
+			</rectangle>
+			<rectangle radius="10">
+				<reportElement stretchType="RelativeToBandHeight" x="374" y="37" width="181" height="76" forecolor="#999999" uuid="6baf4540-cc23-47eb-8878-171d4cd55782"/>
+			</rectangle>
+			<staticText>
+				<reportElement x="29" y="43" width="60" height="18" uuid="38bb7528-fcb4-46c7-92c2-cf87c4fcf476"/>
+				<textElement verticalAlignment="Top">
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Company]]></text>
+			</staticText>
+			<textField textAdjust="StretchHeight" isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="90" y="43" width="268" height="20" uuid="efff1cf6-a589-412a-bfd9-f1c89ec2e1f1"/>
+				<textElement textAlignment="Left" verticalAlignment="Top"/>
+				<textFieldExpression><![CDATA[$F{COMPANY_NAME}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="29" y="68" width="60" height="18" uuid="7adfa26f-2923-42f2-b6a4-b8a1a8f7f497"/>
+				<textElement verticalAlignment="Top">
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Period]]></text>
+			</staticText>
+			<textField pattern="dd-MMM-yyyy" isBlankWhenNull="true">
+				<reportElement x="90" y="68" width="100" height="18" uuid="6a91111f-f0f0-4bb2-b6f8-d7fd261e4345"/>
+				<textElement textAlignment="Left" verticalAlignment="Top"/>
+				<textFieldExpression><![CDATA[$F{PERIOD_FROM}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="195" y="68" width="20" height="18" uuid="64d94f42-f22f-4832-b6cb-8f7aa5a5f887"/>
+				<textElement textAlignment="Center" verticalAlignment="Top"/>
+				<text><![CDATA[to]]></text>
+			</staticText>
+			<textField pattern="dd-MMM-yyyy" isBlankWhenNull="true">
+				<reportElement x="220" y="68" width="100" height="18" uuid="fdc04c38-db89-4a53-a7c2-6118a7ddafca"/>
+				<textElement textAlignment="Left" verticalAlignment="Top"/>
+				<textFieldExpression><![CDATA[$F{PERIOD_TO}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="377" y="43" width="61" height="20" uuid="4be1d8f1-966f-4594-8bb5-09dd074d5be6"/>
+				<textElement verticalAlignment="Top">
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Doc Ref]]></text>
+			</staticText>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement x="438" y="43" width="100" height="20" uuid="2c62f5a9-b0ec-4dd4-bfd5-c1f2279cb338"/>
+				<textElement textAlignment="Right" verticalAlignment="Top"/>
+				<textFieldExpression><![CDATA[$F{DOC_REF}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="377" y="67" width="61" height="20" uuid="3d73c553-b996-470e-aafb-dcb55bc95a4f"/>
+				<textElement verticalAlignment="Top">
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Doc Date]]></text>
+			</staticText>
+			<textField pattern="dd-MMM-yyyy" isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement x="438" y="67" width="100" height="20" uuid="b05f6546-f7b7-4bd0-9032-c6302a601327"/>
+				<textElement textAlignment="Right" verticalAlignment="Top"/>
+				<textFieldExpression><![CDATA[$F{TRANSACTION_DATE}]]></textFieldExpression>
+			</textField>
+			<line>
+				<reportElement positionType="FixRelativeToBottom" x="25" y="115" width="530" height="1" uuid="c2ab554b-e39f-4ed3-8942-09f75af92a3d"/>
+				<graphicElement>
+					<pen lineWidth="0.5" lineColor="#999999"/>
+				</graphicElement>
+			</line>
+		</band>
+	</pageHeader>
+	<columnHeader>
+		<band height="21" splitType="Stretch">
+			<staticText>
+				<reportElement x="25" y="0" width="30" height="20" uuid="0f75086d-c975-4735-8b90-cc95e4df4018"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[SN]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="55" y="0" width="75" height="20" uuid="6f33d3bf-2f83-4203-bae6-760d4f7fbb40"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[VAT Type]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="130" y="0" width="65" height="20" uuid="8a2d9d92-20ba-4f6b-a3f8-5562dfea00f8"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[VAT Code]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="195" y="0" width="190" height="20" uuid="f224c731-8bbd-4a8a-8ca0-8e8ff4cd659f"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[VAT Description]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="385" y="0" width="55" height="20" uuid="8ea47cad-637a-4fce-a51d-2cbe0f2bfec0"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Base Amt]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="440" y="0" width="55" height="20" uuid="5664d8b2-99cf-4057-b5f2-c4f3f40c95a9"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Tax Amt]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="495" y="0" width="60" height="20" uuid="d8f7c75d-afd6-4389-8974-eaabdc6bf29b"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Total Amt]]></text>
+			</staticText>
+			<line>
+				<reportElement x="25" y="20" width="530" height="1" forecolor="#999999" uuid="12d9d9ca-ccef-4700-ab11-cf83370e5ce3"/>
+			</line>
+			<line>
+				<reportElement x="25" y="0" width="530" height="1" forecolor="#999999" uuid="963f5b96-af3d-4ac6-88a8-1477327e80ad"/>
+			</line>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="26" splitType="Stretch">
+			<textField isBlankWhenNull="true">
+				<reportElement x="25" y="2" width="30" height="20" uuid="8f08ff43-c71f-4729-bcdc-c6263c68f66b"/>
+				<textElement verticalAlignment="Top"/>
+				<textFieldExpression><![CDATA[$V{REPORT_COUNT}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="55" y="2" width="75" height="20" uuid="3b623058-cf6c-4968-9718-5db54b15fcb2"/>
+				<textElement verticalAlignment="Top"/>
+				<textFieldExpression><![CDATA[$F{TAX_TYPE}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="130" y="2" width="65" height="20" uuid="5066f5b2-9f17-445a-ab80-7a5c79e7fca9"/>
+				<textElement verticalAlignment="Top"/>
+				<textFieldExpression><![CDATA[$F{TAX_CODE}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement x="195" y="2" width="190" height="20" uuid="badb1080-a137-4d13-81e2-02f124cb84ff"/>
+				<textElement verticalAlignment="Top"/>
+				<textFieldExpression><![CDATA[$F{TAX_DESCRIPTION}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.000" isBlankWhenNull="true">
+				<reportElement x="385" y="2" width="55" height="20" uuid="d1b3ccb6-df48-4cdc-a2ff-cd95d31a16d6"/>
+				<textElement textAlignment="Right" verticalAlignment="Top"/>
+				<textFieldExpression><![CDATA[$F{TAX_BASE_AMOUNT}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.000" isBlankWhenNull="true">
+				<reportElement x="440" y="2" width="55" height="20" uuid="8ed54bfd-30e0-4d5a-9f27-c5f6d6747ecb"/>
+				<textElement textAlignment="Right" verticalAlignment="Top"/>
+				<textFieldExpression><![CDATA[$F{TAX_AMOUNT}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.000" isBlankWhenNull="true">
+				<reportElement x="495" y="2" width="60" height="20" uuid="ea1f38d4-5f4c-40bb-a645-57b8878be279"/>
+				<textElement textAlignment="Right" verticalAlignment="Top"/>
+				<textFieldExpression><![CDATA[$F{TOTAL_AMOUNT}]]></textFieldExpression>
+			</textField>
+			<line>
+				<reportElement positionType="FixRelativeToBottom" x="25" y="24" width="530" height="1" forecolor="#999999" uuid="fc99d6c3-57a5-4852-8f59-cd7f3809f33b"/>
+				<graphicElement>
+					<pen lineWidth="0.5" lineStyle="Dashed"/>
+				</graphicElement>
+			</line>
+		</band>
+	</detail>
+	<columnFooter>
+		<band height="34" splitType="Stretch">
+			<line>
+				<reportElement x="25" y="1" width="530" height="1" forecolor="#999999" uuid="2ab46ef6-2656-455f-a040-09fd06a994ee"/>
+			</line>
+			<staticText>
+				<reportElement x="332" y="8" width="53" height="20" uuid="6ce9cc49-2460-4484-a4b7-63859fecd739"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Total :-]]></text>
+			</staticText>
+			<textField pattern="#,##0.000" isBlankWhenNull="true">
+				<reportElement x="385" y="8" width="55" height="20" uuid="26fd520b-a2d6-4f6c-a8ee-9bf471f96fd5"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{BASE_TOTAL}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.000" isBlankWhenNull="true">
+				<reportElement x="440" y="8" width="55" height="20" uuid="2c346534-5f64-4f3d-a45f-b796ca88eeec"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{TAX_TOTAL}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.000" isBlankWhenNull="true">
+				<reportElement x="495" y="8" width="60" height="20" uuid="86f12ca6-b847-4eb6-b7e1-2174efc53e7a"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{GRAND_TOTAL}]]></textFieldExpression>
+			</textField>
+		</band>
+	</columnFooter>
+	<pageFooter>
+		<band height="24" splitType="Stretch">
+			<subreport>
+				<reportElement x="25" y="0" width="530" height="24" uuid="430cf3af-2ca2-4da0-82e8-17c0e80403dd"/>
+				<subreportParameter name="DOC_ID">
+					<subreportParameterExpression><![CDATA[$P{DOC_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="LOGIN_COMP_POID">
+					<subreportParameterExpression><![CDATA[$P{LOGIN_COMP_POID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUB_FOOTER_ISO}]]></subreportExpression>
+			</subreport>
+		</band>
+	</pageFooter>
+	<summary>
+		<band height="35" splitType="Stretch">
+			<staticText>
+				<reportElement x="25" y="10" width="60" height="18" uuid="85f47cf8-dda2-4fa6-b374-b5b7089dce2b"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Remarks]]></text>
+			</staticText>
+			<textField isBlankWhenNull="true" isStretchWithOverflow="true">
+				<reportElement x="85" y="10" width="470" height="18" uuid="f4627dd4-ebd5-43c0-b780-628649c7f82f"/>
+				<textElement verticalAlignment="Middle"/>
+				<textFieldExpression><![CDATA[$F{REMARKS}]]></textFieldExpression>
+			</textField>
+		</band>
+	</summary>
+</jasperReport>

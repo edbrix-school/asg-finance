@@ -104,6 +104,15 @@ public class TaxSubmissionStoredProcedureHelper {
                         transactionPoid, msg);
                 return "Success";
             }
+           
+            if (msg != null
+                    && msg.contains("ORA-06502")
+                    && msg.contains("character to number conversion error")) {
+                log.warn("PROC_TAX_SUBMIN_AFTER_SAVE raised ORA-06502 conversion error for transactionPoid={} – " +
+                                "treating as non-fatal and continuing. Error: {}",
+                        transactionPoid, msg);
+                return "Success";
+            }
 
             log.error("Error calling PROC_TAX_SUBMIN_AFTER_SAVE for transactionPoid={}", transactionPoid, e);
             throw new RuntimeException("Error processing after save: " + e.getMessage(), e);

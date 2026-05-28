@@ -32,6 +32,8 @@ public interface TaxSubmissionService {
      * tax submission and returns the updated header/details.
      */
     TaxSubmissionResponse runAfterSave(Long transactionPoid);
+
+    byte[] print(Long transactionPoid) throws Exception;
 }
 
 

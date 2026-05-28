@@ -201,11 +201,9 @@ public class PropertyCostCenterController {
 
             var treeNodes = propertyCostCenterService.getPropertyCostCenterTree(UserContext.getDocumentId(), UserContext.getActionRequested(), request);
 
-            int totalCount = countAllNodes(treeNodes);
-            
             Map<String, Object> response = Map.of(
                 "contents", treeNodes,
-                "totalElements", totalCount
+                "totalElements", countAllNodes(treeNodes)
             );
 
             return success("Property Cost Center tree retrieved successfully", response);
@@ -343,12 +341,12 @@ public class PropertyCostCenterController {
     }
 
     private int countAllNodes(java.util.List<PropertyCostCenterTreeNodeDto> nodes) {
-        if (nodes == null || nodes.isEmpty()) {
-            return 0;
-        }
+        if (nodes == null || nodes.isEmpty()) return 0;
         int count = nodes.size();
         for (var node : nodes) {
-            count += countAllNodes(node.getChildren());
+            if (node.getChildren() != null) {
+                count += countAllNodes(node.getChildren());
+            }
         }
         return count;
     }

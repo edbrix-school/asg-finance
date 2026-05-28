@@ -254,13 +254,19 @@ public class PropertyCostCenterServiceImpl implements PropertyCostCenterService 
                 PropertyCostCenterTreeNodeDto parent = itemMap.get(item.getParentPropertyPoid());
                 if (parent != null) {
                     parent.getChildren().add(item);
+                } else {
+                    // Parent not returned by proc (filtered out) — promote to root so node is not lost
+                    rootItems.add(item);
                 }
             }
         }
         
         // Set child count for each node (including all descendants)
         for (PropertyCostCenterTreeNodeDto item : itemMap.values()) {
-            item.setChildCount(countAllDescendants(item));
+            int descendants = countAllDescendants(item);
+            item.setChildCount(descendants);
+            // Only show expand button if node is a GROUP type AND actually has children
+            item.setIsRowGroup("GROUP".equals(item.getItemType()) && descendants > 0);
         }
         
         // Sort root items and their children recursively
@@ -330,7 +336,7 @@ public class PropertyCostCenterServiceImpl implements PropertyCostCenterService 
         
         // Set tree display properties
         item.setIsExpanded(false);
-        item.setIsRowGroup("GROUP".equals(itemType));
+        item.setIsRowGroup(false); // will be recalculated after children are populated
         
         return item;
     }
@@ -395,12 +401,13 @@ public class PropertyCostCenterServiceImpl implements PropertyCostCenterService 
         try {
             log.info("Fetching Property Cost Center list for documentId: {}, actionRequested: {}, parentPoid: {}, sort: {}",
                     documentId, actionRequested, parentPoid, sort);
-            Long count = repository.countByPropertyTypeNotNull();
-
+            Long count;
             List<PropertyCostCenter> entities;
             if (parentPoid == null) {
+                count = repository.countMainGroups();
                 entities = repository.findMainGroups(false, null);
             } else {
+                count = repository.countActiveDirectChildren(parentPoid);
                 entities = repository.findDirectChildren(parentPoid, false, null);
             }
 

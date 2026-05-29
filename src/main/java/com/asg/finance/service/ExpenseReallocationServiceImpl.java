@@ -85,7 +85,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
                 .expenseGroupGl(request.getExpenseGroupGlId()).fromCompany(request.getFromCompanyId())
                 .fromDate(request.getFromDate()).toDate(request.getToDate()).allocationType(request.getAllocationType())
                 .costPoid(request.getCostCode()).remarks(request.getRemarks())
-                .deleted("N").reportGeneration("N")
+                .deleted("N").reportGeneration(request.getReportGeneration())
                 .narration(request.getNarration()).build();
 
         final GlExpenseReallocationHdr savedHdr = hdrRepository.save(header);
@@ -177,6 +177,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         header.setAllocationType(request.getAllocationType());
         header.setCostPoid(request.getCostCode());
         header.setRemarks(request.getRemarks());
+        header.setReportGeneration(request.getReportGeneration());
 
         GlExpenseReallocationHdr savedHeader = hdrRepository.save(header);
 

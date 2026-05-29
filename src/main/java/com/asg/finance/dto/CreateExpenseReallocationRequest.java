@@ -47,4 +47,6 @@ public class CreateExpenseReallocationRequest {
     @NotNull(message = "Details are required")
     private List<ExpenseReallocationXlDetailRequest> details;
 
+    private String reportGeneration;
+
 }

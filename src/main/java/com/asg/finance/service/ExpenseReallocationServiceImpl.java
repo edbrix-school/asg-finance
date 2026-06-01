@@ -81,7 +81,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         }
 
         GlExpenseReallocationHdr header = GlExpenseReallocationHdr.builder()
-                .transactionDate(DateUtil.getCurrentDateInUserTimeZone()).groupPoid(groupPoid).companyPoid(companyPoid)
+                .transactionDate(request.getTransactionDate()).groupPoid(groupPoid).companyPoid(companyPoid)
                 .expenseGroupGl(request.getExpenseGroupGlId()).fromCompany(request.getFromCompanyId())
                 .fromDate(request.getFromDate()).toDate(request.getToDate()).allocationType(request.getAllocationType())
                 .costPoid(request.getCostCode()).remarks(request.getRemarks())

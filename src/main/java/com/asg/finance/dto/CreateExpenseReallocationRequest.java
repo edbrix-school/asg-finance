@@ -15,6 +15,9 @@ import java.util.List;
 @AllArgsConstructor
 public class CreateExpenseReallocationRequest {
 
+    @NotNull(message = "Transaction Date is required")
+    private LocalDate transactionDate;
+
     @NotNull(message = "Expense Group GL is required")
     private Long expenseGroupGlId;
 

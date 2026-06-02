@@ -341,10 +341,6 @@ public class TaxSubmissionServiceImpl implements TaxSubmissionService {
         GlobalTaxSubmissionHdr header = hdrRepository.findByTransactionPoid(transactionPoid)
                 .orElseThrow(() -> new ResourceNotFoundException("Tax Submission", "transactionPoid", transactionPoid));
 
-        // Validate header is in editable state
-        if (header.getPeriodClosedDate() != null) {
-            throw new ValidationException("Cannot load VAT details for closed period");
-        }
         if ("APPROVED".equals(header.getApprovalStatus()) || "POSTED".equals(header.getStatus())) {
             throw new ValidationException("Cannot load VAT details for approved or posted submission");
         }

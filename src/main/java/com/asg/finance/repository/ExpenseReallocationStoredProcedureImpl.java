@@ -54,7 +54,7 @@ public class ExpenseReallocationStoredProcedureImpl implements ExpenseReallocati
 
                 log.debug("JV SP Result={}, DocRef={}", result, docRef);
 
-                if (result != null && result.toLowerCase().startsWith("error")) {
+                if (result != null && (result.toLowerCase().startsWith("error") || result.toLowerCase().contains("ora-"))) {
                     throw new RuntimeException("JV Creation Failed: " + result);
                 }
 

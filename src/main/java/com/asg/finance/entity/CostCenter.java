@@ -71,6 +71,5 @@ public class CostCenter extends BaseEntity {
     private String costCenterType;
 
     @Column(name = "PARENT_COST_CENTER_POID")
-    @AuditIgnore
     private Long parentCostCenterPoid;
 }

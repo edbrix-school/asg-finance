@@ -206,8 +206,9 @@ public class GLMasterServiceImpl implements GLMasterService {
 
         propagateToChildren(entity);
 
-        // Log the creation
-        String key = entity.getGlPoid().toString();
+        String key = (entity.getGlCode() != null && !entity.getGlCode().isBlank())
+                ? entity.getGlCode()
+                : entity.getGlPoid().toString();
         loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), key);
 
         return toResponseDto(entity);
@@ -1370,4 +1371,5 @@ public class GLMasterServiceImpl implements GLMasterService {
 
         return parentGl.getAccountType();
     }
+
 }

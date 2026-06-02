@@ -23,6 +23,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -114,7 +116,7 @@ public class TaxSubmissionController {
 
     @Operation(
             summary = "Update tax submission",
-            description = "Updates an existing tax submission. Cannot update if period is closed or submission is approved/posted.",
+            description = "Updates an existing tax submission. Cannot update if submission is approved or posted (closed period may still be edited).",
             responses = {
                     @ApiResponse(
                             responseCode = "200",
@@ -181,7 +183,7 @@ public class TaxSubmissionController {
 
     @Operation(
             summary = "List Tax Submission with Search and Sort (DocId: 400-118)",
-            description = "Provide search filters. Valid `searchField` values: GLOBALSEARCH or (TRANSACTION_POID, DOC_REF, CREATED_BY). Sorting default on transactionPoid, desc." +
+            description = "Provide search filters. Valid `searchField` values: GLOBALSEARCH or fields from list_of_records_sql (e.g. TRANSACTION_POID, DOC_REF, COMPANY_CODE, COMPANY_NAME, TRANSACTION_DATE). Sorting default on transactionPoid, desc." +
                     "Will be searched in all available fields given in list_of_records_sql or main_table field in doc_master table." +
                     "Sorting will be applied as specified in list_of_records_sql in doc_master table." +
                     "Display fields for showing columns can be customized through list_of_display_columns_and_types field in doc_master.",
@@ -338,8 +340,8 @@ public class TaxSubmissionController {
 
     @Operation(
             summary = "Run after-save processing for tax submission",
-            description = "Executes after-save logic (PROC_TAX_SUBMIN_AFTER_SAVE) for the given tax submission. " +
-                    "This endpoint is typically called after the header has been created or updated.",
+            description = "Executes after-save logic (PROC_TAX_SUBMIN_AFTER_SAVE_V2) for the given tax submission. " +
+                    "Create/update also run this automatically and return PERIOD_CLOSED_BY / PERIOD_CLOSED_DATE in the response.",
             responses = {
                     @ApiResponse(
                             responseCode = "200",
@@ -396,6 +398,34 @@ public class TaxSubmissionController {
         
         log.info("validatePeriod completed valid={}", response.getValid());
         return success("Period validated successfully", response);
+    }
+
+    @AllowedAction(UserRolesRightsEnum.PRINT)
+    @Operation(
+            summary = "Generate PDF for Tax Submission",
+            description = "Generate PDF report for a specific Tax Submission transaction",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "PDF generated successfully",
+                            content = @Content(mediaType = "application/pdf")),
+                    @ApiResponse(responseCode = "404", description = "Tax Submission not found"),
+                    @ApiResponse(responseCode = "500", description = "Failed to generate PDF")
+            }
+    )
+    @GetMapping("/print/{transactionPoid}")
+    public ResponseEntity<?> print(
+            @Parameter(description = "Transaction POID", example = "21")
+            @PathVariable Long transactionPoid) {
+        try {
+            byte[] pdf = taxSubmissionService.print(transactionPoid);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=tax-submission-" + transactionPoid + ".pdf")
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .body(pdf);
+        } catch (Exception e) {
+            log.error("Failed to generate PDF for Tax Submission: {}", transactionPoid, e);
+            return error("Failed to generate PDF: " + e.getMessage(), 500);
+        }
     }
 
 }

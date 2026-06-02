@@ -49,10 +49,16 @@ public interface PropertyCostCenterRepository extends JpaRepository<PropertyCost
             @Param("groupPoid") Long groupPoid);
 
     /**
-     * Count all records where propertyType is not null
+     * Count active main groups (no parent)
      */
-    @Query("SELECT COUNT(p) FROM PropertyCostCenter p WHERE p.propertyType IS NOT NULL")
-    long countByPropertyTypeNotNull();
+    @Query("SELECT COUNT(p) FROM PropertyCostCenter p WHERE p.parentPropertyPoid IS NULL AND p.deleted = 'N'")
+    long countMainGroups();
+
+    /**
+     * Count active direct children of a specific parent
+     */
+    @Query("SELECT COUNT(p) FROM PropertyCostCenter p WHERE p.parentPropertyPoid = :parentPoid AND p.deleted = 'N'")
+    long countActiveDirectChildren(@Param("parentPoid") Long parentPoid);
 
     /**
      * Count direct children of a specific parent

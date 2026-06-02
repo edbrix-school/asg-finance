@@ -81,11 +81,11 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         }
 
         GlExpenseReallocationHdr header = GlExpenseReallocationHdr.builder()
-                .transactionDate(DateUtil.getCurrentDateInUserTimeZone()).groupPoid(groupPoid).companyPoid(companyPoid)
+                .transactionDate(request.getTransactionDate()).groupPoid(groupPoid).companyPoid(companyPoid)
                 .expenseGroupGl(request.getExpenseGroupGlId()).fromCompany(request.getFromCompanyId())
                 .fromDate(request.getFromDate()).toDate(request.getToDate()).allocationType(request.getAllocationType())
                 .costPoid(request.getCostCode()).remarks(request.getRemarks())
-                .deleted("N").reportGeneration("N")
+                .deleted("N").reportGeneration(request.getReportGeneration())
                 .narration(request.getNarration()).build();
 
         final GlExpenseReallocationHdr savedHdr = hdrRepository.save(header);
@@ -108,11 +108,16 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 
         xlDtlRepository.saveAll(xlDtlEntities);
 
-        // Log child record creation for XL details
-        xlDtlEntities.forEach(xlDetail -> {
-            String logDetail = String.format("Row Created on Expense Reallocation XL Detail with detRowId: %s", xlDetail.getDetRowId());
-            loggingService.createLogSummaryEntry(UserContext.getDocumentId(), hdrPoid.toString(), logDetail);
-        });
+        // Log child record creation for XL details - group by detRowId to avoid duplicate logs
+        xlDtlEntities.stream()
+            .collect(java.util.stream.Collectors.groupingBy(GlExpenseReallocationXlDtl::getDetRowId))
+            .forEach((detRowId, entities) -> {
+                String costCenters = entities.stream()
+                    .map(GlExpenseReallocationXlDtl::getCostCentre)
+                    .collect(java.util.stream.Collectors.joining(", "));
+                String logDetail = String.format("Row Created on Expense Reallocation XL Detail with detRowId: %s", detRowId);
+                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), hdrPoid.toString(), logDetail);
+            });
         log.info("createExpenseReallocation completed for transactionPoid={}", savedHdr.getTransactionPoid());
         return buildResponse(savedHdr);
     }
@@ -172,6 +177,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         header.setAllocationType(request.getAllocationType());
         header.setCostPoid(request.getCostCode());
         header.setRemarks(request.getRemarks());
+        header.setReportGeneration(request.getReportGeneration());
 
         GlExpenseReallocationHdr savedHeader = hdrRepository.save(header);
 
@@ -283,6 +289,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 
             int colIndex = 0;
             int span = getMergedColumnSpan(sheet, 1, 1);
+            Set<String> processedCostCenters = new HashSet<>(); // Track processed cost centers to detect duplicates
 
             for (int i = 0; i < span + 1; i++) {
 
@@ -302,6 +309,11 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
                     continue;
                 }
 
+                // Check for duplicate cost center codes (columns)
+                if (!processedCostCenters.add(costCenterCode.toUpperCase())) {
+                    throw new ValidationException("Duplicate cost center column found: " + costCenterCode + " at column " + colIndex + ". Each cost center can only appear once in the template.");
+                }
+
                 boolean exists = costCenterRepository.existsByCostCenterCode(costCenterCode);
 
                 if (!exists) {
@@ -310,6 +322,8 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 
                 headers.add(costCenterCode);
             }
+
+            Set<String> processedCompanies = new HashSet<>(); // Track processed companies to detect duplicate rows
 
             for (int r = 3; r <= sheet.getLastRowNum(); r++) {
 
@@ -320,6 +334,11 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 
                 if (companyCode == null || "Totals".equalsIgnoreCase(companyCode)) {
                     continue;
+                }
+
+                // Check for duplicate company codes (rows)
+                if (!processedCompanies.add(companyCode.toUpperCase())) {
+                    throw new ValidationException("Duplicate company row found: " + companyCode + " at row " + (r + 1) + ". Each company can only appear once in the template.");
                 }
 
                 Map<String, Object> rowMap = new LinkedHashMap<>();
@@ -454,7 +473,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 
         // HEADER ROW
         Row headerRow = sheet.createRow(2);
-        List<String> costCenterKeys = List.of("SH_", "FF_", "PROPERTIES_", "MTA_", "ADMIN_");
+        List<String> costCenterKeys = List.of("SH", "FF", "PROPERTIES", "MTA", "ADMIN");
         List<String> headers = new ArrayList<>();
         headers.add(COMPANYCODE);
         headers.addAll(costCenterKeys); // dynamic allocation columns
@@ -531,6 +550,22 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
         grantTotalStyle.setFont(grantTotal);
 
         cell1.setCellStyle(grantTotalStyle);
+
+        // Auto-size columns for better visibility and ensure underscore characters are visible
+        for (int i = 0; i < headers.size(); i++) {
+            sheet.autoSizeColumn(i);
+            // Set minimum width only if current width is too small (for underscore visibility)
+            int currentWidth = sheet.getColumnWidth(i);
+            int minWidth = 1500; // Reduced minimum width (approximately 6 characters)
+            if (currentWidth < minWidth) {
+                sheet.setColumnWidth(i, minWidth);
+            }
+            // Set maximum width to prevent excessive expansion
+            int maxWidth = 3500; // Maximum width (approximately 14 characters)
+            if (currentWidth > maxWidth) {
+                sheet.setColumnWidth(i, maxWidth);
+            }
+        }
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         try {
@@ -1042,27 +1077,33 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
 
     private void processXlDetails(Long transactionPoid, List<ExpenseReallocationProcessedXlDetail> xlDetails, String userId) {
         List<LogRequestDto<GlExpenseReallocationXlDtl>> logRequests = new ArrayList<>();
+        List<GlExpenseReallocationXlDtl> createdEntities = new ArrayList<>();
         String docId = UserContext.getDocumentId();
 
         if (xlDetails.stream()
                 .anyMatch(val -> "isCreated".equalsIgnoreCase(val.getActionType())))
             xlDtlRepository.deleteByTransactionPoid(transactionPoid);
+        
         // Auto-generate detRowId for new records
         Long maxDetRowId = xlDtlRepository.findMaxDetRowIdByTransactionPoid(transactionPoid);
         AtomicLong detRowIdSeq = new AtomicLong(maxDetRowId != null ? maxDetRowId + 1 : 1);
+        
+        // Group by company to assign same detRowId for all cost centers of same company
+        Map<String, Long> companyDetRowIdMap = new HashMap<>();
 
         for (ExpenseReallocationProcessedXlDetail xlDetail : xlDetails) {
             String actionType = xlDetail.getActionType() != null ? xlDetail.getActionType().toUpperCase() : "ISCREATED";
 
             switch (actionType) {
                 case "ISCREATED" -> {
-                    // Auto-generate detRowId for new records
-                    Long newDetRowId = detRowIdSeq.getAndIncrement();
-                    xlDetail.setDetRowId(newDetRowId); // Set back to DTO
+                    // Get or assign detRowId for this company
+                    String companyKey = xlDetail.getCompanyCode();
+                    Long detRowIdForCompany = companyDetRowIdMap.computeIfAbsent(companyKey, k -> detRowIdSeq.getAndIncrement());
+                    xlDetail.setDetRowId(detRowIdForCompany);
 
                     GlExpenseReallocationXlDtl entity = GlExpenseReallocationXlDtl.builder()
                             .transactionPoid(transactionPoid)
-                            .detRowId(newDetRowId) // Use auto-generated ID
+                            .detRowId(detRowIdForCompany)
                             .company(xlDetail.getCompany())
                             .companyCode(xlDetail.getCompanyCode())
                             .costCentre(xlDetail.getCostCentre())
@@ -1070,8 +1111,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
                             .remarks(xlDetail.getRemarks())
                             .build();
                     xlDtlRepository.save(entity);
-                    String logDetail = String.format("Row Created on Expense Reallocation XL Detail with detRowId: %s", entity.getDetRowId());
-                    loggingService.createLogSummaryEntry(docId, transactionPoid.toString(), logDetail);
+                    createdEntities.add(entity);
                 }
                 case "ISUPDATED" -> {
                     validateDetRowID(xlDetail.getDetRowId(), "xlDetail");
@@ -1102,6 +1142,19 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
             }
         }
 
+        // Batch logging for created entities - group by detRowId to avoid duplicate logs
+        if (!createdEntities.isEmpty()) {
+            createdEntities.stream()
+                .collect(java.util.stream.Collectors.groupingBy(GlExpenseReallocationXlDtl::getDetRowId))
+                .forEach((detRowId, entities) -> {
+                    String costCenters = entities.stream()
+                        .map(GlExpenseReallocationXlDtl::getCostCentre)
+                        .collect(java.util.stream.Collectors.joining(", "));
+                    String logDetail = String.format("Row Created on Expense Reallocation XL Detail with detRowId: %s ", detRowId);
+                    loggingService.createLogSummaryEntry(docId, transactionPoid.toString(), logDetail);
+                });
+        }
+
         if (!logRequests.isEmpty()) {
             loggingService.createLogBatch(logRequests);
         }
@@ -1114,8 +1167,8 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
     private List<ExpenseReallocationProcessedXlDetail> mapXlDetailtoEntity(List<ExpenseReallocationXlDetailRequest> request, Long transactionPoid, AtomicLong detRowId) {
         return request.stream()
                 .flatMap(val -> {
-
-                            Long detRowValue = detRowId != null ? (Long) detRowId.getAndIncrement() : val.getDetRowId();
+                            // Each company gets one detRowId for all its cost centers
+                            Long detRowValue = detRowId != null ? detRowId.getAndIncrement() : val.getDetRowId();
 
                             return val.getCostCenterMap().entrySet().stream()
                                     .map(entry -> {
@@ -1125,7 +1178,7 @@ public class ExpenseReallocationServiceImpl implements ExpenseReallocationServic
                                             detail.setCompany(val.getCompany());
                                             detail.setTransactionPoid(transactionPoid);
                                             detail.setCompanyCode(val.getCompanyCode());
-                                            detail.setDetRowId(detRowValue);
+                                            detail.setDetRowId(detRowValue); // Same detRowId for all cost centers of this company
                                             detail.setCostCentre(entry.getKey());
                                             detail.setPercent(entry.getValue());
                                             detail.setRemarks(val.getRemarks());

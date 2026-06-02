@@ -108,12 +108,9 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
         RawSearchResult raw = documentService.search(docId, filters, operator, pageable, isDeleted,
                 "TRANSACTION_DATE",
                 "TRANSACTION_POID");
-      
-        List<Map<String, Object>> records = raw.records() != null ? raw.records() : new ArrayList<>();
-        Page<Map<String, Object>> page = new PageImpl<>(records, pageable, raw.totalRecords());
 
-        Map<String, String> displayFields = raw.displayFields() != null ? raw.displayFields() : Map.of();
-        return PaginationUtil.wrapPage(page, displayFields);
+        Page<Map<String, Object>> page = new PageImpl<>(raw.records(), pageable, raw.totalRecords());
+        return PaginationUtil.wrapPage(page, raw.displayFields());
     }
 
     private boolean applyFilters(GlContraVoucherHdr header, List<FilterDto> filters, String operator) {

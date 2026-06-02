@@ -70,13 +70,15 @@ public class BillwiseBreakupController {
     public ResponseEntity<?> getPendingBillwiseBreakup(
             @Parameter(description = "GL POID", required = true, example = "12345")
             @RequestParam Long glPoid,
+            @Parameter(description = "Company POID", required = true, example = "67890")
+            @RequestParam Long companyPoid,
             @Parameter(description = "As on Date (format: yyyy-MM-dd)", required = true, example = "2025-11-11")
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate asOnDate
 
     ) {
 
         GlVoucherPendingBillwiseBreakupResponseDto response =
-                service.showPendingBillwiseBreakup(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), glPoid, asOnDate);
+                service.showPendingBillwiseBreakup(UserContext.getGroupPoid(), companyPoid, glPoid, asOnDate);
 
         return success("Pending Billwise breakup details fetched successfully", response);
     }
@@ -115,13 +117,15 @@ public class BillwiseBreakupController {
     public ResponseEntity<?> getAllPendingBillwiseBreakup(
             @Parameter(description = "GL POID", required = true, example = "12345")
             @RequestParam Long glPoid,
+            @Parameter(description = "Company POID", required = true, example = "67890")
+            @RequestParam Long companyPoid,
             @Parameter(description = "As on Date (format: yyyy-MM-dd)", required = true, example = "2025-11-11")
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate asOnDate
 
     ) {
 
         GlVoucherPendingBillwiseBreakupResponseDto response =
-                service.showAllPendingBillwiseBreakup(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), glPoid, asOnDate);
+                service.showAllPendingBillwiseBreakup(UserContext.getGroupPoid(), companyPoid, glPoid, asOnDate);
 
         return success("Pending All Billwise breakup details fetched successfully", response);
     }

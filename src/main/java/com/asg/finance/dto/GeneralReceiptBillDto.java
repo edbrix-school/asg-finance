@@ -27,7 +27,7 @@ public class GeneralReceiptBillDto {
     private String billReference;
 
     @NotNull(message = "Amount is required")
-    @DecimalMin(value = "0.0", inclusive = false, message = "Amount must be greater than 0")
+
     @Schema(description = "Bill amount", example = "1000", required = true)
     private BigDecimal amount;
 

@@ -79,6 +79,9 @@ public class GlBankServiceImpl implements GlBankService {
         if (bankEntity.getCurrencyCode() != null) {
             bankDto.setCurrencyDet(lovService.getDetailsByCodeAndLovName(bankEntity.getCurrencyCode(), "CURRENCY"));
         }
+        if (StringUtils.isNotBlank(bankEntity.getBankPrefix())) {
+            bankDto.setBankPrefixDet(lovService.getDetailsByCodeAndLovName(bankEntity.getBankPrefix(), "ARCUSTBANKRCPT"));
+        }
         bankDto.setChequeDetails(chequeDtlRepository.findByBankPoid(bankPoid).stream().map(this::convertGlBankChequeDtlEntityToGlBankChequeDtlDto).collect(Collectors.toList()));
         bankDto.setCommissionDetails(commissionDtlRepository.findByBankPoid(bankPoid).stream().map(this::convertGlBankCommissionDtlEntityToGlBankCommissionDtlDto).collect(Collectors.toList()));
 
@@ -483,6 +486,9 @@ public class GlBankServiceImpl implements GlBankService {
         dto.setCompanyPoid(Long.valueOf(entity.getCompanyPoid()));
         dto.setOldGlAccNo(entity.getOldGlAccNo());
         dto.setBankPrefix(entity.getBankPrefix());
+        if (StringUtils.isNotBlank(entity.getBankPrefix())) {
+            dto.setBankPrefixDet(lovService.getDetailsByCodeAndLovName(entity.getBankPrefix(), "ARCUSTBANKRCPT"));
+        }
         dto.setOnlineFileTt(entity.getOnlineFileTt());
         dto.setBankStatementDate(entity.getBankStatementDate());
         dto.setCurrencyRate(entity.getCurrencyRate());

@@ -13,7 +13,7 @@ public class PdcBatchCreationProcRequest {
 
    // private Long companyPoid;
     private Long transactionPoid;
-    private Integer noOfCheques;
+    private Long noOfCheques;
     private Double chequeAmount;
     private String startChequeNo;
     private LocalDate startDate;       // expected format: dd-MMM-yyyy or yyyy-MM-dd

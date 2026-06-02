@@ -11,6 +11,7 @@ import com.asg.common.lib.service.DocumentDeleteService;
 import com.asg.common.lib.service.DocumentSearchService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.GlobalParameterService;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.common.lib.utility.DateUtil;
 import com.asg.finance.dto.*;
@@ -38,6 +39,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -55,6 +57,7 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
     private final LoggingService loggingService;
     private final EntityManager entityManager;
     private final LovDataService lovService;
+    private final GlobalParameterService globalParameterService;
 
     private static final String STATUS_SUCCESS = "SUCCESS";
     private static final String DOC_ID = "400-113";
@@ -204,6 +207,36 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
 
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
+    }
+
+    private void validateChequeAmountLimit(Double chqAmount) {
+        if (chqAmount == null || chqAmount == 0) return;
+        BigDecimal limit = getConfiguredDecimal("PDC_BATCH_CHEQUE_AMOUNT_LIMIT", BigDecimal.ZERO);
+        if (limit.compareTo(BigDecimal.ZERO) > 0
+                && BigDecimal.valueOf(chqAmount).abs().compareTo(limit) > 0) {
+            throw new ValidationException("Cheque amount exceeds the configured limit of " + limit.toPlainString());
+        }
+    }
+
+    private void validateNoOfChequesLimit(Long noOfChqs) {
+        if (noOfChqs == null || noOfChqs == 0) return;
+        BigDecimal limit = getConfiguredDecimal("PDC_BATCH_NO_OF_CHEQUES_LIMIT", BigDecimal.ZERO);
+        if (limit.compareTo(BigDecimal.ZERO) > 0
+                && BigDecimal.valueOf(noOfChqs).compareTo(limit) > 0) {
+            throw new ValidationException("Number of cheques exceeds the configured limit of " + limit.toPlainString());
+        }
+    }
+
+    private BigDecimal getConfiguredDecimal(String paramName, BigDecimal defaultValue) {
+        String value = globalParameterService.getParameterValue(paramName, "GROUP", "1", defaultValue.toPlainString());
+        if (value == null || value.trim().isEmpty()) {
+            return defaultValue;
+        }
+        try {
+            return new BigDecimal(value.trim());
+        } catch (NumberFormatException ex) {
+            throw new ValidationException(paramName + " parameter is not configured correctly.");
+        }
     }
 
     private PdcChqBatchHdrEntity mapHeaderDtoToEntity(PdcChqBatchHdrRequestDto dto) {
@@ -471,6 +504,8 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
                     request.getTransactionPoid()
             );
         }
+        validateChequeAmountLimit(request.getChequeAmount());
+        validateNoOfChequesLimit(request.getNoOfCheques());
         // Step 1: Call procedure
         PdcBatchCreationProcResponse procResponse =
                 pdcBatchCreationRepository.runBatchCreation(request);

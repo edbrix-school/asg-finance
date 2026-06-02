@@ -29,7 +29,6 @@ public class GeneralReceiptChargeDto {
     private String gl;
 
     @NotNull(message = "Amount is required")
-    @DecimalMin(value = "0.0", message = "Amount must be non-negative")
     @Schema(description = "Charge amount", example = "2.50", required = true)
     private BigDecimal amount;
 

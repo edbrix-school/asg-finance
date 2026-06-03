@@ -37,6 +37,7 @@ import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import org.mockito.ArgumentCaptor;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -1305,6 +1306,150 @@ class BankPaymentVoucherServiceImplTest {
 
         assertNotNull(result);
         verify(chargeDtlRepository, atLeast(1)).saveAll(anyList());
+    }
+
+    @Test
+    @DisplayName("updateBankPaymentVoucher – FF JOBS noChange recreates charge details when DB rows were cleared")
+    void updateBankPaymentVoucher_FfJobs_NoChange_RecreatesMissingChargeDetails() {
+        GLPaymentVoucherHDREntity ffHeader = GLPaymentVoucherHDREntity.builder()
+                .transactionPoid(TRANS_POID).groupPoid(GROUP_POID).companyPoid(COMPANY_POID)
+                .refType("FF JOBS").ffRef("60").deleted("N").released("N").prePrinted("N").build();
+
+        BankPaymentChargeDetailRequest detail = new BankPaymentChargeDetailRequest();
+        detail.setDetRowId(1L);
+        detail.setChargePoid(30L);
+        detail.setChargeAmount(BigDecimal.valueOf(250));
+        detail.setFfAmount(BigDecimal.valueOf(250));
+        detail.setRefDocPoid(316130L);
+        detail.setActionType("noChange");
+
+        BankPaymentVoucherRequest req = buildFfRequest();
+        req.setChargeDetailRequests(List.of(detail));
+
+        when(paymentVoucherRepository.findById(TRANS_POID)).thenReturn(Optional.of(ffHeader));
+        when(globalParameterService.getParameterValue(anyString(), anyString(), anyString(), anyString()))
+                .thenReturn("999");
+        when(paymentVoucherRepository.save(any(GLPaymentVoucherHDREntity.class))).thenReturn(ffHeader);
+        when(chargeDtlRepository.findByTransactionPoid(TRANS_POID)).thenReturn(Collections.emptyList());
+        when(chargeDtlRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
+        when(billwiseBreakupService.loadBillwiseBreakup(anyLong(), anyLong(), anyString(), anyLong()))
+                .thenReturn(new GlVoucherLoadBillwiseBreakupResponseDto());
+        when(costCenterBreakupService.loadCostCenterData(anyString(), anyLong(), anyLong(), anyLong(), anyLong()))
+                .thenReturn(new GlVoucherCostCenterBreakupResponseDto());
+
+        service.updateBankPaymentVoucher(TRANS_POID, req, DOC_ID);
+
+        ArgumentCaptor<List<GlBankPaymentChargeDtlEntity>> captor = ArgumentCaptor.forClass(List.class);
+        verify(chargeDtlRepository).saveAll(captor.capture());
+        assertEquals(1, captor.getValue().size());
+        assertEquals(30L, captor.getValue().get(0).getChargePoid());
+    }
+
+    @Test
+    @DisplayName("updateBankPaymentVoucher – GENERAL noChange recreates GL details when DB rows were cleared")
+    void updateBankPaymentVoucher_General_NoChange_RecreatesMissingGlDetails() {
+        GLPaymentVoucherHDREntity header = GLPaymentVoucherHDREntity.builder()
+                .transactionPoid(TRANS_POID).groupPoid(GROUP_POID).companyPoid(COMPANY_POID)
+                .refType("GENERAL").deleted("N").released("N").prePrinted("N").chqPrinted("N").build();
+
+        BankPaymentGLDetailRequest detail = new BankPaymentGLDetailRequest();
+        detail.setDetRowId(1L);
+        detail.setType("DR");
+        detail.setGlPoid(20L);
+        detail.setCompanyPoid(COMPANY_POID);
+        detail.setDrAmt(BigDecimal.valueOf(100.0));
+        detail.setActionType("noChange");
+
+        BankPaymentVoucherRequest req = buildGeneralRequest();
+        req.setGlDetails(List.of(detail));
+
+        when(paymentVoucherRepository.findById(TRANS_POID)).thenReturn(Optional.of(header));
+        when(globalParameterService.getParameterValue(anyString(), anyString(), anyString(), anyString()))
+                .thenReturn("999");
+        when(paymentVoucherRepository.save(any(GLPaymentVoucherHDREntity.class))).thenReturn(header);
+        when(paymentVoucherDetailsRepository.findByTransactionPoid(TRANS_POID)).thenReturn(Collections.emptyList());
+        when(paymentVoucherDetailsRepository.saveAllAndFlush(anyList())).thenAnswer(inv -> inv.getArgument(0));
+        when(billwiseBreakupService.loadBillwiseBreakup(anyLong(), anyLong(), anyString(), anyLong()))
+                .thenReturn(new GlVoucherLoadBillwiseBreakupResponseDto());
+        when(costCenterBreakupService.loadCostCenterData(anyString(), anyLong(), anyLong(), anyLong(), anyLong()))
+                .thenReturn(new GlVoucherCostCenterBreakupResponseDto());
+
+        service.updateBankPaymentVoucher(TRANS_POID, req, DOC_ID);
+
+        ArgumentCaptor<List<GLPaymentVoucherDtlGLEntity>> captor = ArgumentCaptor.forClass(List.class);
+        verify(paymentVoucherDetailsRepository).saveAllAndFlush(captor.capture());
+        assertEquals(1, captor.getValue().size());
+        assertEquals(20L, captor.getValue().get(0).getGlPoid());
+    }
+
+    @Test
+    @DisplayName("updateBankPaymentVoucher – MTA RFQ noChange recreates item details when DB rows were cleared")
+    void updateBankPaymentVoucher_MtaRfq_NoChange_RecreatesMissingItemDetails() {
+        GLPaymentVoucherHDREntity mtaHeader = GLPaymentVoucherHDREntity.builder()
+                .transactionPoid(TRANS_POID).groupPoid(GROUP_POID).companyPoid(COMPANY_POID)
+                .refType("MTA RFQ").mtaRef("MTA-001").deleted("N").released("N").prePrinted("N").build();
+
+        BankPaymentItemDetailRequest detail = new BankPaymentItemDetailRequest();
+        detail.setDetRowId(1L);
+        detail.setStockPoid(10L);
+        detail.setTotal(500.0);
+        detail.setActionType("noChange");
+
+        BankPaymentVoucherRequest req = buildMtaRequest();
+        req.setItemDetailRequests(List.of(detail));
+
+        when(paymentVoucherRepository.findById(TRANS_POID)).thenReturn(Optional.of(mtaHeader));
+        when(globalParameterService.getParameterValue(anyString(), anyString(), anyString(), anyString()))
+                .thenReturn("999");
+        when(paymentVoucherRepository.save(any(GLPaymentVoucherHDREntity.class))).thenReturn(mtaHeader);
+        when(itemRepository.findByTransactionPoid(TRANS_POID)).thenReturn(Collections.emptyList());
+        when(itemRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
+        when(billwiseBreakupService.loadBillwiseBreakup(anyLong(), anyLong(), anyString(), anyLong()))
+                .thenReturn(new GlVoucherLoadBillwiseBreakupResponseDto());
+        when(costCenterBreakupService.loadCostCenterData(anyString(), anyLong(), anyLong(), anyLong(), anyLong()))
+                .thenReturn(new GlVoucherCostCenterBreakupResponseDto());
+
+        service.updateBankPaymentVoucher(TRANS_POID, req, DOC_ID);
+
+        ArgumentCaptor<List<GlBankPaymentItemDtlEntity>> captor = ArgumentCaptor.forClass(List.class);
+        verify(itemRepository).saveAll(captor.capture());
+        assertEquals(1, captor.getValue().size());
+        assertEquals(10L, captor.getValue().get(0).getStockPoid());
+    }
+
+    @Test
+    @DisplayName("updateBankPaymentVoucher – FDA JOBS noChange recreates charge details when DB rows were cleared")
+    void updateBankPaymentVoucher_FdaJobs_NoChange_RecreatesMissingChargeDetails() {
+        GLPaymentVoucherHDREntity fdaHeader = GLPaymentVoucherHDREntity.builder()
+                .transactionPoid(TRANS_POID).groupPoid(GROUP_POID).companyPoid(COMPANY_POID)
+                .refType("FDA JOBS").fdaRef(50L).deleted("N").released("N").prePrinted("N").build();
+
+        BankPaymentChargeDetailRequest detail = new BankPaymentChargeDetailRequest();
+        detail.setDetRowId(1L);
+        detail.setChargePoid(40L);
+        detail.setChargeAmount(BigDecimal.valueOf(150));
+        detail.setActionType("noChange");
+
+        BankPaymentVoucherRequest req = buildFdaRequest();
+        req.setChargeDetailRequests(List.of(detail));
+
+        when(paymentVoucherRepository.findById(TRANS_POID)).thenReturn(Optional.of(fdaHeader));
+        when(globalParameterService.getParameterValue(anyString(), anyString(), anyString(), anyString()))
+                .thenReturn("999");
+        when(paymentVoucherRepository.save(any(GLPaymentVoucherHDREntity.class))).thenReturn(fdaHeader);
+        when(chargeDtlRepository.findByTransactionPoid(TRANS_POID)).thenReturn(Collections.emptyList());
+        when(chargeDtlRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
+        when(billwiseBreakupService.loadBillwiseBreakup(anyLong(), anyLong(), anyString(), anyLong()))
+                .thenReturn(new GlVoucherLoadBillwiseBreakupResponseDto());
+        when(costCenterBreakupService.loadCostCenterData(anyString(), anyLong(), anyLong(), anyLong(), anyLong()))
+                .thenReturn(new GlVoucherCostCenterBreakupResponseDto());
+
+        service.updateBankPaymentVoucher(TRANS_POID, req, DOC_ID);
+
+        ArgumentCaptor<List<GlBankPaymentChargeDtlEntity>> captor = ArgumentCaptor.forClass(List.class);
+        verify(chargeDtlRepository).saveAll(captor.capture());
+        assertEquals(1, captor.getValue().size());
+        assertEquals(40L, captor.getValue().get(0).getChargePoid());
     }
 
     @Test

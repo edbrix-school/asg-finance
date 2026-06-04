@@ -381,6 +381,38 @@ class BankPaymentVoucherServiceImplTest {
     }
 
     @Test
+    @DisplayName("createBankPaymentVoucher – ignores cheque-print fields from request and defaults to N")
+    void createBankPaymentVoucher_IgnoresChequePrintFieldsFromRequest() {
+        when(globalParameterService.getParameterValue(anyString(), anyString(), anyString(), anyString()))
+                .thenReturn("999");
+        when(paymentVoucherRepository.save(any(GLPaymentVoucherHDREntity.class))).thenAnswer(invocation -> {
+            GLPaymentVoucherHDREntity saved = invocation.getArgument(0);
+            saved.setTransactionPoid(TRANS_POID);
+            return saved;
+        });
+        doNothing().when(paymentVoucherRepository).flush();
+
+        GLPaymentVoucherDtlGLEntity savedGlDtl = new GLPaymentVoucherDtlGLEntity();
+        savedGlDtl.setTransactionPoid(TRANS_POID);
+        savedGlDtl.setDetRowId(1L);
+        when(paymentVoucherDetailsRepository.saveAll(anyList())).thenReturn(List.of(savedGlDtl));
+        stubGetVoucherByIdGeneral(headerEntity);
+
+        BankPaymentVoucherRequest req = buildGeneralRequest();
+        req.setChqPrintedUserCode(USER_NAME);
+        req.setChqPrintedDate(LocalDate.now());
+
+        service.createBankPaymentVoucher(req, DOC_ID);
+
+        ArgumentCaptor<GLPaymentVoucherHDREntity> headerCaptor = ArgumentCaptor.forClass(GLPaymentVoucherHDREntity.class);
+        verify(paymentVoucherRepository, atLeastOnce()).save(headerCaptor.capture());
+        GLPaymentVoucherHDREntity firstSave = headerCaptor.getAllValues().get(0);
+        assertEquals("N", firstSave.getChqPrinted());
+        assertNull(firstSave.getChqPrintedUserCode());
+        assertNull(firstSave.getChqPrintedDate());
+    }
+
+    @Test
     @DisplayName("createBankPaymentVoucher – CUSTOM ref type saves GL details")
     void createBankPaymentVoucher_CustomRefType_SavesGlDetails() {
         BankPaymentVoucherRequest customReq = buildGeneralRequest();

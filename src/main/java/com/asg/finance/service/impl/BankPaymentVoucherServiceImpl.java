@@ -266,6 +266,11 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         updateHeaderFromRequest(existing, req);
         GLPaymentVoucherHDREntity updatedHeader = paymentVoucherRepository.save(existing);
 
+        if (oldRefType != null && req.getRefType() != null
+                && !oldRefType.equalsIgnoreCase(req.getRefType())) {
+            clearDetailsForOtherRefTypes(transactionPoid, req.getRefType());
+        }
+
         // Update details based on Ref Type
         switch (req.getRefType().toUpperCase()) {
             case "GENERAL", "CUSTOM" -> updateGLDetails(req.getGlDetails(), transactionPoid, documentId);
@@ -432,12 +437,45 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                 (StringUtils.isNumeric(req.getMtaRfqId()) ? Long.valueOf(req.getMtaRfqId()) : null));
 
         entity.setPrePrinted(req.getPrePrinted() != null ? req.getPrePrinted() : "N");
-        if (req.getChqPrintedUserCode() != null || req.getChqPrintedDate() != null) {
+        if (StringUtils.isNotBlank(req.getChqPrintedUserCode()) || req.getChqPrintedDate() != null) {
             entity.setChqPrintedUserCode(req.getChqPrintedUserCode());
             entity.setChqPrintedDate(req.getChqPrintedDate());
             entity.setChqPrinted("Y");
         } else {
             entity.setChqPrinted("N");
+        }
+    }
+
+    private String normalizeDetailActionType(String actionTypeStr) {
+        if (actionTypeStr == null || actionTypeStr.trim().isEmpty()) {
+            return "NOCHANGES";
+        }
+        String normalized = actionTypeStr.trim().toUpperCase();
+        if ("NOCHANGE".equals(normalized) || "NOCHANGES".equals(normalized)) {
+            return "NOCHANGES";
+        }
+        return normalized;
+    }
+
+    private void clearDetailsForOtherRefTypes(Long transactionPoid, String newRefType) {
+        String ref = newRefType != null ? newRefType.toUpperCase() : "";
+        if (!"GENERAL".equals(ref) && !"CUSTOM".equals(ref)) {
+            List<GLPaymentVoucherDtlGLEntity> glRows = paymentVoucherDetailsRepository.findByTransactionPoid(transactionPoid);
+            if (!glRows.isEmpty()) {
+                paymentVoucherDetailsRepository.deleteAll(glRows);
+            }
+        }
+        if (!"FF JOBS".equals(ref) && !"FDA JOBS".equals(ref)) {
+            List<GlBankPaymentChargeDtlEntity> chargeRows = chargeDtlRepository.findByTransactionPoid(transactionPoid);
+            if (!chargeRows.isEmpty()) {
+                chargeDtlRepository.deleteAll(chargeRows);
+            }
+        }
+        if (!"MTA RFQ".equals(ref)) {
+            List<GlBankPaymentItemDtlEntity> itemRows = itemRepository.findByTransactionPoid(transactionPoid);
+            if (!itemRows.isEmpty()) {
+                itemRepository.deleteAll(itemRows);
+            }
         }
     }
 
@@ -682,7 +720,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
             entity.setReleased("Y");
         }
 
-        if (req.getChqPrintedUserCode() != null || req.getChqPrintedDate() != null) {
+        if (StringUtils.isNotBlank(req.getChqPrintedUserCode()) || req.getChqPrintedDate() != null) {
             entity.setChqPrintedUserCode(req.getChqPrintedUserCode());
             entity.setChqPrintedDate(req.getChqPrintedDate());
             entity.setChqPrinted("Y");
@@ -758,12 +796,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                 .max().orElse(0L);
 
         for (BankPaymentChargeDetailRequest detail : chargeDetails) {
-            // Handle null, empty string, or whitespace as "noChanges"
-            String actionTypeStr = detail.getActionType();
-            if (actionTypeStr == null || actionTypeStr.trim().isEmpty()) {
-                actionTypeStr = "noChanges";
-            }
-            String actionType = actionTypeStr.toUpperCase();
+            String actionType = normalizeDetailActionType(detail.getActionType());
 
             switch (actionType) {
                 case "ISCREATED":
@@ -776,19 +809,25 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                     break;
 
                 case "ISUPDATED":
-                    // Update existing record
+                    // Update existing record, or recreate when missing (e.g. after approval reversal)
                     GlBankPaymentChargeDtlEntity existingEntity = existingMap.get(detail.getDetRowId());
                     if (existingEntity != null) {
-                        // Create copy for logging
                         GlBankPaymentChargeDtlEntity oldEntity = new GlBankPaymentChargeDtlEntity();
                         BeanUtils.copyProperties(existingEntity, oldEntity);
 
                         mapChargeFields(existingEntity, detail, transactionPoid);
                         toSave.add(existingEntity);
 
-                        // Add to batch logging
                         String logDetail = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", transactionPoid, detail.getDetRowId());
                         logRequests.add(new LogRequestDto<>(oldEntity, existingEntity, GlBankPaymentChargeDtlEntity.class, documentId, transactionPoid.toString(), logDetail));
+                    } else {
+                        GlBankPaymentChargeDtlEntity recreatedEntity = new GlBankPaymentChargeDtlEntity();
+                        if (detail.getDetRowId() == null) {
+                            detail.setDetRowId(++maxDetRowId);
+                        }
+                        mapChargeFields(recreatedEntity, detail, transactionPoid);
+                        toSave.add(recreatedEntity);
+                        createdDetRowIds.add(recreatedEntity.getDetRowId());
                     }
                     break;
 
@@ -803,10 +842,17 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
                 case "NOCHANGES":
                 default:
-                    // Keep existing record as-is
                     GlBankPaymentChargeDtlEntity unchangedEntity = existingMap.get(detail.getDetRowId());
                     if (unchangedEntity != null) {
                         toSave.add(unchangedEntity);
+                    } else {
+                        GlBankPaymentChargeDtlEntity recreatedUnchanged = new GlBankPaymentChargeDtlEntity();
+                        if (detail.getDetRowId() == null) {
+                            detail.setDetRowId(++maxDetRowId);
+                        }
+                        mapChargeFields(recreatedUnchanged, detail, transactionPoid);
+                        toSave.add(recreatedUnchanged);
+                        createdDetRowIds.add(recreatedUnchanged.getDetRowId());
                     }
                     break;
             }
@@ -873,42 +919,40 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                 .max().orElse(0L);
 
         for (BankPaymentItemDetailRequest detail : itemDetails) {
-            // Handle null, empty string, or whitespace as "noChanges"
-            String actionTypeStr = detail.getActionType();
-            if (actionTypeStr == null || actionTypeStr.trim().isEmpty()) {
-                actionTypeStr = "noChanges";
-            }
-            String actionType = actionTypeStr.toUpperCase();
+            String actionType = normalizeDetailActionType(detail.getActionType());
 
             switch (actionType) {
                 case "ISCREATED":
-                    // Create new record with auto-generated detRowId
                     GlBankPaymentItemDtlEntity newEntity = new GlBankPaymentItemDtlEntity();
-                    detail.setDetRowId(++maxDetRowId); // Auto-generate detRowId
+                    detail.setDetRowId(++maxDetRowId);
                     mapItemFields(newEntity, detail, transactionPoid);
                     toSave.add(newEntity);
                     createdDetRowIds.add(newEntity.getDetRowId());
                     break;
 
                 case "ISUPDATED":
-                    // Update existing record
                     GlBankPaymentItemDtlEntity existingEntity = existingMap.get(detail.getDetRowId());
                     if (existingEntity != null) {
-                        // Create copy for logging
                         GlBankPaymentItemDtlEntity oldEntity = new GlBankPaymentItemDtlEntity();
                         BeanUtils.copyProperties(existingEntity, oldEntity);
 
                         mapItemFields(existingEntity, detail, transactionPoid);
                         toSave.add(existingEntity);
 
-                        // Add to batch logging
                         String logDetail = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", transactionPoid, detail.getDetRowId());
                         logRequests.add(new LogRequestDto<>(oldEntity, existingEntity, GlBankPaymentItemDtlEntity.class, documentId, transactionPoid.toString(), logDetail));
+                    } else {
+                        GlBankPaymentItemDtlEntity recreatedEntity = new GlBankPaymentItemDtlEntity();
+                        if (detail.getDetRowId() == null) {
+                            detail.setDetRowId(++maxDetRowId);
+                        }
+                        mapItemFields(recreatedEntity, detail, transactionPoid);
+                        toSave.add(recreatedEntity);
+                        createdDetRowIds.add(recreatedEntity.getDetRowId());
                     }
                     break;
 
                 case "ISDELETED":
-                    // Mark for deletion
                     GlBankPaymentItemDtlEntity entityToDelete = existingMap.get(detail.getDetRowId());
                     if (entityToDelete != null) {
                         toDelete.add(entityToDelete);
@@ -918,10 +962,17 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
                 case "NOCHANGES":
                 default:
-                    // Keep existing record as-is
                     GlBankPaymentItemDtlEntity unchangedEntity = existingMap.get(detail.getDetRowId());
                     if (unchangedEntity != null) {
                         toSave.add(unchangedEntity);
+                    } else {
+                        GlBankPaymentItemDtlEntity recreatedUnchanged = new GlBankPaymentItemDtlEntity();
+                        if (detail.getDetRowId() == null) {
+                            detail.setDetRowId(++maxDetRowId);
+                        }
+                        mapItemFields(recreatedUnchanged, detail, transactionPoid);
+                        toSave.add(recreatedUnchanged);
+                        createdDetRowIds.add(recreatedUnchanged.getDetRowId());
                     }
                     break;
             }
@@ -1329,42 +1380,40 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                 .max().orElse(0L);
 
         for (BankPaymentGLDetailRequest detail : glDetails) {
-            // Handle null, empty string, or whitespace as "noChanges"
-            String actionTypeStr = detail.getActionType();
-            if (actionTypeStr == null || actionTypeStr.trim().isEmpty()) {
-                actionTypeStr = "noChanges";
-            }
-            String actionType = actionTypeStr.toUpperCase();
+            String actionType = normalizeDetailActionType(detail.getActionType());
 
             switch (actionType) {
                 case "ISCREATED":
-                    // Create new record with auto-generated detRowId
                     GLPaymentVoucherDtlGLEntity newEntity = new GLPaymentVoucherDtlGLEntity();
-                    detail.setDetRowId(++maxDetRowId); // Auto-generate detRowId
+                    detail.setDetRowId(++maxDetRowId);
                     mapGLFields(newEntity, detail, transactionPoid);
                     toSave.add(newEntity);
                     createdDetRowIds.add(newEntity.getDetRowId());
                     break;
 
                 case "ISUPDATED":
-                    // Update existing record
                     GLPaymentVoucherDtlGLEntity existingEntity = existingMap.get(detail.getDetRowId());
                     if (existingEntity != null) {
-                        // Create copy for logging
                         GLPaymentVoucherDtlGLEntity oldEntity = new GLPaymentVoucherDtlGLEntity();
                         BeanUtils.copyProperties(existingEntity, oldEntity);
 
                         mapGLFields(existingEntity, detail, transactionPoid);
                         toSave.add(existingEntity);
 
-                        // Add to batch logging
                         String logDetail = String.format("KeyId = TRANSACTION_POID: %s DET_ROW_ID: %s", transactionPoid, detail.getDetRowId());
                         logRequests.add(new LogRequestDto<>(oldEntity, existingEntity, GLPaymentVoucherDtlGLEntity.class, documentId, transactionPoid.toString(), logDetail));
+                    } else {
+                        GLPaymentVoucherDtlGLEntity recreatedEntity = new GLPaymentVoucherDtlGLEntity();
+                        if (detail.getDetRowId() == null) {
+                            detail.setDetRowId(++maxDetRowId);
+                        }
+                        mapGLFields(recreatedEntity, detail, transactionPoid);
+                        toSave.add(recreatedEntity);
+                        createdDetRowIds.add(recreatedEntity.getDetRowId());
                     }
                     break;
 
                 case "ISDELETED":
-                    // Mark for deletion
                     GLPaymentVoucherDtlGLEntity entityToDelete = existingMap.get(detail.getDetRowId());
                     if (entityToDelete != null) {
                         toDelete.add(entityToDelete);
@@ -1374,10 +1423,17 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
                 case "NOCHANGES":
                 default:
-                    // Keep existing record as-is
                     GLPaymentVoucherDtlGLEntity unchangedEntity = existingMap.get(detail.getDetRowId());
                     if (unchangedEntity != null) {
                         toSave.add(unchangedEntity);
+                    } else {
+                        GLPaymentVoucherDtlGLEntity recreatedUnchanged = new GLPaymentVoucherDtlGLEntity();
+                        if (detail.getDetRowId() == null) {
+                            detail.setDetRowId(++maxDetRowId);
+                        }
+                        mapGLFields(recreatedUnchanged, detail, transactionPoid);
+                        toSave.add(recreatedUnchanged);
+                        createdDetRowIds.add(recreatedUnchanged.getDetRowId());
                     }
                     break;
             }

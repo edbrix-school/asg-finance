@@ -1,6 +1,7 @@
 package com.asg.finance.service.impl;
 
 import com.asg.common.lib.dto.DeleteReasonDto;
+import com.asg.common.lib.dto.LovGetListDto;
 import com.asg.common.lib.dto.FilterDto;
 import com.asg.common.lib.dto.RawSearchResult;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
@@ -271,10 +272,8 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
 
             saveDetails(savedHdr.getTransactionPoid(), dto);
             log.info(LOG_MESSAGE_CREATED_SUCCESS, savedHdr.getTransactionPoid());
-            
-            log.info("logging Succeessfully", savedHdr.getDocRef());
-            
-            return fetchById(savedHdr.getTransactionPoid());
+
+            return mapToMinimalDto(savedHdr);
         } catch (Exception e) {
             log.error(ERROR_MESSAGE_CREATING, e.getMessage(), e);
             throw new DataAccessException(ERROR_MESSAGE_FAILED_CREATE + e.getMessage(), e);
@@ -289,27 +288,90 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
 
     private ApPurchaseCnHdrDto fetchById(Long transactionPoid) {
         log.info(LOG_MESSAGE_FETCHING, transactionPoid);
-        
+
         try {
             ApPurchaseCnHdr hdr = hdrRepository.findById(transactionPoid)
                     .orElseThrow(() -> new ResourceNotFoundException(ENTITY_SUPPLIER_CREDIT_NOTE, FIELD_TRANSACTION_POID, transactionPoid));
-            
+
             ApPurchaseCnHdrDto dto = mapToDto(hdr);
-            
-            dto.setItemDetails(itemDtlRepository.findByTransactionPoid(transactionPoid).stream()
-                    .map(this::mapItemToDto).toList());
-            dto.setChargeDetails(chargeDtlRepository.findByTransactionPoid(transactionPoid).stream()
-                    .map(charge -> mapChargeToDto(charge, hdr.getRefType())).toList());
-            dto.setGlDetails(glDtlRepository.findByTransactionPoid(transactionPoid).stream()
-                    .map(this::mapGlToDto).toList());
-            
-            log.info(LOG_MESSAGE_FETCHED_SUCCESS, 
+
+            List<ApPurchaseCnItemDtl> itemEntities = itemDtlRepository.findByTransactionPoid(transactionPoid);
+            List<ApPurchaseCnChargeDtl> chargeEntities = chargeDtlRepository.findByTransactionPoid(transactionPoid);
+            List<ApPurchaseCnGlDtl> glEntities = glDtlRepository.findByTransactionPoid(transactionPoid);
+
+            // --- Batch-fetch all LOV data once per LOV name ---
+            Map<Long, LovGetListDto> stockMap = lovService.getDetailsByPoidsAndLovName(
+                    poids(itemEntities, i -> i.getStockPoid()), LOV_STOCK_MASTER);
+            Map<Long, LovGetListDto> stockUnitMap = lovService.getDetailsByPoidsAndLovName(
+                    poids(itemEntities, i -> i.getStockUnitPoid()), LOV_STOCK_UNIT);
+
+            // Items and charges share the same tax LOV — merge poid sets into one call
+            List<Long> inputTaxPoids = new ArrayList<>();
+            itemEntities.forEach(e -> { if (e.getTaxPoid() != null) inputTaxPoids.add(e.getTaxPoid()); });
+            chargeEntities.forEach(e -> { if (e.getTaxPoid() != null) inputTaxPoids.add(e.getTaxPoid()); });
+            Map<Long, LovGetListDto> inputTaxMap = lovService.getDetailsByPoidsAndLovName(
+                    inputTaxPoids.stream().distinct().toList(), LOV_INPUT_TAX_MASTER);
+
+            String chargeLovName = REF_TYPE_FF_JOB.equals(hdr.getRefType()) ? LOV_FF_CHARGE_MASTER_PJ : LOV_FDA_CHARGE_MASTER_PJ;
+            Map<Long, LovGetListDto> chargeDetMap = lovService.getDetailsByPoidsAndLovName(
+                    poids(chargeEntities, c -> c.getChargePoid()), chargeLovName);
+            Map<Long, LovGetListDto> refDocDetMap = lovService.getDetailsByPoidsAndLovName(
+                    poids(chargeEntities, c -> c.getRefDocPoid()), LOV_FF_JOBNO);
+
+            Map<Long, LovGetListDto> companyMap = lovService.getDetailsByPoidsAndLovName(
+                    poids(glEntities, g -> g.getCompanyPoid()), LOV_COMPANY);
+            Map<Long, LovGetListDto> glMasterMap = lovService.getDetailsByPoidsAndLovName(
+                    poids(glEntities, g -> g.getGlPoid()), LOV_GL_MASTER_LEDGERS_PJ);
+            Map<String, LovGetListDto> typeDetMap = lovService.getDetailsByCodesAndLovName(
+                    glEntities.stream().map(ApPurchaseCnGlDtl::getType)
+                            .filter(t -> t != null && !t.isEmpty()).distinct().toList(),
+                    LOV_ACC_TYPE_SHORT);
+            Map<Long, LovGetListDto> glTaxMap = lovService.getDetailsByPoidsAndLovName(
+                    poids(glEntities, g -> g.getTaxPoid()), LOV_PJ_GL_INPUT_TAX);
+
+            dto.setItemDetails(itemEntities.stream()
+                    .map(item -> mapItemToDto(item, stockMap, stockUnitMap, inputTaxMap)).toList());
+            dto.setChargeDetails(chargeEntities.stream()
+                    .map(charge -> mapChargeToDto(charge, hdr.getRefType(), chargeDetMap, refDocDetMap, inputTaxMap)).toList());
+
+            if (glEntities.isEmpty()) {
+                dto.setGlDetails(Collections.emptyList());
+            } else {
+                // Fetch breakup data once for the whole transaction, then distribute per row
+                GlVoucherLoadBillwiseBreakupResponseDto billwiseData = fetchBillwiseDataForTransaction(transactionPoid);
+                GlVoucherCostCenterBreakupResponseDto costCenterData = fetchCostCenterDataForTransaction(transactionPoid);
+                dto.setGlDetails(glEntities.stream()
+                        .map(gl -> mapGlToDto(gl, billwiseData, costCenterData, companyMap, glMasterMap, typeDetMap, glTaxMap))
+                        .toList());
+            }
+
+            log.info(LOG_MESSAGE_FETCHED_SUCCESS,
                     dto.getItemDetails().size(), dto.getChargeDetails().size(), dto.getGlDetails().size());
-            
+
             return dto;
         } catch (Exception e) {
             log.error(ERROR_MESSAGE_FETCHING, transactionPoid, e.getMessage(), e);
             throw new DataAccessException(ERROR_MESSAGE_FAILED_FETCH + e.getMessage(), e);
+        }
+    }
+
+    private GlVoucherLoadBillwiseBreakupResponseDto fetchBillwiseDataForTransaction(Long transactionPoid) {
+        try {
+            return billwiseBreakupService.loadBillwiseBreakup(
+                    getCurrentGroupPoid(), getCurrentCompanyPoid(), DOC_ID_AP_PURCHASE_CN_GL, transactionPoid);
+        } catch (Exception e) {
+            log.warn(LOG_MESSAGE_FAILED_BREAKUP, transactionPoid, null, e.getMessage());
+            return null;
+        }
+    }
+
+    private GlVoucherCostCenterBreakupResponseDto fetchCostCenterDataForTransaction(Long transactionPoid) {
+        try {
+            return costCenterBreakupService.loadCostCenterData(
+                    DOC_ID_AP_PURCHASE_CN_GL, transactionPoid, getCurrentGroupPoid(), getCurrentCompanyPoid(), getCurrentUserPoid());
+        } catch (Exception e) {
+            log.warn(LOG_MESSAGE_FAILED_BREAKUP, transactionPoid, null, e.getMessage());
+            return null;
         }
     }
 
@@ -337,7 +399,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
             updateDetailsByActionType(transactionPoid, dto);
             log.info(LOG_MESSAGE_UPDATED_SUCCESS, transactionPoid);
             loggingService.logChanges(oldEntity, existing, ApPurchaseCnHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, COLUMN_TRANSACTION_POID);
-            return fetchById(transactionPoid);
+            return mapToMinimalDto(existing);
 
 
         } catch (Exception e) {
@@ -1422,6 +1484,27 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         return dto;
     }
 
+    private ApPurchaseCnHdrDto mapToMinimalDto(ApPurchaseCnHdr entity) {
+        ApPurchaseCnHdrDto dto = new ApPurchaseCnHdrDto();
+        dto.setTransactionPoid(entity.getTransactionPoid());
+        dto.setDocRef(entity.getDocRef());
+        dto.setTransactionDate(entity.getTransactionDate());
+        dto.setRefType(entity.getRefType());
+        dto.setPartyType(entity.getPartyType());
+        dto.setGrandTotal(entity.getGrandTotal());
+        dto.setBhdAmount(entity.getBhdAmount());
+        dto.setSupplierCnAmount(entity.getSupplierCnAmount());
+        dto.setCreatedBy(entity.getCreatedBy());
+        dto.setCreatedDate(entity.getCreatedDate());
+        dto.setLastModifiedBy(entity.getLastModifiedBy());
+        dto.setLastModifiedDate(entity.getLastModifiedDate());
+        return dto;
+    }
+
+    private <T> List<Long> poids(List<T> entities, java.util.function.Function<T, Long> extractor) {
+        return entities.stream().map(extractor).filter(Objects::nonNull).distinct().toList();
+    }
+
     private ApPurchaseCnItemDtl mapItemToEntity(ApPurchaseCnItemDtlDto dto) {
         return ApPurchaseCnItemDtl.builder()
                 .stockPoid(dto.getStockPoid())
@@ -1443,17 +1526,16 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                 .build();
     }
 
-    private ApPurchaseCnItemDtlDto mapItemToDto(ApPurchaseCnItemDtl entity) {
+    private ApPurchaseCnItemDtlDto mapItemToDto(ApPurchaseCnItemDtl entity,
+            Map<Long, LovGetListDto> stockMap,
+            Map<Long, LovGetListDto> stockUnitMap,
+            Map<Long, LovGetListDto> taxMap) {
         ApPurchaseCnItemDtlDto dto = new ApPurchaseCnItemDtlDto();
         dto.setDetRowId(entity.getDetRowId());
         dto.setStockPoid(entity.getStockPoid());
-        if (entity.getStockPoid() != null) {
-            dto.setStockDet(lovService.getDetailsByPoidAndLovName(entity.getStockPoid(), LOV_STOCK_MASTER));
-        }
+        if (entity.getStockPoid() != null) dto.setStockDet(stockMap.get(entity.getStockPoid()));
         dto.setStockUnitPoid(entity.getStockUnitPoid());
-        if (entity.getStockUnitPoid() != null) {
-            dto.setStockUnitDet(lovService.getDetailsByPoidAndLovName(entity.getStockUnitPoid(), LOV_STOCK_UNIT));
-        }
+        if (entity.getStockUnitPoid() != null) dto.setStockUnitDet(stockUnitMap.get(entity.getStockUnitPoid()));
         dto.setQuantity(entity.getQuantity());
         dto.setPrice(entity.getPrice());
         dto.setDiscount(entity.getDiscount());
@@ -1464,14 +1546,11 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         dto.setCheckAll(entity.getCheckAll());
         dto.setRefDetRowId(entity.getRefDetRowId());
         dto.setTaxPoid(entity.getTaxPoid());
-        if (entity.getTaxPoid() != null) {
-            dto.setTaxDet(lovService.getDetailsByPoidAndLovName(entity.getTaxPoid(), LOV_INPUT_TAX_MASTER));
-        }
+        if (entity.getTaxPoid() != null) dto.setTaxDet(taxMap.get(entity.getTaxPoid()));
         dto.setTaxPercentage(entity.getTaxPercentage());
         dto.setTaxAmount(entity.getTaxAmount());
         dto.setAmount(entity.getAmount());
         dto.setBaseAmount(entity.getBaseAmount());
-        
         return dto;
     }
 
@@ -1494,36 +1573,29 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                 .build();
     }
 
-    private ApPurchaseCnChargeDtlDto mapChargeToDto(ApPurchaseCnChargeDtl entity, String refType) {
+    private ApPurchaseCnChargeDtlDto mapChargeToDto(ApPurchaseCnChargeDtl entity, String refType,
+            Map<Long, LovGetListDto> chargeDetMap,
+            Map<Long, LovGetListDto> refDocDetMap,
+            Map<Long, LovGetListDto> taxMap) {
         ApPurchaseCnChargeDtlDto dto = new ApPurchaseCnChargeDtlDto();
         dto.setDetRowId(entity.getDetRowId());
         dto.setChargePoid(entity.getChargePoid());
-        if (entity.getChargePoid() != null) {
-            // Use appropriate LOV based on charge context - FF vs FDA
-            String lovName = REF_TYPE_FF_JOB.equals(refType) ? LOV_FF_CHARGE_MASTER_PJ : LOV_FDA_CHARGE_MASTER_PJ;
-            dto.setChargeDet(lovService.getDetailsByPoidAndLovName(entity.getChargePoid(), lovName));
-        }
+        if (entity.getChargePoid() != null) dto.setChargeDet(chargeDetMap.get(entity.getChargePoid()));
         dto.setChargeAmount(entity.getChargeAmount());
         dto.setDescription(entity.getDescription());
         dto.setRemarks(entity.getRemarks());
         dto.setRefDocId(entity.getRefDocId());
         dto.setRefDocPoid(entity.getRefDocPoid());
-        if (entity.getRefDocPoid() != null) {
-            // Use appropriate LOV based on refDocId - this might need refinement based on business logic
-            dto.setRefDocDet(lovService.getDetailsByPoidAndLovName(entity.getRefDocPoid(), LOV_FF_JOBNO));
-        }
+        if (entity.getRefDocPoid() != null) dto.setRefDocDet(refDocDetMap.get(entity.getRefDocPoid()));
         dto.setRefDetRowId(entity.getRefDetRowId());
         dto.setCheckAll(entity.getCheckAll());
         dto.setTaxPoid(entity.getTaxPoid());
-        if (entity.getTaxPoid() != null) {
-            dto.setTaxDet(lovService.getDetailsByPoidAndLovName(entity.getTaxPoid(), LOV_INPUT_TAX_MASTER));
-        }
+        if (entity.getTaxPoid() != null) dto.setTaxDet(taxMap.get(entity.getTaxPoid()));
         dto.setTaxPercentage(entity.getTaxPercentage());
         dto.setTaxAmount(entity.getTaxAmount());
         dto.setChargeBaseAmount(entity.getChargeBaseAmount());
         dto.setChargeFrom(entity.getChargeFrom());
         dto.setSupplierPoidFf(entity.getSupplierPoidFf());
-        
         return dto;
     }
 
@@ -1545,21 +1617,21 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                 .build();
     }
 
-    private ApPurchaseCnGlDtlDto mapGlToDto(ApPurchaseCnGlDtl entity) {
+    private ApPurchaseCnGlDtlDto mapGlToDto(ApPurchaseCnGlDtl entity,
+            GlVoucherLoadBillwiseBreakupResponseDto billwiseData,
+            GlVoucherCostCenterBreakupResponseDto costCenterData,
+            Map<Long, LovGetListDto> companyMap,
+            Map<Long, LovGetListDto> glMasterMap,
+            Map<String, LovGetListDto> typeDetMap,
+            Map<Long, LovGetListDto> glTaxMap) {
         ApPurchaseCnGlDtlDto dto = new ApPurchaseCnGlDtlDto();
         dto.setDetRowId(entity.getDetRowId());
         dto.setType(entity.getType());
         dto.setCompanyPoid(entity.getCompanyPoid());
-        if (entity.getCompanyPoid() != null) {
-            dto.setCompanyDet(lovService.getDetailsByPoidAndLovName(entity.getCompanyPoid(), LOV_COMPANY));
-        }
+        if (entity.getCompanyPoid() != null) dto.setCompanyDet(companyMap.get(entity.getCompanyPoid()));
         dto.setGlPoid(entity.getGlPoid());
-        if (entity.getGlPoid() != null) {
-            dto.setGlDet(lovService.getDetailsByPoidAndLovName(entity.getGlPoid(), LOV_GL_MASTER_LEDGERS_PJ));
-        }
-        if (entity.getType() != null) {
-            dto.setTypeDet(lovService.getDetailsByCodeAndLovName(entity.getType(), LOV_ACC_TYPE_SHORT));
-        }
+        if (entity.getGlPoid() != null) dto.setGlDet(glMasterMap.get(entity.getGlPoid()));
+        if (entity.getType() != null) dto.setTypeDet(typeDetMap.get(entity.getType()));
         dto.setDrAmount(entity.getDrAmount());
         dto.setCrAmount(entity.getCrAmount());
         dto.setRefDocId(entity.getRefDocId());
@@ -1568,46 +1640,34 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         dto.setDescription(entity.getDescription());
         dto.setRemarks(entity.getRemarks());
         dto.setTaxPoid(entity.getTaxPoid());
-        if (entity.getTaxPoid() != null) {
-            dto.setTaxDet(lovService.getDetailsByPoidAndLovName(entity.getTaxPoid(), LOV_PJ_GL_INPUT_TAX));
-        }
+        if (entity.getTaxPoid() != null) dto.setTaxDet(glTaxMap.get(entity.getTaxPoid()));
         dto.setTaxPercentage(entity.getTaxPercentage());
         dto.setTaxAmount(entity.getTaxAmount());
         dto.setTotalAmount(entity.getTotalAmount());
-        
-        // Load breakup lists
-        loadBreakupLists(entity.getTransactionPoid(), entity.getDetRowId(), dto);
-        
+        dto.setBreakupList(filterBillwiseByRow(billwiseData, entity.getDetRowId()));
+        dto.setCostCenterList(filterCostCenterByRow(costCenterData, entity.getDetRowId()));
         return dto;
     }
-    
-    private void loadBreakupLists(Long transactionPoid, Long detRowId, ApPurchaseCnGlDtlDto dto) {
-        try {
-            dto.setBreakupList(loadBillwisePopupList(transactionPoid, detRowId));
-            dto.setCostCenterList(loadCostCenterPopupList(transactionPoid, detRowId));
-        } catch (Exception e) {
-            log.warn(LOG_MESSAGE_FAILED_BREAKUP, 
-                transactionPoid, detRowId, e.getMessage());
-            dto.setBreakupList(Collections.emptyList());
-            dto.setCostCenterList(Collections.emptyList());
-        }
-    }
 
-    private List<BillwiseBreakupPopupRequestDto> loadBillwisePopupList(Long transactionPoid, Long detRowId) {
-        GlVoucherLoadBillwiseBreakupResponseDto billwiseResponse = billwiseBreakupService.loadBillwiseBreakup(
-                getCurrentGroupPoid(),
-                getCurrentCompanyPoid(),
-                DOC_ID_AP_PURCHASE_CN_GL,
-                transactionPoid
-        );
-
-        if (billwiseResponse == null || billwiseResponse.getLoadBillwiseBreakupResponseDtoList() == null) {
+    private List<BillwiseBreakupPopupRequestDto> filterBillwiseByRow(
+            GlVoucherLoadBillwiseBreakupResponseDto billwiseData, Long detRowId) {
+        if (billwiseData == null || billwiseData.getLoadBillwiseBreakupResponseDtoList() == null) {
             return Collections.emptyList();
         }
-
-        return billwiseResponse.getLoadBillwiseBreakupResponseDtoList().stream()
+        return billwiseData.getLoadBillwiseBreakupResponseDtoList().stream()
                 .filter(b -> detRowId.equals(b.getMainDetRowId()))
                 .map(this::mapBillwisePopup)
+                .toList();
+    }
+
+    private List<CostCenterBreakupPopupRequestDto> filterCostCenterByRow(
+            GlVoucherCostCenterBreakupResponseDto costCenterData, Long detRowId) {
+        if (costCenterData == null || costCenterData.getCostBreakupList() == null) {
+            return Collections.emptyList();
+        }
+        return costCenterData.getCostBreakupList().stream()
+                .filter(c -> detRowId.equals(c.getMainDetRowId()))
+                .map(this::mapCostCenterPopup)
                 .toList();
     }
 
@@ -1625,25 +1685,6 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         popup.setAmount(drAmt.compareTo(BigDecimal.ZERO) > 0 ? drAmt : crAmt);
         popup.setBillRemarks(billwiseDto.getBillRemarks());
         return popup;
-    }
-
-    private List<CostCenterBreakupPopupRequestDto> loadCostCenterPopupList(Long transactionPoid, Long detRowId) {
-        GlVoucherCostCenterBreakupResponseDto costCenterResponse = costCenterBreakupService.loadCostCenterData(
-                DOC_ID_AP_PURCHASE_CN_GL,
-                transactionPoid,
-                getCurrentGroupPoid(),
-                getCurrentCompanyPoid(),
-                getCurrentUserPoid()
-        );
-
-        if (costCenterResponse == null || costCenterResponse.getCostBreakupList() == null) {
-            return Collections.emptyList();
-        }
-
-        return costCenterResponse.getCostBreakupList().stream()
-                .filter(c -> detRowId.equals(c.getMainDetRowId()))
-                .map(this::mapCostCenterPopup)
-                .toList();
     }
 
     private CostCenterBreakupPopupRequestDto mapCostCenterPopup(CostCenterBreakupResponseDto costCenterDto) {

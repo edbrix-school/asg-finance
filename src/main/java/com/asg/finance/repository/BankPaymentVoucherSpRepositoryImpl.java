@@ -203,7 +203,7 @@ public class BankPaymentVoucherSpRepositoryImpl implements BankPaymentVoucherSpR
     }
 
     @Override
-    public Map<String, String> validateBeforeChequePrint(Long groupPoid, Long loginUserPoid, Long companyPoid, Long bankPoid, String chqSignType, Long transactionPoid, String suppressBalanceCheck) {
+    public Map<String, String> validateBeforeChequePrint(Long groupPoid, String loginUser, Long companyPoid, Long bankPoid, String chqSignType, Long transactionPoid, String suppressBalanceCheck) {
         StoredProcedureQuery query = em.createStoredProcedureQuery("PROC_GL_BANK_BEFORE_CHEQ_PRINT");
         
         query.registerStoredProcedureParameter(1, Long.class, ParameterMode.IN);
@@ -218,7 +218,7 @@ public class BankPaymentVoucherSpRepositoryImpl implements BankPaymentVoucherSpR
         query.registerStoredProcedureParameter(10, String.class, ParameterMode.OUT);
         
         query.setParameter(1, groupPoid);
-        query.setParameter(2, null);
+        query.setParameter(2, loginUser);
         query.setParameter(3, companyPoid != null ? String.valueOf(companyPoid) : null);
         query.setParameter(4, bankPoid);
         query.setParameter(5, chqSignType);

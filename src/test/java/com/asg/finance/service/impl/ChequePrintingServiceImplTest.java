@@ -197,7 +197,7 @@ class ChequePrintingServiceImplTest {
         request.setPendingCheques(List.of(pending));
 
         JasperReport report = mock(JasperReport.class);
-        when(repo.validateBeforeChequePrint(anyLong(), anyLong(), anyString(), anyLong(), anyString(), anyLong(), anyString()))
+        when(repo.validateBeforeChequePrint(anyLong(), anyString(), anyString(), anyLong(), anyString(), anyLong(), anyString()))
                 .thenReturn(Map.of("result", "SUCCESS", "nextChequeNumber", "1001", "defaultPrinter", "ignored"));
         when(printService.buildBaseParams(10L, "400-151")).thenReturn(new java.util.HashMap<>());
         when(printService.load("Finance/BankPayments/BankPaymentVoucher.jrxml")).thenReturn(report);
@@ -241,7 +241,7 @@ class ChequePrintingServiceImplTest {
         request.setPendingCheques(List.of(pending));
 
         JasperReport report = mock(JasperReport.class);
-        when(repo.validateBeforeChequePrint(anyLong(), anyLong(), anyString(), anyLong(), anyString(), anyLong(), anyString()))
+        when(repo.validateBeforeChequePrint(anyLong(), anyString(), anyString(), anyLong(), anyString(), anyLong(), anyString()))
                 .thenReturn(Map.of("result", "SUCCESS", "nextChequeNumber", "1002", "defaultPrinter", "ignored"));
         when(printService.buildBaseParams(11L, "400-151")).thenReturn(new java.util.HashMap<>());
         when(printService.load("Finance/BankPayments/BankPaymentVoucher.jrxml")).thenReturn(report);
@@ -279,7 +279,7 @@ class ChequePrintingServiceImplTest {
         pending.setSelected(true);
         request.setPendingCheques(List.of(pending));
 
-        when(repo.validateBeforeChequePrint(anyLong(), anyLong(), anyString(), anyLong(), anyString(), anyLong(), anyString()))
+        when(repo.validateBeforeChequePrint(anyLong(), anyString(), anyString(), anyLong(), anyString(), anyLong(), anyString()))
                 .thenReturn(Map.of("result", "INFO: already printed", "nextChequeNumber", "", "defaultPrinter", ""));
 
         try (MockedStatic<UserContext> userContext = mockStatic(UserContext.class)) {
@@ -314,7 +314,7 @@ class ChequePrintingServiceImplTest {
         pending.setSelected(true);
         request.setPendingCheques(List.of(pending));
 
-        when(repo.validateBeforeChequePrint(anyLong(), anyLong(), anyString(), anyLong(), anyString(), anyLong(), anyString()))
+        when(repo.validateBeforeChequePrint(anyLong(), anyString(), anyString(), anyLong(), anyString(), anyLong(), anyString()))
                 .thenReturn(Map.of("result", beforeStatus));
 
         try (MockedStatic<UserContext> userContext = mockStatic(UserContext.class)) {
@@ -349,7 +349,7 @@ class ChequePrintingServiceImplTest {
         request.setPendingCheques(List.of(pending));
 
         JasperReport report = mock(JasperReport.class);
-        when(repo.validateBeforeChequePrint(anyLong(), anyLong(), anyString(), anyLong(), anyString(), anyLong(), anyString()))
+        when(repo.validateBeforeChequePrint(anyLong(), anyString(), anyString(), anyLong(), anyString(), anyLong(), anyString()))
                 .thenReturn(Map.of("result", "SUCCESS", "nextChequeNumber", "1003", "defaultPrinter", "ignored"));
         when(printService.buildBaseParams(16L, "400-151")).thenReturn(new java.util.HashMap<>());
         when(printService.load("Finance/BankPayments/BankPaymentVoucher.jrxml")).thenReturn(report);

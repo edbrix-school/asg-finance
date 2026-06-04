@@ -53,12 +53,12 @@ public class ChequePrintingRepositoryImpl implements ChequePrintingRepository {
 	}
 
 	@Override
-	public Map<String, String> validateBeforeChequePrint(Long groupPoid, Long loginUserPoid, String companyPoid, Long bankPoid,
+	public Map<String, String> validateBeforeChequePrint(Long groupPoid, String loginUser, String companyPoid, Long bankPoid,
 			String chqSignType, Long transactionPoid, String suppressBalanceCheck) {
 		StoredProcedureQuery query = em.createStoredProcedureQuery("PROC_GL_BANK_BEFORE_CHEQ_PRINT");
 
 		query.registerStoredProcedureParameter(1, Long.class, ParameterMode.IN);
-		query.registerStoredProcedureParameter(2, Long.class, ParameterMode.IN);
+		query.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
 		query.registerStoredProcedureParameter(3, String.class, ParameterMode.IN);
 		query.registerStoredProcedureParameter(4, Long.class, ParameterMode.IN);
 		query.registerStoredProcedureParameter(5, String.class, ParameterMode.IN);
@@ -69,7 +69,7 @@ public class ChequePrintingRepositoryImpl implements ChequePrintingRepository {
 		query.registerStoredProcedureParameter(10, String.class, ParameterMode.OUT);
 
 		query.setParameter(1, groupPoid);
-		query.setParameter(2, loginUserPoid);
+		query.setParameter(2, loginUser);
 		query.setParameter(3, companyPoid);
 		query.setParameter(4, bankPoid);
 		query.setParameter(5, chqSignType);

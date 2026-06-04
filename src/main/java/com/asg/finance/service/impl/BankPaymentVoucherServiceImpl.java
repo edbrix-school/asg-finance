@@ -1059,7 +1059,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                 .orElseThrow(() -> new ValidationException("Voucher not found"));
         spRepository.validateBeforeChequePrint(
                 UserContext.getGroupPoid(),
-                UserContext.getUserPoid(),
+                getCurrentUser(),
                 UserContext.getCompanyPoid(),
                 header.getBankPoid(),
                 header.getChqSignType(),

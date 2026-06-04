@@ -24,7 +24,7 @@ public interface BankPaymentVoucherSpRepository {
     
     void updateMtaCost(Long groupPoid, Long companyPoid, Long userPoid, Long transactionPoid, String rfqPoid);
     
-    Map<String, String> validateBeforeChequePrint(Long groupPoid, Long loginUserPoid, Long companyPoid, Long bankPoid, String chqSignType, Long transactionPoid, String suppressBalanceCheck);
+    Map<String, String> validateBeforeChequePrint(Long groupPoid, String loginUser, Long companyPoid, Long bankPoid, String chqSignType, Long transactionPoid, String suppressBalanceCheck);
     
     void afterChequePrint(Long groupPoid, String loginUser, Long companyPoid, Long transactionPoid, Long bankPoid, String chqSignType, Long userPoid);
     

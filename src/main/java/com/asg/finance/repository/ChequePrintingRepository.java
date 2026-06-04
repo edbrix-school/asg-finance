@@ -11,7 +11,7 @@ public interface ChequePrintingRepository {
 
 	List<ChequeStockResponse> fetchChequeStock(String bankCode, String signType);
 
-	Map<String, String> validateBeforeChequePrint(Long groupPoid, Long loginUserPoid, String companyPoid, Long bankPoid,
+	Map<String, String> validateBeforeChequePrint(Long groupPoid, String loginUser, String companyPoid, Long bankPoid,
 			String chqSignType, Long transactionPoid, String suppressBalanceCheck);
 
 	String afterChequePrint(Long groupPoid, String loginUser, Long companyPoid, Long transactionPoid, Long bankPoid,

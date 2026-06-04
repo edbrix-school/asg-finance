@@ -887,13 +887,13 @@ class BankPaymentVoucherServiceImplTest {
         headerEntity.setSuppressValidation("N");
 
         when(paymentVoucherRepository.findById(TRANS_POID)).thenReturn(Optional.of(headerEntity));
-        when(spRepository.validateBeforeChequePrint(anyLong(), anyLong(), anyLong(), anyLong(),
+        when(spRepository.validateBeforeChequePrint(anyLong(), anyString(), anyLong(), anyLong(),
                 anyString(), anyLong(), anyString())).thenReturn(Collections.emptyMap());
 
         assertDoesNotThrow(() -> service.validateChequePrint(TRANS_POID));
 
         verify(spRepository).validateBeforeChequePrint(
-                eq(GROUP_POID), eq(USER_POID), eq(COMPANY_POID),
+                eq(GROUP_POID), eq(USER_NAME), eq(COMPANY_POID),
                 eq(BANK_POID), eq("SINGLE"), eq(TRANS_POID), eq("N"));
     }
 

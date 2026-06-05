@@ -1283,16 +1283,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     .collect(Collectors.toMap(StockMasterEntity::getStockPoid, s -> s));
             Map<Long, UnitMaster> unitMap = unitMasterRepository.findAllById(unitPoids).stream()
                     .collect(Collectors.toMap(UnitMaster::getUnitPoid, u -> u));
-            Map<Long, LovGetListDto> companyLovMap = new HashMap<>();
-            for (Long poid : companyPoids) {
-                LovGetListDto lov = lovService.getDetailsByPoidAndLovName(poid, "COMPANY");
-                if (lov != null) companyLovMap.put(poid, lov);
-            }
-            Map<Long, LovGetListDto> ffJobLovMap = new HashMap<>();
-            for (Long poid : ffRefDocPoids) {
-                LovGetListDto lov = lovService.getDetailsByPoidAndLovName(poid, "FF_JOBNO");
-                if (lov != null) ffJobLovMap.put(poid, lov);
-            }
+            Map<Long, LovGetListDto> companyLovMap = lovService.getDetailsByPoidsAndLovName(new ArrayList<>(companyPoids), "COMPANY");
+            Map<Long, LovGetListDto> ffJobLovMap = lovService.getDetailsByPoidsAndLovName(new ArrayList<>(ffRefDocPoids), "FF_JOBNO");
 
             List<GlPettyCashPaymentDtlResponseDto> paymentDtls =
                     mapPaymentResponse(paymentEntities, glMap, chargeMap, taxMap, supplierMap, companyLovMap);
@@ -1466,72 +1458,122 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
     // -----------------------------------------------------------------------
 
     private void enrichPoLoadResponse(List<PettyCashFromPoDto> rows) {
-        if (rows == null) return;
+        if (rows == null || rows.isEmpty()) return;
+
+        Set<Long> stockPoids = new HashSet<>();
+        Set<Long> unitPoids = new HashSet<>();
+        Set<Long> taxPoids = new HashSet<>();
+        for (PettyCashFromPoDto row : rows) {
+            if (row.getStockPoid() != null) stockPoids.add(row.getStockPoid());
+            if (row.getStockUnitPoid() != null) unitPoids.add(row.getStockUnitPoid());
+            if (row.getTaxPoid() != null) taxPoids.add(row.getTaxPoid());
+        }
+
+        Map<Long, StockMasterEntity> stockMap = stockMasterRepository.findByStockPoidIn(stockPoids).stream()
+                .collect(Collectors.toMap(StockMasterEntity::getStockPoid, s -> s));
+        Map<Long, UnitMaster> unitMap = unitMasterRepository.findAllById(unitPoids).stream()
+                .collect(Collectors.toMap(UnitMaster::getUnitPoid, u -> u));
+        Map<Long, TaxMaster> taxMap = taxMasterRepository.findByTaxPoidIn(taxPoids).stream()
+                .collect(Collectors.toMap(TaxMaster::getTaxPoid, t -> t));
+
         rows.forEach(row -> {
             if (row.getStockPoid() != null) {
-                stockMasterRepository.findByStockPoid(row.getStockPoid()).ifPresent(s ->
-                        row.setStockPoidDtl(new DetailsDto(s.getStockPoid(), s.getStockCode(),
-                                s.getStockName(), s.getGroupPoid(), s.getStockDescription(), s.getSeqNo())));
+                StockMasterEntity s = stockMap.get(row.getStockPoid());
+                if (s != null) row.setStockPoidDtl(new DetailsDto(s.getStockPoid(), s.getStockCode(),
+                        s.getStockName(), s.getGroupPoid(), s.getStockDescription(), s.getSeqNo()));
             }
             if (row.getStockUnitPoid() != null) {
-                unitMasterRepository.findByUnitPoid(row.getStockUnitPoid()).ifPresent(u ->
-                        row.setStockUnitPoidDtl(new DetailsDto(u.getUnitPoid(), u.getUnitCode(),
-                                u.getUnitName(), u.getGroupPoid(), u.getUnitName2(), u.getSeqNo())));
+                UnitMaster u = unitMap.get(row.getStockUnitPoid());
+                if (u != null) row.setStockUnitPoidDtl(new DetailsDto(u.getUnitPoid(), u.getUnitCode(),
+                        u.getUnitName(), u.getGroupPoid(), u.getUnitName2(), u.getSeqNo()));
             }
             if (row.getTaxPoid() != null) {
-                taxMasterRepository.findByTaxPoid(row.getTaxPoid()).ifPresent(t ->
-                        row.setTaxPoidDtl(new DetailsDto(t.getTaxPoid(), t.getTaxCode(),
-                                t.getTaxName(), t.getGroupPoid(), t.getTaxName2(), t.getSeqNo())));
+                TaxMaster t = taxMap.get(row.getTaxPoid());
+                if (t != null) row.setTaxPoidDtl(new DetailsDto(t.getTaxPoid(), t.getTaxCode(),
+                        t.getTaxName(), t.getGroupPoid(), t.getTaxName2(), t.getSeqNo()));
             }
         });
     }
 
     private void enrichFfLoadResponse(List<PettyCashFromFfDto> rows) {
-        if (rows == null) return;
+        if (rows == null || rows.isEmpty()) return;
+
+        Set<Long> chargePoids = new HashSet<>();
+        Set<Long> taxPoids = new HashSet<>();
+        Set<Long> refDocPoids = new HashSet<>();
+        for (PettyCashFromFfDto row : rows) {
+            if (row.getChargePoid() != null) chargePoids.add(row.getChargePoid());
+            if (row.getTaxPoid() != null) taxPoids.add(row.getTaxPoid());
+            if (row.getRefDocPoid() != null) refDocPoids.add(row.getRefDocPoid());
+        }
+
+        Map<Long, ShipChargeEntity> chargeMap = shipChargeRepository.findByChargePoidIn(chargePoids).stream()
+                .collect(Collectors.toMap(ShipChargeEntity::getChargePoid, c -> c));
+        Map<Long, TaxMaster> taxMap = taxMasterRepository.findByTaxPoidIn(taxPoids).stream()
+                .collect(Collectors.toMap(TaxMaster::getTaxPoid, t -> t));
+        Map<Long, LovGetListDto> ffJobLovMap = lovService.getDetailsByPoidsAndLovName(new ArrayList<>(refDocPoids), "FF_JOBNO");
+
         rows.forEach(row -> {
             if (row.getChargePoid() != null) {
-                shipChargeRepository.findByChargePoid(row.getChargePoid()).ifPresent(c ->
-                        row.setChargePoidDtl(new DetailsDto(c.getChargePoid(), c.getChargeCode(),
-                                c.getChargeName(), c.getGroupPoid(), c.getChargeName2(), c.getSeqNo())));
+                ShipChargeEntity c = chargeMap.get(row.getChargePoid());
+                if (c != null) row.setChargePoidDtl(new DetailsDto(c.getChargePoid(), c.getChargeCode(),
+                        c.getChargeName(), c.getGroupPoid(), c.getChargeName2(), c.getSeqNo()));
             }
             if (row.getTaxPoid() != null) {
-                taxMasterRepository.findByTaxPoid(row.getTaxPoid()).ifPresent(t ->
-                        row.setTaxPoidDtl(new DetailsDto(t.getTaxPoid(), t.getTaxCode(),
-                                t.getTaxName(), t.getGroupPoid(), t.getTaxName2(), t.getSeqNo())));
+                TaxMaster t = taxMap.get(row.getTaxPoid());
+                if (t != null) row.setTaxPoidDtl(new DetailsDto(t.getTaxPoid(), t.getTaxCode(),
+                        t.getTaxName(), t.getGroupPoid(), t.getTaxName2(), t.getSeqNo()));
             }
-
             if (row.getRefDocPoid() != null) {
-                try {
-                    LovGetListDto lov = lovService.getDetailsByPoidAndLovName(row.getRefDocPoid(), "FF_JOBNO");
-                    if (lov != null && lov.getPoid() != null) {
-                        row.setRefDocPoidDtl(new DetailsDto(
-                                lov.getPoid(), lov.getCode(), lov.getLabel(),
-                                lov.getValue(), lov.getDescription(), lov.getSeqNo()));
-                    }
-                } catch (NumberFormatException ignored) {
-                    // refDocPoid is not a numeric POID — skip enrichment
+                LovGetListDto lov = ffJobLovMap.get(row.getRefDocPoid());
+                if (lov != null && lov.getPoid() != null) {
+                    row.setRefDocPoidDtl(new DetailsDto(
+                            lov.getPoid(), lov.getCode(), lov.getLabel(),
+                            lov.getValue(), lov.getDescription(), lov.getSeqNo()));
                 }
             }
         });
     }
 
     private void enrichFdaLoadResponse(List<PettyCashFromFdaDto> rows) {
-        if (rows == null) return;
+        if (rows == null || rows.isEmpty()) return;
+
+        Set<Long> chargePoids = new HashSet<>();
+        Set<Long> taxPoids = new HashSet<>();
+        List<Long> fdaRefPoids = new ArrayList<>();
+
+        for (PettyCashFromFdaDto row : rows) {
+            if (row.getChargePoid() != null) chargePoids.add(row.getChargePoid());
+            if (row.getTaxPoid() != null) taxPoids.add(row.getTaxPoid());
+            if (row.getRefDocPoid() != null && !row.getRefDocPoid().isBlank()) {
+                try {
+                    fdaRefPoids.add(Long.parseLong(row.getRefDocPoid().trim()));
+                } catch (NumberFormatException ignored) {
+                    // refDocPoid is not a numeric POID — skip enrichment
+                }
+            }
+        }
+
+        Map<Long, ShipChargeEntity> chargeMap = shipChargeRepository.findByChargePoidIn(chargePoids).stream()
+                .collect(Collectors.toMap(ShipChargeEntity::getChargePoid, c -> c));
+        Map<Long, TaxMaster> taxMap = taxMasterRepository.findByTaxPoidIn(taxPoids).stream()
+                .collect(Collectors.toMap(TaxMaster::getTaxPoid, t -> t));
+        Map<Long, LovGetListDto> fdaLovMap = lovService.getDetailsByPoidsAndLovName(fdaRefPoids, "PROCESS_FDA_IN_PI");
+
         rows.forEach(row -> {
             if (row.getChargePoid() != null) {
-                shipChargeRepository.findByChargePoid(row.getChargePoid()).ifPresent(c ->
-                        row.setChargePoidDtl(new DetailsDto(c.getChargePoid(), c.getChargeCode(),
-                                c.getChargeName(), c.getGroupPoid(), c.getChargeName2(), c.getSeqNo())));
+                ShipChargeEntity c = chargeMap.get(row.getChargePoid());
+                if (c != null) row.setChargePoidDtl(new DetailsDto(c.getChargePoid(), c.getChargeCode(),
+                        c.getChargeName(), c.getGroupPoid(), c.getChargeName2(), c.getSeqNo()));
             }
             if (row.getTaxPoid() != null) {
-                taxMasterRepository.findByTaxPoid(row.getTaxPoid()).ifPresent(t ->
-                        row.setTaxPoidDtl(new DetailsDto(t.getTaxPoid(), t.getTaxCode(),
-                                t.getTaxName(), t.getGroupPoid(), t.getTaxName2(), t.getSeqNo())));
+                TaxMaster t = taxMap.get(row.getTaxPoid());
+                if (t != null) row.setTaxPoidDtl(new DetailsDto(t.getTaxPoid(), t.getTaxCode(),
+                        t.getTaxName(), t.getGroupPoid(), t.getTaxName2(), t.getSeqNo()));
             }
             if (row.getRefDocPoid() != null && !row.getRefDocPoid().isBlank()) {
                 try {
-                    Long refDocPoid = Long.parseLong(row.getRefDocPoid().trim());
-                    LovGetListDto lov = lovService.getDetailsByPoidAndLovName(refDocPoid, "PROCESS_FDA_IN_PI");
+                    LovGetListDto lov = fdaLovMap.get(Long.parseLong(row.getRefDocPoid().trim()));
                     if (lov != null && lov.getPoid() != null) {
                         row.setRefDocPoidDtl(new DetailsDto(
                                 lov.getPoid(), lov.getCode(), lov.getLabel(),
@@ -1679,23 +1721,48 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                         ? costCenterResponse.getCostBreakupList()
                         : Collections.emptyList();
 
-        // Pre-fetch LOV for each unique (costPoid, costGroup) pair
-        Map<String, LovGetListDto> costCenterLovMap = new HashMap<>();
+        // Group unique costPoids by costGroup (LOV name), then bulk-fetch per group
+        Map<String, List<String>> codesByGroup = new HashMap<>();
         for (CostCenterBreakupResponseDto cc : allCcRows) {
             if (StringUtils.isNotEmpty(cc.getCostPoid()) && StringUtils.isNotEmpty(cc.getCostGroup())) {
-                String key = cc.getCostPoid() + "|" + cc.getCostGroup();
-                costCenterLovMap.computeIfAbsent(key, k -> {
+                codesByGroup.computeIfAbsent(cc.getCostGroup(), k -> new ArrayList<>()).add(cc.getCostPoid());
+            }
+        }
+
+        Map<String, LovGetListDto> costCenterLovMap = new HashMap<>();
+        for (Map.Entry<String, List<String>> entry : codesByGroup.entrySet()) {
+            String costGroup = entry.getKey();
+            List<String> distinctCodes = entry.getValue().stream().distinct().toList();
+
+            // One bulk call by code for this LOV group
+            Map<String, LovGetListDto> byCodeMap = lovService.getDetailsByCodesAndLovName(distinctCodes, costGroup);
+
+            // Collect codes whose result has no poid — fall back to poid-based bulk fetch
+            List<Long> fallbackPoids = new ArrayList<>();
+            Map<Long, String> poidToCode = new HashMap<>();
+            for (String code : distinctCodes) {
+                LovGetListDto lov = byCodeMap.get(code);
+                if (lov == null || lov.getPoid() == null) {
                     try {
-                        LovGetListDto lov = lovService.getDetailsByCodeAndLovName(cc.getCostPoid(), cc.getCostGroup());
-                        if (lov.getPoid() == null) {
-                            Long poid = Long.parseLong(cc.getCostPoid());
-                            lov = lovService.getDetailsByPoidAndLovName(poid, cc.getCostGroup());
-                        }
-                        return lov;
-                    } catch (NumberFormatException e) {
-                        return lovService.getDetailsByCodeAndLovName(cc.getCostPoid(), cc.getCostGroup());
-                    }
-                });
+                        Long poid = Long.parseLong(code);
+                        fallbackPoids.add(poid);
+                        poidToCode.put(poid, code);
+                    } catch (NumberFormatException ignored) {}
+                }
+            }
+            Map<Long, LovGetListDto> byPoidMap = fallbackPoids.isEmpty()
+                    ? Collections.emptyMap()
+                    : lovService.getDetailsByPoidsAndLovName(fallbackPoids, costGroup);
+
+            // Merge into the final map keyed by "costPoid|costGroup"
+            for (String code : distinctCodes) {
+                LovGetListDto lov = byCodeMap.get(code);
+                if (lov == null || lov.getPoid() == null) {
+                    try {
+                        lov = byPoidMap.get(Long.parseLong(code));
+                    } catch (NumberFormatException ignored) {}
+                }
+                if (lov != null) costCenterLovMap.put(code + "|" + costGroup, lov);
             }
         }
 

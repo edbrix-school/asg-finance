@@ -175,19 +175,25 @@ public class PdcChqBatchServiceImpl implements PdcChqBatchService {
 
         }
 
-        double totalDr = dto.getChequeDetails().stream()
-                .mapToDouble(d ->
-                        (d.getDrAmt1() != null ? d.getDrAmt1() : 0.0)
-                                + (d.getDrAmt2() != null ? d.getDrAmt2() : 0.0)
-                                + (d.getDrAmt3() != null ? d.getDrAmt3() : 0.0)
-                ).sum();
+        List<PdcChqBatchDtlRequestDto> activeRows = dto.getChequeDetails().stream()
+                .filter(d -> !"ISDELETED".equalsIgnoreCase(d.getActionType()))
+                .toList();
 
-        double totalCr = dto.getChequeDetails().stream()
-                .mapToDouble(d -> d.getCrAmt() != null ? d.getCrAmt() : 0.0)
-                .sum();
+        if (!activeRows.isEmpty()) {
+            double totalDr = activeRows.stream()
+                    .mapToDouble(d ->
+                            (d.getDrAmt1() != null ? d.getDrAmt1() : 0.0)
+                                    + (d.getDrAmt2() != null ? d.getDrAmt2() : 0.0)
+                                    + (d.getDrAmt3() != null ? d.getDrAmt3() : 0.0)
+                    ).sum();
 
-        if (Math.abs(totalDr - totalCr) > 0.001) {
-            throw new IllegalArgumentException("Debit and Credit total must be equal.");
+            double totalCr = activeRows.stream()
+                    .mapToDouble(d -> d.getCrAmt() != null ? d.getCrAmt() : 0.0)
+                    .sum();
+
+            if (Math.abs(totalDr - totalCr) > 0.001) {
+                throw new IllegalArgumentException("Debit and Credit total must be equal.");
+            }
         }
     }
 

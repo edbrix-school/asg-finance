@@ -76,7 +76,7 @@ public class GLPaymentVoucherHDREntity extends BaseEntity {
     private String longNarration;
 
     @Column(name = "CHQ_PRINTED", length = 1)
-    private String chqPrinted;
+    private String chqPrinted = "N";
 
     @Column(name = "CHQ_PRINTED_USER_CODE", length = 25)
     private String chqPrintedUserCode;

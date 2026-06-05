@@ -437,12 +437,14 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                 (StringUtils.isNumeric(req.getMtaRfqId()) ? Long.valueOf(req.getMtaRfqId()) : null));
 
         entity.setPrePrinted(req.getPrePrinted() != null ? req.getPrePrinted() : "N");
+        applyChequePrintedFieldsOnUpdate(entity, req);
+    }
+
+    private void applyChequePrintedFieldsOnUpdate(GLPaymentVoucherHDREntity entity, BankPaymentVoucherRequest req) {
         if (StringUtils.isNotBlank(req.getChqPrintedUserCode()) || req.getChqPrintedDate() != null) {
             entity.setChqPrintedUserCode(req.getChqPrintedUserCode());
             entity.setChqPrintedDate(req.getChqPrintedDate());
             entity.setChqPrinted("Y");
-        } else {
-            entity.setChqPrinted("N");
         }
     }
 
@@ -720,13 +722,9 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
             entity.setReleased("Y");
         }
 
-        if (StringUtils.isNotBlank(req.getChqPrintedUserCode()) || req.getChqPrintedDate() != null) {
-            entity.setChqPrintedUserCode(req.getChqPrintedUserCode());
-            entity.setChqPrintedDate(req.getChqPrintedDate());
-            entity.setChqPrinted("Y");
-        } else {
-            entity.setChqPrinted("N");
-        }
+        entity.setChqPrinted("N");
+        entity.setChqPrintedUserCode(null);
+        entity.setChqPrintedDate(null);
         entity.setAvailableBalance(req.getAvailableBalance());
 
         return entity;
@@ -1061,7 +1059,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                 .orElseThrow(() -> new ValidationException("Voucher not found"));
         spRepository.validateBeforeChequePrint(
                 UserContext.getGroupPoid(),
-                UserContext.getUserPoid(),
+                String.valueOf(UserContext.getUserPoid()),
                 UserContext.getCompanyPoid(),
                 header.getBankPoid(),
                 header.getChqSignType(),
@@ -1086,7 +1084,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         spRepository.afterChequePrint(
                 UserContext.getGroupPoid(),
-                getCurrentUser(),
+                String.valueOf(UserContext.getUserPoid()),
                 UserContext.getCompanyPoid(),
                 transactionPoid,
                 header.getBankPoid(),

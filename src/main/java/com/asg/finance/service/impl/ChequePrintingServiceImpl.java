@@ -120,7 +120,7 @@ public class ChequePrintingServiceImpl implements ChequePrintingService {
 		String suppressBalanceCheck = StringUtils.defaultIfBlank(suppressBalanceCheckValue, "N");
 		Map<String, String> beforePrintResult = repo.validateBeforeChequePrint(
 				UserContext.getGroupPoid(),
-				UserContext.getUserPoid(),
+				String.valueOf(UserContext.getUserPoid()),
 				String.valueOf(companyPoid),
 				bankPoid,
 				stockType,
@@ -162,7 +162,7 @@ public class ChequePrintingServiceImpl implements ChequePrintingService {
 
 		String afterStatus = repo.afterChequePrint(
 				UserContext.getGroupPoid(),
-				UserContext.getUserName(),
+				String.valueOf(UserContext.getUserPoid()),
 				companyPoid,
 				transactionPoid,
 				bankPoid,

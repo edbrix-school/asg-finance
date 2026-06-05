@@ -893,7 +893,7 @@ class BankPaymentVoucherServiceImplTest {
         assertDoesNotThrow(() -> service.validateChequePrint(TRANS_POID));
 
         verify(spRepository).validateBeforeChequePrint(
-                eq(GROUP_POID), eq(USER_NAME), eq(COMPANY_POID),
+                eq(GROUP_POID), eq(String.valueOf(USER_POID)), eq(COMPANY_POID),
                 eq(BANK_POID), eq("SINGLE"), eq(TRANS_POID), eq("N"));
     }
 
@@ -923,7 +923,7 @@ class BankPaymentVoucherServiceImplTest {
 
         service.markChequePrinted(TRANS_POID);
 
-        verify(spRepository).afterChequePrint(eq(GROUP_POID), eq(USER_NAME), eq(COMPANY_POID),
+        verify(spRepository).afterChequePrint(eq(GROUP_POID), eq(String.valueOf(USER_POID)), eq(COMPANY_POID),
                 eq(TRANS_POID), eq(BANK_POID), eq("DUAL"), eq(USER_POID));
         verify(loggingService).logChanges(any(), any(), eq(GLPaymentVoucherHDREntity.class),
                 eq(DOC_ID), eq(TRANS_POID.toString()), eq(LogDetailsEnum.MODIFIED), anyString());

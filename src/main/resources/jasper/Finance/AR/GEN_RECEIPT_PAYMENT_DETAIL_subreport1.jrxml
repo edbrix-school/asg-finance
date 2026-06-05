@@ -3,7 +3,7 @@
     <property name="ireport.zoom" value="1.0"/>
     <property name="ireport.x" value="0"/>
     <property name="ireport.y" value="0"/>
-    <parameter name="DOC_KEY_ID_PAY" class="java.lang.String">
+    <parameter name="DOC_KEY_POID" class="java.lang.String">
         <defaultValueExpression><![CDATA[]]></defaultValueExpression>
     </parameter>
     <queryString>
@@ -11,7 +11,7 @@
 P.ACCOUNT_POID,P.ACCOUNT_NAME,P.ACCOUNT_NO,NVL(HDR.ROUND_OFF,0)ROUNDOFF,NVL(HDR.EX_GAIN_LOSS,0)EXG_GAIN,NVL(HDR.BANK_CHARGES,0)BANK_CHARGES
  from AR_GEN_RECEIPT_PYMT_DETAILS P
  INNER JOIN AR_GEN_RECEIPT_HDR HDR ON HDR.TRANSACTION_POID=P.TRANSACTION_POID
- WHERE P.TRANSACTION_POID=$P{DOC_KEY_ID_PAY}]]>
+ WHERE P.TRANSACTION_POID=$P{DOC_KEY_POID}]]>
     </queryString>
     <field name="TRANSACTION_POID" class="java.math.BigDecimal"/>
     <field name="PAYMENT_DTL" class="java.lang.String"/>

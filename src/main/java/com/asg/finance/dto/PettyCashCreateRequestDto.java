@@ -47,6 +47,7 @@ public class PettyCashCreateRequestDto implements PettyCashRequestBase {
 
     private String ffRef;
 
+    private List<String> ffRefs;
 
     private LocalDate settledDate;
 

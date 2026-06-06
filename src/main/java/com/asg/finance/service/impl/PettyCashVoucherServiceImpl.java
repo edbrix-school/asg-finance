@@ -656,7 +656,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
         if (dto.getAdvance() != null) header.setAdvance(dto.getAdvance());
         if (dto.getRefType() != null) header.setRefType(dto.getRefType());
         if (dto.getFdaRef() != null) header.setFdaRef(dto.getFdaRef());
-        if (dto.getFfRef() != null) header.setFfRef(dto.getFfRef());
+        String effectiveFfRef = resolveEffectiveFfRef(dto);
+        if (effectiveFfRef != null) header.setFfRef(effectiveFfRef);
         if (dto.getSettledDate() != null) header.setSettledDate(dto.getSettledDate());
         if (dto.getRemarks() != null) header.setRemarks(dto.getRemarks());
         if (dto.getSettledTotal() != null) header.setSettledTotal(dto.getSettledTotal());
@@ -1201,7 +1202,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
     private String resolveRefPoidByType(PettyCashRequestBase requestDto, String refType) {
         return switch (normalizeRefType(refType)) {
-            case "FF JOBS" -> requestDto.getFfRef();
+            case "FF JOBS" -> resolveEffectiveFfRef(requestDto);
             case "FDA JOBS" -> requestDto.getFdaRef();
             case "MTA RFQ" -> requestDto.getSalesQtnRef();
             case "GENERAL PO" -> requestDto.getPoRef();
@@ -2027,7 +2028,9 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     throw new ValidationException("Select a FDA Ref...");
             }
             case "FF JOBS" -> {
-                if (!hasText(req.getFfRef()))
+                List<String> ffRefs = req.getFfRefs();
+                boolean hasFfRefs = ffRefs != null && ffRefs.stream().anyMatch(r -> r != null && !r.isBlank());
+                if (!hasFfRefs && !hasText(req.getFfRef()))
                     throw new ValidationException("Select a FF Ref...");
             }
             case "MTA RFQ" -> {
@@ -2318,10 +2321,21 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
     // Helper: resolveVoucherRefByType
     // -----------------------------------------------------------------------
 
+    private String resolveEffectiveFfRef(PettyCashRequestBase req) {
+        List<String> refs = req.getFfRefs();
+        if (refs != null && !refs.isEmpty()) {
+            String joined = refs.stream()
+                    .filter(r -> r != null && !r.isBlank())
+                    .collect(Collectors.joining(";"));
+            if (!joined.isBlank()) return joined;
+        }
+        return req.getFfRef();
+    }
+
     private String resolveVoucherRefByType(String refType, PettyCashRequestBase requestDto) {
         return switch (normalizeRefType(refType)) {
             case "FDA JOBS" -> requestDto.getFdaRef();
-            case "FF JOBS" -> requestDto.getFfRef();
+            case "FF JOBS" -> resolveEffectiveFfRef(requestDto);
             case "MTA RFQ" -> requestDto.getSalesQtnRef();
             case "GENERAL PO" -> requestDto.getPoRef();
             case "GRN_JOBS" -> hasText(requestDto.getPoRef()) ? requestDto.getPoRef()
@@ -2524,7 +2538,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                 .advance(requestDto.getAdvance())
                 .refType(requestDto.getRefType())
                 .fdaRef(requestDto.getFdaRef())
-                .ffRef(requestDto.getFfRef())
+                .ffRef(resolveEffectiveFfRef(requestDto))
                 .settledDate(requestDto.getSettledDate())
                 .remarks(requestDto.getRemarks())
                 .settledTotal(requestDto.getSettledTotal())
@@ -2718,6 +2732,9 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                 .refType(savedHeader.getRefType())
                 .fdaRef(savedHeader.getFdaRef())
                 .ffRef(savedHeader.getFfRef())
+                .ffRefs(savedHeader.getFfRef() != null && !savedHeader.getFfRef().isBlank()
+                        ? Arrays.asList(savedHeader.getFfRef().split(";"))
+                        : null)
                 .settledDate(savedHeader.getSettledDate())
                 .remarks(savedHeader.getRemarks())
                 .settledTotal(scale3(savedHeader.getSettledTotal()))

@@ -404,12 +404,15 @@ public class PettyCashVoucherController {
             @Parameter(description = "User POID", example = "3001")
             @RequestParam Long userPoid,
 
-            @Parameter(description = "FF POID", example = "FF-7892")
-            @RequestParam String ffPoid
+            @Parameter(description = "FF POID(s) — single or multiple values", example = "FF-7892")
+            @RequestParam List<String> ffPoid
     ) {
+        String resolvedFfPoid = ffPoid.stream()
+                .filter(p -> p != null && !p.isBlank())
+                .collect(java.util.stream.Collectors.joining(";"));
 
         PettyRefTypeResponse<PettyCashFromFfDto> response =
-                pettyCashVoucherService.loadPettyCashFromFf(groupPoid, companyPoid, userPoid, ffPoid);
+                pettyCashVoucherService.loadPettyCashFromFf(groupPoid, companyPoid, userPoid, resolvedFfPoid);
 
         String message = response.getMessage() != null ? response.getMessage() : "Petty Cash from FF fetched successfully";
         return success(message, response.getResponseList());

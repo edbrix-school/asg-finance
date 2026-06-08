@@ -13,6 +13,7 @@ public class BankPaymentGLDetailResponse {
     private Long detRowId;
     private Long transactionPoid;
     private String type;
+    private String bankGlInd;
     private Long companyPoid;
     private LovGetListDto companyDet;
     private Long glPoid;

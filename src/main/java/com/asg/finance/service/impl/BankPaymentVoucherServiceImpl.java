@@ -54,6 +54,10 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService {
 
+    private static final String GL_TYPE_DR = "DR";
+    private static final String GL_TYPE_CR = "CR";
+    private static final String BANK_GL_IND_BANK_ROW = "BANK_ROW";
+
     @Autowired
     private BankPaymentVoucherRepository paymentVoucherRepository;
 
@@ -743,20 +747,8 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         long rowId = 1;
         for (BankPaymentGLDetailRequest detail : glDetails) {
             GLPaymentVoucherDtlGLEntity entity = new GLPaymentVoucherDtlGLEntity();
-            entity.setTransactionPoid(transactionPoid);
-            entity.setDetRowId(rowId++);
-            entity.setType(detail.getType());
-            entity.setCompanyPoid(detail.getCompanyPoid());
-            entity.setGlPoid(detail.getGlPoid());
-            entity.setDrAmt(detail.getDrAmt());
-            entity.setCrAmt(detail.getCrAmt());
-            entity.setTaxPoid(detail.getTaxPoid());
-            entity.setTaxPercentage(detail.getTaxPercentage());
-            entity.setTaxAmount(detail.getTaxAmount());
-            entity.setTotalAmount(detail.getTotalAmount());
-            entity.setPartyInvNumber(detail.getPartyInvNumber());
-            entity.setPartyInvDate(detail.getPartyInvDate());
-            entity.setRemarks(detail.getRemarks());
+            detail.setDetRowId(rowId++);
+            mapGLFields(entity, detail, transactionPoid);
             entities.add(entity);
         }
 
@@ -1464,7 +1456,9 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     private void mapGLFields(GLPaymentVoucherDtlGLEntity entity, BankPaymentGLDetailRequest detail, Long transactionPoid) {
         entity.setTransactionPoid(transactionPoid);
         entity.setDetRowId(detail.getDetRowId());
-        entity.setType(detail.getType());
+        String type = resolveGlDetailType(detail);
+        entity.setType(type);
+        entity.setBankGlInd(resolveBankGlInd(detail, type));
         entity.setCompanyPoid(detail.getCompanyPoid());
         entity.setGlPoid(detail.getGlPoid());
         entity.setDrAmt(detail.getDrAmt());
@@ -1476,6 +1470,29 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         entity.setPartyInvNumber(detail.getPartyInvNumber());
         entity.setPartyInvDate(detail.getPartyInvDate());
         entity.setRemarks(detail.getRemarks());
+    }
+
+    private String resolveGlDetailType(BankPaymentGLDetailRequest detail) {
+        if (StringUtils.isNotBlank(detail.getType())) {
+            return detail.getType().trim().toUpperCase();
+        }
+        if (detail.getDrAmt() != null && detail.getDrAmt().compareTo(BigDecimal.ZERO) > 0) {
+            return GL_TYPE_DR;
+        }
+        if (detail.getCrAmt() != null && detail.getCrAmt().compareTo(BigDecimal.ZERO) > 0) {
+            return GL_TYPE_CR;
+        }
+        return detail.getType();
+    }
+
+    private String resolveBankGlInd(BankPaymentGLDetailRequest detail, String type) {
+        if (StringUtils.isNotBlank(detail.getBankGlInd())) {
+            return detail.getBankGlInd().trim();
+        }
+        if (GL_TYPE_CR.equalsIgnoreCase(type)) {
+            return BANK_GL_IND_BANK_ROW;
+        }
+        return null;
     }
 
 

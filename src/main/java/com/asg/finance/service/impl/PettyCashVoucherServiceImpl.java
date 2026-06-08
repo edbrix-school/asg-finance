@@ -2825,17 +2825,28 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
         }
 
         if (savedHeader.getFfRef() != null && !savedHeader.getFfRef().isBlank()) {
-            try {
-                Long ffPoid = Long.parseLong(savedHeader.getFfRef().trim());
-                LovGetListDto lov = lovService.getDetailsByPoidAndLovName(ffPoid, "FF_JOBS_FOR_COST_BOOKING");
-                if (lov != null && lov.getPoid() != null) {
-                    builder.ffRefDtl(new DetailsDto(
-                            lov.getPoid(), lov.getCode(), lov.getLabel(),
-                            lov.getValue(), lov.getDescription(), lov.getSeqNo()
-                    ));
+            List<Long> ffPoids = Arrays.stream(savedHeader.getFfRef().split(";"))
+                    .map(String::trim)
+                    .filter(s -> !s.isBlank())
+                    .flatMap(s -> {
+                        try { return java.util.stream.Stream.of(Long.parseLong(s)); }
+                        catch (NumberFormatException ignored) { return java.util.stream.Stream.empty(); }
+                    })
+                    .collect(Collectors.toList());
+            if (!ffPoids.isEmpty()) {
+                Map<Long, LovGetListDto> ffLovMap = lovService.getDetailsByPoidsAndLovName(ffPoids, "FF_JOBS_FOR_COST_BOOKING");
+                List<DetailsDto> ffRefsDtl = ffPoids.stream()
+                        .map(ffLovMap::get)
+                        .filter(lov -> lov != null && lov.getPoid() != null)
+                        .map(lov -> new DetailsDto(lov.getPoid(), lov.getCode(), lov.getLabel(),
+                                lov.getValue(), lov.getDescription(), lov.getSeqNo()))
+                        .collect(Collectors.toList());
+                if (!ffRefsDtl.isEmpty()) {
+                    builder.ffRefsDtl(ffRefsDtl);
+                    if (ffRefsDtl.size() == 1) {
+                        builder.ffRefDtl(ffRefsDtl.get(0));
+                    }
                 }
-            } catch (NumberFormatException ignored) {
-                // ffRef is not a numeric POID — skip enrichment
             }
         }
 

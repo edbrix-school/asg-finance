@@ -34,7 +34,9 @@ public class PettyCashResponseDto {
     private String fdaRef;
     private DetailsDto fdaRefDtl;
     private String ffRef;
+    private List<String> ffRefs;
     private DetailsDto ffRefDtl;
+    private List<DetailsDto> ffRefsDtl;
     private LocalDate settledDate;
     private String remarks;
     private BigDecimal settledTotal;

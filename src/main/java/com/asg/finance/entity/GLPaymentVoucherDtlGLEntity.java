@@ -53,8 +53,8 @@ public class GLPaymentVoucherDtlGLEntity extends BaseEntity {
     @Column(name = "PDC_CHQ_TRN_POID")
     private Long pdcChqTrnPoid;
 
-    @Column(name = "BANK_GL_IND", length = 1)
-    private String bankGlInd; // Y/N flag
+    @Column(name = "BANK_GL_IND", length = 20)
+    private String bankGlInd;
 
     @Column(name = "TAX_POID")
     private Long taxPoid;

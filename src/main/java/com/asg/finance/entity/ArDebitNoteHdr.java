@@ -134,7 +134,6 @@ public class ArDebitNoteHdr extends BaseEntity {
     @Column(name = "COST_CENTER_POID")
     private Long costCenterPoid;
 
-    @AuditIgnore
     @Column(name = "DISPOSAL_JV_POID")
     private Long disposalJvPoid;
 

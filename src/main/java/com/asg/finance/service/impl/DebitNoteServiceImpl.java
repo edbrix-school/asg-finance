@@ -789,6 +789,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         entity.setFfRef(dto.getFfRefPoid() != null ? dto.getFfRefPoid().toString() : null);
         entity.setPropertyInvoice(Boolean.TRUE.equals(dto.getPropertyInvoice()) ? "Y" : "N");
         entity.setPrintCompanyPoid(dto.getPrintCompanyPoid());
+        entity.setDisposalJvPoid(dto.getDisposalJvRefPoid());
 
         return entity;
     }
@@ -832,6 +833,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         dto.setFfRefPoid(parseLongSafely(entity.getFfRef()));
         dto.setPropertyInvoice("Y".equals(entity.getPropertyInvoice()));
         dto.setPrintCompanyPoid(entity.getPrintCompanyPoid());
+        dto.setDisposalJvRefPoid(entity.getDisposalJvPoid());
         // voucherTypeReadOnly: true once the record has been saved (doc ref exists)
         dto.setVoucherTypeReadOnly(entity.getDocRef() != null && !entity.getDocRef().trim().isEmpty());
 

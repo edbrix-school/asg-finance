@@ -166,7 +166,6 @@ public class PurchaseOrder extends BaseEntity {
     private String refType;
 
     @Column(name = "MULTI_COMPANY", length = 1)
-    @AuditIgnore
     private String multiCompany;
 
     @Column(name = "VOUCHER_NARRATION", length = 1000)

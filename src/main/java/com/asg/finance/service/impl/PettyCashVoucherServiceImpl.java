@@ -656,7 +656,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
         if (dto.getAdvance() != null) header.setAdvance(dto.getAdvance());
         if (dto.getRefType() != null) header.setRefType(dto.getRefType());
         if (dto.getFdaRef() != null) header.setFdaRef(dto.getFdaRef());
-        if (dto.getFfRef() != null) header.setFfRef(dto.getFfRef());
+        String effectiveFfRef = resolveEffectiveFfRef(dto);
+        if (effectiveFfRef != null) header.setFfRef(effectiveFfRef);
         if (dto.getSettledDate() != null) header.setSettledDate(dto.getSettledDate());
         if (dto.getRemarks() != null) header.setRemarks(dto.getRemarks());
         if (dto.getSettledTotal() != null) header.setSettledTotal(dto.getSettledTotal());
@@ -1201,7 +1202,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
     private String resolveRefPoidByType(PettyCashRequestBase requestDto, String refType) {
         return switch (normalizeRefType(refType)) {
-            case "FF JOBS" -> requestDto.getFfRef();
+            case "FF JOBS" -> resolveEffectiveFfRef(requestDto);
             case "FDA JOBS" -> requestDto.getFdaRef();
             case "MTA RFQ" -> requestDto.getSalesQtnRef();
             case "GENERAL PO" -> requestDto.getPoRef();
@@ -1283,16 +1284,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     .collect(Collectors.toMap(StockMasterEntity::getStockPoid, s -> s));
             Map<Long, UnitMaster> unitMap = unitMasterRepository.findAllById(unitPoids).stream()
                     .collect(Collectors.toMap(UnitMaster::getUnitPoid, u -> u));
-            Map<Long, LovGetListDto> companyLovMap = new HashMap<>();
-            for (Long poid : companyPoids) {
-                LovGetListDto lov = lovService.getDetailsByPoidAndLovName(poid, "COMPANY");
-                if (lov != null) companyLovMap.put(poid, lov);
-            }
-            Map<Long, LovGetListDto> ffJobLovMap = new HashMap<>();
-            for (Long poid : ffRefDocPoids) {
-                LovGetListDto lov = lovService.getDetailsByPoidAndLovName(poid, "FF_JOBNO");
-                if (lov != null) ffJobLovMap.put(poid, lov);
-            }
+            Map<Long, LovGetListDto> companyLovMap = lovService.getDetailsByPoidsAndLovName(new ArrayList<>(companyPoids), "COMPANY");
+            Map<Long, LovGetListDto> ffJobLovMap = lovService.getDetailsByPoidsAndLovName(new ArrayList<>(ffRefDocPoids), "FF_JOBNO");
 
             List<GlPettyCashPaymentDtlResponseDto> paymentDtls =
                     mapPaymentResponse(paymentEntities, glMap, chargeMap, taxMap, supplierMap, companyLovMap);
@@ -1466,72 +1459,122 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
     // -----------------------------------------------------------------------
 
     private void enrichPoLoadResponse(List<PettyCashFromPoDto> rows) {
-        if (rows == null) return;
+        if (rows == null || rows.isEmpty()) return;
+
+        Set<Long> stockPoids = new HashSet<>();
+        Set<Long> unitPoids = new HashSet<>();
+        Set<Long> taxPoids = new HashSet<>();
+        for (PettyCashFromPoDto row : rows) {
+            if (row.getStockPoid() != null) stockPoids.add(row.getStockPoid());
+            if (row.getStockUnitPoid() != null) unitPoids.add(row.getStockUnitPoid());
+            if (row.getTaxPoid() != null) taxPoids.add(row.getTaxPoid());
+        }
+
+        Map<Long, StockMasterEntity> stockMap = stockMasterRepository.findByStockPoidIn(stockPoids).stream()
+                .collect(Collectors.toMap(StockMasterEntity::getStockPoid, s -> s));
+        Map<Long, UnitMaster> unitMap = unitMasterRepository.findAllById(unitPoids).stream()
+                .collect(Collectors.toMap(UnitMaster::getUnitPoid, u -> u));
+        Map<Long, TaxMaster> taxMap = taxMasterRepository.findByTaxPoidIn(taxPoids).stream()
+                .collect(Collectors.toMap(TaxMaster::getTaxPoid, t -> t));
+
         rows.forEach(row -> {
             if (row.getStockPoid() != null) {
-                stockMasterRepository.findByStockPoid(row.getStockPoid()).ifPresent(s ->
-                        row.setStockPoidDtl(new DetailsDto(s.getStockPoid(), s.getStockCode(),
-                                s.getStockName(), s.getGroupPoid(), s.getStockDescription(), s.getSeqNo())));
+                StockMasterEntity s = stockMap.get(row.getStockPoid());
+                if (s != null) row.setStockPoidDtl(new DetailsDto(s.getStockPoid(), s.getStockCode(),
+                        s.getStockName(), s.getGroupPoid(), s.getStockDescription(), s.getSeqNo()));
             }
             if (row.getStockUnitPoid() != null) {
-                unitMasterRepository.findByUnitPoid(row.getStockUnitPoid()).ifPresent(u ->
-                        row.setStockUnitPoidDtl(new DetailsDto(u.getUnitPoid(), u.getUnitCode(),
-                                u.getUnitName(), u.getGroupPoid(), u.getUnitName2(), u.getSeqNo())));
+                UnitMaster u = unitMap.get(row.getStockUnitPoid());
+                if (u != null) row.setStockUnitPoidDtl(new DetailsDto(u.getUnitPoid(), u.getUnitCode(),
+                        u.getUnitName(), u.getGroupPoid(), u.getUnitName2(), u.getSeqNo()));
             }
             if (row.getTaxPoid() != null) {
-                taxMasterRepository.findByTaxPoid(row.getTaxPoid()).ifPresent(t ->
-                        row.setTaxPoidDtl(new DetailsDto(t.getTaxPoid(), t.getTaxCode(),
-                                t.getTaxName(), t.getGroupPoid(), t.getTaxName2(), t.getSeqNo())));
+                TaxMaster t = taxMap.get(row.getTaxPoid());
+                if (t != null) row.setTaxPoidDtl(new DetailsDto(t.getTaxPoid(), t.getTaxCode(),
+                        t.getTaxName(), t.getGroupPoid(), t.getTaxName2(), t.getSeqNo()));
             }
         });
     }
 
     private void enrichFfLoadResponse(List<PettyCashFromFfDto> rows) {
-        if (rows == null) return;
+        if (rows == null || rows.isEmpty()) return;
+
+        Set<Long> chargePoids = new HashSet<>();
+        Set<Long> taxPoids = new HashSet<>();
+        Set<Long> refDocPoids = new HashSet<>();
+        for (PettyCashFromFfDto row : rows) {
+            if (row.getChargePoid() != null) chargePoids.add(row.getChargePoid());
+            if (row.getTaxPoid() != null) taxPoids.add(row.getTaxPoid());
+            if (row.getRefDocPoid() != null) refDocPoids.add(row.getRefDocPoid());
+        }
+
+        Map<Long, ShipChargeEntity> chargeMap = shipChargeRepository.findByChargePoidIn(chargePoids).stream()
+                .collect(Collectors.toMap(ShipChargeEntity::getChargePoid, c -> c));
+        Map<Long, TaxMaster> taxMap = taxMasterRepository.findByTaxPoidIn(taxPoids).stream()
+                .collect(Collectors.toMap(TaxMaster::getTaxPoid, t -> t));
+        Map<Long, LovGetListDto> ffJobLovMap = lovService.getDetailsByPoidsAndLovName(new ArrayList<>(refDocPoids), "FF_JOBNO");
+
         rows.forEach(row -> {
             if (row.getChargePoid() != null) {
-                shipChargeRepository.findByChargePoid(row.getChargePoid()).ifPresent(c ->
-                        row.setChargePoidDtl(new DetailsDto(c.getChargePoid(), c.getChargeCode(),
-                                c.getChargeName(), c.getGroupPoid(), c.getChargeName2(), c.getSeqNo())));
+                ShipChargeEntity c = chargeMap.get(row.getChargePoid());
+                if (c != null) row.setChargePoidDtl(new DetailsDto(c.getChargePoid(), c.getChargeCode(),
+                        c.getChargeName(), c.getGroupPoid(), c.getChargeName2(), c.getSeqNo()));
             }
             if (row.getTaxPoid() != null) {
-                taxMasterRepository.findByTaxPoid(row.getTaxPoid()).ifPresent(t ->
-                        row.setTaxPoidDtl(new DetailsDto(t.getTaxPoid(), t.getTaxCode(),
-                                t.getTaxName(), t.getGroupPoid(), t.getTaxName2(), t.getSeqNo())));
+                TaxMaster t = taxMap.get(row.getTaxPoid());
+                if (t != null) row.setTaxPoidDtl(new DetailsDto(t.getTaxPoid(), t.getTaxCode(),
+                        t.getTaxName(), t.getGroupPoid(), t.getTaxName2(), t.getSeqNo()));
             }
-
             if (row.getRefDocPoid() != null) {
-                try {
-                    LovGetListDto lov = lovService.getDetailsByPoidAndLovName(row.getRefDocPoid(), "FF_JOBNO");
-                    if (lov != null && lov.getPoid() != null) {
-                        row.setRefDocPoidDtl(new DetailsDto(
-                                lov.getPoid(), lov.getCode(), lov.getLabel(),
-                                lov.getValue(), lov.getDescription(), lov.getSeqNo()));
-                    }
-                } catch (NumberFormatException ignored) {
-                    // refDocPoid is not a numeric POID — skip enrichment
+                LovGetListDto lov = ffJobLovMap.get(row.getRefDocPoid());
+                if (lov != null && lov.getPoid() != null) {
+                    row.setRefDocPoidDtl(new DetailsDto(
+                            lov.getPoid(), lov.getCode(), lov.getLabel(),
+                            lov.getValue(), lov.getDescription(), lov.getSeqNo()));
                 }
             }
         });
     }
 
     private void enrichFdaLoadResponse(List<PettyCashFromFdaDto> rows) {
-        if (rows == null) return;
+        if (rows == null || rows.isEmpty()) return;
+
+        Set<Long> chargePoids = new HashSet<>();
+        Set<Long> taxPoids = new HashSet<>();
+        List<Long> fdaRefPoids = new ArrayList<>();
+
+        for (PettyCashFromFdaDto row : rows) {
+            if (row.getChargePoid() != null) chargePoids.add(row.getChargePoid());
+            if (row.getTaxPoid() != null) taxPoids.add(row.getTaxPoid());
+            if (row.getRefDocPoid() != null && !row.getRefDocPoid().isBlank()) {
+                try {
+                    fdaRefPoids.add(Long.parseLong(row.getRefDocPoid().trim()));
+                } catch (NumberFormatException ignored) {
+                    // refDocPoid is not a numeric POID — skip enrichment
+                }
+            }
+        }
+
+        Map<Long, ShipChargeEntity> chargeMap = shipChargeRepository.findByChargePoidIn(chargePoids).stream()
+                .collect(Collectors.toMap(ShipChargeEntity::getChargePoid, c -> c));
+        Map<Long, TaxMaster> taxMap = taxMasterRepository.findByTaxPoidIn(taxPoids).stream()
+                .collect(Collectors.toMap(TaxMaster::getTaxPoid, t -> t));
+        Map<Long, LovGetListDto> fdaLovMap = lovService.getDetailsByPoidsAndLovName(fdaRefPoids, "PROCESS_FDA_IN_PI");
+
         rows.forEach(row -> {
             if (row.getChargePoid() != null) {
-                shipChargeRepository.findByChargePoid(row.getChargePoid()).ifPresent(c ->
-                        row.setChargePoidDtl(new DetailsDto(c.getChargePoid(), c.getChargeCode(),
-                                c.getChargeName(), c.getGroupPoid(), c.getChargeName2(), c.getSeqNo())));
+                ShipChargeEntity c = chargeMap.get(row.getChargePoid());
+                if (c != null) row.setChargePoidDtl(new DetailsDto(c.getChargePoid(), c.getChargeCode(),
+                        c.getChargeName(), c.getGroupPoid(), c.getChargeName2(), c.getSeqNo()));
             }
             if (row.getTaxPoid() != null) {
-                taxMasterRepository.findByTaxPoid(row.getTaxPoid()).ifPresent(t ->
-                        row.setTaxPoidDtl(new DetailsDto(t.getTaxPoid(), t.getTaxCode(),
-                                t.getTaxName(), t.getGroupPoid(), t.getTaxName2(), t.getSeqNo())));
+                TaxMaster t = taxMap.get(row.getTaxPoid());
+                if (t != null) row.setTaxPoidDtl(new DetailsDto(t.getTaxPoid(), t.getTaxCode(),
+                        t.getTaxName(), t.getGroupPoid(), t.getTaxName2(), t.getSeqNo()));
             }
             if (row.getRefDocPoid() != null && !row.getRefDocPoid().isBlank()) {
                 try {
-                    Long refDocPoid = Long.parseLong(row.getRefDocPoid().trim());
-                    LovGetListDto lov = lovService.getDetailsByPoidAndLovName(refDocPoid, "PROCESS_FDA_IN_PI");
+                    LovGetListDto lov = fdaLovMap.get(Long.parseLong(row.getRefDocPoid().trim()));
                     if (lov != null && lov.getPoid() != null) {
                         row.setRefDocPoidDtl(new DetailsDto(
                                 lov.getPoid(), lov.getCode(), lov.getLabel(),
@@ -1679,23 +1722,48 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                         ? costCenterResponse.getCostBreakupList()
                         : Collections.emptyList();
 
-        // Pre-fetch LOV for each unique (costPoid, costGroup) pair
-        Map<String, LovGetListDto> costCenterLovMap = new HashMap<>();
+        // Group unique costPoids by costGroup (LOV name), then bulk-fetch per group
+        Map<String, List<String>> codesByGroup = new HashMap<>();
         for (CostCenterBreakupResponseDto cc : allCcRows) {
             if (StringUtils.isNotEmpty(cc.getCostPoid()) && StringUtils.isNotEmpty(cc.getCostGroup())) {
-                String key = cc.getCostPoid() + "|" + cc.getCostGroup();
-                costCenterLovMap.computeIfAbsent(key, k -> {
+                codesByGroup.computeIfAbsent(cc.getCostGroup(), k -> new ArrayList<>()).add(cc.getCostPoid());
+            }
+        }
+
+        Map<String, LovGetListDto> costCenterLovMap = new HashMap<>();
+        for (Map.Entry<String, List<String>> entry : codesByGroup.entrySet()) {
+            String costGroup = entry.getKey();
+            List<String> distinctCodes = entry.getValue().stream().distinct().toList();
+
+            // One bulk call by code for this LOV group
+            Map<String, LovGetListDto> byCodeMap = lovService.getDetailsByCodesAndLovName(distinctCodes, costGroup);
+
+            // Collect codes whose result has no poid — fall back to poid-based bulk fetch
+            List<Long> fallbackPoids = new ArrayList<>();
+            Map<Long, String> poidToCode = new HashMap<>();
+            for (String code : distinctCodes) {
+                LovGetListDto lov = byCodeMap.get(code);
+                if (lov == null || lov.getPoid() == null) {
                     try {
-                        LovGetListDto lov = lovService.getDetailsByCodeAndLovName(cc.getCostPoid(), cc.getCostGroup());
-                        if (lov.getPoid() == null) {
-                            Long poid = Long.parseLong(cc.getCostPoid());
-                            lov = lovService.getDetailsByPoidAndLovName(poid, cc.getCostGroup());
-                        }
-                        return lov;
-                    } catch (NumberFormatException e) {
-                        return lovService.getDetailsByCodeAndLovName(cc.getCostPoid(), cc.getCostGroup());
-                    }
-                });
+                        Long poid = Long.parseLong(code);
+                        fallbackPoids.add(poid);
+                        poidToCode.put(poid, code);
+                    } catch (NumberFormatException ignored) {}
+                }
+            }
+            Map<Long, LovGetListDto> byPoidMap = fallbackPoids.isEmpty()
+                    ? Collections.emptyMap()
+                    : lovService.getDetailsByPoidsAndLovName(fallbackPoids, costGroup);
+
+            // Merge into the final map keyed by "costPoid|costGroup"
+            for (String code : distinctCodes) {
+                LovGetListDto lov = byCodeMap.get(code);
+                if (lov == null || lov.getPoid() == null) {
+                    try {
+                        lov = byPoidMap.get(Long.parseLong(code));
+                    } catch (NumberFormatException ignored) {}
+                }
+                if (lov != null) costCenterLovMap.put(code + "|" + costGroup, lov);
             }
         }
 
@@ -1960,7 +2028,9 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     throw new ValidationException("Select a FDA Ref...");
             }
             case "FF JOBS" -> {
-                if (!hasText(req.getFfRef()))
+                List<String> ffRefs = req.getFfRefs();
+                boolean hasFfRefs = ffRefs != null && ffRefs.stream().anyMatch(r -> r != null && !r.isBlank());
+                if (!hasFfRefs && !hasText(req.getFfRef()))
                     throw new ValidationException("Select a FF Ref...");
             }
             case "MTA RFQ" -> {
@@ -2251,10 +2321,21 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
     // Helper: resolveVoucherRefByType
     // -----------------------------------------------------------------------
 
+    private String resolveEffectiveFfRef(PettyCashRequestBase req) {
+        List<String> refs = req.getFfRefs();
+        if (refs != null && !refs.isEmpty()) {
+            String joined = refs.stream()
+                    .filter(r -> r != null && !r.isBlank())
+                    .collect(Collectors.joining(";"));
+            if (!joined.isBlank()) return joined;
+        }
+        return req.getFfRef();
+    }
+
     private String resolveVoucherRefByType(String refType, PettyCashRequestBase requestDto) {
         return switch (normalizeRefType(refType)) {
             case "FDA JOBS" -> requestDto.getFdaRef();
-            case "FF JOBS" -> requestDto.getFfRef();
+            case "FF JOBS" -> resolveEffectiveFfRef(requestDto);
             case "MTA RFQ" -> requestDto.getSalesQtnRef();
             case "GENERAL PO" -> requestDto.getPoRef();
             case "GRN_JOBS" -> hasText(requestDto.getPoRef()) ? requestDto.getPoRef()
@@ -2457,7 +2538,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                 .advance(requestDto.getAdvance())
                 .refType(requestDto.getRefType())
                 .fdaRef(requestDto.getFdaRef())
-                .ffRef(requestDto.getFfRef())
+                .ffRef(resolveEffectiveFfRef(requestDto))
                 .settledDate(requestDto.getSettledDate())
                 .remarks(requestDto.getRemarks())
                 .settledTotal(requestDto.getSettledTotal())
@@ -2651,6 +2732,9 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                 .refType(savedHeader.getRefType())
                 .fdaRef(savedHeader.getFdaRef())
                 .ffRef(savedHeader.getFfRef())
+                .ffRefs(savedHeader.getFfRef() != null && !savedHeader.getFfRef().isBlank()
+                        ? Arrays.asList(savedHeader.getFfRef().split(";"))
+                        : null)
                 .settledDate(savedHeader.getSettledDate())
                 .remarks(savedHeader.getRemarks())
                 .settledTotal(scale3(savedHeader.getSettledTotal()))
@@ -2741,17 +2825,28 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
         }
 
         if (savedHeader.getFfRef() != null && !savedHeader.getFfRef().isBlank()) {
-            try {
-                Long ffPoid = Long.parseLong(savedHeader.getFfRef().trim());
-                LovGetListDto lov = lovService.getDetailsByPoidAndLovName(ffPoid, "FF_JOBS_FOR_COST_BOOKING");
-                if (lov != null && lov.getPoid() != null) {
-                    builder.ffRefDtl(new DetailsDto(
-                            lov.getPoid(), lov.getCode(), lov.getLabel(),
-                            lov.getValue(), lov.getDescription(), lov.getSeqNo()
-                    ));
+            List<Long> ffPoids = Arrays.stream(savedHeader.getFfRef().split(";"))
+                    .map(String::trim)
+                    .filter(s -> !s.isBlank())
+                    .flatMap(s -> {
+                        try { return java.util.stream.Stream.of(Long.parseLong(s)); }
+                        catch (NumberFormatException ignored) { return java.util.stream.Stream.empty(); }
+                    })
+                    .collect(Collectors.toList());
+            if (!ffPoids.isEmpty()) {
+                Map<Long, LovGetListDto> ffLovMap = lovService.getDetailsByPoidsAndLovName(ffPoids, "FF_JOBS_FOR_COST_BOOKING");
+                List<DetailsDto> ffRefsDtl = ffPoids.stream()
+                        .map(ffLovMap::get)
+                        .filter(lov -> lov != null && lov.getPoid() != null)
+                        .map(lov -> new DetailsDto(lov.getPoid(), lov.getCode(), lov.getLabel(),
+                                lov.getValue(), lov.getDescription(), lov.getSeqNo()))
+                        .collect(Collectors.toList());
+                if (!ffRefsDtl.isEmpty()) {
+                    builder.ffRefsDtl(ffRefsDtl);
+                    if (ffRefsDtl.size() == 1) {
+                        builder.ffRefDtl(ffRefsDtl.get(0));
+                    }
                 }
-            } catch (NumberFormatException ignored) {
-                // ffRef is not a numeric POID — skip enrichment
             }
         }
 

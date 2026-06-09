@@ -21,6 +21,7 @@ public interface PettyCashRequestBase {
     String getRefType();
     String getFdaRef();
     String getFfRef();
+    default List<String> getFfRefs() { return null; }
     LocalDate getSettledDate();
     String getRemarks();
     BigDecimal getSettledTotal();

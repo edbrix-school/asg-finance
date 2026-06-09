@@ -1719,7 +1719,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                 if ("ISDELETED".equals(charge.getActionType() != null ? charge.getActionType().trim().toUpperCase() : "")) continue;
                 if (charge.getChargeAmount() != null && charge.getCostAmount() != null
                         && charge.getChargeAmount().compareTo(charge.getCostAmount()) < 0) {
-                    throw new ValidationException("Charge Amount cannot be less than PDA Amount for charge ID: " + charge.getChargeId());
+                    throw new ValidationException("Charge Amount is less than Cost Amount");
                 }
             }
         }

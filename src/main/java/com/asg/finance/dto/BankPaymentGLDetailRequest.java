@@ -17,6 +17,7 @@ public class BankPaymentGLDetailRequest {
 
     // === GL & Company Info ===
     private String type;                // DR / CR
+    private String bankGlInd;         
     private Long companyPoid;           // COMPANY_POID (from Company dropdown)
     private Long glPoid;                // GL_POID (from GL search field)
 

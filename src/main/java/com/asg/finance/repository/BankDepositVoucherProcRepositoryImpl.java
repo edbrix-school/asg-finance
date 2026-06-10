@@ -7,6 +7,7 @@ import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.finance.dto.BankDepositVoucherDtlDto;
+import com.asg.finance.dto.DrilldownLinkInfoDto;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.ParameterMode;
 import jakarta.persistence.PersistenceContext;
@@ -18,13 +19,17 @@ import org.springframework.stereotype.Repository;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Repository
 @RequiredArgsConstructor
 public class BankDepositVoucherProcRepositoryImpl implements BankDepositVoucherProcRepository {
 
+    private static final String DRILLDOWN_LINK_INFO = "DRILLDOWN_LINK_INFO";
     private static final String P_LOGIN_GROUP_POID = "P_LOGIN_GROUP_POID";
     private static final String P_LOGIN_USER_POID = "P_LOGIN_USER_POID";
     private static final String P_LOGIN_COMPANY_POID = "P_LOGIN_COMPANY_POID";
@@ -156,6 +161,12 @@ public class BankDepositVoucherProcRepositoryImpl implements BankDepositVoucherP
                 .refDocPoid(rs.getLong("REF_DOC_POID"))
                 .refDocRef(rs.getString("REF_DOC_REF"))
                 .refDocId(rs.getString("REF_DOC_ID"))
+                .drilldownLinkInfo(
+                        parseDrilldownLinkInfo(
+                                rs.getString("DRILLDOWN_LINK_INFO")))
+                .rcpDate(rs.getDate("RCP_DATE") != null
+                        ? rs.getDate("RCP_DATE").toLocalDate()
+                        : null)
                 .rcpDate(rs.getDate("RCP_DATE") != null ? rs.getDate("RCP_DATE").toLocalDate() : null)
                 .bankPoid(rs.getLong("BANK_POID"))
                 .chqAcName(rs.getString("CHQ_AC_NAME"))
@@ -238,5 +249,32 @@ public class BankDepositVoucherProcRepositoryImpl implements BankDepositVoucherP
     public void callApprovalProcedure(Long companyPoid, Long userPoid, Long transactionPoid, String docRef, java.time.LocalDate transactionDate) {
         log.info("Calling PROC_GLOB_APPROVAL_ACTION for BDV transaction: {}", transactionPoid);
         generalReceiptProcedureRepository.callApprovalProcedure(companyPoid,userPoid,transactionPoid,Long.parseLong(docRef),transactionDate);
+    }
+
+    private DrilldownLinkInfoDto parseDrilldownLinkInfo(String value) {
+
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        Map<String, String> map = Arrays.stream(value.split(","))
+                .map(s -> s.split("=", 2))
+                .filter(arr -> arr.length == 2)
+                .collect(Collectors.toMap(
+                        arr -> arr[0].trim(),
+                        arr -> arr[1].trim()
+                ));
+
+        return DrilldownLinkInfoDto.builder()
+                .companyPoid(
+                        map.containsKey("COMPANY_POID")
+                                ? Long.valueOf(map.get("COMPANY_POID"))
+                                : null)
+                .targetDocId(map.get("TARGET_DOC_ID"))
+                .docKeyPoid(
+                        map.containsKey("DOC_KEY_POID")
+                                ? Long.valueOf(map.get("DOC_KEY_POID"))
+                                : null)
+                .build();
     }
 }

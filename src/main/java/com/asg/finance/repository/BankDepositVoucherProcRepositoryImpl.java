@@ -1,9 +1,11 @@
 package com.asg.finance.repository;
 
 
+import com.asg.common.lib.entity.DocumentEntity;
 import com.asg.common.lib.exception.AsgException;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.exception.ValidationException;
+import com.asg.common.lib.repository.DocumentCommonRepository;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.service.LovDataService;
 import com.asg.finance.dto.BankDepositVoucherDtlDto;
@@ -58,6 +60,7 @@ public class BankDepositVoucherProcRepositoryImpl implements BankDepositVoucherP
     private EntityManager entityManager;
     private final LovDataService lovService;
     private final GeneralReceiptProcedureRepository generalReceiptProcedureRepository;
+    private final DocumentCommonRepository documentCommonRepository;
 
 
 
@@ -123,6 +126,7 @@ public class BankDepositVoucherProcRepositoryImpl implements BankDepositVoucherP
             List<BankDepositVoucherDtlDto> results = processResultSet(rs);
             if (results.isEmpty()) {
                 throw new ValidationException("No Pending Payments");}
+            populateDocumentNames(results);
             return results;
         }
         catch (ValidationException e){
@@ -276,5 +280,24 @@ public class BankDepositVoucherProcRepositoryImpl implements BankDepositVoucherP
                                 ? Long.valueOf(map.get("DOC_KEY_POID"))
                                 : null)
                 .build();
+    }
+
+    private void populateDocumentNames(List<BankDepositVoucherDtlDto> dtos) {
+
+        for (BankDepositVoucherDtlDto dto : dtos) {
+
+            DrilldownLinkInfoDto drilldown = dto.getDrilldownLinkInfo();
+
+            if (drilldown == null || drilldown.getTargetDocId() == null) {
+                continue;
+            }
+
+            DocumentEntity document =
+                    documentCommonRepository.findByDocId(drilldown.getTargetDocId());
+
+            if (document != null) {
+                drilldown.setDocName(document.getDocName());
+            }
+        }
     }
 }

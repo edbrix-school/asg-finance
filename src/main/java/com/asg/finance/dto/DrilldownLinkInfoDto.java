@@ -13,4 +13,5 @@ public class DrilldownLinkInfoDto {
     private Long companyPoid;
     private String targetDocId;
     private Long docKeyPoid;
+    private String docName;
 }

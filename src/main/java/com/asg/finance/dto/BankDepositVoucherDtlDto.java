@@ -25,7 +25,7 @@ public class BankDepositVoucherDtlDto {
 
     @NotNull(message = "Payment type is required")
     private String pymtType;
-
+    private DrilldownLinkInfoDto drilldownLinkInfo;
     private Long refDocPoid;
     private String refDocRef;
     private LocalDate rcpDate;

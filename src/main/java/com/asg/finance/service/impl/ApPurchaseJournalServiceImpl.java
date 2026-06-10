@@ -2755,7 +2755,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
         item.setBaseAmount(baseAmount);
         item.setTaxAmount(taxAmount);
-        item.setAmount(baseAmount);
+        item.setAmount(total);
         item.setTotal(total);
     }
 

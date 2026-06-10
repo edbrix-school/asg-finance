@@ -62,9 +62,10 @@ public interface GeneralReceiptService {
      * Get pending bills for GL account
      * @param glPoid GL POID
      * @param asOnDate As on date
+     * @param multicompany Multicompany flag (Y/N) - when Y, fetches bills from all companies, when N fetches from current company only
      * @return List of pending bills
      */
-    Map<String, Object> getPendingBills(Long glPoid, java.time.LocalDate asOnDate);
+    Map<String, Object> getPendingBills(Long glPoid, java.time.LocalDate asOnDate, String multicompany);
 
     /**
      * Check if a GL account is billwise enabled

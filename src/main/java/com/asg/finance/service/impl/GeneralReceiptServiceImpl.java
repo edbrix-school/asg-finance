@@ -2115,8 +2115,11 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
     }
 
     @Override
-    public Map<String, Object> getPendingBills(Long glPoid, LocalDate asOnDate) {
-        Long companyPoid = UserContext.getCompanyPoid() != null ? UserContext.getCompanyPoid() : 1L;
+    public Map<String, Object> getPendingBills(Long glPoid, LocalDate asOnDate, String multicompany) {
+        // When multicompany = 'Y', pass NULL to fetch bills from all companies
+        // When multicompany = 'N', pass current company POID to fetch bills only from current company
+        Long companyPoid = "Y".equalsIgnoreCase(multicompany) ? null 
+                : (UserContext.getCompanyPoid() != null ? UserContext.getCompanyPoid() : 1L);
         LocalDate sqlDate = asOnDate != null ? asOnDate : LocalDate.now();
         List<Object[]> results = procedureRepository.fetchPendingBills(DEFAULT_GROUP_POID, companyPoid, glPoid,
                 sqlDate);

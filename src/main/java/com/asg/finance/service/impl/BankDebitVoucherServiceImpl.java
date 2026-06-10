@@ -1347,7 +1347,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
         if ("4".equals(payingType)) {
             // PayingType = 4 (Bank Charges only): Dr(BankChargesGL)/Cr(BankGL)
-            String bankChargesGlPoidStr = globalParameterService.getParameterValue("BANK INTEREST CHARGES SHIPPING", "GROUP", "1", null);
+            String bankChargesGlPoidStr = globalParameterService.getParameterValue("BANK INTEREST CHARGES SHIPPING", "GROUP", "1", "30");
             if (bankChargesGlPoidStr != null) {
                 Long bankChargesGlPoid = parseLong(bankChargesGlPoidStr);
                 rows.add(buildGlRow(detRowId++, "DR", bankChargesGlPoid, amount, null));
@@ -1369,7 +1369,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
             // Bank charges rows
             if (bankCharges.compareTo(BigDecimal.ZERO) > 0) {
-                String bankChargesGlPoidStr = globalParameterService.getParameterValue("BANK INTEREST CHARGES SHIPPING", "GROUP", "1", null);
+                String bankChargesGlPoidStr = globalParameterService.getParameterValue("BANK INTEREST CHARGES SHIPPING", "GROUP", "1", "30");
                 if (bankChargesGlPoidStr != null) {
                     Long bankChargesGlPoid = parseLong(bankChargesGlPoidStr);
                     BigDecimal chargePlusTax = bankCharges.add(taxAmount);
@@ -1380,7 +1380,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
             // FX Gain/Loss row
             if (gainLoss.compareTo(BigDecimal.ZERO) > 0) {
-                String gainLossGlPoidStr = globalParameterService.getParameterValue("EXCHANGE GAIN LOSS ACCT", "GROUP", "1", null);
+                String gainLossGlPoidStr = globalParameterService.getParameterValue("EXCHANGE GAIN LOSS ACCT", "GROUP", "1", "30");
                 if (gainLossGlPoidStr != null) {
                     Long gainLossGlPoid = parseLong(gainLossGlPoidStr);
                     String gainLossRowType = "CR".equalsIgnoreCase(gainLossType) ? "CR" : "DR";
@@ -1388,8 +1388,29 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                 }
             }
         } else if ("CUSTOM".equalsIgnoreCase(refType)) {
-            // CUSTOM + PayingType != 4: Cr(BankGL, Amount) only
+            // CUSTOM + PayingType != 4: Cr(BankGL, Amount)
             rows.add(buildGlRow(detRowId++, "CR", bankGlPoid, amount, null));
+
+            // Bank charges rows (mirrors legacy CUSTOM Bankcharges block)
+            if (bankCharges.compareTo(BigDecimal.ZERO) > 0) {
+                String bankChargesGlPoidStr = globalParameterService.getParameterValue("BANK INTEREST CHARGES SHIPPING", "GROUP", "1", "30");
+                if (bankChargesGlPoidStr != null) {
+                    Long bankChargesGlPoid = parseLong(bankChargesGlPoidStr);
+                    BigDecimal chargePlusTax = bankCharges.add(taxAmount);
+                    rows.add(buildGlRow(detRowId++, "CR", bankGlPoid, chargePlusTax, null));
+                    rows.add(buildGlRow(detRowId++, "DR", bankChargesGlPoid, bankCharges, request.getTaxPoid(), request.getTaxPercentage(), taxAmount));
+                }
+            }
+
+            // FX Gain/Loss row (mirrors legacy CUSTOM GainLoss block)
+            if (gainLoss.compareTo(BigDecimal.ZERO) > 0) {
+                String gainLossGlPoidStr = globalParameterService.getParameterValue("EXCHANGE GAIN LOSS ACCT", "GROUP", "1", "30");
+                if (gainLossGlPoidStr != null) {
+                    Long gainLossGlPoid = parseLong(gainLossGlPoidStr);
+                    String gainLossRowType = "CR".equalsIgnoreCase(gainLossType) ? "CR" : "DR";
+                    rows.add(buildGlRow(detRowId++, gainLossRowType, gainLossGlPoid, gainLoss, null));
+                }
+            }
         }
 
         return rows;

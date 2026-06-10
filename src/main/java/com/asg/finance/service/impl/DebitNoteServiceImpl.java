@@ -4,6 +4,7 @@ import com.asg.common.lib.dto.*;
 import com.asg.common.lib.dto.request.BillwiseBreakupRequestDto;
 import com.asg.common.lib.dto.request.LogRequestDto;
 import com.asg.common.lib.dto.response.GlVoucherLoadBillwiseBreakupResponseDto;
+import com.asg.common.lib.dto.response.LoadBillwiseBreakupResponseDto;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.service.DocumentDeleteService;
@@ -118,7 +119,6 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         ArDebitNoteHdr entity = mapToEntity(debitNoteDto);
         ArDebitNoteHdr savedEntity = debitNoteHdrRepository.saveAndFlush(entity);
         // Refresh to pull back trigger-generated DOC_REF from the database
-        entityManager.flush();
         entityManager.refresh(savedEntity);
         debitNoteDto.setDocRef(savedEntity.getDocRef());
 
@@ -141,25 +141,16 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         insertBillwiseBreakups(debitNoteDto, savedEntity);
         insertCostCenterBreakups(debitNoteDto, savedEntity);
 
-        // Build response by reading saved header + details from DB (so DB-generated fields are included)
-        DebitNoteHeaderDto result = mapToDto(savedEntity);
-        result.setCreatedBy(savedEntity.getCreatedBy());
-        result.setCreatedDate(savedEntity.getCreatedDate());
-        result.setLastModifiedBy(savedEntity.getLastModifiedBy());
-        result.setLastModifiedDate(savedEntity.getLastModifiedDate());
-        loadDetails(result, savedEntity.getTransactionPoid(), savedEntity);
-
-        // Load breakups into response
-        loadBreakups(result, savedEntity.getTransactionPoid());
-
         // Publish event for after-save processing (will run after transaction commit)
         publishAfterSaveEvent(savedEntity, null, null);
 
-        DebitNoteHeaderDto finalResult = getDebitNote(savedEntity.getTransactionPoid());
+        DebitNoteHeaderDto result = new DebitNoteHeaderDto();
+        result.setTransactionPoid(savedEntity.getTransactionPoid());
+        result.setDocRef(savedEntity.getDocRef());
         if (debitNoteDto.getWarnings() != null && !debitNoteDto.getWarnings().isEmpty()) {
-            finalResult.setWarnings(debitNoteDto.getWarnings());
+            result.setWarnings(debitNoteDto.getWarnings());
         }
-        return finalResult;
+        return result;
     }
 
     @Override
@@ -212,24 +203,42 @@ public class DebitNoteServiceImpl implements DebitNoteService {
 
         applyBusinessLogic(debitNoteDto);
 
-        BeanUtils.copyProperties(debitNoteDto, existingEntity, "transactionPoid", "createdBy", "createdDate", "groupPoid", "companyPoid", "transactionDate");
-
+        existingEntity.setCurrencyCode(debitNoteDto.getCurrencyCode());
+        existingEntity.setCurrencyRate(debitNoteDto.getCurrencyRate());
+        existingEntity.setPartyType(debitNoteDto.getPartyType());
+        existingEntity.setPartyPoid(debitNoteDto.getPartyPoid());
+        existingEntity.setRefType(debitNoteDto.getRefType());
+        existingEntity.setDrTotal(debitNoteDto.getDrTotal());
+        existingEntity.setCrTotal(debitNoteDto.getCrTotal());
+        existingEntity.setPostingNarration(debitNoteDto.getPostingNarration());
+        existingEntity.setGrandTotal(debitNoteDto.getGrandTotal());
+        existingEntity.setDueDate(debitNoteDto.getDueDate());
+        existingEntity.setCreditPeriod(debitNoteDto.getCreditPeriod());
+        existingEntity.setPoRef(debitNoteDto.getPoRef());
+        existingEntity.setBankPoid(debitNoteDto.getBankPoid());
+        existingEntity.setTinNumber(debitNoteDto.getTinNumber());
+        existingEntity.setBhdAmount(debitNoteDto.getBhdAmount());
+        existingEntity.setOtherCurrAmount(debitNoteDto.getOtherCurrAmount());
+        existingEntity.setVoucherType(debitNoteDto.getVoucherType());
+        existingEntity.setCostRefNumber(debitNoteDto.getCostRefNumber());
+        existingEntity.setPrintDivisionPoid(debitNoteDto.getPrintDivisionPoid());
+        existingEntity.setVoyageRef(debitNoteDto.getVoyageRef());
+        existingEntity.setRemarks(debitNoteDto.getRemarks());
+        existingEntity.setPrintCompanyPoid(debitNoteDto.getPrintCompanyPoid());
+        existingEntity.setCostGroup(debitNoteDto.getCostGroupPoid());
+        existingEntity.setDisposalJvPoid(debitNoteDto.getDisposalJvRefPoid());
         existingEntity.setMultiCompany(debitNoteDto.getMultiCompany() != null && debitNoteDto.getMultiCompany() ? "Y" : "N");
         existingEntity.setRemarksPrintable(debitNoteDto.getRemarksPrintable() != null && debitNoteDto.getRemarksPrintable() ? "Y" : "N");
         existingEntity.setShowBankDetailsInPrint(debitNoteDto.getShowBankDetailsInPrint() != null && debitNoteDto.getShowBankDetailsInPrint() ? "Y" : "N");
+        existingEntity.setPropertyInvoice(Boolean.TRUE.equals(debitNoteDto.getPropertyInvoice()) ? "Y" : "N");
+        existingEntity.setFdaRef(debitNoteDto.getFdaRefPoid() != null ? debitNoteDto.getFdaRefPoid().toString() : null);
+        existingEntity.setFdaDirectRef(debitNoteDto.getFdaDirectRefPoid() != null ? debitNoteDto.getFdaDirectRefPoid().toString() : null);
+        existingEntity.setFfRef(debitNoteDto.getFfRefPoid() != null ? debitNoteDto.getFfRefPoid().toString() : null);
         existingEntity.setGroupPoid(UserContext.getGroupPoid());
         existingEntity.setCompanyPoid(UserContext.getCompanyPoid());
-        existingEntity.setOtherCurrAmount(debitNoteDto.getOtherCurrAmount());
-        existingEntity.setFdaRef(debitNoteDto.getFdaRefPoid().toString());
-        existingEntity.setFdaDirectRef(debitNoteDto.getFdaDirectRefPoid().toString());
-
+        existingEntity.setTransactionDate(debitNoteDto.getTransactionDate());
         existingEntity.setLastModifiedBy(ASGHelperUtils.getCurrentUser());
         existingEntity.setLastModifiedDate(LocalDateTime.now());
-        existingEntity.setTransactionDate(debitNoteDto.getTransactionDate());
-        existingEntity.setFfRef(debitNoteDto.getFfRefPoid() != null ? debitNoteDto.getFfRefPoid().toString() : null);
-        existingEntity.setPropertyInvoice(Boolean.TRUE.equals(debitNoteDto.getPropertyInvoice()) ? "Y" : "N");
-        existingEntity.setPrintCompanyPoid(debitNoteDto.getPrintCompanyPoid());
-        existingEntity.setRemarks(debitNoteDto.getRemarks());
         debitNoteHdrRepository.save(existingEntity);
         entityManager.flush();
         entityManager.refresh(existingEntity);
@@ -249,17 +258,6 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         updateBillwiseBreakups(debitNoteDto, existingEntity.getTransactionPoid(), existingEntity.getGroupPoid(), existingEntity.getCompanyPoid());
         updateCostCenterBreakups(debitNoteDto, existingEntity.getTransactionPoid(), existingEntity.getGroupPoid(), existingEntity.getCompanyPoid());
 
-        // return database-backed DTO (with details loaded from DB)
-        DebitNoteHeaderDto result = mapToDto(existingEntity);
-        result.setCreatedBy(existingEntity.getCreatedBy());
-        result.setCreatedDate(existingEntity.getCreatedDate());
-        result.setLastModifiedBy(existingEntity.getLastModifiedBy());
-        result.setLastModifiedDate(existingEntity.getLastModifiedDate());
-        loadDetails(result, transactionPoid, existingEntity);
-
-        // Load breakups into response
-        // loadBreakups(result, transactionPoid);
-
         loggingService.logChanges(oldEntity, existingEntity, ArDebitNoteHdr.class, UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
         if (!detailSummaryLogs.isEmpty()) {
             globalLogSummaryRepository.saveAll(detailSummaryLogs);
@@ -268,11 +266,13 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         // Publish event for after-save processing (will run after transaction commit)
         publishAfterSaveEvent(existingEntity, oldFdaRef, oldRefType);
 
-        DebitNoteHeaderDto finalResult = getDebitNote(transactionPoid);
+        DebitNoteHeaderDto result = new DebitNoteHeaderDto();
+        result.setTransactionPoid(existingEntity.getTransactionPoid());
+        result.setDocRef(existingEntity.getDocRef());
         if (debitNoteDto.getWarnings() != null && !debitNoteDto.getWarnings().isEmpty()) {
-            finalResult.setWarnings(debitNoteDto.getWarnings());
+            result.setWarnings(debitNoteDto.getWarnings());
         }
-        return finalResult;
+        return result;
     }
 
     @Override
@@ -616,24 +616,23 @@ public class DebitNoteServiceImpl implements DebitNoteService {
     private void saveGlDetails(List<DebitNoteGlDetailDto> glDetails, Long transactionPoid) {
         debitNoteDtlRepository.deleteByTransactionPoid(transactionPoid);
 
-        Long detRowId = 0L;
+        long detRowId = 0L;
         String user = ASGHelperUtils.getCurrentUser();
         String docId = UserContext.getDocumentId();
         String docKeyPoid = transactionPoid.toString();
+        LocalDateTime now = LocalDateTime.now();
+        List<ArDebitNoteDtl> toSave = new ArrayList<>();
 
         for (DebitNoteGlDetailDto dto : glDetails) {
             if (dto.isEmpty()) continue;
-
             String actionType = dto.getActionType();
-            if (actionType == null || !actionType.equalsIgnoreCase("isCreated")) {
-                continue;
-            }
+            if (actionType == null || !actionType.equalsIgnoreCase("isCreated")) continue;
 
             Long incomingDetRowId = dto.getDetRowId();
             if (incomingDetRowId != null) {
                 detRowId = Math.max(detRowId, incomingDetRowId);
             } else {
-                detRowId++;
+                dto.setDetRowId(++detRowId);
                 incomingDetRowId = detRowId;
             }
 
@@ -641,36 +640,40 @@ public class DebitNoteServiceImpl implements DebitNoteService {
             mapGlDtoToEntity(dto, entity, transactionPoid);
             entity.setDetRowId(incomingDetRowId);
             entity.setCreatedBy(user);
-            entity.setCreatedDate(LocalDateTime.now());
+            entity.setCreatedDate(now);
+            toSave.add(entity);
+        }
 
-            ArDebitNoteDtl saved = debitNoteDtlRepository.save(entity);
-
-            String summaryMessage = String.format("Row Created on Debit Note GL Detail with DetRowId: %s", saved.getDetRowId());
-            loggingService.createLogSummaryEntry(docId, docKeyPoid, summaryMessage);
+        if (!toSave.isEmpty()) {
+            List<ArDebitNoteDtl> saved = debitNoteDtlRepository.saveAll(toSave);
+            List<GlobalLogSummary> logs = saved.stream()
+                    .map(s -> createSummaryLogEntry(null, docId, docKeyPoid,
+                            "Row Created on Debit Note GL Detail with DetRowId: " + s.getDetRowId()))
+                    .collect(Collectors.toList());
+            globalLogSummaryRepository.saveAll(logs);
         }
     }
 
     private void saveChargeDetails(List<DebitNoteChargeDetailDto> chargeDetails, Long transactionPoid) {
         debitNoteChargeDtlRepository.deleteByTransactionPoid(transactionPoid);
 
-        Long detRowId = 0L;
+        long detRowId = 0L;
         String user = ASGHelperUtils.getCurrentUser();
         String docId = UserContext.getDocumentId();
         String docKeyPoid = transactionPoid.toString();
+        LocalDateTime now = LocalDateTime.now();
+        List<ArDebitNoteChargeDtl> toSave = new ArrayList<>();
 
         for (DebitNoteChargeDetailDto dto : chargeDetails) {
             if (dto.isEmpty()) continue;
-
             String actionType = dto.getActionType();
-            if (actionType == null || !actionType.equalsIgnoreCase("isCreated")) {
-                continue;
-            }
+            if (actionType == null || !actionType.equalsIgnoreCase("isCreated")) continue;
 
             Long incomingDetRowId = dto.getDetRowId();
             if (incomingDetRowId != null) {
                 detRowId = Math.max(detRowId, incomingDetRowId);
             } else {
-                detRowId++;
+                dto.setDetRowId(++detRowId);
                 incomingDetRowId = detRowId;
             }
 
@@ -678,12 +681,17 @@ public class DebitNoteServiceImpl implements DebitNoteService {
             mapChargeDtoToEntity(dto, entity, transactionPoid);
             entity.setDetRowId(incomingDetRowId);
             entity.setCreatedBy(user);
-            entity.setCreatedDate(LocalDateTime.now());
+            entity.setCreatedDate(now);
+            toSave.add(entity);
+        }
 
-            ArDebitNoteChargeDtl saved = debitNoteChargeDtlRepository.save(entity);
-
-            String summaryMessage = String.format("Row Created on Debit Note Charge Detail with DetRowId: %s", saved.getDetRowId());
-            loggingService.createLogSummaryEntry(docId, docKeyPoid, summaryMessage);
+        if (!toSave.isEmpty()) {
+            List<ArDebitNoteChargeDtl> saved = debitNoteChargeDtlRepository.saveAll(toSave);
+            List<GlobalLogSummary> logs = saved.stream()
+                    .map(s -> createSummaryLogEntry(null, docId, docKeyPoid,
+                            "Row Created on Debit Note Charge Detail with DetRowId: " + s.getDetRowId()))
+                    .collect(Collectors.toList());
+            globalLogSummaryRepository.saveAll(logs);
         }
     }
 
@@ -1161,81 +1169,122 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         Long groupPoid = dto.getGroupPoid();
         Long companyPoid = dto.getCompanyPoid();
         Long userPoid = UserContext.getUserPoid();
-
-        // load billwise from service
         var billwiseResponse = billwiseBreakupService.loadBillwiseBreakup(groupPoid, companyPoid, debitNoteDocId, transactionPoid);
-
-        // load cost center from service
         var costCenterResponse = costCenterBreakupService.loadCostCenterData(debitNoteDocId, transactionPoid, groupPoid, companyPoid, userPoid);
+
+        // Pre-group by detRowId to avoid O(GL × entries) filtering inside the loop
+        Map<Long, List<LoadBillwiseBreakupResponseDto>> bwByRow =
+                (billwiseResponse != null && billwiseResponse.getLoadBillwiseBreakupResponseDtoList() != null)
+                        ? billwiseResponse.getLoadBillwiseBreakupResponseDtoList().stream()
+                                .collect(Collectors.groupingBy(LoadBillwiseBreakupResponseDto::getMainDetRowId))
+                        : Collections.emptyMap();
+
+        Map<Long, List<CostCenterBreakupResponseDto>> ccByRow =
+                (costCenterResponse != null && costCenterResponse.getCostBreakupList() != null)
+                        ? costCenterResponse.getCostBreakupList().stream()
+                                .collect(Collectors.groupingBy(CostCenterBreakupResponseDto::getMainDetRowId))
+                        : Collections.emptyMap();
+
+        // Batch-fetch all cost center LOV details: one call per unique costGroup (LOV name)
+        Map<String, LovGetListDto> lovCache = buildCostCenterLovCache(costCenterResponse);
 
         for (DebitNoteGlDetailDto gl : dto.getGlDetails()) {
             if ("ISDELETED".equals(gl.getActionType() != null ? gl.getActionType().trim().toUpperCase() : "")) continue;
             Long detRowId = gl.getDetRowId();
 
             // map billwise breakup
-            if (billwiseResponse != null && billwiseResponse.getLoadBillwiseBreakupResponseDtoList() != null) {
-
-                List<BillwiseBreakupPopupRequestDto> mappedBw =
-                        billwiseResponse.getLoadBillwiseBreakupResponseDtoList().stream()
-                                .filter(x -> Objects.equals(x.getMainDetRowId(), detRowId))
-                                .map(x -> {
-                                    BillwiseBreakupPopupRequestDto popup = new BillwiseBreakupPopupRequestDto();
-                                    popup.setBillDetRowId(x.getBillDetRowId());
-                                    popup.setBillRefType(x.getBillRefType());
-                                    popup.setBillRef(x.getBillRef());
-                                    popup.setBillDueDate(x.getBillDueDate());
-                                    BigDecimal drAmt = x.getDrAmt() != null ? x.getDrAmt() : BigDecimal.ZERO;
-                                    BigDecimal crAmt = x.getCrAmt() != null ? x.getCrAmt() : BigDecimal.ZERO;
-                                    popup.setType(drAmt.compareTo(BigDecimal.ZERO) > 0 ? "DR" : "CR");
-                                    popup.setAmount(drAmt.compareTo(BigDecimal.ZERO) > 0 ? drAmt : crAmt);
-                                    popup.setBillRemarks(x.getBillRemarks());
-                                    return popup;
-                                })
-                                .collect(Collectors.toList());
-
+            List<LoadBillwiseBreakupResponseDto> bwEntries = bwByRow.getOrDefault(detRowId, Collections.emptyList());
+            if (!bwEntries.isEmpty()) {
+                List<BillwiseBreakupPopupRequestDto> mappedBw = bwEntries.stream()
+                        .map(x -> {
+                            BillwiseBreakupPopupRequestDto popup = new BillwiseBreakupPopupRequestDto();
+                            popup.setBillDetRowId(x.getBillDetRowId());
+                            popup.setBillRefType(x.getBillRefType());
+                            popup.setBillRef(x.getBillRef());
+                            popup.setBillDueDate(x.getBillDueDate());
+                            BigDecimal drAmt = x.getDrAmt() != null ? x.getDrAmt() : BigDecimal.ZERO;
+                            BigDecimal crAmt = x.getCrAmt() != null ? x.getCrAmt() : BigDecimal.ZERO;
+                            popup.setType(drAmt.compareTo(BigDecimal.ZERO) > 0 ? "DR" : "CR");
+                            popup.setAmount(drAmt.compareTo(BigDecimal.ZERO) > 0 ? drAmt : crAmt);
+                            popup.setBillRemarks(x.getBillRemarks());
+                            return popup;
+                        })
+                        .collect(Collectors.toList());
                 gl.setBreakupList(mappedBw);
             }
 
             // map cost center breakup
-            if (costCenterResponse != null && costCenterResponse.getCostBreakupList() != null) {
-
-                List<CostCenterBreakupPopupRequestDto> mappedCc =
-                        costCenterResponse.getCostBreakupList().stream()
-                                .filter(x -> Objects.equals(x.getMainDetRowId(), detRowId))
-                                .map(x -> {
-                                    CostCenterBreakupPopupRequestDto cb = new CostCenterBreakupPopupRequestDto();
-
-                                    // Only map valid fields from CostCenterBreakupResponseDto
-                                    cb.setCostDetRowId(x.getCostDetRowId());
-                                    cb.setCostGroup(x.getCostGroup());
-                                    cb.setCostPoid(
-                                            x.getCostPoid() != null ? x.getCostPoid() : null
-                                    );
-                                    cb.setAmount(
-                                            x.getAmount() != null ? (x.getAmount()) : BigDecimal.ZERO
-                                    );
-                                    if (StringUtils.isNotEmpty(x.getCostPoid()) && StringUtils.isNotEmpty(x.getCostGroup())) {
-                                        try {
-                                            LovGetListDto codeDet  = lovService.getDetailsByCodeAndLovName(x.getCostPoid(), x.getCostGroup());
-                                            cb.setCostCenterDetails(codeDet);
-                                            if (codeDet.getPoid() == null) {
-                                                LovGetListDto det = lovService.getDetailsByPoidAndLovName(Long.valueOf(x.getCostPoid()), x.getCostGroup());
-                                                cb.setCostCenterDetails(det);
-                                                cb.setCostPoid(det.getCode());
-                                            }
-                                        } catch (NumberFormatException e) {
-                                            cb.setCostCenterDetails(lovService.getDetailsByCodeAndLovName(x.getCostPoid(), x.getCostGroup()));
-                                        }
+            List<CostCenterBreakupResponseDto> ccEntries = ccByRow.getOrDefault(detRowId, Collections.emptyList());
+            if (!ccEntries.isEmpty()) {
+                List<CostCenterBreakupPopupRequestDto> mappedCc = ccEntries.stream()
+                        .map(x -> {
+                            CostCenterBreakupPopupRequestDto cb = new CostCenterBreakupPopupRequestDto();
+                            cb.setCostDetRowId(x.getCostDetRowId());
+                            cb.setCostGroup(x.getCostGroup());
+                            cb.setCostPoid(x.getCostPoid());
+                            cb.setAmount(x.getAmount() != null ? x.getAmount() : BigDecimal.ZERO);
+                            if (StringUtils.isNotEmpty(x.getCostPoid()) && StringUtils.isNotEmpty(x.getCostGroup())) {
+                                LovGetListDto lov = lovCache.get(x.getCostGroup() + "|" + x.getCostPoid());
+                                if (lov != null) {
+                                    cb.setCostCenterDetails(lov);
+                                    if (lov.getPoid() == null && lov.getCode() != null) {
+                                        cb.setCostPoid(lov.getCode());
                                     }
-
-                                    return cb;
-                                })
-                                .collect(Collectors.toList());
-
+                                }
+                            }
+                            return cb;
+                        })
+                        .collect(Collectors.toList());
                 gl.setCostCenterList(mappedCc);
             }
-
         }
+    }
+
+    private Map<String, LovGetListDto> buildCostCenterLovCache(GlVoucherCostCenterBreakupResponseDto costCenterResponse) {
+        if (costCenterResponse == null || costCenterResponse.getCostBreakupList() == null) return Collections.emptyMap();
+
+        // Group all costPoid values by their costGroup (LOV name)
+        Map<String, List<String>> codesByGroup = costCenterResponse.getCostBreakupList().stream()
+                .filter(x -> StringUtils.isNotEmpty(x.getCostPoid()) && StringUtils.isNotEmpty(x.getCostGroup()))
+                .collect(Collectors.groupingBy(CostCenterBreakupResponseDto::getCostGroup,
+                        Collectors.mapping(CostCenterBreakupResponseDto::getCostPoid, Collectors.toList())));
+
+        Map<String, LovGetListDto> cache = new HashMap<>();
+
+        for (Map.Entry<String, List<String>> entry : codesByGroup.entrySet()) {
+            String costGroup = entry.getKey();
+            List<String> distinctCodes = entry.getValue().stream().distinct().collect(Collectors.toList());
+
+            // One batch call by code for all entries in this group
+            Map<String, LovGetListDto> byCode = lovService.getDetailsByCodesAndLovName(distinctCodes, costGroup);
+
+            // For misses, try a batch call by poid
+            List<Long> missedPoids = distinctCodes.stream()
+                    .filter(c -> !byCode.containsKey(c) || byCode.get(c).getPoid() == null)
+                    .map(c -> { try { return Long.valueOf(c); } catch (NumberFormatException e) { return null; } })
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+
+            Map<Long, LovGetListDto> byPoid = missedPoids.isEmpty()
+                    ? Collections.emptyMap()
+                    : lovService.getDetailsByPoidsAndLovName(missedPoids, costGroup);
+
+            for (String code : distinctCodes) {
+                LovGetListDto det = byCode.get(code);
+                if (det == null || det.getPoid() == null) {
+                    try {
+                        LovGetListDto detByPoid = byPoid.get(Long.valueOf(code));
+                        if (detByPoid != null) {
+                            cache.put(costGroup + "|" + code, detByPoid);
+                            continue;
+                        }
+                    } catch (NumberFormatException ignored) {}
+                }
+                if (det != null) cache.put(costGroup + "|" + code, det);
+            }
+        }
+
+        return cache;
     }
 
     @Override

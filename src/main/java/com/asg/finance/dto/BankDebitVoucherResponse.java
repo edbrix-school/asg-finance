@@ -37,6 +37,8 @@ public class BankDebitVoucherResponse {
     private BigDecimal currencyAmt;
     private String refType;
     private String ffRef;
+    private List<String> ffRefs;
+    private List<LovGetListDto> ffRefsDtl;
     private Long fdaRef;
     private String mtaRef;
     private String payingToName;

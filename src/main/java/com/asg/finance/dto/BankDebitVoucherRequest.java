@@ -103,6 +103,8 @@ public class BankDebitVoucherRequest {
 
     private String ffRef;
 
+    private List<String> ffRefs;
+
     private Long fdaRef;
 
     private Long salesQtnRef;

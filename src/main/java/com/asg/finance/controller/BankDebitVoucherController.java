@@ -359,8 +359,8 @@ public class BankDebitVoucherController {
     @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/ff-charges")
     public ResponseEntity<?> getFFCharges(
-            @Parameter(description = "FF reference POID", required = true)
-            @RequestParam @NotNull @Min(1) Long ffRefPoid) {
+            @Parameter(description = "FF reference POID(s) — single or multiple values", required = true)
+            @RequestParam @NotNull List<Long> ffRefPoid) {
         Object response = bankDebitVoucherService.loadFFCharges(ffRefPoid);
         return success("FF charges retrieved successfully", response);
     }

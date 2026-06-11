@@ -42,8 +42,8 @@ public class BankDebitVoucherResponse {
 
     // Response-only: non-blocking warnings surfaced to the caller
     private List<String> warnings;
-    // Response-only: success message from post-save job cost procedures
-    private String jobCostMessage;
+    // Response-only: informational messages (e.g. post-save proc success/info text)
+    private List<String> infoMessages;
     private Long fdaRef;
     private String mtaRef;
     private String payingToName;

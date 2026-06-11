@@ -495,18 +495,19 @@ public class BankDebitVoucherController {
     }
 
     private ResponseEntity<?> successWithWarnings(String message, BankDebitVoucherResponse dto) {
-        if (dto.getJobCostMessage() != null && !dto.getJobCostMessage().isBlank()) {
-            message = message + ". " + dto.getJobCostMessage();
-        }
         List<String> warnings = dto.getWarnings();
-        if (warnings == null || warnings.isEmpty()) {
+        List<String> infoMessages = dto.getInfoMessages();
+        boolean hasWarnings = warnings != null && !warnings.isEmpty();
+        boolean hasInfo = infoMessages != null && !infoMessages.isEmpty();
+        if (!hasWarnings && !hasInfo) {
             return success(message, dto);
         }
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("statusCode", 200);
         body.put("success", true);
         body.put("message", message);
-        body.put("warnings", warnings);
+        if (hasWarnings) body.put("warnings", warnings);
+        if (hasInfo) body.put("info", infoMessages);
         body.put("result", Map.of("data", dto));
         return ResponseEntity.ok(body);
     }

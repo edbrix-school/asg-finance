@@ -872,7 +872,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         entity.setRemarks(request.getRemarks());
         entity.setPayingType(request.getPayingType());
         entity.setRefType(request.getRefType());
-        entity.setFfRef(request.getFfRef());
+        entity.setFfRef(resolveEffectiveFfRef(request));
         entity.setFdaRef(request.getFdaRef());
         entity.setSalesQtnRef(request.getSalesQtnRef());
         entity.setMultiCompany(request.getMultiCompany());
@@ -938,6 +938,28 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         response.setCurrencyAmt(entity.getCurrencyAmt());
         response.setRefType(entity.getRefType());
         response.setFfRef(entity.getFfRef());
+        if (entity.getFfRef() != null && !entity.getFfRef().isBlank()) {
+            List<String> rawRefs = Arrays.asList(entity.getFfRef().split(";"));
+            response.setFfRefs(rawRefs);
+            List<Long> ffPoids = rawRefs.stream()
+                    .map(String::trim)
+                    .filter(s -> !s.isBlank())
+                    .flatMap(s -> {
+                        try { return java.util.stream.Stream.of(Long.parseLong(s)); }
+                        catch (NumberFormatException ignored) { return java.util.stream.Stream.empty(); }
+                    })
+                    .collect(Collectors.toList());
+            if (!ffPoids.isEmpty()) {
+                Map<Long, LovGetListDto> ffLovMap = lovService.getDetailsByPoidsAndLovName(ffPoids, "FF_JOBS_FOR_COST_BOOKING");
+                List<LovGetListDto> ffRefsDtl = ffPoids.stream()
+                        .map(ffLovMap::get)
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toList());
+                if (!ffRefsDtl.isEmpty()) {
+                    response.setFfRefsDtl(ffRefsDtl);
+                }
+            }
+        }
         response.setFdaRef(entity.getFdaRef());
         response.setMtaRef(entity.getMtaRef());
         response.setSalesQtnRef(entity.getSalesQtnRef());
@@ -1257,6 +1279,17 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         }
     }
 
+    private String resolveEffectiveFfRef(BankDebitVoucherRequest req) {
+        List<String> refs = req.getFfRefs();
+        if (refs != null && !refs.isEmpty()) {
+            String joined = refs.stream()
+                    .filter(r -> r != null && !r.isBlank())
+                    .collect(Collectors.joining(";"));
+            if (!joined.isBlank()) return joined;
+        }
+        return req.getFfRef();
+    }
+
     private Set<Long> ids(List<?> list) {
         if (list == null) return null;
         return list.stream()
@@ -1274,13 +1307,16 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
     // ---------- loaders ----------
     @Override
-    public List<ChargeFFDto> loadFFCharges(Long ffRefPoid) {
-        return bankDebitVoucherCustomRepository.procLoadFFCharges(
-                UserContext.getGroupPoid(),
-                UserContext.getUserPoid(),
-                UserContext.getCompanyPoid(),
-                ffRefPoid
-        );
+    public List<ChargeFFDto> loadFFCharges(List<Long> ffRefPoids) {
+        return ffRefPoids.stream()
+                .filter(Objects::nonNull)
+                .flatMap(poid -> bankDebitVoucherCustomRepository.procLoadFFCharges(
+                        UserContext.getGroupPoid(),
+                        UserContext.getUserPoid(),
+                        UserContext.getCompanyPoid(),
+                        poid
+                ).stream())
+                .collect(Collectors.toList());
     }
 
     @Override

@@ -25,7 +25,7 @@ public interface BankDebitVoucherService {
 
     List<PaymentGlDetails> generateDefaultGlRows(BankDebitVoucherRequest request);
 
-    List<ChargeFFDto> loadFFCharges(Long ffRefPoid);
+    List<ChargeFFDto> loadFFCharges(List<Long> ffRefPoids);
 
     List<ChargeFDADto> loadFDACharges(Long fdaRefPoid);
 

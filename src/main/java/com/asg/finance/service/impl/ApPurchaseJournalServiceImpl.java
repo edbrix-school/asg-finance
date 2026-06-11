@@ -2058,6 +2058,8 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
         validateSupplierCreditAmountForGeneralRefTypes(dto);
 
+        validateInvoiceDate(dto);
+
         validateCreditPeriod(dto);
 
         //validateVat(dto, documentId);
@@ -2210,6 +2212,47 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
             throw new ValidationException(
                     "WARNING : Paid Amount (" + paidAmount + ") is not matching with total supplier credit amount ("
                             + supplierCreditAmount + ")..."
+            );
+        }
+    }
+
+    private void validateInvoiceDate(ApPurchaseInvoiceHdrDto dto) {
+
+        if (dto.getSupplierInvDate() == null) return;
+
+        LocalDate invDate = dto.getSupplierInvDate();
+        LocalDate referenceDate = dto.getTransactionDate() != null ? dto.getTransactionDate() : LocalDate.now();
+
+        String backDaysStr = globalParameterService.getParameterValue(
+                "PJ_INVOICE_DATE_VALIDATION_DAYS", "GROUP", "1", "0");
+        String postDaysStr = globalParameterService.getParameterValue(
+                "PJ_INVOICE_DATE_POST_DATE_VALIDATION_DAYS", "GROUP", "1", "0");
+
+        long backDays = 0;
+        long postDays = 0;
+        try {
+            backDays = Long.parseLong(backDaysStr.trim());
+            postDays = Long.parseLong(postDaysStr.trim());
+        } catch (NumberFormatException e) {
+            log.warn("Invalid invoice date validation parameter value: back={}, post={}", backDaysStr, postDaysStr);
+            return;
+        }
+
+        long daysDiff = invDate.toEpochDay() - referenceDate.toEpochDay();
+
+        if (daysDiff < -Math.abs(backDays)) {
+            throw new ValidationException(
+                    "Backdated entries less than " + Math.abs(backDays) + " days is not allowed, Please verify the Invoice Date."
+            );
+        }
+
+        if (postDays == 0) {
+            if (invDate.isAfter(referenceDate)) {
+                throw new ValidationException("Invoice Date should not be after document date.");
+            }
+        } else if (daysDiff > postDays) {
+            throw new ValidationException(
+                    "Postdated entries more than " + postDays + " days is not allowed, Please verify the Invoice Date."
             );
         }
     }

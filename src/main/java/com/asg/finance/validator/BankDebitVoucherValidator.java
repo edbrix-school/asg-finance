@@ -129,8 +129,11 @@ public class BankDebitVoucherValidator {
     // -------------------------
     public void validateReferenceNotNull(BankDebitVoucherRequest req) {
         String refType = trim(req.getRefType());
-        if ("FF JOBS".equalsIgnoreCase(refType) && isBlank(req.getFfRef())) {
-            throw new ValidationException("Select a FF Ref...");
+        if ("FF JOBS".equalsIgnoreCase(refType)) {
+            boolean hasFfRefs = req.getFfRefs() != null && req.getFfRefs().stream().anyMatch(r -> r != null && !r.isBlank());
+            if (!hasFfRefs && isBlank(req.getFfRef())) {
+                throw new ValidationException("Select a FF Ref...");
+            }
         }
         if ("FDA JOBS".equalsIgnoreCase(refType) && req.getFdaRef() == null) {
             throw new ValidationException("Select a FDA Ref...");
@@ -631,31 +634,42 @@ public class BankDebitVoucherValidator {
 
     public String resolveReferenceValue(BankDebitVoucherRequest req) {
         String refType = trim(req.getRefType());
-        if ("FF JOBS".equalsIgnoreCase(refType)) return req.getFfRef();
+        if ("FF JOBS".equalsIgnoreCase(refType)) return resolveEffectiveFfRef(req);
         if ("FDA JOBS".equalsIgnoreCase(refType)) return req.getFdaRef() != null ? req.getFdaRef().toString() : null;
         if ("MTA RFQ".equalsIgnoreCase(refType)) return req.getSalesQtnRef() != null ? req.getSalesQtnRef().toString() : null;
         return null;
     }
 
-    private Long getOldJobPoid(GlBankDebitHdr entity, String refType) {
+    private String resolveEffectiveFfRef(BankDebitVoucherRequest req) {
+        List<String> refs = req.getFfRefs();
+        if (refs != null && !refs.isEmpty()) {
+            String joined = refs.stream()
+                    .filter(r -> r != null && !r.isBlank())
+                    .collect(java.util.stream.Collectors.joining(";"));
+            if (!joined.isBlank()) return joined;
+        }
+        return req.getFfRef();
+    }
+
+    private String resolveRefStringFromEntity(GlBankDebitHdr entity, String refType) {
         return switch (refType != null ? refType.toUpperCase() : "") {
-            case "FDA JOBS" -> entity.getFdaRef();
-            case "FF JOBS" -> entity.getFfRef() != null ? Long.parseLong(entity.getFfRef()) : null;
-            case "MTA RFQ" -> entity.getMtaRef() != null ? Long.parseLong(entity.getMtaRef()) : null;
-            default -> null;
+            case "FDA JOBS" -> entity.getFdaRef() != null ? String.valueOf(entity.getFdaRef()) : null;
+            case "FF JOBS"  -> entity.getFfRef();
+            case "MTA RFQ"  -> entity.getMtaRef();
+            default         -> null;
         };
     }
 
     public void validateVoucherStatusInNewTransaction(GlBankDebitHdr header) {
         try {
-            Long refPoid = getOldJobPoid(header, header.getRefType());
+            String refPoid = resolveRefStringFromEntity(header, header.getRefType());
             String result = spRepository.validateVoucherStatus(
                     UserContext.getGroupPoid(),
                     UserContext.getCompanyPoid(),
                     UserContext.getUserPoid(),
                     header.getDocRef(),
                     header.getRefType(),
-                    refPoid != null ? String.valueOf(refPoid) : null
+                    refPoid
             );
             if (result != null && !result.equals("SUCCESS")) {
                 throw new ValidationException(result);

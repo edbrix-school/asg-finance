@@ -128,7 +128,7 @@ public class BankPaymentVoucherSpRepositoryImpl implements BankPaymentVoucherSpR
     }
 
     @Override
-    public void updateFdaCost(Long groupPoid, Long companyPoid, Long userPoid, String fdaPoid, Long piPoid) {
+    public String updateFdaCost(Long groupPoid, Long companyPoid, Long userPoid, String fdaPoid, Long piPoid) {
         StoredProcedureQuery query = em.createStoredProcedureQuery("PROC_AP_PI_FDA_UPDATE_COST");
         
         query.registerStoredProcedureParameter(1, Long.class, ParameterMode.IN);
@@ -146,14 +146,11 @@ public class BankPaymentVoucherSpRepositoryImpl implements BankPaymentVoucherSpR
         
         query.execute();
         
-        String result = (String) query.getOutputParameterValue(6);
-        if (result != null && !result.contains("SUCESS")) {
-            throw new RuntimeException(result);
-        }
+        return (String) query.getOutputParameterValue(6);
     }
 
     @Override
-    public void updateFfCost(Long groupPoid, Long companyPoid, Long userPoid, String ffPoid, Long piPoid) {
+    public String updateFfCost(Long groupPoid, Long companyPoid, Long userPoid, String ffPoid, Long piPoid) {
         StoredProcedureQuery query = em.createStoredProcedureQuery("PROC_AP_PI_FF_UPDATE_COST");
         
         query.registerStoredProcedureParameter(1, Long.class, ParameterMode.IN);
@@ -171,14 +168,11 @@ public class BankPaymentVoucherSpRepositoryImpl implements BankPaymentVoucherSpR
         
         query.execute();
         
-        String result = (String) query.getOutputParameterValue(6);
-        if (result != null && !result.contains("SUCCESS")) {
-            throw new RuntimeException(result);
-        }
+        return (String) query.getOutputParameterValue(6);
     }
 
     @Override
-    public void updateMtaCost(Long groupPoid, Long companyPoid, Long userPoid, Long transactionPoid, String rfqPoid) {
+    public String updateMtaCost(Long groupPoid, Long companyPoid, Long userPoid, Long transactionPoid, String rfqPoid) {
         StoredProcedureQuery query = em.createStoredProcedureQuery("PROC_BANK_MTA_UPDATE");
         
         query.registerStoredProcedureParameter(1, Long.class, ParameterMode.IN);
@@ -196,10 +190,7 @@ public class BankPaymentVoucherSpRepositoryImpl implements BankPaymentVoucherSpR
         
         query.execute();
         
-        String result = (String) query.getOutputParameterValue(6);
-        if (result != null && !result.contains("SUCCESS")) {
-            throw new RuntimeException(result);
-        }
+        return (String) query.getOutputParameterValue(6);
     }
 
     @Override

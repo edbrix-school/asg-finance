@@ -53,6 +53,8 @@ public class BankPaymentVoucherResponse {
     private Long fdaRef;
     private LovGetListDto fdaDet;
     private String ffRef;
+    private List<String> ffRefs;
+    private List<LovGetListDto> ffRefsDtl;
     private LovGetListDto ffDet;
     private String mtaRef;
     private LovGetListDto mtaDet;

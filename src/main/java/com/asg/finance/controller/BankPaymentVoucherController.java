@@ -20,6 +20,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springdoc.core.annotations.ParameterObject;
@@ -31,6 +32,7 @@ import org.springframework.web.bind.annotation.*;
 import java.sql.Date;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 
 import static com.asg.common.lib.dto.response.ApiResponse.*;
@@ -426,8 +428,10 @@ public class BankPaymentVoucherController {
     @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/load-from-ff")
     public ResponseEntity<?> createBankPayFromFf(
-            @RequestParam String ffPoid) {
-        BankPayCreateFromFfResponse response = service.createBankPayFromFf(ffPoid);
+            @Parameter(description = "FF reference POID(s) — single or multiple values", required = true)
+            @RequestParam @NotNull List<String> ffPoid) {
+        String joined = String.join(";", ffPoid);
+        BankPayCreateFromFfResponse response = service.createBankPayFromFf(joined);
         try {
             return success("FF charges loaded successfully", response);
         } catch (Exception ex) {

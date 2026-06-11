@@ -37,6 +37,13 @@ public class BankDebitVoucherResponse {
     private BigDecimal currencyAmt;
     private String refType;
     private String ffRef;
+    private List<String> ffRefs;
+    private List<LovGetListDto> ffRefsDtl;
+
+    // Response-only: non-blocking warnings surfaced to the caller
+    private List<String> warnings;
+    // Response-only: informational messages (e.g. post-save proc success/info text)
+    private List<String> infoMessages;
     private Long fdaRef;
     private String mtaRef;
     private String payingToName;

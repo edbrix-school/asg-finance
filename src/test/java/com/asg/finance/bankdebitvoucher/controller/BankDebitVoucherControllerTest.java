@@ -290,14 +290,27 @@ class BankDebitVoucherControllerTest {
 
     @Test
     void getFFCharges_Success() throws Exception {
-        when(bankDebitVoucherService.loadFFCharges(10L)).thenReturn(Collections.emptyList());
+        when(bankDebitVoucherService.loadFFCharges(List.of(10L))).thenReturn(Collections.emptyList());
 
         mockMvc.perform(get("/v1/bank-debit-voucher/ff-charges")
                         .param("ffRefPoid", "10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.data").isArray());
 
-        verify(bankDebitVoucherService).loadFFCharges(10L);
+        verify(bankDebitVoucherService).loadFFCharges(List.of(10L));
+    }
+
+    @Test
+    void getFFCharges_MultiplePoidsSuccess() throws Exception {
+        when(bankDebitVoucherService.loadFFCharges(List.of(10L, 20L))).thenReturn(Collections.emptyList());
+
+        mockMvc.perform(get("/v1/bank-debit-voucher/ff-charges")
+                        .param("ffRefPoid", "10")
+                        .param("ffRefPoid", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.data").isArray());
+
+        verify(bankDebitVoucherService).loadFFCharges(List.of(10L, 20L));
     }
 
     // ─── FDA CHARGES ──────────────────────────────────────────────────────────

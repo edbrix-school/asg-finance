@@ -872,7 +872,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         entity.setRemarks(request.getRemarks());
         entity.setPayingType(request.getPayingType());
         entity.setRefType(request.getRefType());
-        entity.setFfRef(request.getFfRef());
+        entity.setFfRef(resolveEffectiveFfRef(request));
         entity.setFdaRef(request.getFdaRef());
         entity.setSalesQtnRef(request.getSalesQtnRef());
         entity.setMultiCompany(request.getMultiCompany());
@@ -938,6 +938,28 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         response.setCurrencyAmt(entity.getCurrencyAmt());
         response.setRefType(entity.getRefType());
         response.setFfRef(entity.getFfRef());
+        if (entity.getFfRef() != null && !entity.getFfRef().isBlank()) {
+            List<String> rawRefs = Arrays.asList(entity.getFfRef().split(";"));
+            response.setFfRefs(rawRefs);
+            List<Long> ffPoids = rawRefs.stream()
+                    .map(String::trim)
+                    .filter(s -> !s.isBlank())
+                    .flatMap(s -> {
+                        try { return java.util.stream.Stream.of(Long.parseLong(s)); }
+                        catch (NumberFormatException ignored) { return java.util.stream.Stream.empty(); }
+                    })
+                    .collect(Collectors.toList());
+            if (!ffPoids.isEmpty()) {
+                Map<Long, LovGetListDto> ffLovMap = lovService.getDetailsByPoidsAndLovName(ffPoids, "FF_JOBS_FOR_COST_BOOKING");
+                List<LovGetListDto> ffRefsDtl = ffPoids.stream()
+                        .map(ffLovMap::get)
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toList());
+                if (!ffRefsDtl.isEmpty()) {
+                    response.setFfRefsDtl(ffRefsDtl);
+                }
+            }
+        }
         response.setFdaRef(entity.getFdaRef());
         response.setMtaRef(entity.getMtaRef());
         response.setSalesQtnRef(entity.getSalesQtnRef());
@@ -1257,6 +1279,17 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         }
     }
 
+    private String resolveEffectiveFfRef(BankDebitVoucherRequest req) {
+        List<String> refs = req.getFfRefs();
+        if (refs != null && !refs.isEmpty()) {
+            String joined = refs.stream()
+                    .filter(r -> r != null && !r.isBlank())
+                    .collect(Collectors.joining(";"));
+            if (!joined.isBlank()) return joined;
+        }
+        return req.getFfRef();
+    }
+
     private Set<Long> ids(List<?> list) {
         if (list == null) return null;
         return list.stream()
@@ -1274,12 +1307,16 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
 
     // ---------- loaders ----------
     @Override
-    public List<ChargeFFDto> loadFFCharges(Long ffRefPoid) {
+    public List<ChargeFFDto> loadFFCharges(List<Long> ffRefPoids) {
+        String joined = ffRefPoids.stream()
+                .filter(Objects::nonNull)
+                .map(String::valueOf)
+                .collect(Collectors.joining(";"));
         return bankDebitVoucherCustomRepository.procLoadFFCharges(
                 UserContext.getGroupPoid(),
                 UserContext.getUserPoid(),
                 UserContext.getCompanyPoid(),
-                ffRefPoid
+                joined
         );
     }
 
@@ -1571,16 +1608,50 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         if (StringUtils.isBlank(response.getRefType()) && StringUtils.isBlank(oldRefType)) return;
 
         String ref = null;
-        if ("FDA JOBS".equalsIgnoreCase(response.getRefType())) {
-            ref = response.getFdaRef() != null ? String.valueOf(response.getFdaRef()) : null;
-            bankPaymentVoucherSpRepository.updateFdaCost(response.getGroupPoid(), UserContext.getCompanyPoid(), UserContext.getUserPoid(), ref, response.getTransactionPoid());
-        } else if ("FF JOBS".equalsIgnoreCase(response.getRefType())) {
-            ref = response.getFfRef();
-            bankPaymentVoucherSpRepository.updateFfCost(response.getGroupPoid(), UserContext.getCompanyPoid(), UserContext.getUserPoid(), ref, response.getTransactionPoid());
-        } else if ("MTA RFQ".equalsIgnoreCase(response.getRefType())) {
-            ref = response.getSalesQtnRef() != null ? String.valueOf(response.getSalesQtnRef()) : null;
-            bankPaymentVoucherSpRepository.updateMtaCost(response.getGroupPoid(), UserContext.getCompanyPoid(), UserContext.getUserPoid(), response.getTransactionPoid(), ref);
+        try {
+            if ("FDA JOBS".equalsIgnoreCase(response.getRefType())) {
+                ref = response.getFdaRef() != null ? String.valueOf(response.getFdaRef()) : null;
+                applyProcResult(response, bankPaymentVoucherSpRepository.updateFdaCost(response.getGroupPoid(), UserContext.getCompanyPoid(), UserContext.getUserPoid(), ref, response.getTransactionPoid()));
+            } else if ("FF JOBS".equalsIgnoreCase(response.getRefType())) {
+                ref = response.getFfRef();
+                applyProcResult(response, bankPaymentVoucherSpRepository.updateFfCost(response.getGroupPoid(), UserContext.getCompanyPoid(), UserContext.getUserPoid(), ref, response.getTransactionPoid()));
+            } else if ("MTA RFQ".equalsIgnoreCase(response.getRefType())) {
+                ref = response.getSalesQtnRef() != null ? String.valueOf(response.getSalesQtnRef()) : null;
+                String procResult = bankPaymentVoucherSpRepository.updateMtaCost(response.getGroupPoid(), UserContext.getCompanyPoid(), UserContext.getUserPoid(), response.getTransactionPoid(), ref);
+                // Legacy surfaces MTA messages only for errors/info, success is silent
+                if (procResult != null && (procResult.contains("ERROR") || procResult.contains("Info:"))) {
+                    applyProcResult(response, procResult);
+                }
+            }
+        } catch (Exception e) {
+            log.error("Job cost update failed for refType {} ref {}: {}", response.getRefType(), ref, e.getMessage(), e);
+            addWarning(response, "Some error occurred while job cost update - " + e.getMessage());
         }
+    }
+
+    /**
+     * Routes the proc result back to the caller without the SUCCESS/ERROR prefix,
+     * alongside the response (Debit Note pattern): errors as warnings,
+     * success/info text as informational messages.
+     */
+    private void applyProcResult(BankDebitVoucherResponse response, String procResult) {
+        if (StringUtils.isBlank(procResult)) return;
+        String message = procResult.contains(":") ? procResult.substring(procResult.indexOf(':') + 1).trim() : procResult.trim();
+        if (procResult.trim().toUpperCase().startsWith("ERROR")) {
+            addWarning(response, message);
+        } else {
+            addInfoMessage(response, message);
+        }
+    }
+
+    private void addWarning(BankDebitVoucherResponse response, String warning) {
+        if (response.getWarnings() == null) response.setWarnings(new ArrayList<>());
+        response.getWarnings().add(warning);
+    }
+
+    private void addInfoMessage(BankDebitVoucherResponse response, String message) {
+        if (response.getInfoMessages() == null) response.setInfoMessages(new ArrayList<>());
+        response.getInfoMessages().add(message);
     }
 
     /**

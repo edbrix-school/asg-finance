@@ -403,7 +403,12 @@ public class GeneralReceiptController {
 
     @Operation(
             summary = "Get Pending Bills",
-            description = "Fetch pending bills for a GL account to select for settlement"
+            description = """
+                    Fetch pending bills for a GL account to select for settlement.
+                    
+                    When multicompany = 'Y', fetches bills from ALL companies.
+                    When multicompany = 'N', fetches bills from current company only.
+                    """
     )
     @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/pending-bills/{glPoid}")
@@ -411,9 +416,11 @@ public class GeneralReceiptController {
             @Parameter(description = "GL POID", required = true, example = "5001")
             @PathVariable Long glPoid,
             @Parameter(description = "As on date", example = "2025-01-15")
-            @RequestParam(required = false) java.time.LocalDate asOnDate) {
+            @RequestParam(required = false) java.time.LocalDate asOnDate,
+            @Parameter(description = "Multicompany flag (Y/N). When Y, fetches bills from all companies. When N, fetches from current company only.", example = "N")
+            @RequestParam(required = false, defaultValue = "N") String multicompany) {
         try {
-            Map<String, Object> result = generalReceiptService.getPendingBills(glPoid, asOnDate);
+            Map<String, Object> result = generalReceiptService.getPendingBills(glPoid, asOnDate, multicompany);
             return success("Pending bills fetched successfully", result);
         } catch (Exception ex) {
             return internalServerError("Failed to fetch pending bills: " + ex.getMessage());

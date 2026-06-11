@@ -34,6 +34,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.sql.Date;
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -155,7 +156,7 @@ public class BankDebitVoucherController {
     public ResponseEntity<?> createBankDebitVoucher(
             @Valid @RequestBody BankDebitVoucherRequest request) {
         BankDebitVoucherResponse response = bankDebitVoucherService.createBankDebitVoucher(request, UserContext.getDocumentId());
-        return success("Bank Debit Voucher created successfully", response);
+        return successWithWarnings("Bank Debit Voucher created successfully", response);
     }
 
     @Operation(summary = "Get Bank Debit Voucher")
@@ -313,7 +314,7 @@ public class BankDebitVoucherController {
             @PathVariable @NotNull @Min(1) Long transactionPoid,
             @Valid @RequestBody BankDebitVoucherRequest request) {
         BankDebitVoucherResponse response = bankDebitVoucherService.updateBankDebitVoucher(transactionPoid, request, UserContext.getDocumentId());
-        return success("Bank Debit Voucher updated successfully", response);
+        return successWithWarnings("Bank Debit Voucher updated successfully", response);
     }
 
     @Operation(summary = "Delete Bank Debit Voucher")
@@ -359,8 +360,8 @@ public class BankDebitVoucherController {
     @AllowedAction(UserRolesRightsEnum.VIEW)
     @GetMapping("/ff-charges")
     public ResponseEntity<?> getFFCharges(
-            @Parameter(description = "FF reference POID", required = true)
-            @RequestParam @NotNull @Min(1) Long ffRefPoid) {
+            @Parameter(description = "FF reference POID(s) — single or multiple values", required = true)
+            @RequestParam @NotNull List<Long> ffRefPoid) {
         Object response = bankDebitVoucherService.loadFFCharges(ffRefPoid);
         return success("FF charges retrieved successfully", response);
     }
@@ -491,6 +492,24 @@ public class BankDebitVoucherController {
             log.error("Failed to generate billwise PDF for Bank Debit Voucher: {}", transactionPoid, e);
             return error("Failed to generate billwise PDF: " + e.getMessage(), 500);
         }
+    }
+
+    private ResponseEntity<?> successWithWarnings(String message, BankDebitVoucherResponse dto) {
+        List<String> warnings = dto.getWarnings();
+        List<String> infoMessages = dto.getInfoMessages();
+        boolean hasWarnings = warnings != null && !warnings.isEmpty();
+        boolean hasInfo = infoMessages != null && !infoMessages.isEmpty();
+        if (!hasWarnings && !hasInfo) {
+            return success(message, dto);
+        }
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("statusCode", 200);
+        body.put("success", true);
+        body.put("message", message);
+        if (hasWarnings) body.put("warnings", warnings);
+        if (hasInfo) body.put("info", infoMessages);
+        body.put("result", Map.of("data", dto));
+        return ResponseEntity.ok(body);
     }
 
 }

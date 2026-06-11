@@ -172,8 +172,11 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         validateRefType(req);
         // Legacy DocumentBeforeSave validations
         validateBeforeSaveRequest(req);
-        if ("FF JOBS".equalsIgnoreCase(req.getRefType()) && req.getFfRefId() != null) {
-            validateJobInNewTransaction(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), String.valueOf(req.getFfRefId()), "FF JOBS", documentId, UserContext.getUserPoid());
+        if ("FF JOBS".equalsIgnoreCase(req.getRefType())) {
+            String ffRef = resolveEffectiveFfRef(req);
+            if (ffRef != null) {
+                validateJobInNewTransaction(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), ffRef, "FF JOBS", documentId, UserContext.getUserPoid());
+            }
         }
         if ("FDA JOBS".equalsIgnoreCase(req.getRefType()) && req.getFdaRefId() != null) {
             validateJobInNewTransaction(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), String.valueOf(req.getFdaRefId()), "FDA JOBS", documentId, UserContext.getUserPoid());
@@ -250,8 +253,11 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         // Legacy DocumentBeforeSave validations
         validateBeforeSaveRequest(req);
-        if ("FF JOBS".equalsIgnoreCase(req.getRefType()) && req.getFfRefId() != null) {
-            validateJobInNewTransaction(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), String.valueOf(req.getFfRefId()), "FF JOBS", documentId, UserContext.getUserPoid());
+        if ("FF JOBS".equalsIgnoreCase(req.getRefType())) {
+            String ffRef = resolveEffectiveFfRef(req);
+            if (ffRef != null) {
+                validateJobInNewTransaction(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), ffRef, "FF JOBS", documentId, UserContext.getUserPoid());
+            }
         }
         if ("FDA JOBS".equalsIgnoreCase(req.getRefType()) && req.getFdaRefId() != null) {
             validateJobInNewTransaction(UserContext.getGroupPoid(), UserContext.getCompanyPoid(), String.valueOf(req.getFdaRefId()), "FDA JOBS", documentId, UserContext.getUserPoid());
@@ -305,9 +311,9 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
         // Release job allocations if applicable
         String refType = existing.getRefType();
-        Long jobPoid = getOldJobPoid(existing, refType);
-        if (jobPoid != null) {
-            releaseOldJobValuesInNewTransaction(transactionPoid, jobPoid, refType);
+        String refString = resolveRefStringFromEntity(existing, refType);
+        if (refString != null) {
+            releaseOldJobValuesInNewTransaction(transactionPoid, refString);
         }
 
         documentDeleteService.deleteDocument(
@@ -333,6 +339,22 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         response.setPayGlDet(lovService.getDetailsByPoidAndLovName(header.getPayGlPoid(), "GL_MASTER_LEDGERS"));
         response.setBankDet(lovService.getDetailsByPoidAndLovName(header.getBankPoid(), "BANK_MASTER"));
         response.setFdaDet(lovService.getDetailsByPoidAndLovName(header.getFdaRef(), "FDA_JOB"));
+
+        if (header.getFfRef() != null && !header.getFfRef().isBlank()) {
+            List<String> rawRefs = Arrays.asList(header.getFfRef().split(";"));
+            response.setFfRefs(rawRefs);
+            List<Long> ffPoids = rawRefs.stream()
+                    .map(String::trim).filter(s -> !s.isBlank())
+                    .flatMap(s -> { try { return java.util.stream.Stream.of(Long.parseLong(s)); }
+                                   catch (NumberFormatException ignored) { return java.util.stream.Stream.empty(); } })
+                    .collect(Collectors.toList());
+            if (!ffPoids.isEmpty()) {
+                Map<Long, LovGetListDto> ffLovMap = lovService.getDetailsByPoidsAndLovName(ffPoids, "FF_JOBS_FOR_COST_BOOKING");
+                List<LovGetListDto> ffRefsDtl = ffPoids.stream()
+                        .map(ffLovMap::get).filter(Objects::nonNull).collect(Collectors.toList());
+                if (!ffRefsDtl.isEmpty()) response.setFfRefsDtl(ffRefsDtl);
+            }
+        }
 
         // =====================================================================
         // CASE HANDLING
@@ -413,7 +435,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         entity.setRemarks(req.getRemarks());
         entity.setRefType(req.getRefType());
         entity.setFdaRef(req.getFdaRefId());
-        entity.setFfRef(req.getFfRefId() != null ? String.valueOf(req.getFfRefId()) : null);
+        entity.setFfRef(resolveEffectiveFfRef(req));
         entity.setMtaRef(req.getMtaRfqId());
 
         if (req.getChqDate() != null && !req.getChqDate().isEmpty()) {
@@ -492,7 +514,8 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                     throw new ValidationException("Pay GL is mandatory for Ref Type = GENERAL.");
             }
             case "FF JOBS" -> {
-                if (req.getFfRefId() == null)
+                boolean hasFfRefs = req.getFfRefs() != null && req.getFfRefs().stream().anyMatch(r -> r != null && !r.isBlank());
+                if (!hasFfRefs && req.getFfRefId() == null)
                     throw new ValidationException("FF Ref Id is mandatory for Ref Type = FF JOBS.");
             }
             case "FDA JOBS" -> {
@@ -693,7 +716,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         entity.setRemarks(req.getRemarks());
         entity.setRefType(req.getRefType());
         entity.setFdaRef(req.getFdaRefId());
-        entity.setFfRef(req.getFfRefId() != null ? String.valueOf(req.getFfRefId()) : null);
+        entity.setFfRef(resolveEffectiveFfRef(req));
         entity.setMtaRef(req.getMtaRfqId());
         entity.setSalesQtnRef(req.getSalesQtnRef() != null ? req.getSalesQtnRef() :
                 (StringUtils.isNumeric(req.getMtaRfqId()) ? Long.valueOf(req.getMtaRfqId()) : null));
@@ -1266,14 +1289,14 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     protected void validateVoucherStatusInNewTransaction(GLPaymentVoucherHDREntity header) {
         try {
-            Long refPoid = getOldJobPoid(header, header.getRefType());
+            String refString = resolveRefStringFromEntity(header, header.getRefType());
             String result = spRepository.validateVoucherStatus(
                     header.getGroupPoid(),
                     null,
                     header.getCompanyPoid(),
                     header.getDocRef(),
                     header.getRefType(),
-                    refPoid != null ? String.valueOf(refPoid) : null
+                    refString
             );
             if (result != null && !result.equals("SUCCESS")) {
                 throw new ValidationException(result);
@@ -1285,7 +1308,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    protected void releaseOldJobValuesInNewTransaction(Long transactionPoid, Long oldJobPoid, String refType) {
+    protected void releaseOldJobValuesInNewTransaction(Long transactionPoid, String refString) {
         try {
             GLPaymentVoucherHDREntity header = paymentVoucherRepository.findById(transactionPoid)
                     .orElseThrow(() -> new ValidationException("Voucher not found"));
@@ -1304,7 +1327,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     protected void updateJobCostsInNewTransaction(GLPaymentVoucherHDREntity header, String refType) {
         try {
-            switch (refType.toUpperCase()) {
+            String procResult = switch (refType.toUpperCase()) {
                 case "FDA JOBS" -> spRepository.updateFdaCost(
                         header.getGroupPoid(),
                         header.getCompanyPoid(),
@@ -1326,19 +1349,34 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                         header.getTransactionPoid(),
                         header.getSalesQtnRef() != null ? String.valueOf(header.getSalesQtnRef()) : header.getMtaRef()
                 );
+                default -> null;
+            };
+            if (procResult != null && procResult.contains("ERROR")) {
+                log.warn("Failed to update job costs for {}: {}", refType, procResult);
             }
         } catch (Exception e) {
             log.warn("Failed to update job costs for {}: {}", refType, e.getMessage());
         }
     }
 
-    private Long getOldJobPoid(GLPaymentVoucherHDREntity entity, String refType) {
+    private String resolveRefStringFromEntity(GLPaymentVoucherHDREntity entity, String refType) {
         return switch (refType != null ? refType.toUpperCase() : "") {
-            case "FDA JOBS" -> entity.getFdaRef();
-            case "FF JOBS" -> entity.getFfRef() != null ? Long.parseLong(entity.getFfRef()) : null;
-            case "MTA RFQ" -> entity.getSalesQtnRef() != null ? entity.getSalesQtnRef() : (entity.getMtaRef() != null ? Long.parseLong(entity.getMtaRef()) : null);
-            default -> null;
+            case "FDA JOBS" -> entity.getFdaRef() != null ? String.valueOf(entity.getFdaRef()) : null;
+            case "FF JOBS"  -> entity.getFfRef();
+            case "MTA RFQ"  -> entity.getSalesQtnRef() != null ? String.valueOf(entity.getSalesQtnRef()) : entity.getMtaRef();
+            default         -> null;
         };
+    }
+
+    private String resolveEffectiveFfRef(BankPaymentVoucherRequest req) {
+        List<String> refs = req.getFfRefs();
+        if (refs != null && !refs.isEmpty()) {
+            String joined = refs.stream()
+                    .filter(r -> r != null && !r.isBlank())
+                    .collect(Collectors.joining(";"));
+            if (!joined.isBlank()) return joined;
+        }
+        return req.getFfRefId() != null ? String.valueOf(req.getFfRefId()) : null;
     }
 
     private String getCurrentUser() {

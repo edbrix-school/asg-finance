@@ -324,7 +324,7 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
                 .lastModifiedDate(hdr.getLastModifiedDate())
                 .refType(hdr.getRefType())
                 .bankFilter(hdr.getBankFilter())
-                .details(details.stream().map(this::convertToDetailDto).toList())
+                .details(details.stream().map(d -> convertToDetailDto(d, hdr.getCompanyPoid())).toList())
                 .build();
     }
 
@@ -410,7 +410,7 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
         entity.setPaymentMainPoid(dto.getPaymentMainPoid());
     }
 
-    private BankDepositVoucherDtlDto convertToDetailDto(GlBankDepositVoucherDtl entity) {
+    private BankDepositVoucherDtlDto convertToDetailDto(GlBankDepositVoucherDtl entity, Long companyPoid) {
         return BankDepositVoucherDtlDto.builder()
                 .detRowId(entity.getDetRowId())
                 .bankDet(setBankDet(entity))
@@ -419,6 +419,7 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
                 .refDocPoid(entity.getRefDocPoid())
                 .refDocRef(entity.getRefDocRef())
                 .refDocId(entity.getRefDocId())
+                .drilldownLinkInfo(hdrRepository.buildDrilldownLinkInfo(entity.getRefDocId(), entity.getRefDocPoid(), companyPoid))
                 .rcpDate(entity.getRcpDate())
                 .chqAcName(entity.getChqAcName())
                 .chqAcNo(entity.getChqAcNo())

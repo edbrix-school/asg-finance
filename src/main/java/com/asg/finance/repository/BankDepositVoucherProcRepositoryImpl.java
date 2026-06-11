@@ -283,21 +283,29 @@ public class BankDepositVoucherProcRepositoryImpl implements BankDepositVoucherP
     }
 
     private void populateDocumentNames(List<BankDepositVoucherDtlDto> dtos) {
-
         for (BankDepositVoucherDtlDto dto : dtos) {
-
             DrilldownLinkInfoDto drilldown = dto.getDrilldownLinkInfo();
-
             if (drilldown == null || drilldown.getTargetDocId() == null) {
                 continue;
             }
-
-            DocumentEntity document =
-                    documentCommonRepository.findByDocId(drilldown.getTargetDocId());
-
+            DocumentEntity document = documentCommonRepository.findByDocId(drilldown.getTargetDocId());
             if (document != null) {
                 drilldown.setDocName(document.getDocName());
             }
         }
+    }
+
+    @Override
+    public DrilldownLinkInfoDto buildDrilldownLinkInfo(String refDocId, Long refDocPoid, Long companyPoid) {
+        if (refDocId == null || refDocPoid == null) {
+            return null;
+        }
+        DocumentEntity document = documentCommonRepository.findByDocId(refDocId);
+        return DrilldownLinkInfoDto.builder()
+                .targetDocId(refDocId)
+                .docKeyPoid(refDocPoid)
+                .companyPoid(companyPoid)
+                .docName(document != null ? document.getDocName() : null)
+                .build();
     }
 }

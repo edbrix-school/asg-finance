@@ -24,6 +24,7 @@ public class BankPaymentVoucherRequest {
     private String payingTo;
     private String remarks;
     private Long ffRefId;
+    private List<String> ffRefs;
     private Long fdaRefId;
     private String mtaRfqId;
     private String suppressValidation;

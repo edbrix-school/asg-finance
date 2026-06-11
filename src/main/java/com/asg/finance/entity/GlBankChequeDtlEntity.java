@@ -4,8 +4,8 @@ import com.asg.common.lib.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
-import java.sql.Timestamp;
 
 @Entity
 @Table(name = "GL_BANK_MASTER_CHEQUE_DTL")
@@ -14,14 +14,14 @@ import java.sql.Timestamp;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@IdClass(GlBankChequeDtlEntity.CompositeKey.class)
 public class GlBankChequeDtlEntity extends BaseEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "chequeDtlSeq")
-    @SequenceGenerator(name = "chequeDtlSeq", sequenceName = "GL_BANK_CHEQUE_DTL_SEQ", allocationSize = 1)
     @Column(name = "DET_ROW_ID", nullable = false)
     private Long detRowId;
 
+    @Id
     @Column(name = "BANK_POID", nullable = false)
     private Long bankPoid;
 
@@ -57,5 +57,13 @@ public class GlBankChequeDtlEntity extends BaseEntity {
 
     @Column(name = "LAST_CHQ_NO", length = 50)
     private String lastChqNo;
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CompositeKey implements Serializable {
+        private Long detRowId;
+        private Long bankPoid;
+    }
 }
 

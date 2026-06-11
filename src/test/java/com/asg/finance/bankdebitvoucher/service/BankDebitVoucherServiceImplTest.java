@@ -284,18 +284,18 @@ class BankDebitVoucherServiceImplTest {
             muc.when(UserContext::getUserPoid).thenReturn(10L);
             muc.when(UserContext::getCompanyPoid).thenReturn(1L);
 
-            when(bankDebitVoucherCustomRepository.procLoadFFCharges(1L, 10L, 1L, 10L))
+            when(bankDebitVoucherCustomRepository.procLoadFFCharges(1L, 10L, 1L, "10"))
                     .thenReturn(Collections.emptyList());
 
             List<ChargeFFDto> result = service.loadFFCharges(List.of(10L));
 
             assertThat(result).isEmpty();
-            verify(bankDebitVoucherCustomRepository).procLoadFFCharges(1L, 10L, 1L, 10L);
+            verify(bankDebitVoucherCustomRepository).procLoadFFCharges(1L, 10L, 1L, "10");
         }
     }
 
     @Test
-    void loadFFCharges_MultiplePoids_MergesResults() {
+    void loadFFCharges_MultiplePoids_PassesJoinedStringToRepository() {
         try (MockedStatic<UserContext> muc = mockStatic(UserContext.class)) {
             muc.when(UserContext::getGroupPoid).thenReturn(1L);
             muc.when(UserContext::getUserPoid).thenReturn(10L);
@@ -304,16 +304,13 @@ class BankDebitVoucherServiceImplTest {
             ChargeFFDto charge1 = new ChargeFFDto();
             ChargeFFDto charge2 = new ChargeFFDto();
 
-            when(bankDebitVoucherCustomRepository.procLoadFFCharges(1L, 10L, 1L, 10L))
-                    .thenReturn(List.of(charge1));
-            when(bankDebitVoucherCustomRepository.procLoadFFCharges(1L, 10L, 1L, 20L))
-                    .thenReturn(List.of(charge2));
+            when(bankDebitVoucherCustomRepository.procLoadFFCharges(1L, 10L, 1L, "10;20"))
+                    .thenReturn(List.of(charge1, charge2));
 
             List<ChargeFFDto> result = service.loadFFCharges(List.of(10L, 20L));
 
             assertThat(result).hasSize(2).containsExactly(charge1, charge2);
-            verify(bankDebitVoucherCustomRepository).procLoadFFCharges(1L, 10L, 1L, 10L);
-            verify(bankDebitVoucherCustomRepository).procLoadFFCharges(1L, 10L, 1L, 20L);
+            verify(bankDebitVoucherCustomRepository).procLoadFFCharges(1L, 10L, 1L, "10;20");
         }
     }
 

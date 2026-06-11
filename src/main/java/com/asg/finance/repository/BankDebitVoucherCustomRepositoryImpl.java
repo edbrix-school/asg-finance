@@ -118,14 +118,14 @@ public class BankDebitVoucherCustomRepositoryImpl implements BankDebitVoucherCus
     }
 
     @Override
-    public List<ChargeFFDto> procLoadFFCharges(Long groupPoid, Long userPoid, Long companyPoid, Long ffRefPoid) {
+    public List<ChargeFFDto> procLoadFFCharges(Long groupPoid, Long userPoid, Long companyPoid, String ffRefPoid) {
         return jdbcTemplate.execute((CallableStatementCreator) con -> {
             CallableStatement cs = con.prepareCall("{call PROC_BANK_DEB_CREATE_FROM_FF(?,?,?,?,?,?)}");
 
             cs.setLong(1, groupPoid);
             cs.setLong(2, companyPoid);
             cs.setLong(3, userPoid);
-            cs.setLong(4, ffRefPoid);
+            cs.setString(4, ffRefPoid);
 
             cs.registerOutParameter(5, Types.VARCHAR);
             cs.registerOutParameter(6, OracleTypes.CURSOR);

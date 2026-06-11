@@ -16,7 +16,7 @@ public interface BankDebitVoucherCustomRepository {
 
     String[] procGlJobRelOldValues(Long groupPoid, Long userPoid, Long companyPoid, String docId, Long docKeyPoid);
 
-    List<ChargeFFDto> procLoadFFCharges(Long groupPoid, Long userPoid, Long companyPoid, Long ffRefPoid);
+    List<ChargeFFDto> procLoadFFCharges(Long groupPoid, Long userPoid, Long companyPoid, String ffRefPoid);
 
     List<ChargeFDADto> procLoadFDACharges(Long groupPoid, Long userPoid, Long companyPoid, Long fdaRefPoid);
 

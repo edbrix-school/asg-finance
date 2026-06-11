@@ -1308,15 +1308,16 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
     // ---------- loaders ----------
     @Override
     public List<ChargeFFDto> loadFFCharges(List<Long> ffRefPoids) {
-        return ffRefPoids.stream()
+        String joined = ffRefPoids.stream()
                 .filter(Objects::nonNull)
-                .flatMap(poid -> bankDebitVoucherCustomRepository.procLoadFFCharges(
-                        UserContext.getGroupPoid(),
-                        UserContext.getUserPoid(),
-                        UserContext.getCompanyPoid(),
-                        poid
-                ).stream())
-                .collect(Collectors.toList());
+                .map(String::valueOf)
+                .collect(Collectors.joining(";"));
+        return bankDebitVoucherCustomRepository.procLoadFFCharges(
+                UserContext.getGroupPoid(),
+                UserContext.getUserPoid(),
+                UserContext.getCompanyPoid(),
+                joined
+        );
     }
 
     @Override

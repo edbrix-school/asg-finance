@@ -306,6 +306,8 @@ public class GlBankServiceImpl implements GlBankService {
         GlBankChequeDtlEntity newEntity = new GlBankChequeDtlEntity();
 
         newEntity.setBankPoid(bankPoid);
+        // Generate detRowId if it's null
+        newEntity.setDetRowId(getNextDetRowIdForBank(bankPoid));
         newEntity.setChqSignType(dto.getChqSignType());
         newEntity.setTotalCheques(dto.getTotalCheques());
         newEntity.setStartChqNo(dto.getStartChqNo());
@@ -321,6 +323,11 @@ public class GlBankServiceImpl implements GlBankService {
         
         String logDetail = String.format("Row Created on Bank Cheque Detail with detRowId: %s", dto.getDetRowId());
         loggingService.createLogSummaryEntry(UserContext.getDocumentId(), bankPoid.toString(), logDetail);
+    }
+
+    private Long getNextDetRowIdForBank(Long bankPoid) {
+        Long maxDetRowId = chequeDtlRepository.findMaxDetRowIdByBankPoid(bankPoid);
+        return maxDetRowId + 1;
     }
 
     private void updateExistingGlBankChequeDtlEntity(GlBankChequeDtlEntity entity, GlBankChequeDtlDto dto, List<GlBankChequeDtlEntity> entities) {

@@ -143,35 +143,35 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         validator.validate(request, true);
         validateInputTaxVariance(request);
 
-        // Step 2: Conditional field existence checks (only for fields that are required/validated)
-        if (request.getBankPoid() == null || !glBankRepository.existsByBankPoid(request.getBankPoid())) {
-            throw new ResourceNotFoundException("Bank", "bankPoid", request.getBankPoid());
-        }
-
-        if (lovService.getLovItemByCodeFast(request.getCurrencyCode(), "CURRENCY").getPoid() == null) {
-            throw new ResourceNotFoundException("Currency", "currencyCode", request.getCurrencyCode());
-        }
-
-        // Conditional checks
-        if (request.getTaxPoid() != null && !taxMasterRepository.existsByTaxPoid(request.getTaxPoid())) {
-            throw new ResourceNotFoundException("Tax", "taxPoid", request.getTaxPoid());
-        }
-
-        if (request.getPayGlPoid() != null && !glMasterRepository.existsByGlPoid(request.getPayGlPoid())) {
-            throw new ResourceNotFoundException("Gl Master", "payGlPoid", request.getPayGlPoid());
-        }
-
-        if (request.getBeneficiaryBankPoid() != null && !glBankRepository.existsByBankPoid(request.getBeneficiaryBankPoid())) {
-            throw new ResourceNotFoundException("Bank", "beneficiaryBankPoid", request.getBeneficiaryBankPoid());
-        }
-
-        if (request.getBankPurposePoid() != null && !bankPurposeCodeMasterRepository.existsByBankPurposePoid(request.getBankPurposePoid())) {
-            throw new ResourceNotFoundException("Bank Purpose Code", "bankPurposePoid", request.getBankPurposePoid());
-        }
-
-        if (headerRepository.existsByDocRefIgnoreCase(request.getDocRef())) {
-            throw new ResourceAlreadyExistsException("Doc Ref", request.getDocRef());
-        }
+//        // Step 2: Conditional field existence checks (only for fields that are required/validated)
+//        if (request.getBankPoid() == null || !glBankRepository.existsByBankPoid(request.getBankPoid())) {
+//            throw new ResourceNotFoundException("Bank", "bankPoid", request.getBankPoid());
+//        }
+//
+//        if (lovService.getLovItemByCodeFast(request.getCurrencyCode(), "CURRENCY").getPoid() == null) {
+//            throw new ResourceNotFoundException("Currency", "currencyCode", request.getCurrencyCode());
+//        }
+//
+//        // Conditional checks
+//        if (request.getTaxPoid() != null && !taxMasterRepository.existsByTaxPoid(request.getTaxPoid())) {
+//            throw new ResourceNotFoundException("Tax", "taxPoid", request.getTaxPoid());
+//        }
+//
+//        if (request.getPayGlPoid() != null && !glMasterRepository.existsByGlPoid(request.getPayGlPoid())) {
+//            throw new ResourceNotFoundException("Gl Master", "payGlPoid", request.getPayGlPoid());
+//        }
+//
+//        if (request.getBeneficiaryBankPoid() != null && !glBankRepository.existsByBankPoid(request.getBeneficiaryBankPoid())) {
+//            throw new ResourceNotFoundException("Bank", "beneficiaryBankPoid", request.getBeneficiaryBankPoid());
+//        }
+//
+//        if (request.getBankPurposePoid() != null && !bankPurposeCodeMasterRepository.existsByBankPurposePoid(request.getBankPurposePoid())) {
+//            throw new ResourceNotFoundException("Bank Purpose Code", "bankPurposePoid", request.getBankPurposePoid());
+//        }
+//
+//        if (headerRepository.existsByDocRefIgnoreCase(request.getDocRef())) {
+//            throw new ResourceAlreadyExistsException("Doc Ref", request.getDocRef());
+//        }
 
         runPreSaveProcedures(null, request.isSuppressBalanceCheck() ? "Y" : "N");
 
@@ -310,38 +310,38 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         validator.validate(request, false);
         validateInputTaxVariance(request);
 
-        if (request.getBankPoid() == null || !glBankRepository.existsByBankPoid(request.getBankPoid())) {
-            throw new ResourceNotFoundException("Bank", "bankPoid", request.getBankPoid());
-        }
-
-        if (lovService.getLovItemByCodeFast(request.getCurrencyCode(), "CURRENCY").getPoid() == null) {
-            throw new ResourceNotFoundException("Currency", "currencyCode", request.getCurrencyCode());
-        }
-
-        if (request.getTaxPoid() != null && !taxMasterRepository.existsByTaxPoid(request.getTaxPoid())) {
-            throw new ResourceNotFoundException("Tax", "taxPoid", request.getTaxPoid());
-        }
-
-        if (request.getPayGlPoid() != null && !glMasterRepository.existsByGlPoid(request.getPayGlPoid())) {
-            throw new ResourceNotFoundException("Gl Master", "payGlPoid", request.getPayGlPoid());
-        }
-
-        if (request.getBeneficiaryBankPoid() != null && !glBankRepository.existsByBankPoid(request.getBeneficiaryBankPoid())) {
-            throw new ResourceNotFoundException("Bank", "beneficiaryBankPoid", request.getBeneficiaryBankPoid());
-        }
-
-        if (request.getBankPurposePoid() != null && !bankPurposeCodeMasterRepository.existsByBankPurposePoid(request.getBankPurposePoid())) {
-            throw new ResourceNotFoundException("Bank Purpose Code", "bankPurposePoid", request.getBankPurposePoid());
-        }
-
-        if (request.getDocRef() != null && headerRepository.existsByDocRefIgnoreCaseAndTransactionPoidNot(request.getDocRef(), transactionPoid)) {
-            throw new ResourceAlreadyExistsException("Doc Ref", request.getDocRef());
-        }
-
-        String approvalStatus = approvalService.getApprovalStatus(documentId, transactionPoid);
-        if ("APPROVED".equalsIgnoreCase(approvalStatus)) {
-            throw new ValidationException("Cannot update a Bank Debit Voucher that has been approved");
-        }
+//        if (request.getBankPoid() == null || !glBankRepository.existsByBankPoid(request.getBankPoid())) {
+//            throw new ResourceNotFoundException("Bank", "bankPoid", request.getBankPoid());
+//        }
+//
+//        if (lovService.getLovItemByCodeFast(request.getCurrencyCode(), "CURRENCY").getPoid() == null) {
+//            throw new ResourceNotFoundException("Currency", "currencyCode", request.getCurrencyCode());
+//        }
+//
+//        if (request.getTaxPoid() != null && !taxMasterRepository.existsByTaxPoid(request.getTaxPoid())) {
+//            throw new ResourceNotFoundException("Tax", "taxPoid", request.getTaxPoid());
+//        }
+//
+//        if (request.getPayGlPoid() != null && !glMasterRepository.existsByGlPoid(request.getPayGlPoid())) {
+//            throw new ResourceNotFoundException("Gl Master", "payGlPoid", request.getPayGlPoid());
+//        }
+//
+//        if (request.getBeneficiaryBankPoid() != null && !glBankRepository.existsByBankPoid(request.getBeneficiaryBankPoid())) {
+//            throw new ResourceNotFoundException("Bank", "beneficiaryBankPoid", request.getBeneficiaryBankPoid());
+//        }
+//
+//        if (request.getBankPurposePoid() != null && !bankPurposeCodeMasterRepository.existsByBankPurposePoid(request.getBankPurposePoid())) {
+//            throw new ResourceNotFoundException("Bank Purpose Code", "bankPurposePoid", request.getBankPurposePoid());
+//        }
+//
+//        if (request.getDocRef() != null && headerRepository.existsByDocRefIgnoreCaseAndTransactionPoidNot(request.getDocRef(), transactionPoid)) {
+//            throw new ResourceAlreadyExistsException("Doc Ref", request.getDocRef());
+//        }
+//
+//        String approvalStatus = approvalService.getApprovalStatus(documentId, transactionPoid);
+//        if ("APPROVED".equalsIgnoreCase(approvalStatus)) {
+//            throw new ValidationException("Cannot update a Bank Debit Voucher that has been approved");
+//        }
 
         runPreSaveProcedures(header, request.isSuppressBalanceCheck() ? "Y" : "N");
 
@@ -1608,16 +1608,45 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         if (StringUtils.isBlank(response.getRefType()) && StringUtils.isBlank(oldRefType)) return;
 
         String ref = null;
-        if ("FDA JOBS".equalsIgnoreCase(response.getRefType())) {
-            ref = response.getFdaRef() != null ? String.valueOf(response.getFdaRef()) : null;
-            bankPaymentVoucherSpRepository.updateFdaCost(response.getGroupPoid(), UserContext.getCompanyPoid(), UserContext.getUserPoid(), ref, response.getTransactionPoid());
-        } else if ("FF JOBS".equalsIgnoreCase(response.getRefType())) {
-            ref = response.getFfRef();
-            bankPaymentVoucherSpRepository.updateFfCost(response.getGroupPoid(), UserContext.getCompanyPoid(), UserContext.getUserPoid(), ref, response.getTransactionPoid());
-        } else if ("MTA RFQ".equalsIgnoreCase(response.getRefType())) {
-            ref = response.getSalesQtnRef() != null ? String.valueOf(response.getSalesQtnRef()) : null;
-            bankPaymentVoucherSpRepository.updateMtaCost(response.getGroupPoid(), UserContext.getCompanyPoid(), UserContext.getUserPoid(), response.getTransactionPoid(), ref);
+        try {
+            if ("FDA JOBS".equalsIgnoreCase(response.getRefType())) {
+                ref = response.getFdaRef() != null ? String.valueOf(response.getFdaRef()) : null;
+                applyProcResult(response, bankPaymentVoucherSpRepository.updateFdaCost(response.getGroupPoid(), UserContext.getCompanyPoid(), UserContext.getUserPoid(), ref, response.getTransactionPoid()));
+            } else if ("FF JOBS".equalsIgnoreCase(response.getRefType())) {
+                ref = response.getFfRef();
+                applyProcResult(response, bankPaymentVoucherSpRepository.updateFfCost(response.getGroupPoid(), UserContext.getCompanyPoid(), UserContext.getUserPoid(), ref, response.getTransactionPoid()));
+            } else if ("MTA RFQ".equalsIgnoreCase(response.getRefType())) {
+                ref = response.getSalesQtnRef() != null ? String.valueOf(response.getSalesQtnRef()) : null;
+                String procResult = bankPaymentVoucherSpRepository.updateMtaCost(response.getGroupPoid(), UserContext.getCompanyPoid(), UserContext.getUserPoid(), response.getTransactionPoid(), ref);
+                // Legacy surfaces MTA messages only for errors/info, success is silent
+                if (procResult != null && (procResult.contains("ERROR") || procResult.contains("Info:"))) {
+                    applyProcResult(response, procResult);
+                }
+            }
+        } catch (Exception e) {
+            log.error("Job cost update failed for refType {} ref {}: {}", response.getRefType(), ref, e.getMessage(), e);
+            addWarning(response, "Some error occurred while job cost update - " + e.getMessage());
         }
+    }
+
+    /**
+     * Routes the proc result back to the caller without the SUCCESS/ERROR prefix:
+     * error/info text becomes a response warning, success text the job cost message.
+     */
+    private void applyProcResult(BankDebitVoucherResponse response, String procResult) {
+        if (StringUtils.isBlank(procResult)) return;
+        String message = procResult.contains(":") ? procResult.substring(procResult.indexOf(':') + 1).trim() : procResult.trim();
+        String upper = procResult.trim().toUpperCase();
+        if (upper.startsWith("ERROR") || upper.startsWith("INFO")) {
+            addWarning(response, message);
+        } else {
+            response.setJobCostMessage(message);
+        }
+    }
+
+    private void addWarning(BankDebitVoucherResponse response, String warning) {
+        if (response.getWarnings() == null) response.setWarnings(new ArrayList<>());
+        response.getWarnings().add(warning);
     }
 
     /**

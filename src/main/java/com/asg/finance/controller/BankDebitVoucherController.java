@@ -34,6 +34,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.sql.Date;
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -155,7 +156,7 @@ public class BankDebitVoucherController {
     public ResponseEntity<?> createBankDebitVoucher(
             @Valid @RequestBody BankDebitVoucherRequest request) {
         BankDebitVoucherResponse response = bankDebitVoucherService.createBankDebitVoucher(request, UserContext.getDocumentId());
-        return success("Bank Debit Voucher created successfully", response);
+        return successWithWarnings("Bank Debit Voucher created successfully", response);
     }
 
     @Operation(summary = "Get Bank Debit Voucher")
@@ -313,7 +314,7 @@ public class BankDebitVoucherController {
             @PathVariable @NotNull @Min(1) Long transactionPoid,
             @Valid @RequestBody BankDebitVoucherRequest request) {
         BankDebitVoucherResponse response = bankDebitVoucherService.updateBankDebitVoucher(transactionPoid, request, UserContext.getDocumentId());
-        return success("Bank Debit Voucher updated successfully", response);
+        return successWithWarnings("Bank Debit Voucher updated successfully", response);
     }
 
     @Operation(summary = "Delete Bank Debit Voucher")
@@ -491,6 +492,23 @@ public class BankDebitVoucherController {
             log.error("Failed to generate billwise PDF for Bank Debit Voucher: {}", transactionPoid, e);
             return error("Failed to generate billwise PDF: " + e.getMessage(), 500);
         }
+    }
+
+    private ResponseEntity<?> successWithWarnings(String message, BankDebitVoucherResponse dto) {
+        if (dto.getJobCostMessage() != null && !dto.getJobCostMessage().isBlank()) {
+            message = message + ". " + dto.getJobCostMessage();
+        }
+        List<String> warnings = dto.getWarnings();
+        if (warnings == null || warnings.isEmpty()) {
+            return success(message, dto);
+        }
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("statusCode", 200);
+        body.put("success", true);
+        body.put("message", message);
+        body.put("warnings", warnings);
+        body.put("result", Map.of("data", dto));
+        return ResponseEntity.ok(body);
     }
 
 }

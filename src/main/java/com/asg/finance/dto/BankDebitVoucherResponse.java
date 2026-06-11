@@ -39,6 +39,11 @@ public class BankDebitVoucherResponse {
     private String ffRef;
     private List<String> ffRefs;
     private List<LovGetListDto> ffRefsDtl;
+
+    // Response-only: non-blocking warnings surfaced to the caller
+    private List<String> warnings;
+    // Response-only: success message from post-save job cost procedures
+    private String jobCostMessage;
     private Long fdaRef;
     private String mtaRef;
     private String payingToName;

@@ -1327,7 +1327,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     protected void updateJobCostsInNewTransaction(GLPaymentVoucherHDREntity header, String refType) {
         try {
-            switch (refType.toUpperCase()) {
+            String procResult = switch (refType.toUpperCase()) {
                 case "FDA JOBS" -> spRepository.updateFdaCost(
                         header.getGroupPoid(),
                         header.getCompanyPoid(),
@@ -1349,6 +1349,10 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                         header.getTransactionPoid(),
                         header.getSalesQtnRef() != null ? String.valueOf(header.getSalesQtnRef()) : header.getMtaRef()
                 );
+                default -> null;
+            };
+            if (procResult != null && procResult.contains("ERROR")) {
+                log.warn("Failed to update job costs for {}: {}", refType, procResult);
             }
         } catch (Exception e) {
             log.warn("Failed to update job costs for {}: {}", refType, e.getMessage());

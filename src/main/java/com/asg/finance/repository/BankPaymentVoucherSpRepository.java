@@ -18,11 +18,11 @@ public interface BankPaymentVoucherSpRepository {
     
     String getNextChequeNumber(Long bankPoid);
     
-    void updateFdaCost(Long groupPoid, Long companyPoid, Long userPoid, String fdaPoid, Long piPoid);
-    
-    void updateFfCost(Long groupPoid, Long companyPoid, Long userPoid, String ffPoid, Long piPoid);
-    
-    void updateMtaCost(Long groupPoid, Long companyPoid, Long userPoid, Long transactionPoid, String rfqPoid);
+    String updateFdaCost(Long groupPoid, Long companyPoid, Long userPoid, String fdaPoid, Long piPoid);
+
+    String updateFfCost(Long groupPoid, Long companyPoid, Long userPoid, String ffPoid, Long piPoid);
+
+    String updateMtaCost(Long groupPoid, Long companyPoid, Long userPoid, Long transactionPoid, String rfqPoid);
     
     Map<String, String> validateBeforeChequePrint(Long groupPoid, String loginUser, Long companyPoid, Long bankPoid, String chqSignType, Long transactionPoid, String suppressBalanceCheck);
     

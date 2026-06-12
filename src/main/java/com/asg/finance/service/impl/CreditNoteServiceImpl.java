@@ -297,10 +297,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
             saveBillwiseForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111", true);
             saveCostCenterForGl(transactionPoid, creditNoteDto.getGlDetails(), "300-111", true);
             entityManager.flush();
-            executePostSaveUpdates(transactionPoid, creditNoteDto);
-            entityManager.flush();  // As We are commenting flush from executePostSaveUpdates so to keep the usecase same in case of Edit, adding here
-            // Execute post-commit tax recalculation and reference updates
-            executePostCommitTaxUpdates(transactionPoid, creditNoteDto, oldFdaRef, oldFfRef, existing);
+            executeUpdatePostCommitAll(transactionPoid, creditNoteDto, oldFdaRef, oldFfRef, existing);
 
             CreditNoteHeaderDto result = mapToDto(existing);
             List<ArCreditNoteDtl> glDetails = creditNoteDtlRepository.findByTransactionPoidOrderByDetRowId(transactionPoid);
@@ -1415,17 +1412,26 @@ public class CreditNoteServiceImpl implements CreditNoteService {
         //entityManager.flush(); // Ensure all updates are flushed before tax recalculation
     }
 
-    private void executePostCommitTaxUpdates(Long transactionPoid, CreditNoteHeaderDto creditNoteDto, 
-                                              String oldFdaRef, String oldFfRef, ArCreditNoteHdr existing) {
+    private void executeUpdatePostCommitAll(Long transactionPoid, CreditNoteHeaderDto creditNoteDto,
+                                             String oldFdaRef, String oldFfRef, ArCreditNoteHdr existing) {
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
+                    try {
+                        executePostSaveUpdates(transactionPoid, creditNoteDto);
+                    } catch (SQLException e) {
+                        log.error("Error executing post-save updates for transactionPoid {}: {}", transactionPoid, e.getMessage());
+                    }
                     executePostCommitTaxAndReferenceUpdates(transactionPoid, creditNoteDto, oldFdaRef, oldFfRef, existing);
                 }
             });
         } else {
-            // Fallback if no transaction synchronization is active
+            try {
+                executePostSaveUpdates(transactionPoid, creditNoteDto);
+            } catch (SQLException e) {
+                log.error("Error executing post-save updates for transactionPoid {}: {}", transactionPoid, e.getMessage());
+            }
             executePostCommitTaxAndReferenceUpdates(transactionPoid, creditNoteDto, oldFdaRef, oldFfRef, existing);
         }
     }

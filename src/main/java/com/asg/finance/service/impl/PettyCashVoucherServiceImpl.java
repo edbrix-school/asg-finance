@@ -1263,7 +1263,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             for (GlPettyCashChargeDtl d : chargeEntities) {
                 if (d.getChargePoid() != null) chargePoids.add(d.getChargePoid());
                 if (d.getTaxPoid() != null) taxPoids.add(d.getTaxPoid());
-                if (("FF".equalsIgnoreCase(d.getChargeFrom()) || "FF JOBS".equalsIgnoreCase(d.getChargeFrom())) && d.getRefDocPoid() != null) ffRefDocPoids.add(d.getRefDocPoid());
+                if (("FF".equalsIgnoreCase(header.getRefType()) || "FF JOBS".equalsIgnoreCase(header.getRefType())) && d.getRefDocPoid() != null) ffRefDocPoids.add(d.getRefDocPoid());
             }
             for (GLPettyCashItemDtl d : itemEntities) {
                 if (d.getStockPoid() != null) stockPoids.add(d.getStockPoid());

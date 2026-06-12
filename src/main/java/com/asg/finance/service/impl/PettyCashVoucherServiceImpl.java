@@ -3049,7 +3049,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     }
 
                     // Enrich refDocPoidDtl for FF charges only (LOV: FF_JOBNO)
-                    if (("FF".equalsIgnoreCase(dtl.getChargeFrom()) || "FF JOBS".equalsIgnoreCase(dtl.getChargeFrom()) && dtl.getRefDocPoid() != null) {
+                    if (("FF".equalsIgnoreCase(dtl.getChargeFrom()) || "FF JOBS".equalsIgnoreCase(dtl.getChargeFrom())) && dtl.getRefDocPoid() != null) {
                         LovGetListDto ffJobLov = lovService.getDetailsByPoidAndLovName(dtl.getRefDocPoid(), "FF_JOBNO");
                         if (ffJobLov != null && ffJobLov.getPoid() != null) {
                             responseDto.setRefDocPoidDtl(new DetailsDto(

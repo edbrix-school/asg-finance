@@ -1847,5 +1847,34 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         return spRepository.getBankBeneficiary(documentId, transactionPoid, String.valueOf(payGlPoid));
     }
 
+    @Override
+    @Transactional
+    public Map<String, String> updateSuppressValidation(Long transactionPoid, BankPaymentSuppressRequest request) {
+        GLPaymentVoucherHDREntity header = paymentVoucherRepository.findById(transactionPoid)
+                .orElseThrow(() -> new ValidationException("Bank Payment Voucher not found for ID: " + transactionPoid));
+
+        if (StringUtils.isBlank(request.getSuppressValidation())) {
+            return Map.of("suppressValidation", StringUtils.defaultString(header.getSuppressValidation()));
+        }
+
+        String suppressValue = request.getSuppressValidation().trim().toUpperCase();
+        if (!"Y".equals(suppressValue) && !"N".equals(suppressValue)) {
+            throw new ValidationException("suppressValidation must be Y or N");
+        }
+
+        GLPaymentVoucherHDREntity oldEntity = GLPaymentVoucherHDREntity.builder()
+                .transactionPoid(header.getTransactionPoid())
+                .suppressValidation(header.getSuppressValidation())
+                .build();
+
+        header.setSuppressValidation(suppressValue);
+        paymentVoucherRepository.save(header);
+
+        loggingService.logChanges(oldEntity, header, GLPaymentVoucherHDREntity.class,
+                UserContext.getDocumentId(), transactionPoid.toString(), LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
+
+        return Map.of("suppressValidation", suppressValue);
+    }
+
 }
 

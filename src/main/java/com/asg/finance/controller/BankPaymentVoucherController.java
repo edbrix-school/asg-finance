@@ -305,6 +305,26 @@ public class BankPaymentVoucherController {
         }
     }
 
+    @Operation(
+            summary = "Update Suppress Validation",
+            description = "Sets SUPPRESS_VALIDATION (Y/N) on the Bank Payment Voucher for the given transaction POID."
+    )
+    @AllowedAction(UserRolesRightsEnum.EDIT)
+    @PostMapping("/{transactionPoid}/suppress-validation")
+    public ResponseEntity<?> updateSuppressValidation(
+            @Parameter(description = "Transaction POID of the Bank Payment Voucher", required = true)
+            @PathVariable Long transactionPoid,
+            @Valid @RequestBody BankPaymentSuppressRequest request) {
+        try {
+            Map<String, String> data = service.updateSuppressValidation(transactionPoid, request);
+            return success("Suppress validation updated successfully", data);
+        } catch (ValidationException ex) {
+            return internalServerError(ex.getMessage());
+        } catch (Exception ex) {
+            return internalServerError("Failed to update suppress validation: " + ex.getMessage());
+        }
+    }
+
     @Operation(summary = "Validate Cheque Print", description = "Validates voucher before cheque printing")
     @AllowedAction(UserRolesRightsEnum.VIEW)
     @PostMapping("/{transactionPoid}/validate-cheque-print")

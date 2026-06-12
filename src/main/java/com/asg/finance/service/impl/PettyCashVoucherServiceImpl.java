@@ -1263,7 +1263,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             for (GlPettyCashChargeDtl d : chargeEntities) {
                 if (d.getChargePoid() != null) chargePoids.add(d.getChargePoid());
                 if (d.getTaxPoid() != null) taxPoids.add(d.getTaxPoid());
-                if ("FF".equalsIgnoreCase(d.getChargeFrom()) && d.getRefDocPoid() != null) ffRefDocPoids.add(d.getRefDocPoid());
+                if (("FF".equalsIgnoreCase(header.getRefType()) || "FF JOBS".equalsIgnoreCase(header.getRefType())) && d.getRefDocPoid() != null) ffRefDocPoids.add(d.getRefDocPoid());
             }
             for (GLPettyCashItemDtl d : itemEntities) {
                 if (d.getStockPoid() != null) stockPoids.add(d.getStockPoid());
@@ -3049,7 +3049,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     }
 
                     // Enrich refDocPoidDtl for FF charges only (LOV: FF_JOBNO)
-                    if ("FF".equalsIgnoreCase(dtl.getChargeFrom()) && dtl.getRefDocPoid() != null) {
+                    if (("FF".equalsIgnoreCase(dtl.getChargeFrom()) || "FF JOBS".equalsIgnoreCase(dtl.getChargeFrom())) && dtl.getRefDocPoid() != null) {
                         LovGetListDto ffJobLov = lovService.getDetailsByPoidAndLovName(dtl.getRefDocPoid(), "FF_JOBNO");
                         if (ffJobLov != null && ffJobLov.getPoid() != null) {
                             responseDto.setRefDocPoidDtl(new DetailsDto(

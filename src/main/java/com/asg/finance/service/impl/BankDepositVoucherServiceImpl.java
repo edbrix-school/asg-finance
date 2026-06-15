@@ -387,7 +387,7 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
                 .amount(dto.getAmount())
                 .remarks(dto.getRemarks())
                 .selected(dto.getSelected() != null && dto.getSelected().length() == 1 ? dto.getSelected() : "Y")
-                .chqSeqNum(dto.getChqSeqNum())
+                .chqSeqNum(Integer.valueOf(dto.getChqSeqNum()))
                 .paymentMainPoid(dto.getPaymentMainPoid())
                 .build();
     }
@@ -406,7 +406,7 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
         entity.setAmount(dto.getAmount());
         entity.setRemarks(dto.getRemarks());
         entity.setSelected(dto.getSelected() != null && dto.getSelected().length() == 1 ? dto.getSelected() : "Y");
-        entity.setChqSeqNum(dto.getChqSeqNum());
+        entity.setChqSeqNum(Integer.valueOf(dto.getChqSeqNum()));
         entity.setPaymentMainPoid(dto.getPaymentMainPoid());
     }
 
@@ -428,7 +428,7 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
                 .amount(entity.getAmount())
                 .remarks(entity.getRemarks())
                 .selected(entity.getSelected())
-                .chqSeqNum(entity.getChqSeqNum())
+                .chqSeqNum(String.valueOf(entity.getChqSeqNum()))
                 .paymentMainPoid(entity.getPaymentMainPoid())
                 .build();
     }

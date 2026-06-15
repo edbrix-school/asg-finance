@@ -1203,28 +1203,21 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
             log.info("Header retrieved successfully: {}", header.getDocRef());
 
-            // Capture request-scoped values up front: the parallel tasks below run on
-            // worker threads where the ThreadLocal UserContext is not available.
+            // Capture transactionPoid up front: the detail-list fetches below run on
+            // worker threads.
             final Long transPoid = header.getTransactionPoid();
-            final Long groupPoid = header.getGroupPoid();
-            final Long companyPoid = header.getCompanyPoid();
-            final Long userPoid = UserContext.getUserPoid();
 
-            // Independent read-only work runs concurrently: the three detail-list
-            // queries and the two breakup stored-procedure calls have no data
-            // dependency on one another.
+            // The three detail-list queries are independent and run concurrently. They are
+            // Spring Data repository calls, so each worker thread gets its own EntityManager.
+            // The breakup stored-procedure calls are NOT parallelized: they use a shared
+            // @PersistenceContext EntityManager with a REF_CURSOR OUT param, which is not
+            // thread-safe and must execute on this transaction-bound thread.
             CompletableFuture<List<GlPettyCashPaymentDtl>> paymentFuture = CompletableFuture.supplyAsync(
                     () -> glPettyCashPaymentDtlRepository.findByTransactionPoid(transPoid), applicationTaskExecutor);
             CompletableFuture<List<GlPettyCashChargeDtl>> chargeFuture = CompletableFuture.supplyAsync(
                     () -> glPettyCashChargeDtlRepository.findByTransactionPoid(transPoid), applicationTaskExecutor);
             CompletableFuture<List<GLPettyCashItemDtl>> itemFuture = CompletableFuture.supplyAsync(
                     () -> glPettyCashItemDtlRepository.findByTransactionPoid(transPoid), applicationTaskExecutor);
-            CompletableFuture<GlVoucherLoadBillwiseBreakupResponseDto> billwiseFuture = CompletableFuture.supplyAsync(
-                    () -> billwiseBreakupService.loadBillwiseBreakup(groupPoid, companyPoid, documentId, transPoid),
-                    applicationTaskExecutor);
-            CompletableFuture<GlVoucherCostCenterBreakupResponseDto> costCenterFuture = CompletableFuture.supplyAsync(
-                    () -> costCenterBreakupService.loadCostCenterData(documentId, transPoid, groupPoid, companyPoid, userPoid),
-                    applicationTaskExecutor);
 
             List<GlPettyCashPaymentDtl> paymentEntities = paymentFuture.join();
             List<GlPettyCashChargeDtl> chargeEntities = chargeFuture.join();
@@ -1277,8 +1270,15 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             List<GlPettyCashPaymentDtlResponseDto> paymentDtls =
                     mapPaymentResponse(paymentEntities, glMap, chargeMap, taxMap, supplierMap, companyLovMap);
 
-            GlVoucherLoadBillwiseBreakupResponseDto billwiseResponse = billwiseFuture.join();
-            GlVoucherCostCenterBreakupResponseDto costCenterResponse = costCenterFuture.join();
+            // Breakup procs run synchronously on the transaction-bound thread (shared
+            // EntityManager + REF_CURSOR is not safe to run on a worker thread).
+            Long groupPoid = header.getGroupPoid();
+            Long companyPoid = header.getCompanyPoid();
+            Long userPoid = UserContext.getUserPoid();
+            GlVoucherLoadBillwiseBreakupResponseDto billwiseResponse =
+                    billwiseBreakupService.loadBillwiseBreakup(groupPoid, companyPoid, documentId, transPoid);
+            GlVoucherCostCenterBreakupResponseDto costCenterResponse =
+                    costCenterBreakupService.loadCostCenterData(documentId, transPoid, groupPoid, companyPoid, userPoid);
 
             populateBillwiseCostCenter(paymentDtls, billwiseResponse, costCenterResponse);
 

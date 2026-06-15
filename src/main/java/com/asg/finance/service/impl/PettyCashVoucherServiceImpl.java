@@ -382,11 +382,18 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             Long userPoid = UserContext.getUserPoid();
 
             //  Step 2: Get old reference type and POID
+            // PROC_GL_JOB_REL_OLD_VALUES needs the real docId to locate the existing record.
+            // requestDto.getDocId() is typically null on update (docId is resolved from context,
+            // not the request body), which made the proc return null and silently skip the
+            // old-ref cost reversal. Resolve the docId the same way the rest of this flow does.
+            String oldRefDocId = hasText(documentId) ? documentId
+                    : (hasText(UserContext.getDocumentId()) ? UserContext.getDocumentId()
+                    : (hasText(requestDto.getDocId()) ? requestDto.getDocId() : "400-101"));
             pettyCashPaymentVoucherCustomRepository.getOldJobReferences(
                     userGroupPoid,
                     userPoid,
                     userCompanyPoid,
-                    requestDto.getDocId(),
+                    oldRefDocId,
                     String.valueOf(transactionPoid),
                     oldRefType,
                     oldRefPoid

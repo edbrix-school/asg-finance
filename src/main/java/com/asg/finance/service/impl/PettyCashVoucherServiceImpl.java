@@ -3385,22 +3385,38 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                                              String oldRefType,
                                              String oldRefPoid) {
         String newRefType = normalizeRefType(requestDto.getRefType());
+        log.info("[AfterSaveJobCost] txnPoid={} oldRefType='{}' oldRefPoid='{}' newRefType='{}'",
+                transactionPoid, oldRefType, oldRefPoid, newRefType);
 
         if (hasText(oldRefType) && hasText(oldRefPoid)) {
             String normalizedOldRefType = normalizeRefType(oldRefType);
             String newRefForOldType = resolveRefPoidByType(requestDto, normalizedOldRefType);
             boolean referenceChanged = !normalizedOldRefType.equals(newRefType) ||
                     !oldRefPoid.trim().equals(newRefForOldType == null ? "" : newRefForOldType.trim());
+            log.info("[AfterSaveJobCost] OLD-ref check: normalizedOldRefType='{}' newRefForOldType='{}' referenceChanged={}",
+                    normalizedOldRefType, newRefForOldType, referenceChanged);
             if (referenceChanged) {
+                log.info("[AfterSaveJobCost] Invoking OLD-ref proc: refType='{}' refPoid='{}'",
+                        normalizedOldRefType, oldRefPoid);
                 executeJobCostProc(normalizedOldRefType, oldRefPoid, transactionPoid,
                         groupPoid, companyPoid, userPoid, response);
+            } else {
+                log.info("[AfterSaveJobCost] Skipping OLD-ref proc (reference unchanged)");
             }
+        } else {
+            log.info("[AfterSaveJobCost] Skipping OLD-ref block (no old refType/refPoid — create path or missing old values)");
         }
 
         String refPoid = resolveRefPoidByType(requestDto, newRefType);
+        log.info("[AfterSaveJobCost] NEW-ref resolved: newRefType='{}' refPoid='{}'", newRefType, refPoid);
         if (hasText(newRefType) && hasText(refPoid)) {
+            log.info("[AfterSaveJobCost] Invoking NEW-ref proc: refType='{}' refPoid='{}'", newRefType, refPoid);
             executeJobCostProc(newRefType, refPoid, transactionPoid,
                     groupPoid, companyPoid, userPoid, response);
+        } else {
+            log.warn("[AfterSaveJobCost] Skipping NEW-ref proc — newRefType hasText={}, refPoid hasText={} (refPoid='{}'). "
+                            + "New refpoid proc will NOT run because the resolved ref is blank.",
+                    hasText(newRefType), hasText(refPoid), refPoid);
         }
 
         StringBuilder grnResult = new StringBuilder();
@@ -3413,8 +3429,11 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                                      Long groupPoid, Long companyPoid, Long userPoid,
                                      PettyCashResponseDto response) {
         StringBuilder procResult = new StringBuilder();
+        String normalizedRefType = normalizeRefType(refType);
+        log.info("[JobCostProc] Executing job-cost proc for refType='{}' refPoid='{}' txnPoid={}",
+                normalizedRefType, refPoid, transactionPoid);
         try {
-            switch (normalizeRefType(refType)) {
+            switch (normalizedRefType) {
                 case "FF JOBS" -> {
                     pettyCashPaymentVoucherCustomRepository.updateCostFF(
                             groupPoid, companyPoid, userPoid, refPoid, transactionPoid, procResult);
@@ -3435,7 +3454,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                             groupPoid, companyPoid, userPoid, refPoid, transactionPoid, procResult);
                     applyProcResultToResponse(response, "PROC_AP_PO_UPDATE_STATUS", procResult);
                 }
-                default -> {}
+                // No job-cost proc for other ref types (e.g. GENERAL/SUPPLIER/CUSTOMER/GRN_JOBS).
+                default -> log.info("[JobCostProc] No job-cost proc mapped for refType='{}' — nothing to do", normalizedRefType);
             }
         } catch (Exception e) {
             log.error("Job cost update failed for refType {} ref {}: {}", refType, refPoid, e.getMessage(), e);

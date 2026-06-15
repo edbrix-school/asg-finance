@@ -73,8 +73,6 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
@@ -1203,25 +1201,18 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
             log.info("Header retrieved successfully: {}", header.getDocRef());
 
-            // Capture transactionPoid up front: the detail-list fetches below run on
-            // worker threads.
-            final Long transPoid = header.getTransactionPoid();
+            Long transPoid = header.getTransactionPoid();
 
-            // The three detail-list queries are independent and run concurrently. They are
-            // Spring Data repository calls, so each worker thread gets its own EntityManager.
-            // The breakup stored-procedure calls are NOT parallelized: they use a shared
-            // @PersistenceContext EntityManager with a REF_CURSOR OUT param, which is not
-            // thread-safe and must execute on this transaction-bound thread.
-            CompletableFuture<List<GlPettyCashPaymentDtl>> paymentFuture = CompletableFuture.supplyAsync(
-                    () -> glPettyCashPaymentDtlRepository.findByTransactionPoid(transPoid), applicationTaskExecutor);
-            CompletableFuture<List<GlPettyCashChargeDtl>> chargeFuture = CompletableFuture.supplyAsync(
-                    () -> glPettyCashChargeDtlRepository.findByTransactionPoid(transPoid), applicationTaskExecutor);
-            CompletableFuture<List<GLPettyCashItemDtl>> itemFuture = CompletableFuture.supplyAsync(
-                    () -> glPettyCashItemDtlRepository.findByTransactionPoid(transPoid), applicationTaskExecutor);
-
-            List<GlPettyCashPaymentDtl> paymentEntities = paymentFuture.join();
-            List<GlPettyCashChargeDtl> chargeEntities = chargeFuture.join();
-            List<GLPettyCashItemDtl> itemEntities = itemFuture.join();
+            // All reads run sequentially on this transaction-bound thread. Parallelizing them
+            // caused connection amplification (one request grabbing several pooled connections)
+            // and, under load, starved/timed-out the transaction so the breakup REF_CURSOR proc
+            // failed with "OUT parameter not available: OUTDATA".
+            List<GlPettyCashPaymentDtl> paymentEntities =
+                    glPettyCashPaymentDtlRepository.findByTransactionPoid(transPoid);
+            List<GlPettyCashChargeDtl> chargeEntities =
+                    glPettyCashChargeDtlRepository.findByTransactionPoid(transPoid);
+            List<GLPettyCashItemDtl> itemEntities =
+                    glPettyCashItemDtlRepository.findByTransactionPoid(transPoid);
 
             // Collect unique poids across all detail lists
             Set<Long> glPoids = new HashSet<>();
@@ -1289,9 +1280,6 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
             return mapToResponseDto(header, paymentDtls, chargeDtls, itemDtls);
 
-        } catch (CompletionException e) {
-            Throwable cause = e.getCause() != null ? e.getCause() : e;
-            throw new ValidationException("Failed to load Petty Cash details: " + cause.getMessage());
         } catch (Exception e) {
 
             throw new ValidationException("Failed to load Petty Cash details: " + e.getMessage());

@@ -42,6 +42,7 @@ import com.asg.finance.repository.GlPettyCashPaymentGrnDtlRepository;
 import com.asg.finance.repository.*;
 import com.asg.finance.repository.master.ShipChargeRepository;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.security.model.CustomAuthDetails;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.BillwiseBreakupService;
 import com.asg.finance.service.CostCenterBreakupService;
@@ -72,6 +73,9 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
 @Service
@@ -109,6 +113,9 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
     private final LoggingService loggingService;
     private final GlobalParameterService globalParameterService;
     private final ApplicationEventPublisher eventPublisher;
+
+    // Spring Boot's auto-configured executor (resolved by bean name).
+    private final Executor applicationTaskExecutor;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -184,6 +191,10 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
 
             String refType = requestDto.getRefType();
+            // Child-row audit logs are collected here and flushed asynchronously after commit.
+            // Each createLogSummaryEntry opens its own connection + stored-proc call, so writing
+            // N of them inline on the request thread was a hotspot.
+            List<String> childLogDetails = new ArrayList<>();
             switch (refType.toUpperCase()) {
                 case "GENERAL" -> {
                     List<GlPettyCashPaymentDtlRequestDto> activePmt = getActivePaymentDtls(requestDto.getGlPettyCashPaymentDtlRequestDtos());
@@ -195,10 +206,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                             mapPaymentDtlsFromList(effectiveDtls, hdrPoid));
 
                     // Log child record creation
-                    savedPaymentDtls.forEach(dtl -> {
-                        String logDetail = String.format("Row Created on Payment Detail with detRowId: %s", dtl.getDetRowId());
-                        loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
-                    });
+                    savedPaymentDtls.forEach(dtl ->
+                            childLogDetails.add(String.format("Row Created on Payment Detail with detRowId: %s", dtl.getDetRowId())));
 
                     // BILLWISE BREAKUP INSERTION FOR EACH GL ROW
                     List<BillwiseBreakupRequestDto> billwiseList = new ArrayList<>();
@@ -272,10 +281,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     List<GlPettyCashPaymentDtlRequestDto> effectiveDtls = ensurePettyCashGlAndValidateTally(requestDto);
                     var savedPaymentDtls = glPettyCashPaymentDtlRepository.saveAll(
                             mapPaymentDtlsFromList(effectiveDtls, hdrPoid));
-                    savedPaymentDtls.forEach(dtl -> {
-                        String logDetail = String.format("Row Created on Payment Detail with detRowId: %s", dtl.getDetRowId());
-                        loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
-                    });
+                    savedPaymentDtls.forEach(dtl ->
+                            childLogDetails.add(String.format("Row Created on Payment Detail with detRowId: %s", dtl.getDetRowId())));
                 }
                 case "SUPPLIER" -> {
                     if (getActivePaymentDtls(requestDto.getGlPettyCashPaymentDtlRequestDtos()).isEmpty()) {
@@ -284,10 +291,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     validateSupplierCustomerGlMatch(requestDto, "SUPPLIER");
                     var savedPaymentDtls = glPettyCashPaymentDtlRepository.saveAll(
                             mapPaymentDtlsFromList(requestDto.getGlPettyCashPaymentDtlRequestDtos(), hdrPoid));
-                    savedPaymentDtls.forEach(dtl -> {
-                        String logDetail = String.format("Row Created on Payment Detail with detRowId: %s", dtl.getDetRowId());
-                        loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
-                    });
+                    savedPaymentDtls.forEach(dtl ->
+                            childLogDetails.add(String.format("Row Created on Payment Detail with detRowId: %s", dtl.getDetRowId())));
                 }
                 case "CUSTOMER" -> {
                     if (getActivePaymentDtls(requestDto.getGlPettyCashPaymentDtlRequestDtos()).isEmpty()) {
@@ -296,26 +301,20 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     validateSupplierCustomerGlMatch(requestDto, "CUSTOMER");
                     var savedPaymentDtls = glPettyCashPaymentDtlRepository.saveAll(
                             mapPaymentDtlsFromList(requestDto.getGlPettyCashPaymentDtlRequestDtos(), hdrPoid));
-                    savedPaymentDtls.forEach(dtl -> {
-                        String logDetail = String.format("Row Created on Payment Detail with detRowId: %s", dtl.getDetRowId());
-                        loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
-                    });
+                    savedPaymentDtls.forEach(dtl ->
+                            childLogDetails.add(String.format("Row Created on Payment Detail with detRowId: %s", dtl.getDetRowId())));
                 }
                 case "FF JOBS", "FDA JOBS" -> {
                     validateAmountVsChargeTotal(requestDto);
                     var savedChargeDtls = glPettyCashChargeDtlRepository.saveAll(mapChargeDtls(requestDto, hdrPoid));
-                    savedChargeDtls.forEach(dtl -> {
-                        String logDetail = String.format("Row Created on Charge Detail with detRowId: %s", dtl.getDetRowId());
-                        loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
-                    });
+                    savedChargeDtls.forEach(dtl ->
+                            childLogDetails.add(String.format("Row Created on Charge Detail with detRowId: %s", dtl.getDetRowId())));
                 }
                 case "MTA RFQ", "GENERAL PO" -> {
                     validateAmountVsItemTotal(requestDto);
                     var savedItemDtls = glPettyCashItemDtlRepository.saveAll(mapItemDtls(requestDto, hdrPoid));
-                    savedItemDtls.forEach(dtl -> {
-                        String logDetail = String.format("Row Created on Item Detail with detRowId: %s", dtl.getDetRowId());
-                        loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
-                    });
+                    savedItemDtls.forEach(dtl ->
+                            childLogDetails.add(String.format("Row Created on Item Detail with detRowId: %s", dtl.getDetRowId())));
                 }
                 case "GRN_JOBS" -> {
                     validateAmountVsGrnTotal(requestDto);
@@ -324,10 +323,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                         throw new ValidationException("At least one GRN detail row is required.");
                     }
                     var savedGrnDtls = glPettyCashPaymentGrnDtlRepository.saveAll(mapGrnDtls(activeGrnDtls, hdrPoid));
-                    savedGrnDtls.forEach(dtl -> {
-                        String logDetail = String.format("Row Created on GRN Detail with detRowId: %s", dtl.getDetRowId());
-                        loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
-                    });
+                    savedGrnDtls.forEach(dtl ->
+                            childLogDetails.add(String.format("Row Created on GRN Detail with detRowId: %s", dtl.getDetRowId())));
                 }
                 default -> throw new IllegalArgumentException("Invalid RefType: " + refType);
             }
@@ -338,6 +335,10 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             Long capturedGroupPoid = UserContext.getGroupPoid();
             Long capturedCompanyPoid = UserContext.getCompanyPoid();
             Long capturedUserPoid = UserContext.getUserPoid();
+
+            // Flush child-row audit logs off the request thread, after the transaction commits.
+            scheduleAsyncChildLogging(childLogDetails, capturedDocId, hdrPoid.toString());
+
             PettyCashResponseDto response = mapToResponseDtoSimple(savedHeader);
             if (TransactionSynchronizationManager.isSynchronizationActive()) {
                 TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -462,8 +463,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     }
                     var existingDtls = glPettyCashPaymentDtlRepository.findByTransactionPoid(transactionPoid);
                     List<GlPettyCashPaymentDtlRequestDto> effectiveDtls = ensurePettyCashGlAndValidateTally(requestDto, existingDtls);
-                    var merged = mergePaymentDtls(existingDtls, effectiveDtls, transactionPoid);
-                    glPettyCashPaymentDtlRepository.saveAll(merged);
+                    // mergePaymentDtls persists (delete + saveAll) internally.
+                    mergePaymentDtls(existingDtls, effectiveDtls, transactionPoid);
 
                     // UPDATE BILLWISE BREAKUP ENTRIES
                     List<BillwiseBreakupRequestDto> billwiseList = new ArrayList<>();
@@ -540,8 +541,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     }
                     var existingDtls = glPettyCashPaymentDtlRepository.findByTransactionPoid(transactionPoid);
                     List<GlPettyCashPaymentDtlRequestDto> effectiveDtls = ensurePettyCashGlAndValidateTally(requestDto, existingDtls);
-                    var merged = mergePaymentDtls(existingDtls, effectiveDtls, transactionPoid);
-                    glPettyCashPaymentDtlRepository.saveAll(merged);
+                    mergePaymentDtls(existingDtls, effectiveDtls, transactionPoid);
                 }
                 case "SUPPLIER" -> {
                     if (getActivePaymentDtls(requestDto.getGlPettyCashPaymentDtlRequestDtos()).isEmpty()) {
@@ -549,8 +549,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     }
                     validateSupplierCustomerGlMatch(requestDto, "SUPPLIER");
                     var existingDtls = glPettyCashPaymentDtlRepository.findByTransactionPoid(transactionPoid);
-                    var merged = mergePaymentDtls(existingDtls, requestDto.getGlPettyCashPaymentDtlRequestDtos(), transactionPoid);
-                    glPettyCashPaymentDtlRepository.saveAll(merged);
+                    mergePaymentDtls(existingDtls, requestDto.getGlPettyCashPaymentDtlRequestDtos(), transactionPoid);
                 }
                 case "CUSTOMER" -> {
                     if (getActivePaymentDtls(requestDto.getGlPettyCashPaymentDtlRequestDtos()).isEmpty()) {
@@ -558,26 +557,22 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     }
                     validateSupplierCustomerGlMatch(requestDto, "CUSTOMER");
                     var existingDtls = glPettyCashPaymentDtlRepository.findByTransactionPoid(transactionPoid);
-                    var merged = mergePaymentDtls(existingDtls, requestDto.getGlPettyCashPaymentDtlRequestDtos(), transactionPoid);
-                    glPettyCashPaymentDtlRepository.saveAll(merged);
+                    mergePaymentDtls(existingDtls, requestDto.getGlPettyCashPaymentDtlRequestDtos(), transactionPoid);
                 }
                 case "FF JOBS", "FDA JOBS" -> {
                     validateAmountVsChargeTotal(requestDto);
                     var existingDtls = glPettyCashChargeDtlRepository.findByTransactionPoid(transactionPoid);
-                    var merged = mergeChargeDtls(existingDtls, requestDto, transactionPoid);
-                    glPettyCashChargeDtlRepository.saveAll(merged);
+                    mergeChargeDtls(existingDtls, requestDto, transactionPoid);
                 }
                 case "MTA RFQ", "GENERAL PO" -> {
                     validateAmountVsItemTotal(requestDto);
                     var existingDtls = glPettyCashItemDtlRepository.findByTransactionPoid(transactionPoid);
-                    var merged = mergeItemDtls(existingDtls, requestDto, transactionPoid);
-                    glPettyCashItemDtlRepository.saveAll(merged);
+                    mergeItemDtls(existingDtls, requestDto, transactionPoid);
                 }
                 case "GRN_JOBS" -> {
                     validateAmountVsGrnTotal(requestDto);
                     var existingGrnDtls = glPettyCashPaymentGrnDtlRepository.findByTransactionPoid(transactionPoid);
-                    var mergedGrn = mergeGrnDtls(existingGrnDtls, requestDto, transactionPoid);
-                    glPettyCashPaymentGrnDtlRepository.saveAll(mergedGrn);
+                    mergeGrnDtls(existingGrnDtls, requestDto, transactionPoid);
                 }
                 default -> throw new IllegalArgumentException("Invalid RefType: " + refType);
             }
@@ -1208,12 +1203,32 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
             log.info("Header retrieved successfully: {}", header.getDocRef());
 
-            List<GlPettyCashPaymentDtl> paymentEntities =
-                    glPettyCashPaymentDtlRepository.findByTransactionPoid(header.getTransactionPoid());
-            List<GlPettyCashChargeDtl> chargeEntities =
-                    glPettyCashChargeDtlRepository.findByTransactionPoid(header.getTransactionPoid());
-            List<GLPettyCashItemDtl> itemEntities =
-                    glPettyCashItemDtlRepository.findByTransactionPoid(header.getTransactionPoid());
+            // Capture request-scoped values up front: the parallel tasks below run on
+            // worker threads where the ThreadLocal UserContext is not available.
+            final Long transPoid = header.getTransactionPoid();
+            final Long groupPoid = header.getGroupPoid();
+            final Long companyPoid = header.getCompanyPoid();
+            final Long userPoid = UserContext.getUserPoid();
+
+            // Independent read-only work runs concurrently: the three detail-list
+            // queries and the two breakup stored-procedure calls have no data
+            // dependency on one another.
+            CompletableFuture<List<GlPettyCashPaymentDtl>> paymentFuture = CompletableFuture.supplyAsync(
+                    () -> glPettyCashPaymentDtlRepository.findByTransactionPoid(transPoid), applicationTaskExecutor);
+            CompletableFuture<List<GlPettyCashChargeDtl>> chargeFuture = CompletableFuture.supplyAsync(
+                    () -> glPettyCashChargeDtlRepository.findByTransactionPoid(transPoid), applicationTaskExecutor);
+            CompletableFuture<List<GLPettyCashItemDtl>> itemFuture = CompletableFuture.supplyAsync(
+                    () -> glPettyCashItemDtlRepository.findByTransactionPoid(transPoid), applicationTaskExecutor);
+            CompletableFuture<GlVoucherLoadBillwiseBreakupResponseDto> billwiseFuture = CompletableFuture.supplyAsync(
+                    () -> billwiseBreakupService.loadBillwiseBreakup(groupPoid, companyPoid, documentId, transPoid),
+                    applicationTaskExecutor);
+            CompletableFuture<GlVoucherCostCenterBreakupResponseDto> costCenterFuture = CompletableFuture.supplyAsync(
+                    () -> costCenterBreakupService.loadCostCenterData(documentId, transPoid, groupPoid, companyPoid, userPoid),
+                    applicationTaskExecutor);
+
+            List<GlPettyCashPaymentDtl> paymentEntities = paymentFuture.join();
+            List<GlPettyCashChargeDtl> chargeEntities = chargeFuture.join();
+            List<GLPettyCashItemDtl> itemEntities = itemFuture.join();
 
             // Collect unique poids across all detail lists
             Set<Long> glPoids = new HashSet<>();
@@ -1262,16 +1277,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             List<GlPettyCashPaymentDtlResponseDto> paymentDtls =
                     mapPaymentResponse(paymentEntities, glMap, chargeMap, taxMap, supplierMap, companyLovMap);
 
-            Long transPoid = header.getTransactionPoid();
-            Long groupPoid = header.getGroupPoid();
-            Long companyPoid = header.getCompanyPoid();
-            Long userPoid = UserContext.getUserPoid();
-
-            GlVoucherLoadBillwiseBreakupResponseDto billwiseResponse =
-                    billwiseBreakupService.loadBillwiseBreakup(groupPoid, companyPoid, documentId, transPoid);
-
-            GlVoucherCostCenterBreakupResponseDto costCenterResponse =
-                    costCenterBreakupService.loadCostCenterData(documentId, transPoid, groupPoid, companyPoid, userPoid);
+            GlVoucherLoadBillwiseBreakupResponseDto billwiseResponse = billwiseFuture.join();
+            GlVoucherCostCenterBreakupResponseDto costCenterResponse = costCenterFuture.join();
 
             populateBillwiseCostCenter(paymentDtls, billwiseResponse, costCenterResponse);
 
@@ -1282,6 +1289,9 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
             return mapToResponseDto(header, paymentDtls, chargeDtls, itemDtls);
 
+        } catch (CompletionException e) {
+            Throwable cause = e.getCause() != null ? e.getCause() : e;
+            throw new ValidationException("Failed to load Petty Cash details: " + cause.getMessage());
         } catch (Exception e) {
 
             throw new ValidationException("Failed to load Petty Cash details: " + e.getMessage());
@@ -3465,6 +3475,43 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
     private void addInfoMessage(PettyCashResponseDto response, String message) {
         if (response.getInfoMessages() == null) response.setInfoMessages(new ArrayList<>());
         response.getInfoMessages().add(message);
+    }
+
+    /**
+     * Writes the collected child-row audit logs off the request thread, after the transaction
+     * commits (so rolled-back rows are never logged). Each entry is a separate stored-proc call
+     * that opens its own connection, so doing N of them inline was a per-row hotspot.
+     */
+    private void scheduleAsyncChildLogging(List<String> childLogDetails, String docId, String docKeyPoid) {
+        if (childLogDetails == null || childLogDetails.isEmpty()) return;
+        // Capture the auth context now: createLogSummaryEntry reads userPoid + timezone from the
+        // ThreadLocal UserContext, which is empty on the worker thread.
+        final CustomAuthDetails auth = UserContext.getCurrentUser();
+        final List<String> details = new ArrayList<>(childLogDetails);
+        Runnable submit = () -> applicationTaskExecutor.execute(() -> writeChildLogs(auth, docId, docKeyPoid, details));
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    submit.run();
+                }
+            });
+        } else {
+            submit.run();
+        }
+    }
+
+    private void writeChildLogs(CustomAuthDetails auth, String docId, String docKeyPoid, List<String> details) {
+        try {
+            UserContext.setCurrentUser(auth);
+            for (String detail : details) {
+                loggingService.createLogSummaryEntry(docId, docKeyPoid, detail);
+            }
+        } catch (Exception e) {
+            log.error("Async child audit logging failed for docKey {}: {}", docKeyPoid, e.getMessage(), e);
+        } finally {
+            UserContext.clear();
+        }
     }
 
 }

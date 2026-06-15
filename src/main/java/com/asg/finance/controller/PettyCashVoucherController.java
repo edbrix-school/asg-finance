@@ -87,10 +87,8 @@ public class PettyCashVoucherController {
     ) {
         try {
             PettyCashResponseDto response = pettyCashVoucherService.createPettyCash(request, UserContext.getDocumentId());
-            
-            String key = response.getTransactionPoid().toString();
-
-            return success("Petty cash voucher created successfully", response);
+            return successWithWarnings("Petty cash voucher created successfully", response,
+                    response.getWarnings(), response.getInfoMessages());
         } catch (ValidationException ex) {
             return internalServerError(ex.getMessage());
         } catch (Exception e) {
@@ -158,10 +156,8 @@ public class PettyCashVoucherController {
                     requestDto,
                     UserContext.getDocumentId()
             );
-            
-            String key = transactionPoid.toString();
-
-            return success("Petty Cash record updated successfully", response);
+            return successWithWarnings("Petty Cash record updated successfully", response,
+                    response.getWarnings(), response.getInfoMessages());
 
         } catch (ValidationException ex) {
             return internalServerError(ex.getMessage());

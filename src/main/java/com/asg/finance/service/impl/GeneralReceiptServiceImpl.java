@@ -965,16 +965,8 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         String billwiseFlag = getGlBillwiseYn(creditGL.getGlPoid());
         boolean isBillwiseEnabled = "Y".equalsIgnoreCase(billwiseFlag);
 
-        if (isBillwiseEnabled) {
-            BigDecimal billTotal = BigDecimal.ZERO;
-            billTotal = activeBills.stream()
-                    .map(GeneralReceiptBillDto::getAmount)
-                    .filter(amount -> amount != null)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-            if (billTotal.compareTo(BigDecimal.ZERO) == 0) {
-                throw new ValidationException("Zero values found in Billwise total Amount... , please check");
-            }
+        if (isBillwiseEnabled && activeBills.isEmpty()) {
+            throw new ValidationException("Zero values found in Billwise total Amount... , please check");
         }
 
         if (!activeBills.isEmpty()) {
@@ -1177,8 +1169,17 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
     }
 
     private void validatePayments(List<GeneralReceiptPaymentDto> payments, GeneralReceiptHeaderDto header) {
-        if (payments == null || payments.isEmpty()) {
-            return;
+        // Validate payment details are added
+        List<GeneralReceiptPaymentDto> activePayments = new ArrayList<>();
+        if (payments != null) {
+            activePayments = payments.stream()
+                    .filter(payment -> payment.getActionType() == null ||
+                            !"ISDELETED".equalsIgnoreCase(payment.getActionType()))
+                    .collect(Collectors.toList());
+        }
+
+        if (activePayments.isEmpty()) {
+            throw new ValidationException("Zero values found in Total Payment Amount... ,please check");
         }
 
         BigDecimal paymentTotal = BigDecimal.ZERO;

@@ -1,7 +1,9 @@
 package com.asg.finance.dto;
 
 import com.asg.common.lib.dto.LovGetListDto;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -39,7 +41,9 @@ public class BankDepositVoucherDtlDto {
 
     private String remarks;
     private String selected;
-    private Integer chqSeqNum;
+    @NotBlank(message = "Cheque sequence number is required")
+    @Pattern(regexp = "\\d+", message = "Cheque sequence number must contain only numbers")
+    private String chqSeqNum;
     private Long paymentMainPoid;
     private String refDocId;
 }

@@ -325,6 +325,8 @@ public class PettyCashPaymentVoucherCustomRepositoryImpl implements PettyCashPay
             StringBuilder refTypeOut,
             StringBuilder refPoidOut
     ) {
+        log.info("[OldJobRef] PROC_GL_JOB_REL_OLD_VALUES inputs: groupPoid={} userPoid={} companyPoid={} docId='{}' transactionPoid='{}'",
+                loginGroupPoid, loginUserPoid, loginCompanyPoid, docId, transactionPoid);
         try {
             // Create stored procedure query for PROC_GL_JOB_REL_OLD_VALUES
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("PROC_GL_JOB_REL_OLD_VALUES");
@@ -353,6 +355,7 @@ public class PettyCashPaymentVoucherCustomRepositoryImpl implements PettyCashPay
             // Fetch output values
             String refType = (String) query.getOutputParameterValue("P_REF_TYPE");
             String refPoid = (String) query.getOutputParameterValue("P_REF_POID");
+            log.info("[OldJobRef] PROC_GL_JOB_REL_OLD_VALUES raw outputs: P_REF_TYPE='{}' P_REF_POID='{}'", refType, refPoid);
 
             // Append output to provided StringBuilders
             refTypeOut.append(refType != null ? refType : "");

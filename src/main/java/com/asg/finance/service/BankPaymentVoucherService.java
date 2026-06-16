@@ -50,4 +50,6 @@ public interface BankPaymentVoucherService {
     byte[] printchequeLeaf(Long transactionPoid) throws Exception;
 
     Map<String, Object> getBankBeneficiary(String documentId, Long transactionPoid, Long payGlPoid);
+
+    Map<String, String> updateSuppressValidation(Long transactionPoid, BankPaymentSuppressRequest request);
 }

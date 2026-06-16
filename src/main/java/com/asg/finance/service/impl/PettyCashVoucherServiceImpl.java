@@ -42,6 +42,7 @@ import com.asg.finance.repository.GlPettyCashPaymentGrnDtlRepository;
 import com.asg.finance.repository.*;
 import com.asg.finance.repository.master.ShipChargeRepository;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.security.model.CustomAuthDetails;
 import com.asg.common.lib.utility.PaginationUtil;
 import com.asg.finance.service.BillwiseBreakupService;
 import com.asg.finance.service.CostCenterBreakupService;
@@ -60,6 +61,8 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import javax.sql.DataSource;
 import java.math.BigDecimal;
@@ -70,6 +73,7 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.Optional;
+import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
 @Service
@@ -107,6 +111,9 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
     private final LoggingService loggingService;
     private final GlobalParameterService globalParameterService;
     private final ApplicationEventPublisher eventPublisher;
+
+    // Spring Boot's auto-configured executor (resolved by bean name).
+    private final Executor applicationTaskExecutor;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -181,11 +188,11 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             );
 
 
-            List<GlPettyCashPaymentDtlResponseDto> paymentDtls = new ArrayList<>();
-            List<GlPettyCashChargeDtlResponseDto> chargeDtls = new ArrayList<>();
-            List<GLPettyCashItemDtlResponseDto> itemDtls = new ArrayList<>();
-
             String refType = requestDto.getRefType();
+            // Child-row audit logs are collected here and flushed asynchronously after commit.
+            // Each createLogSummaryEntry opens its own connection + stored-proc call, so writing
+            // N of them inline on the request thread was a hotspot.
+            List<String> childLogDetails = new ArrayList<>();
             switch (refType.toUpperCase()) {
                 case "GENERAL" -> {
                     List<GlPettyCashPaymentDtlRequestDto> activePmt = getActivePaymentDtls(requestDto.getGlPettyCashPaymentDtlRequestDtos());
@@ -195,13 +202,10 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     List<GlPettyCashPaymentDtlRequestDto> effectiveDtls = ensurePettyCashGlAndValidateTally(requestDto);
                     var savedPaymentDtls = glPettyCashPaymentDtlRepository.saveAll(
                             mapPaymentDtlsFromList(effectiveDtls, hdrPoid));
-                    paymentDtls = mapPaymentResponse(savedPaymentDtls);
 
                     // Log child record creation
-                    savedPaymentDtls.forEach(dtl -> {
-                        String logDetail = String.format("Row Created on Payment Detail with detRowId: %s", dtl.getDetRowId());
-                        loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
-                    });
+                    savedPaymentDtls.forEach(dtl ->
+                            childLogDetails.add(String.format("Row Created on Payment Detail with detRowId: %s", dtl.getDetRowId())));
 
                     // BILLWISE BREAKUP INSERTION FOR EACH GL ROW
                     List<BillwiseBreakupRequestDto> billwiseList = new ArrayList<>();
@@ -275,11 +279,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     List<GlPettyCashPaymentDtlRequestDto> effectiveDtls = ensurePettyCashGlAndValidateTally(requestDto);
                     var savedPaymentDtls = glPettyCashPaymentDtlRepository.saveAll(
                             mapPaymentDtlsFromList(effectiveDtls, hdrPoid));
-                    paymentDtls = mapPaymentResponse(savedPaymentDtls);
-                    savedPaymentDtls.forEach(dtl -> {
-                        String logDetail = String.format("Row Created on Payment Detail with detRowId: %s", dtl.getDetRowId());
-                        loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
-                    });
+                    savedPaymentDtls.forEach(dtl ->
+                            childLogDetails.add(String.format("Row Created on Payment Detail with detRowId: %s", dtl.getDetRowId())));
                 }
                 case "SUPPLIER" -> {
                     if (getActivePaymentDtls(requestDto.getGlPettyCashPaymentDtlRequestDtos()).isEmpty()) {
@@ -288,11 +289,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     validateSupplierCustomerGlMatch(requestDto, "SUPPLIER");
                     var savedPaymentDtls = glPettyCashPaymentDtlRepository.saveAll(
                             mapPaymentDtlsFromList(requestDto.getGlPettyCashPaymentDtlRequestDtos(), hdrPoid));
-                    paymentDtls = mapPaymentResponse(savedPaymentDtls);
-                    savedPaymentDtls.forEach(dtl -> {
-                        String logDetail = String.format("Row Created on Payment Detail with detRowId: %s", dtl.getDetRowId());
-                        loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
-                    });
+                    savedPaymentDtls.forEach(dtl ->
+                            childLogDetails.add(String.format("Row Created on Payment Detail with detRowId: %s", dtl.getDetRowId())));
                 }
                 case "CUSTOMER" -> {
                     if (getActivePaymentDtls(requestDto.getGlPettyCashPaymentDtlRequestDtos()).isEmpty()) {
@@ -301,29 +299,20 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     validateSupplierCustomerGlMatch(requestDto, "CUSTOMER");
                     var savedPaymentDtls = glPettyCashPaymentDtlRepository.saveAll(
                             mapPaymentDtlsFromList(requestDto.getGlPettyCashPaymentDtlRequestDtos(), hdrPoid));
-                    paymentDtls = mapPaymentResponse(savedPaymentDtls);
-                    savedPaymentDtls.forEach(dtl -> {
-                        String logDetail = String.format("Row Created on Payment Detail with detRowId: %s", dtl.getDetRowId());
-                        loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
-                    });
+                    savedPaymentDtls.forEach(dtl ->
+                            childLogDetails.add(String.format("Row Created on Payment Detail with detRowId: %s", dtl.getDetRowId())));
                 }
                 case "FF JOBS", "FDA JOBS" -> {
                     validateAmountVsChargeTotal(requestDto);
                     var savedChargeDtls = glPettyCashChargeDtlRepository.saveAll(mapChargeDtls(requestDto, hdrPoid));
-                    chargeDtls = mapChargeResponse(savedChargeDtls);
-                    savedChargeDtls.forEach(dtl -> {
-                        String logDetail = String.format("Row Created on Charge Detail with detRowId: %s", dtl.getDetRowId());
-                        loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
-                    });
+                    savedChargeDtls.forEach(dtl ->
+                            childLogDetails.add(String.format("Row Created on Charge Detail with detRowId: %s", dtl.getDetRowId())));
                 }
                 case "MTA RFQ", "GENERAL PO" -> {
                     validateAmountVsItemTotal(requestDto);
                     var savedItemDtls = glPettyCashItemDtlRepository.saveAll(mapItemDtls(requestDto, hdrPoid));
-                    itemDtls = mapItemResponse(savedItemDtls);
-                    savedItemDtls.forEach(dtl -> {
-                        String logDetail = String.format("Row Created on Item Detail with detRowId: %s", dtl.getDetRowId());
-                        loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
-                    });
+                    savedItemDtls.forEach(dtl ->
+                            childLogDetails.add(String.format("Row Created on Item Detail with detRowId: %s", dtl.getDetRowId())));
                 }
                 case "GRN_JOBS" -> {
                     validateAmountVsGrnTotal(requestDto);
@@ -332,40 +321,36 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                         throw new ValidationException("At least one GRN detail row is required.");
                     }
                     var savedGrnDtls = glPettyCashPaymentGrnDtlRepository.saveAll(mapGrnDtls(activeGrnDtls, hdrPoid));
-                    savedGrnDtls.forEach(dtl -> {
-                        String logDetail = String.format("Row Created on GRN Detail with detRowId: %s", dtl.getDetRowId());
-                        loggingService.createLogSummaryEntry(documentId, hdrPoid.toString(), logDetail);
-                    });
+                    savedGrnDtls.forEach(dtl ->
+                            childLogDetails.add(String.format("Row Created on GRN Detail with detRowId: %s", dtl.getDetRowId())));
                 }
                 default -> throw new IllegalArgumentException("Invalid RefType: " + refType);
-            }
-
-            // Load billwise and cost center breakup data for response
-            if (refType.equalsIgnoreCase("GENERAL") && !paymentDtls.isEmpty()) {
-                Long transPoid = savedHeader.getTransactionPoid();
-                Long groupPoid = savedHeader.getGroupPoid();
-                Long companyPoid = savedHeader.getCompanyPoid();
-                Long userPoid = UserContext.getUserPoid();
-
-                GlVoucherLoadBillwiseBreakupResponseDto billwiseResponse =
-                        billwiseBreakupService.loadBillwiseBreakup(groupPoid, companyPoid, documentId, transPoid);
-
-                GlVoucherCostCenterBreakupResponseDto costCenterResponse =
-                        costCenterBreakupService.loadCostCenterData(documentId, transPoid, groupPoid, companyPoid, userPoid);
-
-                // Populate billwise and cost center breakup in payment details
-                populateBillwiseCostCenter(paymentDtls, billwiseResponse, costCenterResponse);
             }
 
             entityManager.flush();
             String capturedDocId = hasText(UserContext.getDocumentId()) ? UserContext.getDocumentId()
                     : (hasText(requestDto.getDocId()) ? requestDto.getDocId() : "400-101");
-            eventPublisher.publishEvent(new PettyCashVoucherSaveEvent(
-                    this, requestDto, hdrPoid,
-                    UserContext.getGroupPoid(), UserContext.getCompanyPoid(),
-                    UserContext.getUserPoid(), capturedDocId,
-                    null, null));
-            return mapToResponseDto(savedHeader, paymentDtls, chargeDtls, itemDtls);
+            Long capturedGroupPoid = UserContext.getGroupPoid();
+            Long capturedCompanyPoid = UserContext.getCompanyPoid();
+            Long capturedUserPoid = UserContext.getUserPoid();
+
+            // Flush child-row audit logs off the request thread, after the transaction commits.
+            scheduleAsyncChildLogging(childLogDetails, capturedDocId, hdrPoid.toString());
+
+            PettyCashResponseDto response = mapToResponseDtoSimple(savedHeader);
+            if (TransactionSynchronizationManager.isSynchronizationActive()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        runAfterSaveJobCostUpdates(response, requestDto, hdrPoid, capturedDocId,
+                                capturedGroupPoid, capturedCompanyPoid, capturedUserPoid, null, null);
+                    }
+                });
+            } else {
+                runAfterSaveJobCostUpdates(response, requestDto, hdrPoid, capturedDocId,
+                        capturedGroupPoid, capturedCompanyPoid, capturedUserPoid, null, null);
+            }
+            return response;
 
         } catch (ValidationException | EntityNotFoundException e) {
             throw e;
@@ -397,11 +382,18 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             Long userPoid = UserContext.getUserPoid();
 
             //  Step 2: Get old reference type and POID
+            // PROC_GL_JOB_REL_OLD_VALUES needs the real docId to locate the existing record.
+            // requestDto.getDocId() is typically null on update (docId is resolved from context,
+            // not the request body), which made the proc return null and silently skip the
+            // old-ref cost reversal. Resolve the docId the same way the rest of this flow does.
+            String oldRefDocId = hasText(documentId) ? documentId
+                    : (hasText(UserContext.getDocumentId()) ? UserContext.getDocumentId()
+                    : (hasText(requestDto.getDocId()) ? requestDto.getDocId() : "400-101"));
             pettyCashPaymentVoucherCustomRepository.getOldJobReferences(
                     userGroupPoid,
                     userPoid,
                     userCompanyPoid,
-                    requestDto.getDocId(),
+                    oldRefDocId,
                     String.valueOf(transactionPoid),
                     oldRefType,
                     oldRefPoid
@@ -469,10 +461,6 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             //  Step 5: Merge & save child details partially
             String refType = updatedHdr.getRefType().toUpperCase();
 
-            List<GlPettyCashPaymentDtlResponseDto> paymentDtls = new ArrayList<>();
-            List<GlPettyCashChargeDtlResponseDto> chargeDtls = new ArrayList<>();
-            List<GLPettyCashItemDtlResponseDto> itemDtls = new ArrayList<>();
-
             switch (refType) {
                 case "GENERAL" -> {
                     if (getActivePaymentDtls(requestDto.getGlPettyCashPaymentDtlRequestDtos()).isEmpty()) {
@@ -480,9 +468,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     }
                     var existingDtls = glPettyCashPaymentDtlRepository.findByTransactionPoid(transactionPoid);
                     List<GlPettyCashPaymentDtlRequestDto> effectiveDtls = ensurePettyCashGlAndValidateTally(requestDto, existingDtls);
-                    var merged = mergePaymentDtls(existingDtls, effectiveDtls, transactionPoid);
-                    glPettyCashPaymentDtlRepository.saveAll(merged);
-                    paymentDtls = mapPaymentResponse(merged);
+                    // mergePaymentDtls persists (delete + saveAll) internally.
+                    mergePaymentDtls(existingDtls, effectiveDtls, transactionPoid);
 
                     // UPDATE BILLWISE BREAKUP ENTRIES
                     List<BillwiseBreakupRequestDto> billwiseList = new ArrayList<>();
@@ -559,9 +546,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     }
                     var existingDtls = glPettyCashPaymentDtlRepository.findByTransactionPoid(transactionPoid);
                     List<GlPettyCashPaymentDtlRequestDto> effectiveDtls = ensurePettyCashGlAndValidateTally(requestDto, existingDtls);
-                    var merged = mergePaymentDtls(existingDtls, effectiveDtls, transactionPoid);
-                    glPettyCashPaymentDtlRepository.saveAll(merged);
-                    paymentDtls = mapPaymentResponse(merged);
+                    mergePaymentDtls(existingDtls, effectiveDtls, transactionPoid);
                 }
                 case "SUPPLIER" -> {
                     if (getActivePaymentDtls(requestDto.getGlPettyCashPaymentDtlRequestDtos()).isEmpty()) {
@@ -569,9 +554,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     }
                     validateSupplierCustomerGlMatch(requestDto, "SUPPLIER");
                     var existingDtls = glPettyCashPaymentDtlRepository.findByTransactionPoid(transactionPoid);
-                    var merged = mergePaymentDtls(existingDtls, requestDto.getGlPettyCashPaymentDtlRequestDtos(), transactionPoid);
-                    glPettyCashPaymentDtlRepository.saveAll(merged);
-                    paymentDtls = mapPaymentResponse(merged);
+                    mergePaymentDtls(existingDtls, requestDto.getGlPettyCashPaymentDtlRequestDtos(), transactionPoid);
                 }
                 case "CUSTOMER" -> {
                     if (getActivePaymentDtls(requestDto.getGlPettyCashPaymentDtlRequestDtos()).isEmpty()) {
@@ -579,61 +562,50 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     }
                     validateSupplierCustomerGlMatch(requestDto, "CUSTOMER");
                     var existingDtls = glPettyCashPaymentDtlRepository.findByTransactionPoid(transactionPoid);
-                    var merged = mergePaymentDtls(existingDtls, requestDto.getGlPettyCashPaymentDtlRequestDtos(), transactionPoid);
-                    glPettyCashPaymentDtlRepository.saveAll(merged);
-                    paymentDtls = mapPaymentResponse(merged);
+                    mergePaymentDtls(existingDtls, requestDto.getGlPettyCashPaymentDtlRequestDtos(), transactionPoid);
                 }
                 case "FF JOBS", "FDA JOBS" -> {
                     validateAmountVsChargeTotal(requestDto);
                     var existingDtls = glPettyCashChargeDtlRepository.findByTransactionPoid(transactionPoid);
-                    var merged = mergeChargeDtls(existingDtls, requestDto, transactionPoid);
-                    glPettyCashChargeDtlRepository.saveAll(merged);
-                    chargeDtls = mapChargeResponse(merged);
+                    mergeChargeDtls(existingDtls, requestDto, transactionPoid);
                 }
                 case "MTA RFQ", "GENERAL PO" -> {
                     validateAmountVsItemTotal(requestDto);
                     var existingDtls = glPettyCashItemDtlRepository.findByTransactionPoid(transactionPoid);
-                    var merged = mergeItemDtls(existingDtls, requestDto, transactionPoid);
-                    glPettyCashItemDtlRepository.saveAll(merged);
-                    itemDtls = mapItemResponse(merged);
+                    mergeItemDtls(existingDtls, requestDto, transactionPoid);
                 }
                 case "GRN_JOBS" -> {
                     validateAmountVsGrnTotal(requestDto);
                     var existingGrnDtls = glPettyCashPaymentGrnDtlRepository.findByTransactionPoid(transactionPoid);
-                    var mergedGrn = mergeGrnDtls(existingGrnDtls, requestDto, transactionPoid);
-                    glPettyCashPaymentGrnDtlRepository.saveAll(mergedGrn);
+                    mergeGrnDtls(existingGrnDtls, requestDto, transactionPoid);
                 }
                 default -> throw new IllegalArgumentException("Invalid RefType: " + refType);
             }
 
             String updateDocId = hasText(UserContext.getDocumentId()) ? UserContext.getDocumentId()
                     : (hasText(requestDto.getDocId()) ? requestDto.getDocId() : "400-101");
-            eventPublisher.publishEvent(new PettyCashVoucherSaveEvent(
-                    this, requestDto, transactionPoid,
-                    UserContext.getGroupPoid(), UserContext.getCompanyPoid(),
-                    UserContext.getUserPoid(), updateDocId,
-                    oldRefType.toString(), oldRefPoid.toString()));
-
-            //  Step 7: Load billwise and cost center breakup data for response
-            if (refType.equalsIgnoreCase("GENERAL") && !paymentDtls.isEmpty()) {
-                Long transPoid = updatedHdr.getTransactionPoid();
-                Long groupPoid = updatedHdr.getGroupPoid();
-                Long companyPoid = updatedHdr.getCompanyPoid();
-                // userPoid is already declared above
-
-                GlVoucherLoadBillwiseBreakupResponseDto billwiseResponse =
-                        billwiseBreakupService.loadBillwiseBreakup(groupPoid, companyPoid, documentId, transPoid);
-
-                GlVoucherCostCenterBreakupResponseDto costCenterResponse =
-                        costCenterBreakupService.loadCostCenterData(documentId, transPoid, groupPoid, companyPoid, userPoid);
-
-                // Populate billwise and cost center breakup in payment details
-                populateBillwiseCostCenter(paymentDtls, billwiseResponse, costCenterResponse);
-            }
-
-            //  Step 8: Return the final response DTO
+            Long capturedGroupPoid = UserContext.getGroupPoid();
+            Long capturedCompanyPoid = UserContext.getCompanyPoid();
+            Long capturedUserPoid = UserContext.getUserPoid();
+            String capturedOldRefType = oldRefType.toString();
+            String capturedOldRefPoid = oldRefPoid.toString();
             entityManager.flush();
-            return mapToResponseDto(updatedHdr, paymentDtls, chargeDtls, itemDtls);
+            PettyCashResponseDto response = mapToResponseDtoSimple(updatedHdr);
+            if (TransactionSynchronizationManager.isSynchronizationActive()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        runAfterSaveJobCostUpdates(response, requestDto, transactionPoid, updateDocId,
+                                capturedGroupPoid, capturedCompanyPoid, capturedUserPoid,
+                                capturedOldRefType, capturedOldRefPoid);
+                    }
+                });
+            } else {
+                runAfterSaveJobCostUpdates(response, requestDto, transactionPoid, updateDocId,
+                        capturedGroupPoid, capturedCompanyPoid, capturedUserPoid,
+                        capturedOldRefType, capturedOldRefPoid);
+            }
+            return response;
 
         } catch (ValidationException | EntityNotFoundException e) {
             throw e;
@@ -1236,12 +1208,18 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
 
             log.info("Header retrieved successfully: {}", header.getDocRef());
 
+            Long transPoid = header.getTransactionPoid();
+
+            // All reads run sequentially on this transaction-bound thread. Parallelizing them
+            // caused connection amplification (one request grabbing several pooled connections)
+            // and, under load, starved/timed-out the transaction so the breakup REF_CURSOR proc
+            // failed with "OUT parameter not available: OUTDATA".
             List<GlPettyCashPaymentDtl> paymentEntities =
-                    glPettyCashPaymentDtlRepository.findByTransactionPoid(header.getTransactionPoid());
+                    glPettyCashPaymentDtlRepository.findByTransactionPoid(transPoid);
             List<GlPettyCashChargeDtl> chargeEntities =
-                    glPettyCashChargeDtlRepository.findByTransactionPoid(header.getTransactionPoid());
+                    glPettyCashChargeDtlRepository.findByTransactionPoid(transPoid);
             List<GLPettyCashItemDtl> itemEntities =
-                    glPettyCashItemDtlRepository.findByTransactionPoid(header.getTransactionPoid());
+                    glPettyCashItemDtlRepository.findByTransactionPoid(transPoid);
 
             // Collect unique poids across all detail lists
             Set<Long> glPoids = new HashSet<>();
@@ -1290,14 +1268,13 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
             List<GlPettyCashPaymentDtlResponseDto> paymentDtls =
                     mapPaymentResponse(paymentEntities, glMap, chargeMap, taxMap, supplierMap, companyLovMap);
 
-            Long transPoid = header.getTransactionPoid();
+            // Breakup procs run synchronously on the transaction-bound thread (shared
+            // EntityManager + REF_CURSOR is not safe to run on a worker thread).
             Long groupPoid = header.getGroupPoid();
             Long companyPoid = header.getCompanyPoid();
             Long userPoid = UserContext.getUserPoid();
-
             GlVoucherLoadBillwiseBreakupResponseDto billwiseResponse =
                     billwiseBreakupService.loadBillwiseBreakup(groupPoid, companyPoid, documentId, transPoid);
-
             GlVoucherCostCenterBreakupResponseDto costCenterResponse =
                     costCenterBreakupService.loadCostCenterData(documentId, transPoid, groupPoid, companyPoid, userPoid);
 
@@ -3292,6 +3269,54 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                 .toList();
     }
 
+    private PettyCashResponseDto mapToResponseDtoSimple(GlPettyCashPaymentHdr savedHeader) {
+        return PettyCashResponseDto.builder()
+                .transactionPoid(savedHeader.getTransactionPoid())
+                .docRef(savedHeader.getDocRef())
+                .transactionDate(savedHeader.getTransactionDate())
+                .groupPoid(savedHeader.getGroupPoid())
+                .companyPoid(savedHeader.getCompanyPoid())
+                .currencyCode(savedHeader.getCurrencyCode())
+                .currencyRate(scale3(savedHeader.getCurrencyRate()))
+                .pettyCashGlPoid(savedHeader.getPettyCashGlPoid())
+                .balance(scale3(savedHeader.getBalance()))
+                .amount(scale3(savedHeader.getAmount()))
+                .payingTo(savedHeader.getPayingTo())
+                .narration(savedHeader.getNarration())
+                .advance(savedHeader.getAdvance())
+                .refType(savedHeader.getRefType())
+                .fdaRef(savedHeader.getFdaRef())
+                .ffRef(savedHeader.getFfRef())
+                .ffRefs(savedHeader.getFfRef() != null && !savedHeader.getFfRef().isBlank()
+                        ? Arrays.asList(savedHeader.getFfRef().split(";"))
+                        : null)
+                .settledDate(savedHeader.getSettledDate())
+                .remarks(savedHeader.getRemarks())
+                .settledTotal(scale3(savedHeader.getSettledTotal()))
+                .createdBy(savedHeader.getCreatedBy())
+                .createdDate(savedHeader.getCreatedDate())
+                .lastModifiedBy(savedHeader.getLastModifiedBy())
+                .lastModifiedDate(savedHeader.getLastModifiedDate())
+                .deleted(savedHeader.getDeleted())
+                .status(savedHeader.getStatus())
+                .grandTotal(scale3(savedHeader.getGrandTotal()))
+                .mtaRef(savedHeader.getMtaRef())
+                .multiCompany(savedHeader.getMultiCompany())
+                .poRef(savedHeader.getPoRef())
+                .salesQtnRef(savedHeader.getSalesQtnRef())
+                .crTotal(scale3(savedHeader.getCrTotal()))
+                .drTotal(scale3(savedHeader.getDrTotal()))
+                .roundingAmount(scale3(savedHeader.getRoundingAmount()))
+                .grnSupplierPoid(savedHeader.getGrnSupplierPoid())
+                .supplierGlPoid(savedHeader.getSupplierGlPoid())
+                .customerGlPoid(savedHeader.getCustomerGlPoid())
+                .advancePettyCashPoid(savedHeader.getAdvancePettyCashPoid())
+                .advanceStatus(savedHeader.getAdvanceStatus())
+                .advanceAmount(scale3(savedHeader.getAdvanceAmount()))
+                .companyDivPoid(savedHeader.getCompanyDivPoid())
+                .build();
+    }
+
     private List<GLPettyCashItemDtlResponseDto> mapItemResponse(
             List<GLPettyCashItemDtl> savedDtls,
             Map<Long, StockMasterEntity> stockMap,
@@ -3355,6 +3380,153 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     return responseDto;
                 })
                 .toList();
+    }
+
+    private void runAfterSaveJobCostUpdates(PettyCashResponseDto response,
+                                             PettyCashRequestBase requestDto,
+                                             Long transactionPoid,
+                                             String docId,
+                                             Long groupPoid,
+                                             Long companyPoid,
+                                             Long userPoid,
+                                             String oldRefType,
+                                             String oldRefPoid) {
+        String newRefType = normalizeRefType(requestDto.getRefType());
+        log.info("[AfterSaveJobCost] txnPoid={} oldRefType='{}' oldRefPoid='{}' newRefType='{}'",
+                transactionPoid, oldRefType, oldRefPoid, newRefType);
+
+        if (hasText(oldRefType) && hasText(oldRefPoid)) {
+            String normalizedOldRefType = normalizeRefType(oldRefType);
+            String newRefForOldType = resolveRefPoidByType(requestDto, normalizedOldRefType);
+            boolean referenceChanged = !normalizedOldRefType.equals(newRefType) ||
+                    !oldRefPoid.trim().equals(newRefForOldType == null ? "" : newRefForOldType.trim());
+            log.info("[AfterSaveJobCost] OLD-ref check: normalizedOldRefType='{}' newRefForOldType='{}' referenceChanged={}",
+                    normalizedOldRefType, newRefForOldType, referenceChanged);
+            if (referenceChanged) {
+                log.info("[AfterSaveJobCost] Invoking OLD-ref proc: refType='{}' refPoid='{}'",
+                        normalizedOldRefType, oldRefPoid);
+                executeJobCostProc(normalizedOldRefType, oldRefPoid, transactionPoid,
+                        groupPoid, companyPoid, userPoid, response);
+            } else {
+                log.info("[AfterSaveJobCost] Skipping OLD-ref proc (reference unchanged)");
+            }
+        } else {
+            log.info("[AfterSaveJobCost] Skipping OLD-ref block (no old refType/refPoid — create path or missing old values)");
+        }
+
+        String refPoid = resolveRefPoidByType(requestDto, newRefType);
+        log.info("[AfterSaveJobCost] NEW-ref resolved: newRefType='{}' refPoid='{}'", newRefType, refPoid);
+        if (hasText(newRefType) && hasText(refPoid)) {
+            log.info("[AfterSaveJobCost] Invoking NEW-ref proc: refType='{}' refPoid='{}'", newRefType, refPoid);
+            executeJobCostProc(newRefType, refPoid, transactionPoid,
+                    groupPoid, companyPoid, userPoid, response);
+        } else {
+            log.warn("[AfterSaveJobCost] Skipping NEW-ref proc — newRefType hasText={}, refPoid hasText={} (refPoid='{}'). "
+                            + "New refpoid proc will NOT run because the resolved ref is blank.",
+                    hasText(newRefType), hasText(refPoid), refPoid);
+        }
+
+        StringBuilder grnResult = new StringBuilder();
+        pettyCashPaymentVoucherCustomRepository.updateSalesGrnStatus(
+                groupPoid, companyPoid, userPoid, docId, transactionPoid, grnResult);
+        applyProcResultToResponse(response, "PROC_SALES_GRN_UPDATE_STATUS", grnResult);
+    }
+
+    private void executeJobCostProc(String refType, String refPoid, Long transactionPoid,
+                                     Long groupPoid, Long companyPoid, Long userPoid,
+                                     PettyCashResponseDto response) {
+        StringBuilder procResult = new StringBuilder();
+        String normalizedRefType = normalizeRefType(refType);
+        log.info("[JobCostProc] Executing job-cost proc for refType='{}' refPoid='{}' txnPoid={}",
+                normalizedRefType, refPoid, transactionPoid);
+        try {
+            switch (normalizedRefType) {
+                case "FF JOBS" -> {
+                    pettyCashPaymentVoucherCustomRepository.updateCostFF(
+                            groupPoid, companyPoid, userPoid, refPoid, transactionPoid, procResult);
+                    applyProcResultToResponse(response, "PROC_AP_PI_FF_UPDATE_COST", procResult);
+                }
+                case "FDA JOBS" -> {
+                    pettyCashPaymentVoucherCustomRepository.updateCostFDA(
+                            groupPoid, companyPoid, userPoid, refPoid, transactionPoid, procResult);
+                    applyProcResultToResponse(response, "PROC_AP_PI_FDA_UPDATE_COST", procResult);
+                }
+                case "MTA RFQ" -> {
+                    pettyCashPaymentVoucherCustomRepository.updateRfqPurchasePrice(
+                            groupPoid, companyPoid, userPoid, refPoid, procResult);
+                    applyProcResultToResponse(response, "PROC_RFQ_UPDATE_PURCHASE_PRICE", procResult);
+                }
+                case "GENERAL PO" -> {
+                    pettyCashPaymentVoucherCustomRepository.updatePurchaseOrderStatus(
+                            groupPoid, companyPoid, userPoid, refPoid, transactionPoid, procResult);
+                    applyProcResultToResponse(response, "PROC_AP_PO_UPDATE_STATUS", procResult);
+                }
+                // No job-cost proc for other ref types (e.g. GENERAL/SUPPLIER/CUSTOMER/GRN_JOBS).
+                default -> log.info("[JobCostProc] No job-cost proc mapped for refType='{}' — nothing to do", normalizedRefType);
+            }
+        } catch (Exception e) {
+            log.error("Job cost update failed for refType {} ref {}: {}", refType, refPoid, e.getMessage(), e);
+            addWarning(response, "Some error occurred while job cost update - " + e.getMessage());
+        }
+    }
+
+    private void applyProcResultToResponse(PettyCashResponseDto response, String procedureName, StringBuilder result) {
+        if (result == null || result.length() == 0) return;
+        String procResult = result.toString();
+        log.info("[{}] => {}", procedureName, procResult);
+        String message = procResult.contains(":") ? procResult.substring(procResult.indexOf(':') + 1).trim() : procResult.trim();
+        if (procResult.trim().toUpperCase(Locale.ROOT).startsWith("ERROR")) {
+            addWarning(response, message);
+        } else {
+            addInfoMessage(response, message);
+        }
+    }
+
+    private void addWarning(PettyCashResponseDto response, String warning) {
+        if (response.getWarnings() == null) response.setWarnings(new ArrayList<>());
+        response.getWarnings().add(warning);
+    }
+
+    private void addInfoMessage(PettyCashResponseDto response, String message) {
+        if (response.getInfoMessages() == null) response.setInfoMessages(new ArrayList<>());
+        response.getInfoMessages().add(message);
+    }
+
+    /**
+     * Writes the collected child-row audit logs off the request thread, after the transaction
+     * commits (so rolled-back rows are never logged). Each entry is a separate stored-proc call
+     * that opens its own connection, so doing N of them inline was a per-row hotspot.
+     */
+    private void scheduleAsyncChildLogging(List<String> childLogDetails, String docId, String docKeyPoid) {
+        if (childLogDetails == null || childLogDetails.isEmpty()) return;
+        // Capture the auth context now: createLogSummaryEntry reads userPoid + timezone from the
+        // ThreadLocal UserContext, which is empty on the worker thread.
+        final CustomAuthDetails auth = UserContext.getCurrentUser();
+        final List<String> details = new ArrayList<>(childLogDetails);
+        Runnable submit = () -> applicationTaskExecutor.execute(() -> writeChildLogs(auth, docId, docKeyPoid, details));
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    submit.run();
+                }
+            });
+        } else {
+            submit.run();
+        }
+    }
+
+    private void writeChildLogs(CustomAuthDetails auth, String docId, String docKeyPoid, List<String> details) {
+        try {
+            UserContext.setCurrentUser(auth);
+            for (String detail : details) {
+                loggingService.createLogSummaryEntry(docId, docKeyPoid, detail);
+            }
+        } catch (Exception e) {
+            log.error("Async child audit logging failed for docKey {}: {}", docKeyPoid, e.getMessage(), e);
+        } finally {
+            UserContext.clear();
+        }
     }
 
 }

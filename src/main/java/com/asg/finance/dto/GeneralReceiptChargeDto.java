@@ -50,7 +50,8 @@ public class GeneralReceiptChargeDto {
     @Schema(description = "Total amount (amount + tax)", example = "2.625")
     private BigDecimal totalAmount;
 
-    @Schema(description = "Cost center POID", example = "1001")
+    @NotBlank(message = "Cost center is required")
+    @Schema(description = "Cost center POID", example = "1001", required = true)
     private String costCenter;
 
     @Schema(description = "Cost center details (code, description, poid)")

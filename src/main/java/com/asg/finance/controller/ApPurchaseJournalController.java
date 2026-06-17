@@ -107,7 +107,7 @@ public class ApPurchaseJournalController {
             @RequestBody ApPurchaseInvoiceHdrDto apPurchaseInvoiceHdrDto) {
         try {
             ApPurchaseInvoiceHdrDto result = service.createApPurchaseInvoice(apPurchaseInvoiceHdrDto, UserContext.getDocumentId());
-            return success("Purchase Journal created successfully", result);
+            return successWithWarnings("Purchase Journal created successfully", result, result.getWarnings(), result.getInfoMessages());
         } catch (ValidationException ex) {
             return internalServerError(ex.getMessage());
         } catch (Exception e) {
@@ -170,7 +170,7 @@ public class ApPurchaseJournalController {
 
             @RequestBody ApPurchaseInvoiceHdrDto apPurchaseInvoiceHdrDto) {
         ApPurchaseInvoiceHdrDto result = service.updateApPurchaseInvoice(transactionPoid, apPurchaseInvoiceHdrDto);
-        return success("Purchase Journal updated successfully", result);
+        return successWithWarnings("Purchase Journal updated successfully", result, result.getWarnings(), result.getInfoMessages());
     }
 
     @AllowedAction(UserRolesRightsEnum.DELETE)

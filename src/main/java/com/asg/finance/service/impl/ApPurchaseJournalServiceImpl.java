@@ -95,6 +95,28 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         apPurchaseInvoiceHdrDto.setPoRef(apPurchaseInvoiceHdrEntity.getPoRef());
         apPurchaseInvoiceHdrDto.setFdaRef(apPurchaseInvoiceHdrEntity.getFdaRef());
         apPurchaseInvoiceHdrDto.setFfRef(apPurchaseInvoiceHdrEntity.getFfRef());
+        // Split the stored comma-separated FF ref back into a list so the screen round-trips multi-ref,
+        // and resolve each poid's LOV display detail for the multi-select.
+        if (apPurchaseInvoiceHdrEntity.getFfRef() != null && !apPurchaseInvoiceHdrEntity.getFfRef().isBlank()) {
+            List<String> rawFfRefs = Arrays.stream(apPurchaseInvoiceHdrEntity.getFfRef().split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isBlank())
+                    .collect(Collectors.toList());
+            apPurchaseInvoiceHdrDto.setFfRefs(rawFfRefs);
+
+            List<Long> ffPoids = rawFfRefs.stream()
+                    .flatMap(s -> { try { return java.util.stream.Stream.of(Long.parseLong(s)); }
+                                    catch (NumberFormatException ignored) { return java.util.stream.Stream.empty(); } })
+                    .collect(Collectors.toList());
+            if (!ffPoids.isEmpty()) {
+                Map<Long, LovGetListDto> ffLovMap = lovService.getDetailsByPoidsAndLovName(ffPoids, "FF_JOBS_FOR_COST_BOOKING");
+                List<LovGetListDto> ffRefsDtl = ffPoids.stream()
+                        .map(ffLovMap::get).filter(Objects::nonNull).collect(Collectors.toList());
+                if (!ffRefsDtl.isEmpty()) {
+                    apPurchaseInvoiceHdrDto.setFfRefsDtl(ffRefsDtl);
+                }
+            }
+        }
         apPurchaseInvoiceHdrDto.setShipRef(apPurchaseInvoiceHdrEntity.getShipRef());
         apPurchaseInvoiceHdrDto.setCompanyPoid(apPurchaseInvoiceHdrEntity.getCompanyPoid());
         apPurchaseInvoiceHdrDto.setCurrencyCode(apPurchaseInvoiceHdrEntity.getCurrencyCode());
@@ -337,7 +359,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         // apPurchaseInvoiceHdrEntity.setDocRef(apPurchaseInvoiceHdrDto.getDocRef());
         apPurchaseInvoiceHdrEntity.setPoRef(apPurchaseInvoiceHdrDto.getPoRef());
         apPurchaseInvoiceHdrEntity.setFdaRef(apPurchaseInvoiceHdrDto.getFdaRef());
-        apPurchaseInvoiceHdrEntity.setFfRef(apPurchaseInvoiceHdrDto.getFfRef());
+        apPurchaseInvoiceHdrEntity.setFfRef(resolveEffectiveFfRef(apPurchaseInvoiceHdrDto));
         apPurchaseInvoiceHdrEntity.setShipRef(apPurchaseInvoiceHdrDto.getShipRef());
         apPurchaseInvoiceHdrEntity.setCompanyPoid(apPurchaseInvoiceHdrDto.getCompanyPoid());
         apPurchaseInvoiceHdrEntity.setCurrencyCode(apPurchaseInvoiceHdrDto.getCurrencyCode());
@@ -398,45 +420,6 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         String refType = apPurchaseInvoiceHdrDto.getRefType();
         if (refType != null) refType = refType.trim().toUpperCase();
 
-        Long refPoid = null;
-
-        if ("FF JOBS".equalsIgnoreCase(refType) || "FDA JOBS".equalsIgnoreCase(refType)) {
-            if (apPurchaseInvoiceHdrDto.getChargeDtls() != null &&
-                    !apPurchaseInvoiceHdrDto.getChargeDtls().isEmpty()) {
-
-                refPoid = apPurchaseInvoiceHdrDto.getChargeDtls().get(0).getRefDocPoid();
-            }
-        }
-
-
-
-        if (refPoid == null) {
-            refPoid = transactionPoid;
-        }
-
-       /* String validateStatus = validateVoucher(
-                documentId,
-                refType,
-                String.valueOf(refPoid)
-        );*/
-
-        /*String jobValidation = validateBeforeSave(
-                documentId,
-                refType,
-                "FF".equalsIgnoreCase(refType)
-                        ? apPurchaseInvoiceHdrDto.getFfRef()
-                        : apPurchaseInvoiceHdrDto.getFdaRef()
-        );
-
-        if (jobValidation != null &&
-                jobValidation.toUpperCase().startsWith("WARNING")) {
-
-            throw new RuntimeException(
-                    "Before Save Validation Failed → " + jobValidation
-            );
-        }*/
-
-
         switch (refType) {
 
             case "GENERAL":
@@ -468,16 +451,13 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         saveAssetDetails(transactionPoid, apPurchaseInvoiceHdrDto);
         saveRjvDetails(transactionPoid, apPurchaseInvoiceHdrDto);
 
-       /* repository.flush();
-        apPurchaseInvoiceItemDtlRepository.flush();
-        apPurchaseInvoiceGlDtlRepository.flush();
-        apPurchaseInvoiceAssetDtlRepository.flush();
-        apPurchaseInvRjvDetailsRepository.flush();
-        purchaseInvoiceChargeDtlRepository.flush();*/
-
-      /*  glPostingService.performGlPosting(documentId, transactionPoid, savedApPurchaseInvoiceHdrEntity.getDocRef());*/
-
-        return fetchApPurchaseInvoiceHdr(transactionPoid);
+        List<String> createWarnings = new ArrayList<>();
+        List<String> createInfos = new ArrayList<>();
+        applyJobCostUpdatesOnCreate(refType, apPurchaseInvoiceHdrDto, transactionPoid, createWarnings, createInfos);
+        ApPurchaseInvoiceHdrDto createResult = buildSimpleHdrResponse(savedApPurchaseInvoiceHdrEntity);
+        if (!createWarnings.isEmpty()) createResult.setWarnings(createWarnings);
+        if (!createInfos.isEmpty()) createResult.setInfoMessages(createInfos);
+        return createResult;
     }
 
     private void saveItemDetails(Long transactionPoid, ApPurchaseInvoiceHdrDto dto) {
@@ -919,6 +899,61 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         });
     }
 
+    private ApPurchaseInvoiceHdrDto buildSimpleHdrResponse(ApPurchaseInvoiceHdrEntity e) {
+        ApPurchaseInvoiceHdrDto dto = new ApPurchaseInvoiceHdrDto();
+        dto.setTransactionPoid(e.getTransactionPoid());
+        dto.setDocRef(e.getDocRef());
+        dto.setTransactionDate(e.getTransactionDate());
+        dto.setGroupPoid(e.getGroupPoid());
+        dto.setPoRef(e.getPoRef());
+        dto.setFdaRef(e.getFdaRef());
+        dto.setFfRef(e.getFfRef());
+        dto.setShipRef(e.getShipRef());
+        dto.setCompanyPoid(e.getCompanyPoid());
+        dto.setCurrencyCode(e.getCurrencyCode());
+        dto.setCurrencyRate(e.getCurrencyRate());
+        dto.setSupplierPoid(e.getSupplierPoid());
+        dto.setLocationPoid(e.getLocationPoid());
+        dto.setSubTotal(e.getSubTotal());
+        dto.setDiscount(e.getDiscount());
+        dto.setExpenseBySupplier(e.getExpenseBySupplier());
+        dto.setGrandTotal(e.getGrandTotal());
+        dto.setRemarks(e.getRemarks());
+        dto.setCreatedBy(e.getCreatedBy());
+        dto.setCreatedDate(e.getCreatedDate());
+        dto.setLastModifiedBy(e.getLastModifiedBy());
+        dto.setLastModifiedDate(e.getLastModifiedDate());
+        dto.setDeleted(e.getDeleted());
+        dto.setItemTotal(e.getItemTotal());
+        dto.setChargeTotal(e.getChargeTotal());
+        dto.setGlTotal(e.getGlTotal());
+        dto.setType(e.getType());
+        dto.setDescription(e.getDescription());
+        dto.setCreditPeriod(e.getCreditPeriod());
+        dto.setDueDate(e.getDueDate());
+        dto.setInvnoOld(e.getInvnoOld());
+        dto.setModcodeOld(e.getModcodeOld());
+        dto.setRefType(e.getRefType());
+        dto.setSalesQtnPoid(e.getSalesQtnPoid());
+        dto.setNarration(e.getNarration());
+        dto.setSupplierInvDate(e.getSupplierInvDate());
+        dto.setSupplierInvNo(e.getSupplierInvNo());
+        dto.setSupplierInvRemark(e.getSupplierInvRemark());
+        dto.setMtaRef(e.getMtaRef());
+        dto.setMultiCompany(e.getMultiCompany());
+        dto.setBhdAmount(e.getBhdAmount());
+        dto.setSupplierInvAmount(e.getSupplierInvAmount());
+        dto.setRoundingAmount(e.getRoundingAmount());
+        dto.setBillType(e.getBillType());
+        dto.setProvisionalInvoice(e.getProvisionalInvoice());
+        dto.setPartyType(e.getPartyType());
+        dto.setGrnSupplierPoid(e.getGrnSupplierPoid());
+        dto.setPartyTinNumber(e.getPartyTinNumber());
+        dto.setPaidAgainst(e.getPaidAgainst());
+        dto.setFdaCoveringRef(e.getFdaCoveringRef());
+        return dto;
+    }
+
     private String getCurrentUser() {
         return UserContext.getUserId() != null ? String.valueOf(UserContext.getUserId()) : "SYSTEM";
     }
@@ -937,13 +972,12 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
         if (apPurchaseInvoiceHdrDto.getTransactionDate() != null)
             validateBeforePersist(apPurchaseInvoiceHdrDto, UserContext.getDocumentId());
-       // validateRefTypeSpecific(apPurchaseInvoiceHdrDto, UserContext.getDocumentId());
-            apPurchaseInvoiceHdrEntity.setTransactionDate(apPurchaseInvoiceHdrDto.getTransactionDate());
+        validateRefTypeSpecific(apPurchaseInvoiceHdrDto, UserContext.getDocumentId());
+        apPurchaseInvoiceHdrEntity.setTransactionDate(apPurchaseInvoiceHdrDto.getTransactionDate());
         apPurchaseInvoiceHdrEntity.setGroupPoid(apPurchaseInvoiceHdrDto.getGroupPoid());
-       // apPurchaseInvoiceHdrEntity.setDocRef(apPurchaseInvoiceHdrDto.getDocRef());
         apPurchaseInvoiceHdrEntity.setPoRef(apPurchaseInvoiceHdrDto.getPoRef());
         apPurchaseInvoiceHdrEntity.setFdaRef(apPurchaseInvoiceHdrDto.getFdaRef());
-        apPurchaseInvoiceHdrEntity.setFfRef(apPurchaseInvoiceHdrDto.getFfRef());
+        apPurchaseInvoiceHdrEntity.setFfRef(resolveEffectiveFfRef(apPurchaseInvoiceHdrDto));
         apPurchaseInvoiceHdrEntity.setShipRef(apPurchaseInvoiceHdrDto.getShipRef());
         apPurchaseInvoiceHdrEntity.setCompanyPoid(apPurchaseInvoiceHdrDto.getCompanyPoid());
         apPurchaseInvoiceHdrEntity.setCurrencyCode(apPurchaseInvoiceHdrDto.getCurrencyCode());
@@ -1002,14 +1036,12 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                             apPurchaseInvoiceGlDtlRepository
                                     .findDetRowIdsByTransactionPoid(transactionPoid);
 
-                    // 2️⃣ Payload ke detRowIds
                     Set<Long> incomingDetRowIds =
                             apPurchaseInvoiceHdrDto.getGlDtls().stream()
                                     .map(ApPurchaseInvoiceGlDtlDto::getDetRowId)
                                     .filter(id -> id != null && id > 0)
                                     .collect(Collectors.toSet());
 
-                    // 3️⃣ DB me jo hai but payload me nahi → DELETE
                     for (Long dbDetRowId : existingDetRowIds) {
                         if (!incomingDetRowIds.contains(dbDetRowId)) {
 
@@ -1528,14 +1560,21 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
             loggingService.createLogBatch(rjvLogRequests);
         }
 
+        // Re-run the job-cost proc for the OLD job ref (reverses its allocation when the ref
+        // changed on edit) and the NEW job ref. Mirrors the Petty Cash / Bank Payment old+new flow.
+        List<String> updateWarnings = new ArrayList<>();
+        List<String> updateInfos = new ArrayList<>();
+        applyJobCostUpdatesOnUpdate(refType, oldEntity, savedEntity, savedEntity.getTransactionPoid(), updateWarnings, updateInfos);
+
         // Log the update
         String key = savedEntity.getTransactionPoid().toString();
         loggingService.logChanges(oldEntity, savedEntity, ApPurchaseInvoiceHdrEntity.class,
                 UserContext.getDocumentId(), key, LogDetailsEnum.MODIFIED, "TRANSACTION_POID");
 
-        //glPostingService.performGlPosting(UserContext.getDocumentId(), savedEntity.getTransactionPoid(), savedEntity.getDocRef());
-
-        return fetchApPurchaseInvoiceHdr(savedEntity.getTransactionPoid());
+        ApPurchaseInvoiceHdrDto updateResult = buildSimpleHdrResponse(savedEntity);
+        if (!updateWarnings.isEmpty()) updateResult.setWarnings(updateWarnings);
+        if (!updateInfos.isEmpty()) updateResult.setInfoMessages(updateInfos);
+        return updateResult;
     }
 
     @Override
@@ -1617,6 +1656,160 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
     }
 
+
+    private String resolveEffectiveFfRef(ApPurchaseInvoiceHdrDto dto) {
+        List<String> refs = dto.getFfRefs();
+        if (refs != null && !refs.isEmpty()) {
+            String joined = refs.stream()
+                    .filter(r -> r != null && !r.isBlank())
+                    .map(String::trim)
+                    .collect(Collectors.joining(";"));
+            if (!joined.isBlank()) {
+                return joined;
+            }
+        }
+        return dto.getFfRef();
+    }
+
+    private void applyJobCostUpdatesOnCreate(String refType, ApPurchaseInvoiceHdrDto dto, Long piPoid,
+                                             List<String> warnings, List<String> infos) {
+        String normalized = refType == null ? "" : refType.trim().toUpperCase();
+        switch (normalized) {
+            case "FF JOBS":
+                runJobCostProc(resolveEffectiveFfRef(dto), piPoid, true, "NEW", warnings, infos);
+                break;
+            case "FDA JOBS":
+                runJobCostProc(dto.getFdaRef(), piPoid, false, "NEW", warnings, infos);
+                break;
+            case "MTA PO":
+                runMtaCostProc(dto.getSalesQtnPoid(), piPoid, "NEW", warnings, infos);
+                break;
+            case "GENERAL PO":
+                runGeneralPoCostProc(dto.getPoRef(), piPoid, "NEW", warnings, infos);
+                break;
+            default:
+                break;
+        }
+    }
+
+    private void applyJobCostUpdatesOnUpdate(String refType, ApPurchaseInvoiceHdrEntity oldEntity,
+                                             ApPurchaseInvoiceHdrEntity savedEntity, Long piPoid,
+                                             List<String> warnings, List<String> infos) {
+        String normalized = refType == null ? "" : refType.trim().toUpperCase();
+        switch (normalized) {
+            case "FF JOBS":
+                runOldThenNewJobCost(oldEntity.getFfRef(), savedEntity.getFfRef(), piPoid, true, warnings, infos);
+                break;
+            case "FDA JOBS":
+                runOldThenNewJobCost(oldEntity.getFdaRef(), savedEntity.getFdaRef(), piPoid, false, warnings, infos);
+                break;
+            case "MTA PO":
+                runOldThenNewMtaCost(oldEntity.getSalesQtnPoid(), savedEntity.getSalesQtnPoid(), piPoid, warnings, infos);
+                break;
+            case "GENERAL PO":
+                runOldThenNewGeneralPoCost(oldEntity.getPoRef(), savedEntity.getPoRef(), piPoid, warnings, infos);
+                break;
+            default:
+                break;
+        }
+    }
+
+    private void runOldThenNewJobCost(String oldRef, String newRef, Long piPoid, boolean isFf,
+                                      List<String> warnings, List<String> infos) {
+        boolean oldPresent = oldRef != null && !oldRef.trim().isEmpty();
+        boolean refChanged = oldPresent && !oldRef.trim().equals(newRef == null ? "" : newRef.trim());
+        if (refChanged) {
+            runJobCostProc(oldRef, piPoid, isFf, "OLD", warnings, infos);
+        }
+        if (newRef != null && !newRef.trim().isEmpty()) {
+            runJobCostProc(newRef, piPoid, isFf, "NEW", warnings, infos);
+        }
+    }
+
+    private void runOldThenNewMtaCost(String oldRef, String newRef, Long piPoid,
+                                      List<String> warnings, List<String> infos) {
+        boolean oldPresent = oldRef != null && !oldRef.trim().isEmpty();
+        boolean refChanged = oldPresent && !oldRef.trim().equals(newRef == null ? "" : newRef.trim());
+        if (refChanged) {
+            runMtaCostProc(oldRef, piPoid, "OLD", warnings, infos);
+        }
+        if (newRef != null && !newRef.trim().isEmpty()) {
+            runMtaCostProc(newRef, piPoid, "NEW", warnings, infos);
+        }
+    }
+
+    private void runOldThenNewGeneralPoCost(String oldRef, String newRef, Long piPoid,
+                                            List<String> warnings, List<String> infos) {
+        boolean oldPresent = oldRef != null && !oldRef.trim().isEmpty();
+        boolean refChanged = oldPresent && !oldRef.trim().equals(newRef == null ? "" : newRef.trim());
+        if (refChanged) {
+            runGeneralPoCostProc(oldRef, piPoid, "OLD", warnings, infos);
+        }
+        if (newRef != null && !newRef.trim().isEmpty()) {
+            runGeneralPoCostProc(newRef, piPoid, "NEW", warnings, infos);
+        }
+    }
+
+    private void runJobCostProc(String ref, Long piPoid, boolean isFf, String which,
+                                List<String> warnings, List<String> infos) {
+        if (ref == null || ref.isBlank()) return;
+        String procName = isFf ? "PROC_AP_PI_FF_UPDATE_COST" : "PROC_AP_PI_FDA_UPDATE_COST";
+        String type = isFf ? "FF" : "FDA";
+        try {
+            String result = isFf
+                    ? apPurchaseJournalRepositoryImpl.updateFfCost(UserContext.getGroupPoid(),
+                            UserContext.getCompanyPoid(), UserContext.getUserPoid(), ref, piPoid)
+                    : apPurchaseJournalRepositoryImpl.updateFdaCost(UserContext.getGroupPoid(),
+                            UserContext.getCompanyPoid(), UserContext.getUserPoid(), ref, piPoid);
+            log.info("[PurchaseJournal {}] {}-ref {} ref='{}' piPoid={} => {}", procName, which, type, ref, piPoid, result);
+            applyProcResultToMessages(procName, result, warnings, infos);
+        } catch (Exception e) {
+            log.warn("[PurchaseJournal {}] {}-ref FAILED ref='{}' piPoid={}: {}", procName, which, ref, piPoid, e.getMessage());
+            warnings.add("Some error occurred while " + procName + " - " + e.getMessage());
+        }
+    }
+
+    private void runMtaCostProc(String ref, Long piPoid, String which,
+                                List<String> warnings, List<String> infos) {
+        if (ref == null || ref.isBlank()) return;
+        String procName = "PROC_AP_MTA_PO_UPDATE_BKNG_DTL";
+        try {
+            String result = apPurchaseJournalRepositoryImpl.updateMtaPoBookingDetails(
+                    UserContext.getGroupPoid(), UserContext.getCompanyPoid(), UserContext.getUserPoid(),
+                    ref, piPoid);
+            log.info("[PurchaseJournal {}] {}-ref ref='{}' piPoid={} => {}", procName, which, ref, piPoid, result);
+            applyProcResultToMessages(procName, result, warnings, infos);
+        } catch (Exception e) {
+            log.warn("[PurchaseJournal {}] {}-ref FAILED ref='{}' piPoid={}: {}", procName, which, ref, piPoid, e.getMessage());
+            warnings.add("Some error occurred while " + procName + " - " + e.getMessage());
+        }
+    }
+
+    private void runGeneralPoCostProc(String ref, Long piPoid, String which,
+                                      List<String> warnings, List<String> infos) {
+        if (ref == null || ref.isBlank()) return;
+        String procName = "PROC_AP_GEN_PO_UPDATE_STATUS";
+        try {
+            String result = apPurchaseJournalRepositoryImpl.updateGeneralPoStatus(
+                    UserContext.getGroupPoid(), UserContext.getCompanyPoid(), UserContext.getUserPoid(),
+                    ref, piPoid);
+            log.info("[PurchaseJournal {}] {}-ref ref='{}' piPoid={} => {}", procName, which, ref, piPoid, result);
+            applyProcResultToMessages(procName, result, warnings, infos);
+        } catch (Exception e) {
+            log.warn("[PurchaseJournal {}] {}-ref FAILED ref='{}' piPoid={}: {}", procName, which, ref, piPoid, e.getMessage());
+            warnings.add("Some error occurred while " + procName + " - " + e.getMessage());
+        }
+    }
+
+    private void applyProcResultToMessages(String procName, String result, List<String> warnings, List<String> infos) {
+        if (result == null || result.isBlank()) return;
+        String message = result.contains(":") ? result.substring(result.indexOf(':') + 1).trim() : result.trim();
+        if (result.trim().toUpperCase().startsWith("ERROR")) {
+            warnings.add(message);
+        } else {
+            infos.add(message);
+        }
+    }
 
     public List<ApPurchaseJournalResponseDto> createFromFda(String fdaPoid, StringBuilder result) {
         return apPurchaseJournalRepositoryImpl.createFromFda(
@@ -2037,11 +2230,6 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
     private void validateBeforePersist(
             ApPurchaseInvoiceHdrDto dto,
             String documentId) {
-
-        //validateMandatoryFields(dto);
-
-        //validateDuplicateInvoice(dto);
-
         String refPoid = getRefPoid(dto);
 
         if (requiresRefPoid(dto.getRefType())) {
@@ -2049,9 +2237,6 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                 throw new ValidationException("Reference POID is missing for " + dto.getRefType());
             }
         }
-
-        //validateVoucher(documentId, dto.getRefType(), refPoid);
-
         validateBeforeSave(documentId, dto.getRefType(), refPoid);
 
         validateGlDetails(dto, documentId);
@@ -2061,8 +2246,6 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         validateInvoiceDate(dto);
 
         validateCreditPeriod(dto);
-
-        //validateVat(dto, documentId);
 
         String refType = dto.getRefType() == null
                 ? ""
@@ -2465,7 +2648,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         switch (refType) {
 
             case "FF JOBS":
-                return dto.getFfRef();
+                return resolveEffectiveFfRef(dto);
 
             case "FDA JOBS":
                 return dto.getFdaRef();

@@ -332,7 +332,7 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
     @Override
     public BankReconcileReportResponse getBankReconcileReport(BankReconcileReportRequest req) {
 
-        StoredProcedureQuery sp = createSP("PROC_GL_BANK_RECONCILE_REPORT");
+        StoredProcedureQuery sp = createSP("PROC_GL_BANK_RECONCILE_RPT_V2");
 
         regIn(sp, P_GROUP_POID, Long.class);
         regIn(sp, P_COMPANY_POID, Long.class);
@@ -353,6 +353,7 @@ public class BankReconciliationRepositoryImpl implements BankReconciliationRepos
         regOut(sp, "OUTDATA5", String.class);
         regOut(sp, "OUTDATA6", String.class);
         regOut(sp, "OUTDATA7", String.class);
+        regOut(sp, P_RESULT, String.class);
 
         set(sp, P_GROUP_POID, req.getGroupPoid());
         set(sp, P_COMPANY_POID, req.getCompanyPoid());

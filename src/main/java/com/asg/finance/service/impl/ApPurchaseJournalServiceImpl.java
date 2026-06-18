@@ -98,7 +98,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         // Split the stored comma-separated FF ref back into a list so the screen round-trips multi-ref,
         // and resolve each poid's LOV display detail for the multi-select.
         if (apPurchaseInvoiceHdrEntity.getFfRef() != null && !apPurchaseInvoiceHdrEntity.getFfRef().isBlank()) {
-            List<String> rawFfRefs = Arrays.stream(apPurchaseInvoiceHdrEntity.getFfRef().split(","))
+            List<String> rawFfRefs = Arrays.stream(apPurchaseInvoiceHdrEntity.getFfRef().split(";"))
                     .map(String::trim)
                     .filter(s -> !s.isBlank())
                     .collect(Collectors.toList());

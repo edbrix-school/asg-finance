@@ -20,6 +20,14 @@ public class ApPurchaseInvoiceHdrDto {
     private String poRef;
     private String fdaRef;
     private String ffRef;
+    // Multi-ref input: the screen may send several FF job refs as a list. The service joins
+    // these (comma-separated, as PROC_AP_PI_FF_UPDATE_COST expects) into ffRef. Falls back to
+    // the single ffRef string when this list is absent.
+    private List<String> ffRefs;
+    // Display details (LOV) for each FF ref, for the multi-select on the screen.
+    private List<LovGetListDto> ffRefsDtl;
+    private List<String> warnings;
+    private List<String> infoMessages;
     private String shipRef;
     private Long companyPoid;
     private String currencyCode;

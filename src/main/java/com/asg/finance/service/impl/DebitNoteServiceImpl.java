@@ -137,6 +137,12 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         // Save details (GL + Charge) — GL will be saved if provided regardless of refType
         saveDetails(debitNoteDto, savedEntity.getTransactionPoid());
 
+        // Recompute drTotal/crTotal from the processed detail lines and persist back to header
+        BigDecimal[] detailTotals = recalculateTotalsFromDetails(debitNoteDto);
+        savedEntity.setDrTotal(detailTotals[0]);
+        savedEntity.setCrTotal(detailTotals[1]);
+        debitNoteHdrRepository.save(savedEntity);
+
         // --- INSERT BILLWISE & COST CENTER BREAKUPS (minimal changes) ---
         insertBillwiseBreakups(debitNoteDto, savedEntity);
         insertCostCenterBreakups(debitNoteDto, savedEntity);
@@ -253,6 +259,12 @@ public class DebitNoteServiceImpl implements DebitNoteService {
         List<GlobalLogSummary> detailSummaryLogs = new ArrayList<>();
         updateGlDetailsWithLogging(debitNoteDto.getGlDetails(), transactionPoid, detailSummaryLogs);
         updateChargeDetailsWithLogging(debitNoteDto.getChargeDetails(), transactionPoid, detailSummaryLogs);
+
+        // Recompute drTotal/crTotal from DB (payload may be partial — unchanged lines are not sent)
+        BigDecimal[] detailTotals = recalculateTotalsFromDb(transactionPoid);
+        existingEntity.setDrTotal(detailTotals[0]);
+        existingEntity.setCrTotal(detailTotals[1]);
+        debitNoteHdrRepository.save(existingEntity);
 
         // --- UPDATE BILLWISE & COST CENTER BREAKUPS ---
         updateBillwiseBreakups(debitNoteDto, existingEntity.getTransactionPoid(), existingEntity.getGroupPoid(), existingEntity.getCompanyPoid());
@@ -1971,6 +1983,46 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                 }
             }
         }
+    }
+
+    private BigDecimal[] recalculateTotalsFromDb(Long transactionPoid) {
+        BigDecimal drTotal = BigDecimal.ZERO;
+        BigDecimal crTotal = BigDecimal.ZERO;
+
+        List<ArDebitNoteDtl> glDetails = debitNoteDtlRepository.findByTransactionPoid(transactionPoid);
+        for (ArDebitNoteDtl gl : glDetails) {
+            if (gl.getDrAmt() != null) drTotal = drTotal.add(gl.getDrAmt());
+            if (gl.getCrAmt() != null) crTotal = crTotal.add(gl.getCrAmt());
+        }
+
+        List<ArDebitNoteChargeDtl> chargeDetails = debitNoteChargeDtlRepository.findByTransactionPoid(transactionPoid);
+        for (ArDebitNoteChargeDtl charge : chargeDetails) {
+            if (charge.getTotalAmount() != null) crTotal = crTotal.add(charge.getTotalAmount());
+        }
+
+        return new BigDecimal[]{drTotal, crTotal};
+    }
+
+    private BigDecimal[] recalculateTotalsFromDetails(DebitNoteHeaderDto dto) {
+        BigDecimal drTotal = BigDecimal.ZERO;
+        BigDecimal crTotal = BigDecimal.ZERO;
+
+        if (dto.getGlDetails() != null) {
+            for (DebitNoteGlDetailDto gl : dto.getGlDetails()) {
+                if ("ISDELETED".equals(normalizeActionType(gl.getActionType()))) continue;
+                if (gl.getDebitAmount() != null) drTotal = drTotal.add(gl.getDebitAmount());
+                if (gl.getCreditAmount() != null) crTotal = crTotal.add(gl.getCreditAmount());
+            }
+        }
+
+        if (dto.getChargeDetails() != null) {
+            for (DebitNoteChargeDetailDto charge : dto.getChargeDetails()) {
+                if ("ISDELETED".equals(normalizeActionType(charge.getActionType()))) continue;
+                if (charge.getTotalAmount() != null) crTotal = crTotal.add(charge.getTotalAmount());
+            }
+        }
+
+        return new BigDecimal[]{drTotal, crTotal};
     }
 
     @Override

@@ -2,8 +2,7 @@ package com.asg.finance.repository;
 
 import com.asg.finance.dto.*;
 import com.asg.common.lib.security.util.UserContext;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
+import lombok.extern.slf4j.Slf4j;
 import oracle.jdbc.internal.OracleTypes;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -20,11 +19,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @Repository
 public class BankPaymentLoadDataRepositoryImpl implements BankPaymentLoadDataRepository {
-
-    @PersistenceContext
-    private EntityManager em;
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -33,44 +30,38 @@ public class BankPaymentLoadDataRepositoryImpl implements BankPaymentLoadDataRep
         this.jdbcTemplate = jdbcTemplate;
     }
 
-
     @Override
-    public BankPayCreateFromFfResponse executeBankPayFromFf(String ffPoidt) {
-
+    public BankPayCreateFromFfResponse executeBankPayFromFf(String ffPoid) {
         SimpleJdbcCall jdbcCall = new SimpleJdbcCall(jdbcTemplate)
                 .withProcedureName("PROC_BANK_PAY_CREATE_FROM_FF")
-                .withoutProcedureColumnMetaDataAccess()   // **IMPORTANT FIX**
+                .withoutProcedureColumnMetaDataAccess()
                 .declareParameters(
                         new SqlParameter("P_LOGIN_GROUP_POID", OracleTypes.NUMBER),
                         new SqlParameter("P_LOGIN_COMPANY_POID", OracleTypes.NUMBER),
                         new SqlParameter("P_LOGIN_USER_POID", OracleTypes.NUMBER),
                         new SqlParameter("P_FF_POID", OracleTypes.VARCHAR),
-
                         new SqlOutParameter("P_RESULT", OracleTypes.VARCHAR),
                         new SqlOutParameter("OUTDATA", OracleTypes.CURSOR,
-                                (rs, rowNum) -> mapFfItem(rs)
-                        )
+                                (rs, rowNum) -> mapFfItem(rs))
                 );
 
         Map<String, Object> inParams = new HashMap<>();
         inParams.put("P_LOGIN_GROUP_POID", UserContext.getGroupPoid());
         inParams.put("P_LOGIN_COMPANY_POID", UserContext.getCompanyPoid());
         inParams.put("P_LOGIN_USER_POID", UserContext.getUserPoid());
-        inParams.put("P_FF_POID", ffPoidt);
+        inParams.put("P_FF_POID", ffPoid);
 
         Map<String, Object> result = jdbcCall.execute(inParams);
 
-        // Debug print
-        System.out.println("Keys: " + result.keySet());
-        // Expect: [P_RESULT, OUTDATA]
+        String resultMessage = (String) result.get("P_RESULT");
+        log.info("PROC_BANK_PAY_CREATE_FROM_FF executed. ffPoid='{}' result='{}'", ffPoid, resultMessage);
 
         BankPayCreateFromFfResponse response = new BankPayCreateFromFfResponse();
+        response.setResultMessage(resultMessage);
         response.setItems((List<BankPayFfItemDto>) result.get("OUTDATA"));
-
         return response;
     }
 
-    /** Cursor Row Mapper */
     private BankPayFfItemDto mapFfItem(ResultSet rs) throws SQLException {
         BankPayFfItemDto dto = new BankPayFfItemDto();
         dto.setChargePoid(rs.getLong("CHARGE_POID"));
@@ -85,10 +76,10 @@ public class BankPaymentLoadDataRepositoryImpl implements BankPaymentLoadDataRep
    /* @Override
     public List<BankPaymentChargeDetailResponse> loadFdaCharges(Long fdaRefId) {
         StoredProcedureQuery query = em.createStoredProcedureQuery("PROC_BANK_PAY_CREATE_FROM_FDA");
-        
+
         query.registerStoredProcedureParameter(1, Long.class, ParameterMode.IN);
         query.registerStoredProcedureParameter(2, void.class, ParameterMode.REF_CURSOR);
-        
+
         query.setParameter(1, fdaRefId);
         query.execute();
 
@@ -99,14 +90,17 @@ public class BankPaymentLoadDataRepositoryImpl implements BankPaymentLoadDataRep
 
     @Override
     public BankPayCreateFromFdaResponse executeBankPayFromFda(String fdaPoid) {
-
         SimpleJdbcCall jdbcCall = new SimpleJdbcCall(jdbcTemplate)
                 .withProcedureName("PROC_BANK_PAY_CREATE_FROM_FDA")
+                .withoutProcedureColumnMetaDataAccess()
                 .declareParameters(
+                        new SqlParameter("P_LOGIN_GROUP_POID", OracleTypes.NUMBER),
+                        new SqlParameter("P_LOGIN_COMPANY_POID", OracleTypes.NUMBER),
+                        new SqlParameter("P_LOGIN_USER_POID", OracleTypes.NUMBER),
+                        new SqlParameter("P_FDA_POID", OracleTypes.VARCHAR),
                         new SqlOutParameter("P_RESULT", OracleTypes.VARCHAR),
                         new SqlOutParameter("OUTDATA", OracleTypes.CURSOR,
-                                (rs, rowNum) -> mapFdaItem(rs)
-                        )
+                                (rs, rowNum) -> mapFdaItem(rs))
                 );
 
         Map<String, Object> inParams = new HashMap<>();
@@ -117,13 +111,15 @@ public class BankPaymentLoadDataRepositoryImpl implements BankPaymentLoadDataRep
 
         Map<String, Object> result = jdbcCall.execute(inParams);
 
-        BankPayCreateFromFdaResponse response = new BankPayCreateFromFdaResponse();
-        response.setItems((List<BankPayFdaItemDto>) result.get("OUTDATA"));
+        String resultMessage = (String) result.get("P_RESULT");
+        log.info("PROC_BANK_PAY_CREATE_FROM_FDA executed. fdaPoid='{}' result='{}'", fdaPoid, resultMessage);
 
+        BankPayCreateFromFdaResponse response = new BankPayCreateFromFdaResponse();
+        response.setResultMessage(resultMessage);
+        response.setItems((List<BankPayFdaItemDto>) result.get("OUTDATA"));
         return response;
     }
 
-    /** Cursor Mapping **/
     private BankPayFdaItemDto mapFdaItem(ResultSet rs) throws SQLException {
         BankPayFdaItemDto dto = new BankPayFdaItemDto();
         dto.setChargePoid(rs.getLong("CHARGE_POID"));
@@ -138,13 +134,13 @@ public class BankPaymentLoadDataRepositoryImpl implements BankPaymentLoadDataRep
    /* @Override
     public List<BankPaymentItemDetailResponse> loadMtaItems(Long mtaRfqId) {
         StoredProcedureQuery query = em.createStoredProcedureQuery("PROC_BANK_PAY_CREATE_FROM_MTA");
-        
+
         query.registerStoredProcedureParameter(1, Long.class, ParameterMode.IN);
         query.registerStoredProcedureParameter(2, void.class, ParameterMode.REF_CURSOR);
-        
+
         query.setParameter(1, mtaRfqId);
         query.execute();
-        
+
         ResultSet rs = (ResultSet) query.getOutputParameterValue(2);
         return mapToItemDetails(rs);
     }*/
@@ -154,7 +150,7 @@ public class BankPaymentLoadDataRepositoryImpl implements BankPaymentLoadDataRep
 
         SimpleJdbcCall jdbcCall = new SimpleJdbcCall(jdbcTemplate)
                 .withProcedureName("PROC_BANK_PAY_CREATE_FROM_MTA")
-                .withoutProcedureColumnMetaDataAccess()     // ★ CRUCIAL FIX
+                .withoutProcedureColumnMetaDataAccess()
                 .declareParameters(
                         new SqlParameter("P_LOGIN_GROUP_POID", OracleTypes.NUMBER),
                         new SqlParameter("P_LOGIN_COMPANY_POID", OracleTypes.NUMBER),
@@ -215,7 +211,6 @@ public class BankPaymentLoadDataRepositoryImpl implements BankPaymentLoadDataRep
 
             dto.setDetRowId(((Number) row[5]).longValue());
 
-            // PDA_AMOUNT, REMARKS are not present in procedure → Set default
             dto.setPdaAmount(BigDecimal.ZERO);
             dto.setRemarks(null);
 

@@ -6,5 +6,6 @@ import java.util.List;
 
 @Data
 public class BankPayCreateFromFdaResponse {
+    private String resultMessage;
     private List<BankPayFdaItemDto> items;
 }

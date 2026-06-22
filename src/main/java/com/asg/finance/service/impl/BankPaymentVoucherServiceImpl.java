@@ -37,6 +37,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import javax.sql.DataSource;
 import java.math.BigDecimal;
@@ -228,11 +230,8 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
             saveItemDetails(req.getItemDetailRequests(), savedHeader.getTransactionPoid());
         }
 
-        // Post-save updates
-        updateJobCostsInNewTransaction(savedHeader, req.getRefType());
-
-        // Flush to ensure all changes are persisted
-        paymentVoucherRepository.flush();
+        entityManager.flush();
+        scheduleAfterSaveJobCostUpdates(savedHeader, req, savedHeader.getTransactionPoid(), null, null);
 
         return getVoucherById(savedHeader.getTransactionPoid(), documentId);
     }
@@ -250,6 +249,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         BeanUtils.copyProperties(existing, oldEntity);
 
         String oldRefType = existing.getRefType();
+        String oldRefPoid = resolveRefStringFromEntity(existing, oldRefType);
 
         // Legacy DocumentBeforeSave validations
         validateBeforeSaveRequest(req);
@@ -289,8 +289,8 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
             default -> throw new ValidationException("Invalid Ref Type: " + req.getRefType());
         }
 
-        // Post-update job costs
-        updateJobCostsInNewTransaction(updatedHeader, req.getRefType());
+        entityManager.flush();
+        scheduleAfterSaveJobCostUpdates(updatedHeader, req, transactionPoid, oldRefType, oldRefPoid);
 
         // Log the update
         String key = transactionPoid.toString();
@@ -1324,39 +1324,108 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         }
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    protected void updateJobCostsInNewTransaction(GLPaymentVoucherHDREntity header, String refType) {
+    private void scheduleAfterSaveJobCostUpdates(GLPaymentVoucherHDREntity header,
+                                                BankPaymentVoucherRequest req,
+                                                Long transactionPoid,
+                                                String oldRefType,
+                                                String oldRefPoid) {
+        Long groupPoid = header.getGroupPoid();
+        Long companyPoid = header.getCompanyPoid();
+        Long userPoid = UserContext.getUserPoid();
+        String newRefType = req.getRefType();
+
+        Runnable job = () -> runAfterSaveJobCostUpdates(
+                groupPoid, companyPoid, userPoid, transactionPoid, newRefType, req, oldRefType, oldRefPoid);
+
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    job.run();
+                }
+            });
+        } else {
+            job.run();
+        }
+    }
+
+    
+    private void runAfterSaveJobCostUpdates(Long groupPoid,
+                                            Long companyPoid,
+                                            Long userPoid,
+                                            Long transactionPoid,
+                                            String newRefType,
+                                            BankPaymentVoucherRequest req,
+                                            String oldRefType,
+                                            String oldRefPoid) {
+        String normalizedNewRefType = normalizeRefType(newRefType);
+        log.info("[AfterSaveJobCost] txnPoid={} oldRefType='{}' oldRefPoid='{}' newRefType='{}'",
+                transactionPoid, oldRefType, oldRefPoid, normalizedNewRefType);
+
+        if (hasText(oldRefType) && hasText(oldRefPoid)) {
+            String normalizedOldRefType = normalizeRefType(oldRefType);
+            String newRefForOldType = resolveRefPoidFromRequest(req, normalizedOldRefType);
+            boolean referenceChanged = !normalizedOldRefType.equals(normalizedNewRefType)
+                    || !oldRefPoid.trim().equals(newRefForOldType == null ? "" : newRefForOldType.trim());
+            if (referenceChanged) {
+                log.info("[AfterSaveJobCost] Invoking OLD-ref proc: refType='{}' refPoid='{}'",
+                        normalizedOldRefType, oldRefPoid);
+                executeJobCostProc(normalizedOldRefType, oldRefPoid, groupPoid, companyPoid, userPoid, transactionPoid);
+            }
+        }
+
+        String newRefPoid = resolveRefPoidFromRequest(req, normalizedNewRefType);
+        if (hasText(normalizedNewRefType) && hasText(newRefPoid)) {
+            log.info("[AfterSaveJobCost] Invoking NEW-ref proc: refType='{}' refPoid='{}'",
+                    normalizedNewRefType, newRefPoid);
+            executeJobCostProc(normalizedNewRefType, newRefPoid, groupPoid, companyPoid, userPoid, transactionPoid);
+        }
+    }
+
+    private void executeJobCostProc(String refType,
+                                    String refPoid,
+                                    Long groupPoid,
+                                    Long companyPoid,
+                                    Long userPoid,
+                                    Long transactionPoid) {
+        String normalizedRefType = normalizeRefType(refType);
         try {
-            String procResult = switch (refType.toUpperCase()) {
+            String procResult = switch (normalizedRefType) {
                 case "FDA JOBS" -> spRepository.updateFdaCost(
-                        header.getGroupPoid(),
-                        header.getCompanyPoid(),
-                        null,
-                        String.valueOf(header.getFdaRef()),
-                        header.getTransactionPoid()
-                );
+                        groupPoid, companyPoid, userPoid, refPoid, transactionPoid);
                 case "FF JOBS" -> spRepository.updateFfCost(
-                        header.getGroupPoid(),
-                        header.getCompanyPoid(),
-                        null,
-                        header.getFfRef(),
-                        header.getTransactionPoid()
-                );
+                        groupPoid, companyPoid, userPoid, refPoid, transactionPoid);
                 case "MTA RFQ" -> spRepository.updateMtaCost(
-                        header.getGroupPoid(),
-                        header.getCompanyPoid(),
-                        null,
-                        header.getTransactionPoid(),
-                        header.getSalesQtnRef() != null ? String.valueOf(header.getSalesQtnRef()) : header.getMtaRef()
-                );
+                        groupPoid, companyPoid, userPoid, transactionPoid, refPoid);
                 default -> null;
             };
-            if (procResult != null && procResult.contains("ERROR")) {
-                log.warn("Failed to update job costs for {}: {}", refType, procResult);
+            if (procResult != null && procResult.toUpperCase().contains("ERROR")) {
+                log.warn("Job cost update failed for {} ref {}: {}", refType, refPoid, procResult);
+            } else {
+                log.info("Job cost update for {} ref {} => {}", refType, refPoid, procResult);
             }
         } catch (Exception e) {
-            log.warn("Failed to update job costs for {}: {}", refType, e.getMessage());
+            log.warn("Failed to update job costs for {} ref {}: {}", refType, refPoid, e.getMessage());
         }
+    }
+
+    private String resolveRefPoidFromRequest(BankPaymentVoucherRequest req, String refType) {
+        return switch (normalizeRefType(refType)) {
+            case "FF JOBS" -> resolveEffectiveFfRef(req);
+            case "FDA JOBS" -> req.getFdaRefId() != null ? String.valueOf(req.getFdaRefId()) : null;
+            case "MTA RFQ" -> req.getSalesQtnRef() != null
+                    ? String.valueOf(req.getSalesQtnRef())
+                    : req.getMtaRfqId();
+            default -> null;
+        };
+    }
+
+    private String normalizeRefType(String value) {
+        return value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 
     private String resolveRefStringFromEntity(GLPaymentVoucherHDREntity entity, String refType) {

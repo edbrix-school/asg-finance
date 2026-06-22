@@ -6,5 +6,6 @@ import java.util.List;
 
 @Data
 public class BankPayCreateFromFfResponse {
+    private String resultMessage;
     private List<BankPayFfItemDto> items;
 }

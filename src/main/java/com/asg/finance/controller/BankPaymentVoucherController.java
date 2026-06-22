@@ -34,6 +34,7 @@ import java.sql.Date;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import static com.asg.common.lib.dto.response.ApiResponse.*;
 @Slf4j
@@ -450,10 +451,11 @@ public class BankPaymentVoucherController {
     public ResponseEntity<?> createBankPayFromFf(
             @Parameter(description = "FF reference POID(s) — single or multiple values", required = true)
             @RequestParam @NotNull List<String> ffPoid) {
-        String joined = String.join(";", ffPoid);
-        BankPayCreateFromFfResponse response = service.createBankPayFromFf(joined);
         try {
-            return success("FF charges loaded successfully", response);
+            String joined = String.join(";", ffPoid);
+            BankPayCreateFromFfResponse response = service.createBankPayFromFf(joined);
+            String message = Objects.requireNonNullElse(response.getResultMessage(), "FF charges loaded successfully");
+            return success(message, response);
         } catch (Exception ex) {
             return internalServerError("Failed to load FF charges: " + ex.getMessage());
         }
@@ -477,13 +479,13 @@ public class BankPaymentVoucherController {
     @GetMapping("/load-from-fda")
     public ResponseEntity<?> loadFdaCharges(
             @RequestParam String fdaPoid) {
-        BankPayCreateFromFdaResponse response =
-                service.createBankPayFromFda(fdaPoid);
-        try {
-            return success("FDA charges loaded successfully", response);
-        } catch (Exception ex) {
-            return internalServerError("Failed to load FDA charges: " + ex.getMessage());
-        }
+                try {
+                    BankPayCreateFromFdaResponse response = service.createBankPayFromFda(fdaPoid);
+                    String message = Objects.requireNonNullElse(response.getResultMessage(), "FDA charges loaded successfully");
+                    return success(message, response);
+                } catch (Exception ex) {
+                    return internalServerError("Failed to load FDA charges: " + ex.getMessage());
+                }
     }
 
 

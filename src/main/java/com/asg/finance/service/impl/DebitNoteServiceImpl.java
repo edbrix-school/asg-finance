@@ -1776,30 +1776,29 @@ public class DebitNoteServiceImpl implements DebitNoteService {
             }
         }
 
-        // V4 — chargeAmount >= pdaAmount per charge row
+        // V4 — chargeAmount >= pdaAmount per charge row (null treated as zero)
         if (dto.getChargeDetails() != null) {
             for (DebitNoteChargeDetailDto charge : dto.getChargeDetails()) {
                 if ("ISDELETED".equals(charge.getActionType() != null ? charge.getActionType().trim().toUpperCase() : "")) continue;
-                if (charge.getChargeAmount() != null && charge.getCostAmount() != null
-                        && charge.getChargeAmount().compareTo(charge.getCostAmount()) < 0) {
+                BigDecimal chargeAmt = charge.getChargeAmount() != null ? charge.getChargeAmount() : BigDecimal.ZERO;
+                BigDecimal costAmt = charge.getCostAmount() != null ? charge.getCostAmount() : BigDecimal.ZERO;
+                if (chargeAmt.compareTo(costAmt) < 0) {
                     throw new ValidationException("Charge Amount is less than Cost Amount");
                 }
             }
         }
 
         // V5 — grand total must match sum of charge totals for FDA/FDA_DIRECT/OTHER_CHARGES
-        if ("FDA".equals(rt) || "FDA_DIRECT".equals(rt) || "OTHER_CHARGES".equals(rt)) {
-            if (dto.getChargeDetails() != null && !dto.getChargeDetails().isEmpty() && dto.getGrandTotal() != null) {
-                BigDecimal chargesTotal = dto.getChargeDetails().stream()
-                        .filter(c -> !"ISDELETED".equals(c.getActionType() != null ? c.getActionType().trim().toUpperCase() : ""))
-                        .filter(c -> c.getTotalAmount() != null)
-                        .map(DebitNoteChargeDetailDto::getTotalAmount)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add);
-                if (chargesTotal.compareTo(BigDecimal.ZERO) > 0
-                        && chargesTotal.compareTo(dto.getGrandTotal()) != 0) {
-                    throw new ValidationException("Grand Total (" + dto.getGrandTotal()
-                            + ") does not match sum of charge totals (" + chargesTotal + ")");
-                }
+        if (needsCharges && dto.getChargeDetails() != null && !dto.getChargeDetails().isEmpty() && dto.getGrandTotal() != null) {
+            BigDecimal chargesTotal = dto.getChargeDetails().stream()
+                    .filter(c -> !"ISDELETED".equals(c.getActionType() != null ? c.getActionType().trim().toUpperCase() : ""))
+                    .filter(c -> c.getTotalAmount() != null)
+                    .map(DebitNoteChargeDetailDto::getTotalAmount)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            if (chargesTotal.compareTo(BigDecimal.ZERO) > 0
+                    && chargesTotal.compareTo(dto.getGrandTotal()) != 0) {
+                throw new ValidationException("Grand Total (" + dto.getGrandTotal()
+                        + ") does not match sum of charge totals (" + chargesTotal + ")");
             }
         }
 

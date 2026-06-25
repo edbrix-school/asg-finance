@@ -57,5 +57,7 @@ public class GeneralReceiptBillDto {
 
     @Schema(description = "Action type for update operations", example = "ISCREATED", allowableValues = {"ISCREATED", "ISUPDATED", "ISDELETED"})
     private String actionType;
+
+    private BigDecimal billOriginalAmount;
 }
 

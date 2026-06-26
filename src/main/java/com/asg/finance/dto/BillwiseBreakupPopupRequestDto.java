@@ -22,6 +22,7 @@ public class BillwiseBreakupPopupRequestDto {
     
     private String type;            // "DR" or "CR"
     private BigDecimal amount;
+    private BigDecimal billOriginalAmount;
     private String billRemarks;
     private Long glCompanyPoid;
     private String actionType;  // "isCreated", "isUpdated", "isDeleted", "noChanges"

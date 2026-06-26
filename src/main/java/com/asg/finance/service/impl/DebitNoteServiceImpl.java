@@ -859,24 +859,24 @@ public class DebitNoteServiceImpl implements DebitNoteService {
 
         // Populate header LOV details
         if (dto.getFdaRefPoid() != null) {
-            dto.setFdaRefDetails(lovService.getDetailsByPoidAndLovName(dto.getFdaRefPoid(), "PROCESS_FDA_IN_PI"));
+            //dto.setFdaRefDetails(lovService.getDetailsByPoidAndLovName(dto.getFdaRefPoid(), "PROCESS_FDA_IN_PI"));
         }
         if (dto.getFdaDirectRefPoid() != null) {
-            dto.setFdaDirectRefDetails(lovService.getDetailsByPoidAndLovName(dto.getFdaDirectRefPoid(), "PROCESS_FDA_DIRECT_IN_DN"));
+           // dto.setFdaDirectRefDetails(lovService.getDetailsByPoidAndLovName(dto.getFdaDirectRefPoid(), "PROCESS_FDA_DIRECT_IN_DN"));
         }
         if (dto.getCostGroupPoid() != null) {
             try {
                 LovGetListDto details = lovService.getDetailsByPoidAndLovName(Long.valueOf(dto.getCostGroupPoid()), "DN_GL_COST_GROUPS");
                 if (details == null || details.getCode() == null) {
-                    details = lovService.getDetailsByCodeAndLovName(dto.getCostGroupPoid(), "DN_GL_COST_GROUPS");
+               //     details = lovService.getDetailsByCodeAndLovName(dto.getCostGroupPoid(), "DN_GL_COST_GROUPS");
                 }
                 dto.setCostGroupDetails(details);
             } catch (NumberFormatException e) {
-                dto.setCostGroupDetails(lovService.getDetailsByCodeAndLovName(dto.getCostGroupPoid(), "DN_GL_COST_GROUPS"));
+               // dto.setCostGroupDetails(lovService.getDetailsByCodeAndLovName(dto.getCostGroupPoid(), "DN_GL_COST_GROUPS"));
             }
         }
         if (dto.getDisposalJvRefPoid() != null) {
-            dto.setDisposalJvRefDetails(lovService.getDetailsByPoidAndLovName(dto.getDisposalJvRefPoid(), "DISPOSAL_JV_REF_FOR_DN"));
+          //  dto.setDisposalJvRefDetails(lovService.getDetailsByPoidAndLovName(dto.getDisposalJvRefPoid(), "DISPOSAL_JV_REF_FOR_DN"));
         }
 
         return dto;
@@ -910,16 +910,16 @@ public class DebitNoteServiceImpl implements DebitNoteService {
 
         // Populate LOV details based on refType
         if (entity.getType() != null) {
-            dto.setTypeDetails(lovService.getDetailsByCodeAndLovName(entity.getType(), "ACC_TYPE_SHORT"));
+           // dto.setTypeDetails(lovService.getDetailsByCodeAndLovName(entity.getType(), "ACC_TYPE_SHORT"));
         }
         if (entity.getGlPoid() != null) {
-            dto.setGlDetails(lovService.getDetailsByPoidAndLovName(entity.getGlPoid(), "GL_MASTER_LEDGERS_A_L"));
+           // dto.setGlDetails(lovService.getDetailsByPoidAndLovName(entity.getGlPoid(), "GL_MASTER_LEDGERS_A_L"));
         }
         if (entity.getTaxPoid() != null) {
-            dto.setTaxDetails(lovService.getDetailsByPoidAndLovName(entity.getTaxPoid(), "DR_TAX_MASTER"));
+           // dto.setTaxDetails(lovService.getDetailsByPoidAndLovName(entity.getTaxPoid(), "DR_TAX_MASTER"));
         }
         if (entity.getCompanyPoid() != null) {
-            dto.setCompanyDetails(lovService.getDetailsByPoidAndLovName(entity.getCompanyPoid(), "COMPANY"));
+           // dto.setCompanyDetails(lovService.getDetailsByPoidAndLovName(entity.getCompanyPoid(), "COMPANY"));
         }
 
         return dto;
@@ -1216,6 +1216,11 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                             popup.setBillRefType(x.getBillRefType());
                             popup.setBillRef(x.getBillRef());
                             popup.setBillDueDate(x.getBillDueDate());
+                            popup.setBillOriginalAmount(x.getBillOriginalAmount() != null
+                                    ? x.getBillOriginalAmount()
+                                    : (x.getDrAmt() != null && x.getDrAmt().compareTo(BigDecimal.ZERO) > 0
+                                    ? x.getDrAmt()
+                                    : x.getCrAmt()));
                             BigDecimal drAmt = x.getDrAmt() != null ? x.getDrAmt() : BigDecimal.ZERO;
                             BigDecimal crAmt = x.getCrAmt() != null ? x.getCrAmt() : BigDecimal.ZERO;
                             popup.setType(drAmt.compareTo(BigDecimal.ZERO) > 0 ? "DR" : "CR");

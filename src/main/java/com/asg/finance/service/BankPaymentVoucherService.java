@@ -51,5 +51,5 @@ public interface BankPaymentVoucherService {
 
     Map<String, Object> getBankBeneficiary(String documentId, Long transactionPoid, Long payGlPoid);
 
-    Map<String, String> updateSuppressValidation(Long transactionPoid, BankPaymentSuppressRequest request);
+    Map<String, String> updateSuppressValidation(Long transactionPoid, com.asg.finance.dto.BankPaymentSuppressRequest request);
 }

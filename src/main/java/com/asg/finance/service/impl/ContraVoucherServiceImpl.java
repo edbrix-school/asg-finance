@@ -717,6 +717,11 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
         popup.setBillRefType(billwiseDto.getBillRefType());
         popup.setBillRef(billwiseDto.getBillRef());
         popup.setBillDueDate(billwiseDto.getBillDueDate());
+        popup.setBillOriginalAmount(billwiseDto.getBillOriginalAmount() != null
+                ? billwiseDto.getBillOriginalAmount()
+                : (billwiseDto.getDrAmt() != null && billwiseDto.getDrAmt().compareTo(BigDecimal.ZERO) > 0
+                ? billwiseDto.getDrAmt()
+                : billwiseDto.getCrAmt()));
         BigDecimal drAmt = billwiseDto.getDrAmt() != null ? billwiseDto.getDrAmt() : BigDecimal.ZERO;
         BigDecimal crAmt = billwiseDto.getCrAmt() != null ? billwiseDto.getCrAmt() : BigDecimal.ZERO;
         popup.setType(drAmt.compareTo(BigDecimal.ZERO) > 0 ? BILLWISE_TYPE_DR : BILLWISE_TYPE_CR);

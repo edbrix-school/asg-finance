@@ -2684,6 +2684,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                                 popupDto.setBillRefType(item.getBillRefType());
                                 popupDto.setBillRef(item.getBillRef());
                                 popupDto.setBillDueDate(item.getBillDueDate());
+                                popupDto.setBillOriginalAmount(item.getBillOriginalAmount() != null
+                                        ? item.getBillOriginalAmount()
+                                        : (item.getDrAmt() != null && item.getDrAmt().compareTo(BigDecimal.ZERO) > 0
+                                        ? item.getDrAmt()
+                                        : item.getCrAmt()));
                                 if (item.getDrAmt() != null && item.getDrAmt().compareTo(BigDecimal.ZERO) > 0) {
                                     popupDto.setType("DR");
                                     popupDto.setAmount(item.getDrAmt());

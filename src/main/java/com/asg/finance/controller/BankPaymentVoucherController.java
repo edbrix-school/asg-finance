@@ -315,7 +315,7 @@ public class BankPaymentVoucherController {
     public ResponseEntity<?> updateSuppressValidation(
             @Parameter(description = "Transaction POID of the Bank Payment Voucher", required = true)
             @PathVariable Long transactionPoid,
-            @Valid @RequestBody BankPaymentSuppressRequest request) {
+            @Valid @RequestBody com.asg.finance.dto.BankPaymentSuppressRequest request) {
         try {
             Map<String, String> data = service.updateSuppressValidation(transactionPoid, request);
             return success("Suppress validation updated successfully", data);

@@ -1775,6 +1775,11 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                             .billRefType(src.getBillRefType())
                             .billRef(src.getBillRef())
                             .billDueDate(src.getBillDueDate())
+                            .billOriginalAmount(src.getBillOriginalAmount() != null
+                                    ? src.getBillOriginalAmount()
+                                    : (src.getDrAmt() != null && src.getDrAmt().compareTo(BigDecimal.ZERO) > 0
+                                    ? scale3(src.getDrAmt())
+                                    : scale3(src.getCrAmt())))
                             .billRemarks(src.getBillRemarks())
                             .actionType("noChanges");
 

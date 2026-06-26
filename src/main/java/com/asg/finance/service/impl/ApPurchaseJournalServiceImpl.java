@@ -1986,6 +1986,11 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                             popupDto.setBillRefType(item.getBillRefType());
                             popupDto.setBillRef(item.getBillRef());
                             popupDto.setBillDueDate(item.getBillDueDate());
+                            popupDto.setBillOriginalAmount(item.getBillOriginalAmount() != null
+                                    ? item.getBillOriginalAmount()
+                                    : (item.getDrAmt() != null && item.getDrAmt().compareTo(BigDecimal.ZERO) > 0
+                                    ? item.getDrAmt()
+                                    : item.getCrAmt()));
                             popupDto.setGlCompanyPoid(glDto.getCompanyPoid() != null ? glDto.getCompanyPoid() : UserContext.getCompanyPoid());
 
                             // Determine type and amount from drAmt/crAmt

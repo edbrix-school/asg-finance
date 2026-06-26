@@ -73,6 +73,7 @@ public class BillwiseBreakupDtlRepositoryImpl implements BillwiseBreakupDtlRepos
                 dto.setDrAmt(rs.getBigDecimal("DR_AMT"));
                 dto.setCrAmt(rs.getBigDecimal("CR_AMT"));
                 dto.setBillRemarks(rs.getString("BILL_REMARKS"));
+                dto.setBillOriginalAmount(rs.getBigDecimal("BILL_ORIGINAL_AMOUNT"));
                 list.add(dto);
             }
         } catch (SQLException e) {
@@ -174,7 +175,7 @@ public class BillwiseBreakupDtlRepositoryImpl implements BillwiseBreakupDtlRepos
 
         for (BillwiseBreakupRequestDto breakup : breakupList) {
             try {
-                StoredProcedureQuery query = entityManager.createStoredProcedureQuery("PROC_GL_VOUCH_BILLWISE_INSERT");
+                StoredProcedureQuery query = entityManager.createStoredProcedureQuery("PROC_GL_VOU_BILLWISE_INSERT_V2");
 
                 query.registerStoredProcedureParameter("P_GROUP_POID", Long.class, ParameterMode.IN);
                 query.registerStoredProcedureParameter("P_COMPANY_POID", Long.class, ParameterMode.IN);
@@ -190,6 +191,7 @@ public class BillwiseBreakupDtlRepositoryImpl implements BillwiseBreakupDtlRepos
                 query.registerStoredProcedureParameter("P_DR_AMT", BigDecimal.class, ParameterMode.IN);
                 query.registerStoredProcedureParameter("P_CR_AMT", BigDecimal.class, ParameterMode.IN);
                 query.registerStoredProcedureParameter("P_BILL_REMARKS", String.class, ParameterMode.IN);
+                query.registerStoredProcedureParameter("P_BILL_ORIGINAL_AMOUNT", BigDecimal.class, ParameterMode.IN);
                 query.registerStoredProcedureParameter("P_LOGIN_USER_POID", Long.class, ParameterMode.IN);
 
                 query.setParameter("P_GROUP_POID", breakup.getGroupPoid());
@@ -211,6 +213,7 @@ public class BillwiseBreakupDtlRepositoryImpl implements BillwiseBreakupDtlRepos
                 query.setParameter("P_DR_AMT", breakup.getDrAmt());
                 query.setParameter("P_CR_AMT", breakup.getCrAmt());
                 query.setParameter("P_BILL_REMARKS", breakup.getBillRemarks());
+                query.setParameter("P_BILL_ORIGINAL_AMOUNT", breakup.getBillOriginalAmount());
                 query.setParameter("P_LOGIN_USER_POID", breakup.getLoginUserPoid());
 
                 query.execute();

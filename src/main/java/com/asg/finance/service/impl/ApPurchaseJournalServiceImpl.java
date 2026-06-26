@@ -658,6 +658,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                     dto1.setGlCompanyPoid(popup.getGlCompanyPoid() != null ? popup.getGlCompanyPoid() : g.getCompanyPoid());
                     dto1.setBillDueDate(popup.getBillDueDate());
                     BigDecimal amount = popup.getAmount();
+                    dto1.setBillOriginalAmount(amount);
 
                     if ("DR".equalsIgnoreCase(g.getType())) {
                         dto1.setDrAmt(amount);
@@ -1152,6 +1153,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                                         popup.getAmount() == null
                                                 ? BigDecimal.ZERO
                                                 : popup.getAmount();
+                                dto1.setBillOriginalAmount(amount);
 
                                 if ("DR".equalsIgnoreCase(popup.getType())) {
 
@@ -1860,6 +1862,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                     dto.setBillRef(popup.getBillRef());
                     dto.setBillDueDate(popup.getBillDueDate());
                     BigDecimal amount = popup.getAmount() == null ? BigDecimal.ZERO : popup.getAmount();
+                    dto.setBillOriginalAmount(amount);
                     String type = popup.getType();
 
                     if (type == null) {
@@ -2894,6 +2897,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         billDto.setBillRefType("NEW");
         billDto.setBillRef(dto.getSupplierInvNo());
         billDto.setBillDueDate(dto.getDueDate());
+        billDto.setBillOriginalAmount(amount);
 
         //  Legacy behaviour
         if ("DR".equalsIgnoreCase(type)) {

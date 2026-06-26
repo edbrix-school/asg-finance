@@ -812,6 +812,7 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
                             .glPoid(glPoid)
                             .glCompanyPoid(glCompanyPoid)
                             .billDetRowId(dto.getBillDetRowId())
+                            .billOriginalAmount(amount)
                             .drAmt(drAmt)
                             .crAmt(crAmt)
                             .billRefType(dto.getBillRefType())

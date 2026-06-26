@@ -1632,6 +1632,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                     dto.setBillRefType(popup.getBillRefType());
                     dto.setBillRef(popup.getBillRef());
                     dto.setBillDueDate(popup.getBillDueDate());
+                    dto.setBillOriginalAmount(popup.getAmount());
                     if ("DR".equalsIgnoreCase(popup.getType())) {
                         dto.setDrAmt(popup.getAmount());
                         dto.setCrAmt(BigDecimal.ZERO);
@@ -1946,4 +1947,3 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     }
 
 }
-

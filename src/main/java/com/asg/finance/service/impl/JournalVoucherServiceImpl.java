@@ -568,6 +568,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                         .glPoid(glPoid)
                         .glCompanyPoid(glCompanyPoid)
                         .billDetRowId(counter.getAndIncrement())
+                        .billOriginalAmount(dto.getAmount())
                         .drAmt("Dr".equalsIgnoreCase(dto.getType()) ? dto.getAmount() : BigDecimal.ZERO)
                         .crAmt("Cr".equalsIgnoreCase(dto.getType()) ? dto.getAmount() : BigDecimal.ZERO)
                         .billRefType(dto.getBillRefType())

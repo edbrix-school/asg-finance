@@ -2497,6 +2497,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     req.setBillRefType(popup.getBillRefType());
                     req.setBillRef(popup.getBillRef());
                     req.setBillDueDate(popup.getBillDueDate());
+                    req.setBillOriginalAmount(popup.getAmount());
                     if ("DR".equalsIgnoreCase(popup.getType())) {
                         req.setDrAmt(popup.getAmount());
                         req.setCrAmt(BigDecimal.ZERO);

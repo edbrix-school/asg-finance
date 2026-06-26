@@ -1632,6 +1632,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                     dto.setBillRefType(popup.getBillRefType());
                     dto.setBillRef(popup.getBillRef());
                     dto.setBillDueDate(popup.getBillDueDate());
+                    dto.setBillOriginalAmount(popup.getAmount());
                     if ("DR".equalsIgnoreCase(popup.getType())) {
                         dto.setDrAmt(popup.getAmount());
                         dto.setCrAmt(BigDecimal.ZERO);
@@ -1797,6 +1798,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                     .billRefType(src.getBillRefType())
                     .billRef(src.getBillRef())
                     .billDueDate(src.getBillDueDate())
+                    .billOriginalAmount(src.getBillOriginalAmount() != null ? src.getBillOriginalAmount() : amount)
                     .type(type)
                     .amount(amount)
                     .billRemarks(src.getBillRemarks())
@@ -1918,7 +1920,7 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
 
     @Override
     @Transactional
-    public Map<String, String> updateSuppressValidation(Long transactionPoid, BankPaymentSuppressRequest request) {
+    public Map<String, String> updateSuppressValidation(Long transactionPoid, com.asg.finance.dto.BankPaymentSuppressRequest request) {
         GLPaymentVoucherHDREntity header = paymentVoucherRepository.findById(transactionPoid)
                 .orElseThrow(() -> new ValidationException("Bank Payment Voucher not found for ID: " + transactionPoid));
 
@@ -1946,4 +1948,3 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
     }
 
 }
-

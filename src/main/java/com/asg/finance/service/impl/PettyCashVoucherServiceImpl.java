@@ -229,6 +229,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                                 dto.setBillRefType(popup.getBillRefType());
                                 dto.setBillRef(popup.getBillRef());
                                 dto.setBillDueDate(popup.getBillDueDate());
+                                dto.setBillOriginalAmount(popup.getAmount());
                                 dto.setDrAmt(resolveBillwiseDrAmt(popup));
                                 dto.setCrAmt(resolveBillwiseCrAmt(popup));
                                 dto.setBillRemarks(popup.getBillRemarks());
@@ -495,6 +496,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                                 dto.setBillRefType(popup.getBillRefType());
                                 dto.setBillRef(popup.getBillRef());
                                 dto.setBillDueDate(popup.getBillDueDate());
+                                dto.setBillOriginalAmount(popup.getAmount());
                                 dto.setDrAmt(resolveBillwiseDrAmt(popup));
                                 dto.setCrAmt(resolveBillwiseCrAmt(popup));
                                 dto.setBillRemarks(popup.getBillRemarks());
@@ -1773,6 +1775,11 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                             .billRefType(src.getBillRefType())
                             .billRef(src.getBillRef())
                             .billDueDate(src.getBillDueDate())
+                            .billOriginalAmount(src.getBillOriginalAmount() != null
+                                    ? src.getBillOriginalAmount()
+                                    : (src.getDrAmt() != null && src.getDrAmt().compareTo(BigDecimal.ZERO) > 0
+                                    ? scale3(src.getDrAmt())
+                                    : scale3(src.getCrAmt())))
                             .billRemarks(src.getBillRemarks())
                             .actionType("noChanges");
 

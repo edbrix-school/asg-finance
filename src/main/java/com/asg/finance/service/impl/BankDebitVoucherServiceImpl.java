@@ -522,6 +522,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                             dto.setBillRefType(p.getBillRefType());
                             dto.setBillRef(p.getBillRef());
                             dto.setBillDueDate(p.getBillDueDate());
+                            dto.setBillOriginalAmount(p.getAmount());
                             if ("CR".equalsIgnoreCase(p.getType())) {
                                 dto.setCrAmt(p.getAmount());
                             } else {
@@ -588,6 +589,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                             dto.setBillRefType(p.getBillRefType());
                             dto.setBillRef(p.getBillRef());
                             dto.setBillDueDate(p.getBillDueDate());
+                            dto.setBillOriginalAmount(p.getAmount());
                             if ("CR".equalsIgnoreCase(p.getType())) {
                                 dto.setCrAmt(p.getAmount());
                             } else {
@@ -1221,6 +1223,11 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                                     dto.setBillRefType(bw.getBillRefType());
                                     dto.setBillRef(bw.getBillRef());
                                     dto.setBillDueDate(bw.getBillDueDate());
+                                    dto.setBillOriginalAmount(bw.getBillOriginalAmount() != null
+                                            ? bw.getBillOriginalAmount()
+                                            : (bw.getDrAmt() != null && bw.getDrAmt().compareTo(BigDecimal.ZERO) > 0
+                                            ? bw.getDrAmt()
+                                            : bw.getCrAmt()));
                                     // Amount & type from DR/CR amounts - check > 0 (like CreditNote, ApPurchaseJournal)
                                     if (bw.getDrAmt() != null && bw.getDrAmt().compareTo(BigDecimal.ZERO) > 0) {
                                         dto.setType("DR");

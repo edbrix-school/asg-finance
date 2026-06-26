@@ -2497,6 +2497,7 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     req.setBillRefType(popup.getBillRefType());
                     req.setBillRef(popup.getBillRef());
                     req.setBillDueDate(popup.getBillDueDate());
+                    req.setBillOriginalAmount(popup.getAmount());
                     if ("DR".equalsIgnoreCase(popup.getType())) {
                         req.setDrAmt(popup.getAmount());
                         req.setCrAmt(BigDecimal.ZERO);
@@ -2683,6 +2684,11 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                                 popupDto.setBillRefType(item.getBillRefType());
                                 popupDto.setBillRef(item.getBillRef());
                                 popupDto.setBillDueDate(item.getBillDueDate());
+                                popupDto.setBillOriginalAmount(item.getBillOriginalAmount() != null
+                                        ? item.getBillOriginalAmount()
+                                        : (item.getDrAmt() != null && item.getDrAmt().compareTo(BigDecimal.ZERO) > 0
+                                        ? item.getDrAmt()
+                                        : item.getCrAmt()));
                                 if (item.getDrAmt() != null && item.getDrAmt().compareTo(BigDecimal.ZERO) > 0) {
                                     popupDto.setType("DR");
                                     popupDto.setAmount(item.getDrAmt());

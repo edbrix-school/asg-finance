@@ -1204,6 +1204,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         req.setBillRefType(popup.getBillRefType());
         req.setBillRef(popup.getBillRef());
         req.setBillDueDate(popup.getBillDueDate());
+        req.setBillOriginalAmount(popup.getAmount());
         setBillwiseAmounts(req, popup);
         req.setBillRemarks(popup.getBillRemarks());
         req.setLoginUserPoid(context.userPoid());
@@ -1678,6 +1679,11 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         popup.setBillRefType(billwiseDto.getBillRefType());
         popup.setBillRef(billwiseDto.getBillRef());
         popup.setBillDueDate(billwiseDto.getBillDueDate());
+        popup.setBillOriginalAmount(billwiseDto.getBillOriginalAmount() != null
+                ? billwiseDto.getBillOriginalAmount()
+                : (billwiseDto.getDrAmt() != null && billwiseDto.getDrAmt().compareTo(BigDecimal.ZERO) > 0
+                ? billwiseDto.getDrAmt()
+                : billwiseDto.getCrAmt()));
 
         BigDecimal drAmt = billwiseDto.getDrAmt() != null ? billwiseDto.getDrAmt() : BigDecimal.ZERO;
         BigDecimal crAmt = billwiseDto.getCrAmt() != null ? billwiseDto.getCrAmt() : BigDecimal.ZERO;

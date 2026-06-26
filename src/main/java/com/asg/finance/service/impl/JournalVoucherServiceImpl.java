@@ -568,6 +568,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                         .glPoid(glPoid)
                         .glCompanyPoid(glCompanyPoid)
                         .billDetRowId(counter.getAndIncrement())
+                        .billOriginalAmount(dto.getAmount())
                         .drAmt("Dr".equalsIgnoreCase(dto.getType()) ? dto.getAmount() : BigDecimal.ZERO)
                         .crAmt("Cr".equalsIgnoreCase(dto.getType()) ? dto.getAmount() : BigDecimal.ZERO)
                         .billRefType(dto.getBillRefType())
@@ -975,6 +976,11 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                     dto.setBillRefType(bw.getBillRefType());
                     dto.setBillRef(bw.getBillRef());
                     dto.setBillDueDate(bw.getBillDueDate());
+                    dto.setBillOriginalAmount(bw.getBillOriginalAmount() != null
+                            ? bw.getBillOriginalAmount()
+                            : (bw.getDrAmt() != null && bw.getDrAmt().compareTo(BigDecimal.ZERO) > 0
+                            ? bw.getDrAmt()
+                            : bw.getCrAmt()));
                     BigDecimal drAmt = bw.getDrAmt() != null ? bw.getDrAmt() : BigDecimal.ZERO;
                     BigDecimal crAmt = bw.getCrAmt() != null ? bw.getCrAmt() : BigDecimal.ZERO;
                     dto.setType(drAmt.compareTo(BigDecimal.ZERO) > 0 ? "DR" : "CR");

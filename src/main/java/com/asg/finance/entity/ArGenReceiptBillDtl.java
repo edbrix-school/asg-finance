@@ -67,6 +67,9 @@ public class ArGenReceiptBillDtl extends BaseEntity {
     @Column(name = "REMARKS", length = 500)
     private String remarks;
 
+    @Column(name = "BILL_ORIGINAL_AMOUNT")
+    private BigDecimal billOriginalAmount;
+
     @Data
     @NoArgsConstructor
     @AllArgsConstructor

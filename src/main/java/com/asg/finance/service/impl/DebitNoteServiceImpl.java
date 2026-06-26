@@ -862,13 +862,13 @@ public class DebitNoteServiceImpl implements DebitNoteService {
             dto.setFdaRefDetails(lovService.getDetailsByPoidAndLovName(dto.getFdaRefPoid(), "PROCESS_FDA_IN_PI"));
         }
         if (dto.getFdaDirectRefPoid() != null) {
-            dto.setFdaDirectRefDetails(lovService.getDetailsByPoidAndLovName(dto.getFdaDirectRefPoid(), "PROCESS_FDA_DIRECT_IN_DN"));
+           dto.setFdaDirectRefDetails(lovService.getDetailsByPoidAndLovName(dto.getFdaDirectRefPoid(), "PROCESS_FDA_DIRECT_IN_DN"));
         }
         if (dto.getCostGroupPoid() != null) {
             try {
                 LovGetListDto details = lovService.getDetailsByPoidAndLovName(Long.valueOf(dto.getCostGroupPoid()), "DN_GL_COST_GROUPS");
                 if (details == null || details.getCode() == null) {
-                    details = lovService.getDetailsByCodeAndLovName(dto.getCostGroupPoid(), "DN_GL_COST_GROUPS");
+                   details = lovService.getDetailsByCodeAndLovName(dto.getCostGroupPoid(), "DN_GL_COST_GROUPS");
                 }
                 dto.setCostGroupDetails(details);
             } catch (NumberFormatException e) {
@@ -876,7 +876,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
             }
         }
         if (dto.getDisposalJvRefPoid() != null) {
-            dto.setDisposalJvRefDetails(lovService.getDetailsByPoidAndLovName(dto.getDisposalJvRefPoid(), "DISPOSAL_JV_REF_FOR_DN"));
+           dto.setDisposalJvRefDetails(lovService.getDetailsByPoidAndLovName(dto.getDisposalJvRefPoid(), "DISPOSAL_JV_REF_FOR_DN"));
         }
 
         return dto;
@@ -1025,6 +1025,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                     req.setDrAmt(BigDecimal.ZERO);
                     req.setCrAmt(bw.getAmount());
                 }
+                req.setBillOriginalAmount(bw.getAmount());
                 req.setBillRemarks(bw.getBillRemarks());
                 req.setLoginUserPoid(UserContext.getUserPoid());
 
@@ -1115,6 +1116,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                     req.setDrAmt(BigDecimal.ZERO);
                     req.setCrAmt(bw.getAmount());
                 }
+                req.setBillOriginalAmount(bw.getAmount());
                 req.setBillRemarks(bw.getBillRemarks());
                 req.setLoginUserPoid(UserContext.getUserPoid());
 
@@ -1214,6 +1216,11 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                             popup.setBillRefType(x.getBillRefType());
                             popup.setBillRef(x.getBillRef());
                             popup.setBillDueDate(x.getBillDueDate());
+                            popup.setBillOriginalAmount(x.getBillOriginalAmount() != null
+                                    ? x.getBillOriginalAmount()
+                                    : (x.getDrAmt() != null && x.getDrAmt().compareTo(BigDecimal.ZERO) > 0
+                                    ? x.getDrAmt()
+                                    : x.getCrAmt()));
                             BigDecimal drAmt = x.getDrAmt() != null ? x.getDrAmt() : BigDecimal.ZERO;
                             BigDecimal crAmt = x.getCrAmt() != null ? x.getCrAmt() : BigDecimal.ZERO;
                             popup.setType(drAmt.compareTo(BigDecimal.ZERO) > 0 ? "DR" : "CR");

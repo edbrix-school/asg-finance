@@ -621,6 +621,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                                     bill.getGlCompanyPoid() != null ? bill.getGlCompanyPoid() : header.getCompanyPoid())
                             .remarks(bill.getRemarks())
                             .checkall("N")
+                            .billOriginalAmount(bill.getBillOriginalAmount())
                             .build());
                     break;
 
@@ -645,6 +646,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                     existingBill.setGlCompanyPoid(
                             bill.getGlCompanyPoid() != null ? bill.getGlCompanyPoid() : header.getCompanyPoid());
                     existingBill.setRemarks(bill.getRemarks());
+                    existingBill.setBillOriginalAmount(bill.getBillOriginalAmount());
                     existingBill.setLastModifiedBy(currentUser);
                     existingBill.setLastModifiedDate(now);
                     toUpdate.add(existingBill);
@@ -1516,6 +1518,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                     .glCompanyPoid(bill.getGlCompanyPoid() != null ? bill.getGlCompanyPoid() : header.getCompanyPoid())
                     .remarks(bill.getRemarks())
                     .checkall("N")
+                    .billOriginalAmount(bill.getBillOriginalAmount())
                     .build();
 
             details.add(detail);
@@ -1977,6 +1980,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                     dto.setGlPoid(detail.getGlPoid());
                     dto.setGlCompanyPoid(detail.getGlCompanyPoid());
                     dto.setDescription(detail.getDescription());
+                    dto.setBillOriginalAmount(detail.getBillOriginalAmount());
                     return dto;
                 })
                 .collect(Collectors.toList());

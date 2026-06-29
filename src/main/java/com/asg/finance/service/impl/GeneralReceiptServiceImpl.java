@@ -2128,7 +2128,27 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
         LocalDate sqlDate = asOnDate != null ? asOnDate : LocalDate.now();
         List<Object[]> results = procedureRepository.fetchPendingBills(DEFAULT_GROUP_POID, companyPoid, glPoid,
                 sqlDate);
-        return Map.of("pendingBills", results);
+        
+        // Transform results to add drcrtypeoriginal field
+        List<Object[]> enhancedResults = results.stream()
+                .map(row -> {
+                    Object[] enhancedRow = new Object[row.length + 1];
+                    System.arraycopy(row, 0, enhancedRow, 0, row.length);
+                    
+                    // Add drcrtypeoriginal field based on balance value
+                    // Index 4 is BALANCE (0=GL_COMPANY_POID, 1=BILL_REF, 2=BILL_DUE_DATE, 3=REMARKS, 4=BALANCE)
+                    if (row.length > 4 && row[4] != null) {
+                        BigDecimal balance = (BigDecimal) row[4];
+                        enhancedRow[5] = balance.compareTo(BigDecimal.ZERO) >= 0 ? "Dr" : "Cr";
+                    } else {
+                        enhancedRow[5] = "Dr"; // Default to Dr if balance is null
+                    }
+                    
+                    return enhancedRow;
+                })
+                .collect(Collectors.toList());
+        
+        return Map.of("pendingBills", enhancedResults);
     }
 
     @Override

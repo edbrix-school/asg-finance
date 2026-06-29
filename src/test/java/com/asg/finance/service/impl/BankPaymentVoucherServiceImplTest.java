@@ -1500,6 +1500,7 @@ class BankPaymentVoucherServiceImplTest {
                 .billRefType("INV")
                 .billRef("INV-1")
                 .billDueDate(LocalDate.now())
+                .billOriginalAmount(new BigDecimal("100.00"))
                 .amount(new BigDecimal("100.00"))
                 .billRemarks("BW")
                 .build();
@@ -1567,6 +1568,7 @@ class BankPaymentVoucherServiceImplTest {
                 .billRefType("INV")
                 .billRef("INV-22")
                 .billDueDate(LocalDate.now())
+                .billOriginalAmount(new BigDecimal("100"))
                 .amount(new BigDecimal("100"))
                 .build();
         created.setBillWiseBreakup(List.of(billwise));

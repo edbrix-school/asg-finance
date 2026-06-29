@@ -2011,7 +2011,7 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
                             // First try to parse as Long (for numeric cost center POIDs)
                             String costPoid = detail.getCostPoid();
                             LovGetListDto costCenterLov = lovService.getDetailsByCodeAndLovName(costPoid,
-                                    "AR_GEN_REC_COST_CENTER");
+                                    "AR_GEN_REC_COST_CENTER_CHILD");
                             if (costCenterLov != null) {
                                 dto.setCostCenter(costPoid);
                                 dto.setCostCenterDetails(costCenterLov);

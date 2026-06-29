@@ -32,6 +32,8 @@ public class ApPurchaseCnProcRepositoryImpl implements ApPurchaseCnProcRepositor
     private static final String P_CN_PJ_REF_TYPE = "P_CN_PJ_REF_TYPE";
     private static final String ERROR = "ERROR";
     private static final String WARNING = "WARNING";
+    private static final String P_PJ_REVERSAL_POID = "P_PJ_REVERSAL_POID";
+    
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -103,15 +105,14 @@ public class ApPurchaseCnProcRepositoryImpl implements ApPurchaseCnProcRepositor
         query.registerStoredProcedureParameter(P_CN_PJ_PARTY_TYPE, String.class, ParameterMode.IN);
         query.registerStoredProcedureParameter(P_CN_PJ_PARTY_POID, String.class, ParameterMode.IN);
         query.registerStoredProcedureParameter(P_CN_PJ_REF_TYPE, String.class, ParameterMode.IN);
-        query.registerStoredProcedureParameter(P_PJ_POID, String.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(P_PJ_REVERSAL_POID, String.class, ParameterMode.IN);
         query.registerStoredProcedureParameter(P_RESULT, String.class, ParameterMode.OUT);
-        query.registerStoredProcedureParameter(OUTDATA, void.class, ParameterMode.REF_CURSOR);
 
         setBaseParameters(query);
         query.setParameter(P_CN_PJ_PARTY_TYPE, partyType);
         query.setParameter(P_CN_PJ_PARTY_POID, partyPoid != null ? String.valueOf(partyPoid) : null);
         query.setParameter(P_CN_PJ_REF_TYPE, refType);
-        query.setParameter(P_PJ_POID, pjPoid != null ? String.valueOf(pjPoid) : null);
+        query.setParameter(P_PJ_REVERSAL_POID, pjPoid != null ? String.valueOf(pjPoid) : null);
         query.execute();
 
         validateResult(query);

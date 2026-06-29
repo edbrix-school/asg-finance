@@ -657,7 +657,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                     dto1.setBillRef(popup.getBillRef());
                     dto1.setGlCompanyPoid(popup.getGlCompanyPoid() != null ? popup.getGlCompanyPoid() : g.getCompanyPoid());
                     dto1.setBillDueDate(popup.getBillDueDate());
-                    BigDecimal amount = popup.getAmount();
+                    BigDecimal amount = popup.getBillOriginalAmount();
                     dto1.setBillOriginalAmount(amount);
 
                     if ("DR".equalsIgnoreCase(g.getType())) {
@@ -1861,7 +1861,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                     dto.setBillRefType(popup.getBillRefType());
                     dto.setBillRef(popup.getBillRef());
                     dto.setBillDueDate(popup.getBillDueDate());
-                    BigDecimal amount = popup.getAmount() == null ? BigDecimal.ZERO : popup.getAmount();
+                    BigDecimal amount = popup.getBillOriginalAmount() == null ? BigDecimal.ZERO : popup.getBillOriginalAmount();
                     dto.setBillOriginalAmount(amount);
                     String type = popup.getType();
 

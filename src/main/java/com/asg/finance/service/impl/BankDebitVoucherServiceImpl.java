@@ -522,7 +522,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                             dto.setBillRefType(p.getBillRefType());
                             dto.setBillRef(p.getBillRef());
                             dto.setBillDueDate(p.getBillDueDate());
-                            dto.setBillOriginalAmount(p.getAmount());
+                            dto.setBillOriginalAmount(p.getBillOriginalAmount());
                             if ("CR".equalsIgnoreCase(p.getType())) {
                                 dto.setCrAmt(p.getAmount());
                             } else {
@@ -589,7 +589,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                             dto.setBillRefType(p.getBillRefType());
                             dto.setBillRef(p.getBillRef());
                             dto.setBillDueDate(p.getBillDueDate());
-                            dto.setBillOriginalAmount(p.getAmount());
+                            dto.setBillOriginalAmount(p.getBillOriginalAmount());
                             if ("CR".equalsIgnoreCase(p.getType())) {
                                 dto.setCrAmt(p.getAmount());
                             } else {

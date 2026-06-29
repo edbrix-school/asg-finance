@@ -1025,7 +1025,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                     req.setDrAmt(BigDecimal.ZERO);
                     req.setCrAmt(bw.getAmount());
                 }
-                req.setBillOriginalAmount(bw.getAmount());
+                req.setBillOriginalAmount(bw.getBillOriginalAmount());
                 req.setBillRemarks(bw.getBillRemarks());
                 req.setLoginUserPoid(UserContext.getUserPoid());
 
@@ -1116,7 +1116,7 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                     req.setDrAmt(BigDecimal.ZERO);
                     req.setCrAmt(bw.getAmount());
                 }
-                req.setBillOriginalAmount(bw.getAmount());
+                req.setBillOriginalAmount(bw.getBillOriginalAmount());
                 req.setBillRemarks(bw.getBillRemarks());
                 req.setLoginUserPoid(UserContext.getUserPoid());
 

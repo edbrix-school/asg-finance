@@ -229,7 +229,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                                 dto.setBillRefType(popup.getBillRefType());
                                 dto.setBillRef(popup.getBillRef());
                                 dto.setBillDueDate(popup.getBillDueDate());
-                                dto.setBillOriginalAmount(popup.getAmount());
+                                dto.setBillOriginalAmount(popup.getBillOriginalAmount());
                                 dto.setDrAmt(resolveBillwiseDrAmt(popup));
                                 dto.setCrAmt(resolveBillwiseCrAmt(popup));
                                 dto.setBillRemarks(popup.getBillRemarks());
@@ -496,7 +496,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                                 dto.setBillRefType(popup.getBillRefType());
                                 dto.setBillRef(popup.getBillRef());
                                 dto.setBillDueDate(popup.getBillDueDate());
-                                dto.setBillOriginalAmount(popup.getAmount());
+                                dto.setBillOriginalAmount(popup.getBillOriginalAmount());
                                 dto.setDrAmt(resolveBillwiseDrAmt(popup));
                                 dto.setCrAmt(resolveBillwiseCrAmt(popup));
                                 dto.setBillRemarks(popup.getBillRemarks());

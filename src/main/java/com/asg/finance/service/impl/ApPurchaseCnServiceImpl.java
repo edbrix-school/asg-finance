@@ -1204,7 +1204,7 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         req.setBillRefType(popup.getBillRefType());
         req.setBillRef(popup.getBillRef());
         req.setBillDueDate(popup.getBillDueDate());
-        req.setBillOriginalAmount(popup.getAmount());
+        req.setBillOriginalAmount(popup.getBillOriginalAmount());
         setBillwiseAmounts(req, popup);
         req.setBillRemarks(popup.getBillRemarks());
         req.setLoginUserPoid(context.userPoid());

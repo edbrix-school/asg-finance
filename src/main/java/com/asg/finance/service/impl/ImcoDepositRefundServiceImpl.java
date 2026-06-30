@@ -169,7 +169,7 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
                 if (request.getReceiptNum() == null || request.getReceiptNum().trim().isEmpty()) {
                         throw new ValidationException("Receipt not entered, please enter receipt number");
                 }
-                if (hdrRepository.existsByReceiptNum(request.getReceiptNum().trim())) {
+                if (hdrRepository.countByReceiptNum(request.getReceiptNum().trim()) > 0) {
                         throw new ValidationException(
                                         "A refund already exists with receipt number " + request.getReceiptNum().trim());
                 }

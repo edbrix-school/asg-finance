@@ -282,6 +282,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         }
         validateGlDetails(request.getGlDetails(), Boolean.TRUE.equals(request.getMultiCompany()));
         validateDebitCreditBalance(request.getGlDetails(), calculateBhdAmount(request));
+        validateUniqueAssetCapitalization(request.getAssetCapitalization());
         validateAssetDetailsForCapitalization(request.getAssetCapitalization());
         validateCapitalizationNature(request.getGlDetails(), request.getAssetCapitalization());
     }
@@ -323,21 +324,21 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
     }
 
     private void validateDebitAmount(JournalVoucherGlDetailDto detail) {
-        if (detail.getDrAmt() == null || detail.getDrAmt().compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("DrAmt must be greater than 0 for Type=Dr");
-        }
-        if (detail.getCrAmt() != null && detail.getCrAmt().compareTo(BigDecimal.ZERO) != 0) {
-            throw new IllegalArgumentException("CrAmt must be 0 or null for Type=Dr");
-        }
+//        if (detail.getDrAmt() == null || detail.getDrAmt().compareTo(BigDecimal.ZERO) <= 0) {
+//            throw new IllegalArgumentException("DrAmt must be greater than 0 for Type=Dr");
+//        }
+//        if (detail.getCrAmt() != null && detail.getCrAmt().compareTo(BigDecimal.ZERO) != 0) {
+//            throw new IllegalArgumentException("CrAmt must be 0 or null for Type=Dr");
+//        }
     }
 
     private void validateCreditAmount(JournalVoucherGlDetailDto detail) {
-        if (detail.getCrAmt() == null || detail.getCrAmt().compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("CrAmt must be greater than 0 for Type=Cr");
-        }
-        if (detail.getDrAmt() != null && detail.getDrAmt().compareTo(BigDecimal.ZERO) != 0) {
-            throw new IllegalArgumentException("DrAmt must be 0 or null for Type=Cr");
-        }
+//        if (detail.getCrAmt() == null || detail.getCrAmt().compareTo(BigDecimal.ZERO) <= 0) {
+//            throw new IllegalArgumentException("CrAmt must be greater than 0 for Type=Cr");
+//        }
+//        if (detail.getDrAmt() != null && detail.getDrAmt().compareTo(BigDecimal.ZERO) != 0) {
+//            throw new IllegalArgumentException("DrAmt must be 0 or null for Type=Cr");
+//        }
     }
 
     private void validateAssetDetailsForDisposal(List<JournalVoucherAssetDetailDto> assetDetails) {
@@ -362,6 +363,19 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                 glJournalVoucherHdrRepository.fetchFixedAssetDetails(detail.getFaPoid());
             } catch (Exception e) {
                 throw new IllegalArgumentException("Asset not valid for capitalization: " + detail.getFaPoid());
+            }
+        }
+    }
+
+    private void validateUniqueAssetCapitalization(List<JournalVoucherCapitalizationDto> capitalizationDetails) {
+        Set<Long> assetIds = new HashSet<>();
+        for (JournalVoucherCapitalizationDto detail : capitalizationDetails) {
+            if (ACTION_ISDELETED.equals(resolveAction(detail.getActionType()))) {
+                continue;
+            }
+            if (!assetIds.add(detail.getFaPoid())) {
+                throw new IllegalArgumentException(
+                        "Duplicate asset capitalization entry found for asset poid: " + detail.getFaPoid());
             }
         }
     }
@@ -569,8 +583,8 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                         .glCompanyPoid(glCompanyPoid)
                         .billDetRowId(counter.getAndIncrement())
                         .billOriginalAmount(dto.getAmount())
-                        .drAmt("Dr".equalsIgnoreCase(dto.getType()) ? dto.getAmount() : BigDecimal.ZERO)
-                        .crAmt("Cr".equalsIgnoreCase(dto.getType()) ? dto.getAmount() : BigDecimal.ZERO)
+                        .drAmt("Dr".equalsIgnoreCase(dto.getType()) ? dto.getAmount() : null)
+                        .crAmt("Cr".equalsIgnoreCase(dto.getType()) ? dto.getAmount() : null)
                         .billRefType(dto.getBillRefType())
                         .billRef(dto.getBillRef())
                         .billDueDate(dto.getBillDueDate())

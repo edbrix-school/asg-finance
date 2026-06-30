@@ -174,6 +174,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                         throw new ValidationException("PIC From Date cannot be greater than PIC To Date");
                     }
                 }
+                validateNoDuplicatePicDetails(request.getPicDetails());
             }
 
             LocalDate txDate = request.getTransactionDate() != null ? request.getTransactionDate() : LocalDate.now();
@@ -337,6 +338,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                     throw new ValidationException("PIC From Date cannot be greater than PIC To Date");
                 }
             }
+            validateNoDuplicatePicDetails(request.getPicDetails());
         }
 
 
@@ -611,6 +613,7 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
     private List<InsurancePicDetail> buildPicDetails(List<InsurancePicDetailRequestDto> dtos, InsuranceMaster parent) {
         if (dtos == null) return new ArrayList<>();
         List<InsurancePicDetail> result = new ArrayList<>();
+        Set<String> seenBusinessKeys = new HashSet<>();
         
         // Find max detRowId from existing records AND incoming DTOs
         long maxFromExisting = parent.getPicDetails() != null ? 
@@ -643,6 +646,11 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
                 detRowId = dto.getDetRowId();
             } else {
                 detRowId = dto.getDetRowId() != null ? dto.getDetRowId() : nextDetRowId++;
+            }
+
+            String businessKey = buildPicBusinessKey(dto);
+            if (!seenBusinessKeys.add(businessKey)) {
+                continue;
             }
             
             result.add(InsurancePicDetail.builder()
@@ -859,6 +867,48 @@ public class InsuranceMasterServiceImpl implements InsuranceMasterService {
             case "ISDELETED", "DELETED" -> "ISDELETED";
             default -> "NOCHANGES";
         };
+    }
+
+    private void validateNoDuplicatePicDetails(List<InsurancePicDetailRequestDto> dtos) {
+        Set<String> seenBusinessKeys = new HashSet<>();
+        for (InsurancePicDetailRequestDto dto : dtos) {
+            String action = normalizeAction(dto.getActionType());
+            if ("ISDELETED".equals(action) || isEmptyPicRow(dto)) {
+                continue;
+            }
+
+            String businessKey = buildPicBusinessKey(dto);
+            if (!seenBusinessKeys.add(businessKey)) {
+                throw new ValidationException("Duplicate PIC Details are not allowed");
+            }
+        }
+    }
+
+    private String buildPicBusinessKey(InsurancePicDetailRequestDto dto) {
+        return String.join("|",
+                normalizeKeyPart(dto.getRolePoid()),
+                normalizeKeyPart(dto.getContactType()),
+                normalizeKeyPart(dto.getPicPersonPoid()),
+                normalizeKeyPart(dto.getFromDate()),
+                normalizeKeyPart(dto.getToDate()));
+    }
+
+    private boolean isEmptyPicRow(InsurancePicDetailRequestDto dto) {
+        return dto.getRolePoid() == null
+                && dto.getPicPersonPoid() == null
+                && dto.getFromDate() == null
+                && dto.getToDate() == null
+                && (dto.getContactType() == null || dto.getContactType().trim().isEmpty());
+    }
+
+    private String normalizeKeyPart(Object value) {
+        if (value == null) {
+            return "";
+        }
+        if (value instanceof String s) {
+            return s.trim().toUpperCase();
+        }
+        return value.toString();
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)

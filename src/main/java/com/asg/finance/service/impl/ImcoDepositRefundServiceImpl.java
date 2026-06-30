@@ -78,7 +78,6 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
                                         .companyPoid(UserContext.getCompanyPoid())
                                         .docRef(request.getDocRef())
                                         .remarks(request.getRemarks())
-                                        .grandTotal(request.getGrandTotal())
                                         .blNumber(request.getBlNumber())
                                         .receiptNum(request.getReceiptNum())
                                         .payingTo(request.getPayingTo())
@@ -169,6 +168,10 @@ public class ImcoDepositRefundServiceImpl implements ImcoDepositRefundService {
                 }
                 if (request.getReceiptNum() == null || request.getReceiptNum().trim().isEmpty()) {
                         throw new ValidationException("Receipt not entered, please enter receipt number");
+                }
+                if (hdrRepository.existsByReceiptNum(request.getReceiptNum().trim())) {
+                        throw new ValidationException(
+                                        "A refund already exists with receipt number " + request.getReceiptNum().trim());
                 }
 
                 BigDecimal totalBillAmount = request.getChequeBillDetails().stream()

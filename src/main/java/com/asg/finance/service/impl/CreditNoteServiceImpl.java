@@ -2500,9 +2500,9 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                     req.setBillOriginalAmount(popup.getBillOriginalAmount());
                     if ("DR".equalsIgnoreCase(popup.getType())) {
                         req.setDrAmt(popup.getAmount());
-                        req.setCrAmt(BigDecimal.ZERO);
+                        req.setCrAmt(null);
                     } else {
-                        req.setDrAmt(BigDecimal.ZERO);
+                        req.setDrAmt(null);
                         req.setCrAmt(popup.getAmount());
                     }
                     req.setBillRemarks(popup.getBillRemarks());
@@ -2688,13 +2688,18 @@ public class CreditNoteServiceImpl implements CreditNoteService {
                                         ? item.getBillOriginalAmount()
                                         : (item.getDrAmt() != null && item.getDrAmt().compareTo(BigDecimal.ZERO) > 0
                                         ? item.getDrAmt()
-                                        : item.getCrAmt()));
+                                        : (item.getCrAmt() != null && item.getCrAmt().compareTo(BigDecimal.ZERO) > 0
+                                        ? item.getCrAmt()
+                                        : null)));
                                 if (item.getDrAmt() != null && item.getDrAmt().compareTo(BigDecimal.ZERO) > 0) {
                                     popupDto.setType("DR");
                                     popupDto.setAmount(item.getDrAmt());
                                 } else if (item.getCrAmt() != null && item.getCrAmt().compareTo(BigDecimal.ZERO) > 0) {
                                     popupDto.setType("CR");
                                     popupDto.setAmount(item.getCrAmt());
+                                } else {
+                                    popupDto.setType(null);
+                                    popupDto.setAmount(null);
                                 }
                                 popupDto.setBillRemarks(item.getBillRemarks());
                                 return popupDto;

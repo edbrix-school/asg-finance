@@ -994,11 +994,17 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
                             ? bw.getBillOriginalAmount()
                             : (bw.getDrAmt() != null && bw.getDrAmt().compareTo(BigDecimal.ZERO) > 0
                             ? bw.getDrAmt()
-                            : bw.getCrAmt()));
-                    BigDecimal drAmt = bw.getDrAmt() != null ? bw.getDrAmt() : BigDecimal.ZERO;
-                    BigDecimal crAmt = bw.getCrAmt() != null ? bw.getCrAmt() : BigDecimal.ZERO;
-                    dto.setType(drAmt.compareTo(BigDecimal.ZERO) > 0 ? "DR" : "CR");
-                    dto.setAmount(drAmt.compareTo(BigDecimal.ZERO) > 0 ? drAmt : crAmt);
+                            : (bw.getCrAmt() != null && bw.getCrAmt().compareTo(BigDecimal.ZERO) > 0
+                            ? bw.getCrAmt()
+                            : null)));
+                    BigDecimal drAmt = bw.getDrAmt() != null && bw.getDrAmt().compareTo(BigDecimal.ZERO) > 0
+                            ? bw.getDrAmt()
+                            : null;
+                    BigDecimal crAmt = bw.getCrAmt() != null && bw.getCrAmt().compareTo(BigDecimal.ZERO) > 0
+                            ? bw.getCrAmt()
+                            : null;
+                    dto.setType(drAmt != null ? "DR" : (crAmt != null ? "CR" : null));
+                    dto.setAmount(drAmt != null ? drAmt : crAmt);
                     dto.setBillRemarks(bw.getBillRemarks());
                     return dto;
                 })

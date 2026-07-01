@@ -1227,8 +1227,10 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                                             ? bw.getBillOriginalAmount()
                                             : (bw.getDrAmt() != null && bw.getDrAmt().compareTo(BigDecimal.ZERO) > 0
                                             ? bw.getDrAmt()
-                                            : bw.getCrAmt()));
-                                    // Amount & type from DR/CR amounts - check > 0 (like CreditNote, ApPurchaseJournal)
+                                            : (bw.getCrAmt() != null && bw.getCrAmt().compareTo(BigDecimal.ZERO) > 0
+                                            ? bw.getCrAmt()
+                                            : null)));
+                                    // Amount & type from DR/CR amounts - preserve null when neither side is set
                                     if (bw.getDrAmt() != null && bw.getDrAmt().compareTo(BigDecimal.ZERO) > 0) {
                                         dto.setType("DR");
                                         dto.setAmount(bw.getDrAmt());
@@ -1236,9 +1238,8 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                                         dto.setType("CR");
                                         dto.setAmount(bw.getCrAmt());
                                     } else {
-                                        // Default to CR with zero amount if neither condition is met
-                                        dto.setType("CR");
-                                        dto.setAmount(BigDecimal.ZERO);
+                                        dto.setType(null);
+                                        dto.setAmount(null);
                                     }
                                     dto.setBillRemarks(bw.getBillRemarks());
                                     return dto;

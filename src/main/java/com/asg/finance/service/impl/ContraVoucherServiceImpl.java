@@ -615,13 +615,21 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
                 req.setBillRefType(popup.getBillRefType());
                 req.setBillRef(popup.getBillRef());
                 req.setBillDueDate(popup.getBillDueDate());
-                req.setBillOriginalAmount(popup.getBillOriginalAmount());
+                BigDecimal originalAmount = popup.getBillOriginalAmount();
+                if (originalAmount != null && originalAmount.compareTo(BigDecimal.ZERO) == 0) {
+                    originalAmount = null;
+                }
+                BigDecimal amount = popup.getAmount();
+                if (amount != null && amount.compareTo(BigDecimal.ZERO) == 0) {
+                    amount = null;
+                }
+                req.setBillOriginalAmount(originalAmount);
                 if (BILLWISE_TYPE_DR.equalsIgnoreCase(popup.getType())) {
-                    req.setDrAmt(popup.getAmount());
-                    req.setCrAmt(BigDecimal.ZERO);
+                    req.setDrAmt(amount);
+                    req.setCrAmt(null);
                 } else {
-                    req.setDrAmt(BigDecimal.ZERO);
-                    req.setCrAmt(popup.getAmount());
+                    req.setDrAmt(null);
+                    req.setCrAmt(amount);
                 }
                 req.setBillRemarks(popup.getBillRemarks());
                 req.setLoginUserPoid(userPoid);
@@ -721,11 +729,17 @@ public class ContraVoucherServiceImpl implements ContraVoucherService {
                 ? billwiseDto.getBillOriginalAmount()
                 : (billwiseDto.getDrAmt() != null && billwiseDto.getDrAmt().compareTo(BigDecimal.ZERO) > 0
                 ? billwiseDto.getDrAmt()
-                : billwiseDto.getCrAmt()));
-        BigDecimal drAmt = billwiseDto.getDrAmt() != null ? billwiseDto.getDrAmt() : BigDecimal.ZERO;
-        BigDecimal crAmt = billwiseDto.getCrAmt() != null ? billwiseDto.getCrAmt() : BigDecimal.ZERO;
-        popup.setType(drAmt.compareTo(BigDecimal.ZERO) > 0 ? BILLWISE_TYPE_DR : BILLWISE_TYPE_CR);
-        popup.setAmount(drAmt.compareTo(BigDecimal.ZERO) > 0 ? drAmt : crAmt);
+                : (billwiseDto.getCrAmt() != null && billwiseDto.getCrAmt().compareTo(BigDecimal.ZERO) > 0
+                ? billwiseDto.getCrAmt()
+                : null)));
+        BigDecimal drAmt = billwiseDto.getDrAmt() != null && billwiseDto.getDrAmt().compareTo(BigDecimal.ZERO) > 0
+                ? billwiseDto.getDrAmt()
+                : null;
+        BigDecimal crAmt = billwiseDto.getCrAmt() != null && billwiseDto.getCrAmt().compareTo(BigDecimal.ZERO) > 0
+                ? billwiseDto.getCrAmt()
+                : null;
+        popup.setType(drAmt != null ? BILLWISE_TYPE_DR : (crAmt != null ? BILLWISE_TYPE_CR : null));
+        popup.setAmount(drAmt != null ? drAmt : crAmt);
         popup.setBillRemarks(billwiseDto.getBillRemarks());
         return popup;
     }

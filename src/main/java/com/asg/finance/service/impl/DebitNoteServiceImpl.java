@@ -1020,9 +1020,9 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                 req.setBillDueDate(bw.getBillDueDate());
                 if ("DR".equalsIgnoreCase(bw.getType())) {
                     req.setDrAmt(bw.getAmount());
-                    req.setCrAmt(BigDecimal.ZERO);
+                    req.setCrAmt(null);
                 } else {
-                    req.setDrAmt(BigDecimal.ZERO);
+                    req.setDrAmt(null);
                     req.setCrAmt(bw.getAmount());
                 }
                 req.setBillOriginalAmount(bw.getBillOriginalAmount());
@@ -1111,9 +1111,9 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                 req.setBillDueDate(bw.getBillDueDate());
                 if ("DR".equalsIgnoreCase(bw.getType())) {
                     req.setDrAmt(bw.getAmount());
-                    req.setCrAmt(BigDecimal.ZERO);
+                    req.setCrAmt(null);
                 } else {
-                    req.setDrAmt(BigDecimal.ZERO);
+                    req.setDrAmt(null);
                     req.setCrAmt(bw.getAmount());
                 }
                 req.setBillOriginalAmount(bw.getBillOriginalAmount());
@@ -1220,11 +1220,17 @@ public class DebitNoteServiceImpl implements DebitNoteService {
                                     ? x.getBillOriginalAmount()
                                     : (x.getDrAmt() != null && x.getDrAmt().compareTo(BigDecimal.ZERO) > 0
                                     ? x.getDrAmt()
-                                    : x.getCrAmt()));
-                            BigDecimal drAmt = x.getDrAmt() != null ? x.getDrAmt() : BigDecimal.ZERO;
-                            BigDecimal crAmt = x.getCrAmt() != null ? x.getCrAmt() : BigDecimal.ZERO;
-                            popup.setType(drAmt.compareTo(BigDecimal.ZERO) > 0 ? "DR" : "CR");
-                            popup.setAmount(drAmt.compareTo(BigDecimal.ZERO) > 0 ? drAmt : crAmt);
+                                    : (x.getCrAmt() != null && x.getCrAmt().compareTo(BigDecimal.ZERO) > 0
+                                    ? x.getCrAmt()
+                                    : null)));
+                            BigDecimal drAmt = x.getDrAmt() != null && x.getDrAmt().compareTo(BigDecimal.ZERO) > 0
+                                    ? x.getDrAmt()
+                                    : null;
+                            BigDecimal crAmt = x.getCrAmt() != null && x.getCrAmt().compareTo(BigDecimal.ZERO) > 0
+                                    ? x.getCrAmt()
+                                    : null;
+                            popup.setType(drAmt != null ? "DR" : (crAmt != null ? "CR" : null));
+                            popup.setAmount(drAmt != null ? drAmt : crAmt);
                             popup.setBillRemarks(x.getBillRemarks());
                             return popup;
                         })

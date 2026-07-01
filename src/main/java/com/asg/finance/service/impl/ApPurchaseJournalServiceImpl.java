@@ -658,17 +658,20 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                     dto1.setGlCompanyPoid(popup.getGlCompanyPoid() != null ? popup.getGlCompanyPoid() : g.getCompanyPoid());
                     dto1.setBillDueDate(popup.getBillDueDate());
                     BigDecimal amount = popup.getBillOriginalAmount();
+                    if (amount != null && amount.compareTo(BigDecimal.ZERO) == 0) {
+                        amount = null;
+                    }
                     dto1.setBillOriginalAmount(amount);
 
                     if ("DR".equalsIgnoreCase(g.getType())) {
                         dto1.setDrAmt(amount);
-                        dto1.setCrAmt(BigDecimal.ZERO);
+                        dto1.setCrAmt(null);
                     } else if ("CR".equalsIgnoreCase(g.getType())) {
-                        dto1.setDrAmt(BigDecimal.ZERO);
+                        dto1.setDrAmt(null);
                         dto1.setCrAmt(amount);
                     } else {
-                        dto1.setDrAmt(BigDecimal.ZERO);
-                        dto1.setCrAmt(BigDecimal.ZERO);
+                        dto1.setDrAmt(null);
+                        dto1.setCrAmt(amount);
                     }
                     dto1.setBillRemarks(popup.getBillRemarks());
                     billwiseList.add(dto1);
@@ -1153,21 +1156,24 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                                         popup.getAmount() == null
                                                 ? BigDecimal.ZERO
                                                 : popup.getAmount();
+                                if (amount.compareTo(BigDecimal.ZERO) == 0) {
+                                    amount = null;
+                                }
                                 dto1.setBillOriginalAmount(amount);
 
                                 if ("DR".equalsIgnoreCase(popup.getType())) {
 
                                     dto1.setDrAmt(amount);
-                                    dto1.setCrAmt(BigDecimal.ZERO);
+                                    dto1.setCrAmt(null);
 
                                 } else if ("CR".equalsIgnoreCase(popup.getType())) {
 
-                                    dto1.setDrAmt(BigDecimal.ZERO);
+                                    dto1.setDrAmt(null);
                                     dto1.setCrAmt(amount);
 
                                 } else {
 
-                                    dto1.setDrAmt(BigDecimal.ZERO);
+                                    dto1.setDrAmt(null);
                                     dto1.setCrAmt(amount);
                                 }
                                 dto1.setBillRemarks(popup.getBillRemarks());
@@ -1861,23 +1867,26 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                     dto.setBillRefType(popup.getBillRefType());
                     dto.setBillRef(popup.getBillRef());
                     dto.setBillDueDate(popup.getBillDueDate());
-                    BigDecimal amount = popup.getBillOriginalAmount() == null ? BigDecimal.ZERO : popup.getBillOriginalAmount();
+                    BigDecimal amount = popup.getBillOriginalAmount();
+                    if (amount != null && amount.compareTo(BigDecimal.ZERO) == 0) {
+                        amount = null;
+                    }
                     dto.setBillOriginalAmount(amount);
                     String type = popup.getType();
 
                     if (type == null) {
 
-                        dto.setDrAmt(BigDecimal.ZERO);
+                        dto.setDrAmt(null);
                         dto.setCrAmt(amount);
 
                     } else if ("DR".equalsIgnoreCase(type)) {
 
                         dto.setDrAmt(amount);
-                        dto.setCrAmt(BigDecimal.ZERO);
+                        dto.setCrAmt(null);
 
                     } else if ("CR".equalsIgnoreCase(type)) {
 
-                        dto.setDrAmt(BigDecimal.ZERO);
+                        dto.setDrAmt(null);
                         dto.setCrAmt(amount);
 
                     } else {
@@ -1886,7 +1895,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                             dto.setDrAmt(new BigDecimal(type));  // only if numeric
                             dto.setCrAmt(amount);
                         } catch (Exception e) {
-                            dto.setDrAmt(BigDecimal.ZERO);
+                            dto.setDrAmt(null);
                             dto.setCrAmt(amount);
                         }
                     }
@@ -1990,7 +1999,9 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                                     ? item.getBillOriginalAmount()
                                     : (item.getDrAmt() != null && item.getDrAmt().compareTo(BigDecimal.ZERO) > 0
                                     ? item.getDrAmt()
-                                    : item.getCrAmt()));
+                                    : (item.getCrAmt() != null && item.getCrAmt().compareTo(BigDecimal.ZERO) > 0
+                                    ? item.getCrAmt()
+                                    : null)));
                             popupDto.setGlCompanyPoid(glDto.getCompanyPoid() != null ? glDto.getCompanyPoid() : UserContext.getCompanyPoid());
 
                             // Determine type and amount from drAmt/crAmt
@@ -2000,6 +2011,9 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                             } else if (item.getCrAmt() != null && item.getCrAmt().compareTo(BigDecimal.ZERO) > 0) {
                                 popupDto.setType("CR");
                                 popupDto.setAmount(item.getCrAmt());
+                            } else {
+                                popupDto.setType(null);
+                                popupDto.setAmount(null);
                             }
 
                             popupDto.setBillRemarks(item.getBillRemarks());
@@ -2907,9 +2921,9 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
         //  Legacy behaviour
         if ("DR".equalsIgnoreCase(type)) {
             billDto.setDrAmt(amount);
-            billDto.setCrAmt(BigDecimal.ZERO);
+            billDto.setCrAmt(null);
         } else {
-            billDto.setDrAmt(BigDecimal.ZERO);
+            billDto.setDrAmt(null);
             billDto.setCrAmt(amount);
         }
 

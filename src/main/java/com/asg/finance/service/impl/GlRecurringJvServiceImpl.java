@@ -299,16 +299,22 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
                                 ? bw.getBillOriginalAmount()
                                 : (bw.getDrAmt() != null && bw.getDrAmt().compareTo(BigDecimal.ZERO) > 0
                                 ? bw.getDrAmt()
-                                : bw.getCrAmt()));
-                        BigDecimal drAmt = bw.getDrAmt() != null ? bw.getDrAmt() : BigDecimal.ZERO;
-                        BigDecimal crAmt = bw.getCrAmt() != null ? bw.getCrAmt() : BigDecimal.ZERO;
-                        dto.setType(drAmt.compareTo(BigDecimal.ZERO) > 0 ? "DR" : "CR");
-                        dto.setAmount(drAmt.compareTo(BigDecimal.ZERO) > 0 ? drAmt : crAmt);
+                                : (bw.getCrAmt() != null && bw.getCrAmt().compareTo(BigDecimal.ZERO) > 0
+                                ? bw.getCrAmt()
+                                : null)));
+                        BigDecimal drAmt = bw.getDrAmt() != null && bw.getDrAmt().compareTo(BigDecimal.ZERO) > 0
+                                ? bw.getDrAmt()
+                                : null;
+                        BigDecimal crAmt = bw.getCrAmt() != null && bw.getCrAmt().compareTo(BigDecimal.ZERO) > 0
+                                ? bw.getCrAmt()
+                                : null;
+                        dto.setType(drAmt != null ? "DR" : (crAmt != null ? "CR" : null));
+                        dto.setAmount(drAmt != null ? drAmt : crAmt);
                         dto.setBillRemarks(bw.getBillRemarks());
                         return dto;
                     })
                     .toList();
-        }
+    }
     private RecurringJvScheduleDetailResponse convertScheduleToResponse(GlRecurringJvMonthDtl schedule) {
         RecurringJvScheduleDetailResponse response = new RecurringJvScheduleDetailResponse();
         response.setDetRowId(schedule.getDetRowId());
@@ -804,9 +810,9 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
         return billwiseBreakups.stream()
                 .filter(dto -> dto.getActionType() == null || !"NOCHANGES".equalsIgnoreCase(dto.getActionType()))
                 .map(dto -> {
-                    BigDecimal amount = dto.getAmount() != null ? dto.getAmount() : BigDecimal.ZERO;
-                    BigDecimal drAmt = TYPE_DEBIT.equalsIgnoreCase(dto.getType()) ? amount : BigDecimal.ZERO;
-                    BigDecimal crAmt = TYPE_CREDIT.equalsIgnoreCase(dto.getType()) ? amount : BigDecimal.ZERO;
+                    BigDecimal amount = dto.getAmount();
+                    BigDecimal drAmt = TYPE_DEBIT.equalsIgnoreCase(dto.getType()) ? amount : null;
+                    BigDecimal crAmt = TYPE_CREDIT.equalsIgnoreCase(dto.getType()) ? amount : null;
 
                     return BillwiseBreakupRequestDto.builder()
                             .groupPoid(getGroupId())

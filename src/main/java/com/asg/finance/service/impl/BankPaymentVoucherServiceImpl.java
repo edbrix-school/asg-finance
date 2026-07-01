@@ -1632,13 +1632,21 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                     dto.setBillRefType(popup.getBillRefType());
                     dto.setBillRef(popup.getBillRef());
                     dto.setBillDueDate(popup.getBillDueDate());
-                    dto.setBillOriginalAmount(popup.getBillOriginalAmount());
+                    BigDecimal originalAmount = popup.getBillOriginalAmount();
+                    if (originalAmount != null && originalAmount.compareTo(BigDecimal.ZERO) == 0) {
+                        originalAmount = null;
+                    }
+                    BigDecimal amount = popup.getAmount();
+                    if (amount != null && amount.compareTo(BigDecimal.ZERO) == 0) {
+                        amount = null;
+                    }
+                    dto.setBillOriginalAmount(originalAmount);
                     if ("DR".equalsIgnoreCase(popup.getType())) {
-                        dto.setDrAmt(popup.getAmount());
-                        dto.setCrAmt(BigDecimal.ZERO);
+                        dto.setDrAmt(amount);
+                        dto.setCrAmt(null);
                     } else {
-                        dto.setCrAmt(popup.getAmount());
-                        dto.setDrAmt(BigDecimal.ZERO);
+                        dto.setCrAmt(amount);
+                        dto.setDrAmt(null);
                     }
                     dto.setBillRemarks(popup.getBillRemarks());
 
@@ -1713,12 +1721,21 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
                     dto.setBillRefType(popup.getBillRefType());
                     dto.setBillRef(popup.getBillRef());
                     dto.setBillDueDate(popup.getBillDueDate());
+                    BigDecimal originalAmount = popup.getBillOriginalAmount();
+                    if (originalAmount != null && originalAmount.compareTo(BigDecimal.ZERO) == 0) {
+                        originalAmount = null;
+                    }
+                    BigDecimal amount = popup.getAmount();
+                    if (amount != null && amount.compareTo(BigDecimal.ZERO) == 0) {
+                        amount = null;
+                    }
+                    dto.setBillOriginalAmount(originalAmount);
                     if ("DR".equalsIgnoreCase(popup.getType())) {
-                        dto.setDrAmt(popup.getAmount());
-                        dto.setCrAmt(BigDecimal.ZERO);
+                        dto.setDrAmt(amount);
+                        dto.setCrAmt(null);
                     } else {
-                        dto.setCrAmt(popup.getAmount());
-                        dto.setDrAmt(BigDecimal.ZERO);
+                        dto.setCrAmt(amount);
+                        dto.setDrAmt(null);
                     }
                     dto.setBillRemarks(popup.getBillRemarks());
 
@@ -1791,8 +1808,8 @@ public class BankPaymentVoucherServiceImpl implements BankPaymentVoucherService 
         return list.stream().map(src -> {
             boolean isDebit = src.getDrAmt() != null && src.getDrAmt().compareTo(BigDecimal.ZERO) > 0;
             boolean isCredit = src.getCrAmt() != null && src.getCrAmt().compareTo(BigDecimal.ZERO) > 0;
-            String type = isDebit ? "DR" : "CR";
-            BigDecimal amount = isDebit ? src.getDrAmt() : (isCredit ? src.getCrAmt() : BigDecimal.ZERO);
+            String type = isDebit ? "DR" : (isCredit ? "CR" : null);
+            BigDecimal amount = isDebit ? src.getDrAmt() : (isCredit ? src.getCrAmt() : null);
             return BillwiseBreakupPopupRequestDto.builder()
                     .billDetRowId(src.getBillDetRowId())
                     .billRefType(src.getBillRefType())

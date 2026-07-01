@@ -1779,7 +1779,9 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                                     ? src.getBillOriginalAmount()
                                     : (src.getDrAmt() != null && src.getDrAmt().compareTo(BigDecimal.ZERO) > 0
                                     ? scale3(src.getDrAmt())
-                                    : scale3(src.getCrAmt())))
+                                    : (src.getCrAmt() != null && src.getCrAmt().compareTo(BigDecimal.ZERO) > 0
+                                    ? scale3(src.getCrAmt())
+                                    : null)))
                             .billRemarks(src.getBillRemarks())
                             .actionType("noChanges");
 
@@ -1790,8 +1792,8 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                 builder.type("CR");
                 builder.amount(scale3(src.getCrAmt()));
             } else {
-                builder.type("DR");
-                builder.amount(src.getDrAmt() != null ? scale3(src.getDrAmt()) : BigDecimal.ZERO);
+                builder.type(null);
+                builder.amount(null);
             }
 
             return builder.build();

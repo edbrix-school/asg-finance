@@ -1215,12 +1215,16 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
     }
 
     private void setBillwiseAmounts(BillwiseBreakupRequestDto req, BillwiseBreakupPopupRequestDto popup) {
+        BigDecimal amount = popup.getAmount();
+        if (amount != null && amount.compareTo(BigDecimal.ZERO) == 0) {
+            amount = null;
+        }
         if (BILLWISE_TYPE_DR.equalsIgnoreCase(popup.getType())) {
-            req.setDrAmt(popup.getAmount());
-            req.setCrAmt(BigDecimal.ZERO);
+            req.setDrAmt(amount);
+            req.setCrAmt(null);
         } else {
-            req.setDrAmt(BigDecimal.ZERO);
-            req.setCrAmt(popup.getAmount());
+            req.setDrAmt(null);
+            req.setCrAmt(amount);
         }
     }
 
@@ -1683,12 +1687,18 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                 ? billwiseDto.getBillOriginalAmount()
                 : (billwiseDto.getDrAmt() != null && billwiseDto.getDrAmt().compareTo(BigDecimal.ZERO) > 0
                 ? billwiseDto.getDrAmt()
-                : billwiseDto.getCrAmt()));
+                : (billwiseDto.getCrAmt() != null && billwiseDto.getCrAmt().compareTo(BigDecimal.ZERO) > 0
+                ? billwiseDto.getCrAmt()
+                : null)));
 
-        BigDecimal drAmt = billwiseDto.getDrAmt() != null ? billwiseDto.getDrAmt() : BigDecimal.ZERO;
-        BigDecimal crAmt = billwiseDto.getCrAmt() != null ? billwiseDto.getCrAmt() : BigDecimal.ZERO;
-        popup.setType(drAmt.compareTo(BigDecimal.ZERO) > 0 ? BILLWISE_TYPE_DR : BILLWISE_TYPE_CR);
-        popup.setAmount(drAmt.compareTo(BigDecimal.ZERO) > 0 ? drAmt : crAmt);
+        BigDecimal drAmt = billwiseDto.getDrAmt() != null && billwiseDto.getDrAmt().compareTo(BigDecimal.ZERO) > 0
+                ? billwiseDto.getDrAmt()
+                : null;
+        BigDecimal crAmt = billwiseDto.getCrAmt() != null && billwiseDto.getCrAmt().compareTo(BigDecimal.ZERO) > 0
+                ? billwiseDto.getCrAmt()
+                : null;
+        popup.setType(drAmt != null ? BILLWISE_TYPE_DR : (crAmt != null ? BILLWISE_TYPE_CR : null));
+        popup.setAmount(drAmt != null ? drAmt : crAmt);
         popup.setBillRemarks(billwiseDto.getBillRemarks());
         return popup;
     }
@@ -1848,9 +1858,14 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
                     dto.setBillRefType(bw.getBillRefType());
                     dto.setBillRef(bw.getBillRef());
                     dto.setBillDueDate(bw.getBillDueDate());
-                    dto.setAmount(bw.getDrAmt() != null ? bw.getDrAmt() : bw.getCrAmt());
-                    dto.setType(bw.getDrAmt() != null && bw.getDrAmt().compareTo(BigDecimal.ZERO) > 0
-                            ? BILLWISE_DISPLAY_DR : BILLWISE_DISPLAY_CR);
+                    BigDecimal drAmt = bw.getDrAmt() != null && bw.getDrAmt().compareTo(BigDecimal.ZERO) > 0
+                            ? bw.getDrAmt()
+                            : null;
+                    BigDecimal crAmt = bw.getCrAmt() != null && bw.getCrAmt().compareTo(BigDecimal.ZERO) > 0
+                            ? bw.getCrAmt()
+                            : null;
+                    dto.setAmount(drAmt != null ? drAmt : crAmt);
+                    dto.setType(drAmt != null ? BILLWISE_DISPLAY_DR : (crAmt != null ? BILLWISE_DISPLAY_CR : null));
                     dto.setBillRemarks(bw.getBillRemarks());
                     return dto;
                 })

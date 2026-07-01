@@ -512,7 +512,6 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         po.setPaymentTerms(request.getPaymentTerms());
         po.setModeOfTransport(request.getModeOfTransport());
         po.setDeliveryTerms(request.getDeliveryTerms());
-        po.setFreightForwarder(request.getFreightForwarder());
         po.setShippingMark(request.getShippingMark());
         po.setBillingAddressPoid(request.getBillingAddressPoid());
         po.setDeliveryAddressPoid(request.getDeliveryAddressPoid());
@@ -521,7 +520,6 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         po.setExpenseBySupplier(request.getExpenseBySupplier());
         po.setGrandTotal(request.getGrandTotal());
         po.setRemarks(request.getRemarks());
-        po.setRfqPoid(request.getRfqPoid());
         po.setPoStatus(request.getPoStatus());
         po.setItemTotal(request.getItemTotal());
         po.setChargeTotal(request.getChargeTotal());
@@ -529,10 +527,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         po.setDescription(request.getDescription());
         po.setDeliveryMethod(request.getDeliveryMethod());
         po.setDeliveryAddress(request.getDeliveryAddress());
-        po.setSalesQtnPoid(request.getSalesQtnPoid());
         po.setDescriptionPrintYn(request.getDescriptionPrintYn());
-        po.setSalesInvPoid(request.getSalesInvPoid());
-        po.setSalesInvDocRef(request.getSalesInvDocRef());
         po.setRefType(request.getRefType());
         po.setMultiCompany(request.getMultiCompany());
         po.setVoucherNarration(request.getVoucherNarration());
@@ -541,8 +536,6 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         po.setTermsPoid(request.getTermsPoid());
         po.setPurchaseRequestPoid(request.getPurchaseRequestPoid());
         po.setPrintDivPoid(request.getPrintDivPoid());
-        po.setGrnPoid(request.getGrnPoid());
-        po.setGrnRef(request.getGrnRef());
         po.setGrnDate(request.getGrnDate());
         po.setShipmentMonth(request.getShipmentMonth());
         po.setDiscountPercentage(request.getDiscountPercentage());

@@ -40,7 +40,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @Service
@@ -194,6 +193,13 @@ public class GLMasterServiceImpl implements GLMasterService {
         }
 
 
+        String docId = UserContext.getDocumentId();
+        glCode = (entity.getGlCode() != null && !entity.getGlCode().isBlank())
+                ? entity.getGlCode()
+                : entity.getGlPoid().toString();
+        loggingService.createLogSummaryEntry(docId, glCode,
+                String.format("%s %s", LogDetailsEnum.CREATED.getDescription(), glCode));
+
         if (req.getPaymentDetails() != null && !req.getPaymentDetails().isEmpty()) {
             savePaymentDetails(entity, req.getPaymentDetails());
         }
@@ -202,14 +208,7 @@ public class GLMasterServiceImpl implements GLMasterService {
             saveCompanyDetails(entity, req.getCompanyDetails());
         }
 
-        // Company details handling can be added here if needed
-
         propagateToChildren(entity);
-
-        String key = (entity.getGlCode() != null && !entity.getGlCode().isBlank())
-                ? entity.getGlCode()
-                : entity.getGlPoid().toString();
-        loggingService.createLogSummaryEntry(LogDetailsEnum.CREATED, UserContext.getDocumentId(), key);
 
         return toResponseDto(entity);
     }
@@ -366,11 +365,11 @@ public class GLMasterServiceImpl implements GLMasterService {
         }
         if (!entities.isEmpty()) {
             companyDtlRepo.saveAll(entities);
-            AtomicInteger initial = new AtomicInteger(1);
+            String docId = UserContext.getDocumentId();
+            String docKeyPoid = entity.getGlPoid().toString();
             entities.forEach(e -> {
-                String paymentLogDetail = String.format("Row Created on GL Company Detail with detRowId: %s", initial);
-                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), entity.getGlPoid().toString(), paymentLogDetail);
-                initial.set(+1);
+                String companyLogDetail = String.format("Row Created on GL Company Detail with detRowId: %s", e.getId());
+                loggingService.createLogSummaryEntry(docId, docKeyPoid, companyLogDetail);
             });
         }
     }
@@ -417,11 +416,11 @@ public class GLMasterServiceImpl implements GLMasterService {
         }
         if (!entities.isEmpty()) {
             payDtlRepo.saveAll(entities);
-            AtomicInteger initial = new AtomicInteger(1);
+            String docId = UserContext.getDocumentId();
+            String docKeyPoid = entity.getGlPoid().toString();
             entities.forEach(e -> {
-                String paymentLogDetail = String.format("Row Created on GL Payment Detail with detRowId: %s", initial);
-                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), entity.getGlPoid().toString(), paymentLogDetail);
-                initial.getAndIncrement();
+                String paymentLogDetail = String.format("Row Created on GL Payment Detail with detRowId: %s", e.getId());
+                loggingService.createLogSummaryEntry(docId, docKeyPoid, paymentLogDetail);
             });
         }
     }
@@ -1253,7 +1252,7 @@ public class GLMasterServiceImpl implements GLMasterService {
             payDtlRepo.saveAll(toSave);
             toSave.forEach(e -> {
                 String paymentLogDetail = String.format("Row Created on GL Payment Detail with detRowId: %s", e.getId());
-                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), glPoid.toString(), paymentLogDetail);
+                loggingService.createLogSummaryEntry(docId, docKeyPoid, paymentLogDetail);
             });
         }
         if (!toDelete.isEmpty()) {
@@ -1321,7 +1320,7 @@ public class GLMasterServiceImpl implements GLMasterService {
 
                 case "ISDELETED":
                     toDelete.add(charge.getDetRowId());
-                    loggingService.logDelete(charge, UserContext.getDocumentId().toString(), glPoid.toString());
+                    loggingService.logDelete(charge, docId, docKeyPoid);
                     break;
 
                 case "NOCHANGES":
@@ -1342,8 +1341,8 @@ public class GLMasterServiceImpl implements GLMasterService {
         if (!toSave.isEmpty()) {
             companyDtlRepo.saveAll(toSave);
             toSave.forEach(e -> {
-                String paymentLogDetail = String.format("Row Created on GL Company Detail with detRowId: %s", e.getId());
-                loggingService.createLogSummaryEntry(UserContext.getDocumentId(), glPoid.toString(), paymentLogDetail);
+                String companyLogDetail = String.format("Row Created on GL Company Detail with detRowId: %s", e.getId());
+                loggingService.createLogSummaryEntry(docId, docKeyPoid, companyLogDetail);
             });
         }
 

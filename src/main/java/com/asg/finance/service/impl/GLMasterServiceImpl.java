@@ -193,13 +193,6 @@ public class GLMasterServiceImpl implements GLMasterService {
         }
 
 
-        String docId = UserContext.getDocumentId();
-        glCode = (entity.getGlCode() != null && !entity.getGlCode().isBlank())
-                ? entity.getGlCode()
-                : entity.getGlPoid().toString();
-        loggingService.createLogSummaryEntry(docId, glCode,
-                String.format("%s %s", LogDetailsEnum.CREATED.getDescription(), glCode));
-
         if (req.getPaymentDetails() != null && !req.getPaymentDetails().isEmpty()) {
             savePaymentDetails(entity, req.getPaymentDetails());
         }
@@ -209,6 +202,12 @@ public class GLMasterServiceImpl implements GLMasterService {
         }
 
         propagateToChildren(entity);
+
+        String docId = UserContext.getDocumentId();
+        String docKeyPoid = entity.getGlPoid().toString();
+        glCode = entity.getGlCode();
+        loggingService.createLogSummaryEntry(docId, docKeyPoid,
+                String.format("%s %s", LogDetailsEnum.CREATED.getDescription(), glCode));
 
         return toResponseDto(entity);
     }

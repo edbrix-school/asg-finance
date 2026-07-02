@@ -990,6 +990,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
         response.setTtSpecialRate(entity.getTtSpecialRate());
         response.setRateDealNo(entity.getRateDealNo());
         response.setDivisionCode(entity.getDivisionCode());
+        response.setBdvSuppressBalanceByTx(entity.getSuppressValidation());
         response.setBankBalance(entity.getBankBalance());
         response.setAvailableBalance(entity.getAvailableBalance());
         response.setFileGenerated(entity.getFileGenerated());

@@ -91,4 +91,5 @@ public class BankDebitVoucherResponse {
     private ReconcileResultDto reconcileInfo;
     private String reconciledDateDisplay;
     private Boolean jobRefReadOnly;
+    private String bdvSuppressBalanceByTx;
 }

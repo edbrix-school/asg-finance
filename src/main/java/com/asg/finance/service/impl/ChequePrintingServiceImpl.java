@@ -110,7 +110,7 @@ public class ChequePrintingServiceImpl implements ChequePrintingService {
 			}
 		}
 		if (response.getPrintedCount() == 0 && response.getMessages().isEmpty()) {
-			throw new ValidationException("No matching cheque stock found for selected cheques");
+			throw new ValidationException("Selected cheque and stock companies do not match");
 		}
 		return response;
 	}

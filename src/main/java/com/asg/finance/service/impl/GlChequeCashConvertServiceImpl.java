@@ -288,7 +288,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
                 inEntity.setAmount(inDto.getAmount());
                 inEntity.setRemarks(inDto.getRemarks());
                 inEntity.setVoucherType(inDto.getVoucherType());
-                inEntity.setChequeCompanyPoid(inDto.getChequeCompanyPoid());
+                inEntity.setChequeCompanyPoid(normalizeChequeCompanyPoid(inDto.getChequeCompanyPoid()));
                 inEntity.setPaymentMainPoid(inDto.getPaymentMainPoid());
                 inEntity.setLineType(inDto.getLineType());
                 inEntity.setPymtType(inDto.getPymtType());
@@ -667,6 +667,10 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         return entity;
     }
 
+    private Long normalizeChequeCompanyPoid(Long chequeCompanyPoid) {
+        return (chequeCompanyPoid == null || chequeCompanyPoid == 0L) ? null : chequeCompanyPoid;
+    }
+
     private void mapInDtoToEntity(GlChequeCashConvertInDtlDto inDto, GlChequeCashConvertInDtlEntity entity, String currentUser, LocalDateTime now) {
         entity.setBankPoid(inDto.getBankPoid());
         entity.setChqAcName(inDto.getChqAcName());
@@ -676,7 +680,7 @@ public class GlChequeCashConvertServiceImpl implements GlChequeCashConvertServic
         entity.setAmount(inDto.getAmount());
         entity.setRemarks(inDto.getRemarks());
         entity.setVoucherType(inDto.getVoucherType());
-        entity.setChequeCompanyPoid(inDto.getChequeCompanyPoid());
+        entity.setChequeCompanyPoid(normalizeChequeCompanyPoid(inDto.getChequeCompanyPoid()));
         entity.setPaymentMainPoid(inDto.getPaymentMainPoid());
         entity.setLineType(inDto.getLineType());
         entity.setPymtType(inDto.getPymtType());

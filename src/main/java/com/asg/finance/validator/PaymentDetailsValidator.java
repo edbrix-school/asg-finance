@@ -29,6 +29,12 @@ public class PaymentDetailsValidator
 
         context.disableDefaultConstraintViolation();
 
+        // Validate chequeNo format regardless of payment type (if provided)
+        if (StringUtils.hasText(payment.getChequeNo()) && !payment.getChequeNo().matches("^\\d{1,6}$")) {
+            addError(context, "Cheque/Card number must be numeric and max 6 digits", "chequeNo");
+            return false;
+        }
+
         switch (type) {
 
             case "CHEQUE":

@@ -35,7 +35,6 @@ public class GeneralReceiptPaymentDto {
     @Schema(description = "Payment amount", example = "1000", required = true)
     private BigDecimal amount;
 
-    @Pattern(regexp = "^\\d{1,6}$", message = "Cheque/Card number must be numeric and max 6 digits")
     @Schema(description = "Cheque/Card number", example = "100245")
     private String chequeNo;
 

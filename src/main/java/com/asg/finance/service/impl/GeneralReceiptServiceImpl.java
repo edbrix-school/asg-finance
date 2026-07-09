@@ -2123,12 +2123,31 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
     public Map<String, Object> getPendingBills(Long glPoid, LocalDate asOnDate, String multicompany) {
         // When multicompany = 'Y', pass NULL to fetch bills from all companies
         // When multicompany = 'N', pass current company POID to fetch bills only from current company
-        Long companyPoid = "Y".equalsIgnoreCase(multicompany) ? null 
+        Long companyPoid = "Y".equalsIgnoreCase(multicompany) ? null
                 : (UserContext.getCompanyPoid() != null ? UserContext.getCompanyPoid() : 1L);
         LocalDate sqlDate = asOnDate != null ? asOnDate : LocalDate.now();
-        List<Object[]> results = procedureRepository.fetchPendingBills(DEFAULT_GROUP_POID, companyPoid, glPoid,
-                sqlDate);
-        return Map.of("pendingBills", results);
+        List<Object[]> results = procedureRepository.fetchPendingBills(DEFAULT_GROUP_POID, companyPoid, glPoid, sqlDate);
+
+        List<Long> companyPoids = results.stream()
+                .map(row -> row[0] != null ? ((Number) row[0]).longValue() : null)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+        Map<Long, LovGetListDto> companyLovMap = lovService.getDetailsByPoidsAndLovName(companyPoids, "COMPANY");
+
+        List<Map<String, Object>> pendingBills = results.stream().map(row -> {
+            Map<String, Object> bill = new java.util.LinkedHashMap<>();
+            Long glCompanyPoid = row[0] != null ? ((Number) row[0]).longValue() : null;
+            bill.put("glCompanyPoid", glCompanyPoid);
+            bill.put("billRef", row[1]);
+            bill.put("billDueDate", row[2]);
+            bill.put("remarks", row[3]);
+            bill.put("balance", row[4]);
+            bill.put("company", companyLovMap.get(glCompanyPoid));
+            return bill;
+        }).collect(Collectors.toList());
+
+        return Map.of("pendingBills", pendingBills);
     }
 
     @Override

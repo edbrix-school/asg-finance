@@ -2220,7 +2220,7 @@ public class PettyCashVoucherServiceImpl implements PettyCashVoucherService {
                     GlPettyCashPaymentDtlRequestDto crRow = GlPettyCashPaymentDtlRequestDto.builder()
                             .detRowId(maxId + 1)
                             .type("CR")
-                            .companyPoid(requestDto.getCompanyDivPoid())
+                            .companyPoid(UserContext.getCompanyPoid())
                             .glPoid(pettyCashGlPoid)
                             .crAmt(amount)
                             .totalAmount(amount)

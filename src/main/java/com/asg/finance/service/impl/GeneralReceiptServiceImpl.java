@@ -2140,7 +2140,9 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
             Long glCompanyPoid = row[0] != null ? ((Number) row[0]).longValue() : null;
             bill.put("glCompanyPoid", glCompanyPoid);
             bill.put("billRef", row[1]);
-            bill.put("billDueDate", row[2]);
+            bill.put("billDueDate", row[2] != null
+                    ? ((java.util.Date) row[2]).toInstant().atZone(java.time.ZoneId.of("UTC")).toLocalDate().toString()
+                    : null);
             bill.put("remarks", row[3]);
             bill.put("balance", row[4]);
             bill.put("company", companyLovMap.get(glCompanyPoid));

@@ -28,6 +28,7 @@ import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import net.sf.jasperreports.engine.JasperReport;
 import org.springframework.beans.BeanUtils;
+import org.springframework.context.ApplicationContext;
 import org.springframework.transaction.annotation.Propagation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -64,10 +65,26 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     private final DocumentDeleteService documentDeleteService;
     private final GlobalParameterService globalParameterService;
     private final EntityManager entityManager;
+    private final ApplicationContext applicationContext;
 
     @Override
-    @Transactional
     public PurchaseOrderResponse createGeneralPurchaseOrder(String documentId, PurchaseOrderRequest request) {
+        PurchaseOrderServiceImpl self = applicationContext.getBean(PurchaseOrderServiceImpl.class);
+
+        PurchaseOrderResponse response = self.savePurchaseOrder(documentId, request);
+
+        // Same autonomous-transaction constraint as updatePurchaseOrder: the procedures read their own
+        // transaction and only see committed rows, so they run after savePurchaseOrder has committed.
+        if ("MTA".equalsIgnoreCase(response.getRefType())) {
+            callMtaProcedure(request.getRfqPoid());
+            callMtaDeleteProcedure(response.getTransactionPoid());
+        }
+
+        return response;
+    }
+
+    @org.springframework.transaction.annotation.Transactional(propagation = Propagation.REQUIRES_NEW)
+    public PurchaseOrderResponse savePurchaseOrder(String documentId, PurchaseOrderRequest request) {
 
         try {
             PurchaseOrder purchaseOrder = mapToPurchaseOrder(request);
@@ -108,8 +125,9 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                     }
                 }
                 case "MTA" -> {
-                    callMtaProcedureInNewTransaction(request.getRfqPoid());
-                    callMtaDeleteProcedureInNewTransaction(transactionPoid);
+                    // MTA purchase order items are created in the database by PROC_AP_RFQ_CREATE_PO_NEW,
+                    // driven from the RFQ screen, so nothing is persisted here. The MTA procedures are
+                    // called by createGeneralPurchaseOrder once this transaction has committed.
                 }
 
                 default ->
@@ -125,9 +143,27 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     }
 
     @Override
-    @Transactional
     public PurchaseOrderResponse updatePurchaseOrder(String documentId, Long transactionPoid,
                                                         PurchaseOrderRequest request) {
+        PurchaseOrderServiceImpl self = applicationContext.getBean(PurchaseOrderServiceImpl.class);
+
+        PurchaseOrderResponse response = self.savePurchaseOrderUpdate(documentId, transactionPoid, request);
+
+        // PROC_RFQ_UPDATE_PURCHASE_PRICE and PROC_PO_UPDATE_DELETED_DTLRFQ are declared
+        // PRAGMA AUTONOMOUS_TRANSACTION, so they run in their own transaction and can only read rows
+        // already committed. They must be called after savePurchaseOrderUpdate has committed the items,
+        // otherwise they read the pre-update AP_PURCHASE_ORDER_ITEM_DTL rows.
+        if ("MTA".equalsIgnoreCase(response.getRefType())) {
+            callMtaProcedure(request.getRfqPoid());
+            callMtaDeleteProcedure(transactionPoid);
+        }
+
+        return response;
+    }
+
+    @org.springframework.transaction.annotation.Transactional(propagation = Propagation.REQUIRES_NEW)
+    public PurchaseOrderResponse savePurchaseOrderUpdate(String documentId, Long transactionPoid,
+                                                         PurchaseOrderRequest request) {
         try {
             PurchaseOrder existingPO = purchaseOrderRepository.findById(transactionPoid)
                     .orElseThrow(() -> new ValidationException("Purchase Order not found with ID: " + transactionPoid));
@@ -139,7 +175,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             updatePurchaseOrderFields(existingPO, request);
 
             PurchaseOrder updatedPO = purchaseOrderRepository.save(existingPO);
-            
+
             // Validate after update with transaction POID
             validatePurchaseOrder(request, transactionPoid, documentId);
 
@@ -149,13 +185,8 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
 
             switch (refType) {
 
-                case "GENERAL", "OPERATIONS" -> {
+                case "GENERAL", "OPERATIONS", "MTA" -> {
                     updatedItems = updateGeneralOrOperationItems(transactionPoid, request);
-                }
-                case "MTA" -> {
-                    updatedItems = updateGeneralOrOperationItems(transactionPoid, request);
-                    callMtaProcedureInNewTransaction(request.getRfqPoid());
-                    callMtaDeleteProcedureInNewTransaction(transactionPoid);
                 }
 
                 default -> throw new ValidationException("Invalid RefType for update: " + refType);
@@ -817,8 +848,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         }
     }
 
-    @org.springframework.transaction.annotation.Transactional(propagation = Propagation.REQUIRES_NEW)
-    private void callMtaProcedureInNewTransaction(Long rfqPoid) {
+    private void callMtaProcedure(Long rfqPoid) {
 
         if (rfqPoid == null) {
             return;
@@ -852,8 +882,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         }
     }
 
-    @org.springframework.transaction.annotation.Transactional(propagation = Propagation.REQUIRES_NEW)
-    private void callMtaDeleteProcedureInNewTransaction(Long transactionPoid) {
+    private void callMtaDeleteProcedure(Long transactionPoid) {
         try {
             String procedure = "BEGIN PROC_PO_UPDATE_DELETED_DTLRFQ(?,?,?,?,?); END;";
             

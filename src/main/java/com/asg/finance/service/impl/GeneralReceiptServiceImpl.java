@@ -1262,6 +1262,15 @@ public class GeneralReceiptServiceImpl implements GeneralReceiptService {
             }
         }
 
+        // Duplicate cheque number check
+        List<String> chequeNumbers = activePayments.stream()
+                .filter(p -> "CHEQUE".equalsIgnoreCase(p.getType()) && StringUtils.hasText(p.getChequeNo()))
+                .map(GeneralReceiptPaymentDto::getChequeNo)
+                .collect(Collectors.toList());
+        if (chequeNumbers.size() != new HashSet<>(chequeNumbers).size()) {
+            throw new ValidationException("Same cheque number cannot be entered please check...");
+        }
+
         // Multicompany PDC check
         if ("Y".equals(header.getMulticompany()) && pdcCount > 1) {
             throw new ValidationException("For Multicompany More than one PDC not allowed!");

@@ -2273,6 +2273,10 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                 ? ""
                 : dto.getRefType().trim().toUpperCase();
 
+        if (refType.equals("GENERAL") || refType.equals("CUSTOM") || refType.equals("GENERAL PO")) {
+            validateAssetItemTotal(dto);
+        }
+
         if (!refType.equals("GENERAL")
                 && !refType.equals("CUSTOM")
                 && !refType.equals("GENERAL PO")) {
@@ -2974,6 +2978,53 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                 docId,
                 transactionPoid
         );
+    }
+
+    private void validateAssetItemTotal(ApPurchaseInvoiceHdrDto dto) {
+
+        BigDecimal fixedAssetGlTotal = BigDecimal.ZERO.setScale(3, RoundingMode.HALF_UP);
+
+        if (dto.getGlDtls() != null) {
+            for (ApPurchaseInvoiceGlDtlDto gl : dto.getGlDtls()) {
+
+                if ("ISDELETED".equalsIgnoreCase(gl.getActionType())) {
+                    continue;
+                }
+
+                if (gl.getGlPoid() == null) {
+                    continue;
+                }
+
+                boolean isDr = "DR".equalsIgnoreCase(gl.getType()) || "Dr".equalsIgnoreCase(gl.getType());
+                if (!isDr) {
+                    continue;
+                }
+
+                GLMaster glMaster = glMasterRepository.findByGlPoid(gl.getGlPoid()).orElse(null);
+                if (glMaster != null && "FIXED_ASSET".equalsIgnoreCase(glMaster.getControlAcNature())) {
+                    BigDecimal drAmt = gl.getDrAmount() != null ? gl.getDrAmount() : BigDecimal.ZERO;
+                    fixedAssetGlTotal = fixedAssetGlTotal.add(drAmt.setScale(3, RoundingMode.HALF_UP));
+                }
+            }
+        }
+
+        BigDecimal assetTotal = BigDecimal.ZERO.setScale(3, RoundingMode.HALF_UP);
+        if (dto.getAssetDtls() != null) {
+            for (ApPurchaseInvoiceAssetDtlDto asset : dto.getAssetDtls()) {
+                if ("ISDELETED".equalsIgnoreCase(asset.getActionType())) {
+                    continue;
+                }
+                if (asset.getValue() != null) {
+                    assetTotal = assetTotal.add(asset.getValue().setScale(3, RoundingMode.HALF_UP));
+                }
+            }
+        }
+
+        if (fixedAssetGlTotal.compareTo(assetTotal) != 0) {
+            throw new ValidationException(
+                    "Asset Item Total is not matching with debit to the Asset Group, select/create Assets in the second tab..."
+            );
+        }
     }
 
     private void applyLegacyItemCalculation(ApPurchaseInvoiceItemDtlEntity item,

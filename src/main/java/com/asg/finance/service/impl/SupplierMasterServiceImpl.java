@@ -90,13 +90,9 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
         SupplierMasterDto supplierMasterDto = new SupplierMasterDto();
         BeanUtils.copyProperties(supplierMasterEntity, supplierMasterDto);
         supplierMasterDto.setCreatedBy(supplierMasterEntity.getCreatedBy());
+        supplierMasterDto.setCreatedDate(supplierMasterEntity.getCreatedDate());
         supplierMasterDto.setLastModifiedBy(supplierMasterEntity.getLastModifiedBy());
-        if (supplierMasterEntity.getCreatedDate() != null) {
-            supplierMasterDto.setCreatedDate(supplierMasterEntity.getCreatedDate().toLocalDate());
-        }
-        if (supplierMasterEntity.getLastModifiedDate() != null) {
-            supplierMasterDto.setLastModifiedDate(supplierMasterEntity.getLastModifiedDate().toLocalDate());
-        }
+        supplierMasterDto.setLastModifiedDate(supplierMasterEntity.getLastModifiedDate());
 
         if (supplierMasterEntity.getCurrencyCode() != null) {
             LovGetListDto lovGetListDto = lovDataService.getLovItemByCodeFast(supplierMasterDto.getCurrencyCode(), "CURRENCY");
@@ -265,7 +261,9 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
             addressMasterServiceClient.upsert(addressRequest);
         }
 
-        BeanUtils.copyProperties(supplierMasterDto, existingEntity, "supplierPoid", "supplierCode", "createdBy", "createdDate");
+        BeanUtils.copyProperties(supplierMasterDto, existingEntity, "supplierPoid", "supplierCode", "createdBy", "createdDate", "lastModifiedBy", "lastModifiedDate");
+        existingEntity.setLastModifiedBy(getCurrentUser());
+        existingEntity.setLastModifiedDate(LocalDateTime.now());
         SupplierMasterEntity updatedEntity = supplierMasterRepository.save(existingEntity);
 
         String docId = UserContext.getDocumentId();
@@ -542,6 +540,12 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
         }
 
         SupplierMasterEntity entity = mapToEntity(supplierMasterDto);
+        String currentUser = getCurrentUser();
+        LocalDateTime now = LocalDateTime.now();
+        entity.setCreatedBy(currentUser);
+        entity.setCreatedDate(now);
+        entity.setLastModifiedBy(currentUser);
+        entity.setLastModifiedDate(now);
         SupplierMasterEntity savedEntity = supplierMasterRepository.save(entity); // save parent first
 
         entityManager.flush(); 
@@ -549,7 +553,6 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
 
         String docId = UserContext.getDocumentId();
         String docKeyPoid = savedEntity.getSupplierPoid().toString();
-        LocalDateTime now = LocalDateTime.now();
 
         String createdMessage = String.format("Created - - DOC:%s KEY:%s", docId, docKeyPoid);
         GlobalLogSummary headerLog = createSummaryLogEntry(LogDetailsEnum.CREATED, docId, docKeyPoid, createdMessage, now);

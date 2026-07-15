@@ -12,6 +12,7 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
@@ -84,9 +85,9 @@ public class SupplierMasterDto {
     private Long customerPoid;
     private SalesCustomerMasterDto customer;
     private String createdBy;
-    private LocalDate createdDate;
+    private LocalDateTime createdDate;
     private String lastModifiedBy;
-    private LocalDate lastModifiedDate;
+    private LocalDateTime lastModifiedDate;
     @Valid
     private AddressTypeMapDTO addressTypeMap;
     @Valid

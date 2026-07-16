@@ -2571,9 +2571,9 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
             ApPurchaseInvoiceHdrDto dto,
             String documentId) {
 
-        if (dto.getFfRef() == null || dto.getFfRef().trim().isEmpty()) {
+      /*  if (dto.getFfRef() == null || dto.getFfRef().trim().isEmpty()) {
             throw new ValidationException("FF Reference is mandatory.");
-        }
+        }*/
 
         if (dto.getChargeDtls() == null || dto.getChargeDtls().isEmpty()) {
             throw new ValidationException("At least one charge row is required for FF Jobs.");
@@ -3022,7 +3022,7 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
 
         if (fixedAssetGlTotal.compareTo(assetTotal) != 0) {
             throw new ValidationException(
-                    "Asset Item Total is not matching with debit to the Asset Group, select/create Assets in the second tab..."
+                    "Asset Item Total is not matching with debit to the Asset Group, select/create Assets in the second tab"
             );
         }
     }

@@ -5,6 +5,7 @@ import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.service.DocumentDownloadHeaderService;
 
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.dto.response.GlPostingViewResponseDto;
@@ -45,6 +46,7 @@ public class ImcoDepositRefundController {
 
     private final ImcoDepositRefundService service;
     private final LoggingService loggingService;
+    private final DocumentDownloadHeaderService downloadHeaderService;
 
     @Operation(
             summary = "Create IMCO Deposit Refund Record",
@@ -364,8 +366,11 @@ public class ImcoDepositRefundController {
         try {
             byte[] pdf = service.print(transactionPoid);
             return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=imco-deposit-refund-" + transactionPoid + ".pdf")
+                    .headers(downloadHeaderService.buildAttachmentHeaders(
+                            UserContext.getDocumentId(),
+                            transactionPoid,
+                            "imco-deposit-refund",
+                            "pdf"))
                     .contentType(MediaType.APPLICATION_PDF)
                     .body(pdf);
         } catch (Exception e) {

@@ -7,6 +7,7 @@ import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.finance.dto.*;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.DocumentDownloadHeaderService;
 import com.asg.finance.service.PettyCashVoucherService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.enums.LogDetailsEnum;
@@ -39,10 +40,15 @@ public class PettyCashVoucherController {
 
     private final PettyCashVoucherService pettyCashVoucherService;
     private final LoggingService loggingService;
+    private final DocumentDownloadHeaderService downloadHeaderService;
 
-    public PettyCashVoucherController(PettyCashVoucherService pettyCashVoucherService, LoggingService loggingService) {
+    public PettyCashVoucherController(
+            PettyCashVoucherService pettyCashVoucherService,
+            LoggingService loggingService,
+            DocumentDownloadHeaderService downloadHeaderService) {
         this.pettyCashVoucherService = pettyCashVoucherService;
         this.loggingService = loggingService;
+        this.downloadHeaderService = downloadHeaderService;
     }
 
     @Operation(
@@ -616,8 +622,11 @@ public class PettyCashVoucherController {
         try {
             byte[] pdf = pettyCashVoucherService.print(transactionPoid);
             return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=petty-cash-voucher-" + transactionPoid + ".pdf")
+                    .headers(downloadHeaderService.buildAttachmentHeaders(
+                            UserContext.getDocumentId(),
+                            transactionPoid,
+                            "petty-cash-voucher",
+                            "pdf"))
                     .contentType(MediaType.APPLICATION_PDF)
                     .body(pdf);
         } catch (Exception e) {
@@ -637,4 +646,3 @@ public class PettyCashVoucherController {
 
 
 }
-

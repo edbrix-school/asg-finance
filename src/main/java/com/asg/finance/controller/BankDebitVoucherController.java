@@ -5,6 +5,7 @@ import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.service.DocumentDownloadHeaderService;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.BankDebitVoucherRequest;
 import com.asg.finance.dto.BankDebitVoucherResponse;
@@ -50,6 +51,7 @@ public class BankDebitVoucherController {
 
     private final BankDebitVoucherService bankDebitVoucherService;
     private final LoggingService loggingService;
+    private final DocumentDownloadHeaderService downloadHeaderService;
 
     @Operation(summary = "Create Bank Debit Voucher")
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
@@ -456,8 +458,11 @@ public class BankDebitVoucherController {
         try {
             byte[] pdf = bankDebitVoucherService.print(transactionPoid);
             return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=bank-debit-voucher-" + transactionPoid + ".pdf")
+                    .headers(downloadHeaderService.buildAttachmentHeaders(
+                            UserContext.getDocumentId(),
+                            transactionPoid,
+                            "bank-debit-voucher",
+                            "pdf"))
                     .contentType(MediaType.APPLICATION_PDF)
                     .body(pdf);
         } catch (Exception e) {
@@ -484,8 +489,11 @@ public class BankDebitVoucherController {
         try {
             byte[] pdf = bankDebitVoucherService.printBillwise(transactionPoid);
             return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=bank-debit-voucher-billwise-" + transactionPoid + ".pdf")
+                    .headers(downloadHeaderService.buildAttachmentHeaders(
+                            UserContext.getDocumentId(),
+                            transactionPoid,
+                            "bank-debit-voucher-billwise",
+                            "pdf"))
                     .contentType(MediaType.APPLICATION_PDF)
                     .body(pdf);
         } catch (Exception e) {

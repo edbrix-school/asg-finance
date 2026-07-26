@@ -5,6 +5,7 @@ import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.DocumentDownloadHeaderService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.finance.dto.DebitNoteHeaderDto;
 import com.asg.finance.dto.ProcessFdaRequestDto;
@@ -48,6 +49,7 @@ public class DebitNoteController {
     private final DebitNoteService debitNoteService;
     private final CreditNoteService creditNoteService;
     private final LoggingService loggingService;
+    private final DocumentDownloadHeaderService downloadHeaderService;
     // -------------------------------------------------------
     // CREATE
     // -------------------------------------------------------
@@ -364,8 +366,11 @@ public class DebitNoteController {
         try {
             byte[] pdf = debitNoteService.print(transactionPoid);
             return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=debit-note-" + transactionPoid + ".pdf")
+                    .headers(downloadHeaderService.buildAttachmentHeaders(
+                            UserContext.getDocumentId(),
+                            transactionPoid,
+                            "debit-note",
+                            "pdf"))
                     .contentType(MediaType.APPLICATION_PDF)
                     .body(pdf);
         } catch (Exception e) {

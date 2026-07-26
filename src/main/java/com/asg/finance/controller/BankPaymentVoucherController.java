@@ -6,6 +6,7 @@ import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.DocumentDownloadHeaderService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.dto.ReconcileResultDto;
 import com.asg.common.lib.utility.DateUtil;
@@ -45,6 +46,7 @@ public class BankPaymentVoucherController {
 
     private final BankPaymentVoucherService service;
     private final LoggingService loggingService;
+    private final DocumentDownloadHeaderService downloadHeaderService;
 
     @Operation(
             summary = "Get Bank Payment Voucher by ID",
@@ -537,8 +539,11 @@ public class BankPaymentVoucherController {
         try {
             byte[] pdf = service.print(transactionPoid);
             return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=bank-payment-voucher-" + transactionPoid + ".pdf")
+                    .headers(downloadHeaderService.buildAttachmentHeaders(
+                            UserContext.getDocumentId(),
+                            transactionPoid,
+                            "bank-payment-voucher",
+                            "pdf"))
                     .contentType(MediaType.APPLICATION_PDF)
                     .body(pdf);
         } catch (Exception e) {
@@ -553,8 +558,11 @@ public class BankPaymentVoucherController {
         try {
             byte[] pdf = service.printchequeLeaf(transactionPoid);
             return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=bank-payment-voucher-" + transactionPoid + ".pdf")
+                    .headers(downloadHeaderService.buildAttachmentHeaders(
+                            UserContext.getDocumentId(),
+                            transactionPoid,
+                            "bank-payment-voucher",
+                            "pdf"))
                     .contentType(MediaType.APPLICATION_PDF)
                     .body(pdf);
         } catch (Exception e) {

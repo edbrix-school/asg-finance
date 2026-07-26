@@ -4,6 +4,7 @@ import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.DocumentDownloadHeaderService;
 import com.asg.common.lib.service.LoggingService;
 
 import com.asg.common.lib.dto.FilterRequestDto;
@@ -49,6 +50,7 @@ public class BankDepositVoucherController {
 
     private final BankDepositVoucherService service;
     private final LoggingService loggingService;
+    private final DocumentDownloadHeaderService downloadHeaderService;
 
     @Operation(
             summary = "Create Bank Deposit Voucher",
@@ -289,8 +291,11 @@ public class BankDepositVoucherController {
         try {
             byte[] pdf = service.print(transactionPoid);
             return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=bank-deposit-voucher-" + transactionPoid + ".pdf")
+                    .headers(downloadHeaderService.buildAttachmentHeaders(
+                            UserContext.getDocumentId(),
+                            transactionPoid,
+                            "bank-deposit-voucher",
+                            "pdf"))
                     .contentType(MediaType.APPLICATION_PDF)
                     .body(pdf);
         } catch (Exception e) {

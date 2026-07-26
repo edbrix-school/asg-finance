@@ -5,6 +5,7 @@ import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.DocumentDownloadHeaderService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.finance.dto.CreateScheduleRequest;
 import com.asg.finance.dto.RecurringJvRequest;
@@ -41,6 +42,7 @@ public class GlRecurringJvController {
 
         private final GlRecurringJvService recurringJvService;
         private final LoggingService loggingService;
+        private final DocumentDownloadHeaderService downloadHeaderService;
 
         @Operation(summary = "Create Recurring JV")
         @io.swagger.v3.oas.annotations.parameters.RequestBody(content = @Content(examples = {
@@ -292,8 +294,11 @@ public class GlRecurringJvController {
                 try {
                         byte[] pdf = recurringJvService.print(transactionPoid);
                         return ResponseEntity.ok()
-                                        .header(HttpHeaders.CONTENT_DISPOSITION,
-                                                        "attachment; filename=recurring-jv-" + transactionPoid + ".pdf")
+                                        .headers(downloadHeaderService.buildAttachmentHeaders(
+                                                        UserContext.getDocumentId(),
+                                                        transactionPoid,
+                                                        "recurring-jv",
+                                                        "pdf"))
                                         .contentType(MediaType.APPLICATION_PDF)
                                         .body(pdf);
                 } catch (Exception e) {

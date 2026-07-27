@@ -424,6 +424,7 @@ public class GlBankServiceImpl implements GlBankService {
         }
 
         GlBankCommissionDtlEntity newEntity = new GlBankCommissionDtlEntity();
+        newEntity.setDetRowId(dto.getDetRowId());
         newEntity.setBankPoid(bankPoid);
         newEntity.setPeriodFrom(dto.getPeriodFrom());
         newEntity.setPeriodTo(dto.getPeriodTo());

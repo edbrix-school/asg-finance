@@ -14,7 +14,7 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @Builder
 public class GlBankCommissionDtlDto {
-    private Long detRowId;
+    private Long DetRowId;
     private Long commissionGlPoid;
     private LovGetListDto commissionGlDet;
     private LocalDate periodFrom;

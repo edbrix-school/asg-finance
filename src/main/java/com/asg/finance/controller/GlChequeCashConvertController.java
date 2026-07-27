@@ -11,6 +11,7 @@ import com.asg.finance.dto.GlChequeCashConvertHdrDto;
 import com.asg.finance.dto.GlChequeCashConvertValidateEditResponseDto;
 import com.asg.finance.dto.GlChequeConversionLoadResponseDto;
 import com.asg.common.lib.dto.FilterRequestDto;
+import com.asg.finance.entity.GlChequeCashConvertHdrEntity;
 import com.asg.finance.service.GlChequeCashConvertService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -469,7 +470,7 @@ public class GlChequeCashConvertController {
             byte[] pdf = service.print(transactionPoid);
             return ResponseEntity.ok()
                     .headers(downloadHeaderService.buildAttachmentHeaders(
-                            UserContext.getDocumentId(),
+                            GlChequeCashConvertHdrEntity.class,
                             transactionPoid,
                             "cheque-and-cash-conversion",
                             "pdf"))

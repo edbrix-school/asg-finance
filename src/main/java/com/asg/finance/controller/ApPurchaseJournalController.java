@@ -11,6 +11,7 @@ import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.*;
 import com.asg.common.lib.exception.ValidationException;
+import com.asg.finance.entity.ApPurchaseInvoiceHdrEntity;
 import com.asg.finance.service.ApPurchaseServiceJournal;
 import com.asg.finance.service.CreditNoteService;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -550,7 +551,7 @@ public class ApPurchaseJournalController {
             byte[] pdf = service.print(transactionPoid);
             return ResponseEntity.ok()
                     .headers(downloadHeaderService.buildAttachmentHeaders(
-                            UserContext.getDocumentId(),
+                            ApPurchaseInvoiceHdrEntity.class,
                             transactionPoid,
                             "purchase-journal",
                             "pdf"))

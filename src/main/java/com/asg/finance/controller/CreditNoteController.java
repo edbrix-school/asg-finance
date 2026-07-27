@@ -12,6 +12,7 @@ import com.asg.finance.dto.DefaultCreditValuesDto;
 import com.asg.finance.dto.FdaRefResponseDto;
 import com.asg.finance.dto.ChargeTaxDataDto;
 import com.asg.common.lib.dto.FilterRequestDto;
+import com.asg.finance.entity.ArCreditNoteHdr;
 import com.asg.finance.service.CreditNoteService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -651,7 +652,7 @@ public class CreditNoteController {
             byte[] pdf = creditNoteService.print(transactionPoid);
             return ResponseEntity.ok()
                     .headers(downloadHeaderService.buildAttachmentHeaders(
-                            UserContext.getDocumentId(),
+                            ArCreditNoteHdr.class,
                             transactionPoid,
                             "credit-note",
                             "pdf"))

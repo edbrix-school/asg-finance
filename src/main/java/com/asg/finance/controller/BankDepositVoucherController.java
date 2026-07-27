@@ -16,6 +16,7 @@ import com.asg.finance.dto.BankDepositVoucherDtlDto;
 import com.asg.finance.dto.BankDepositVoucherRequestDto;
 import com.asg.finance.dto.BankDepositVoucherResponseDto;
 import com.asg.common.lib.exception.ValidationException;
+import com.asg.finance.entity.GlBankDepositVoucherHdr;
 import com.asg.finance.service.BankDepositVoucherService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -292,7 +293,7 @@ public class BankDepositVoucherController {
             byte[] pdf = service.print(transactionPoid);
             return ResponseEntity.ok()
                     .headers(downloadHeaderService.buildAttachmentHeaders(
-                            UserContext.getDocumentId(),
+                            GlBankDepositVoucherHdr.class,
                             transactionPoid,
                             "bank-deposit-voucher",
                             "pdf"))

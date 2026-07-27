@@ -12,6 +12,7 @@ import com.asg.common.lib.dto.ReconcileResultDto;
 import com.asg.common.lib.utility.DateUtil;
 import com.asg.finance.dto.*;
 import com.asg.common.lib.exception.ValidationException;
+import com.asg.finance.entity.GLPaymentVoucherHDREntity;
 import com.asg.finance.service.BankPaymentVoucherService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -540,7 +541,7 @@ public class BankPaymentVoucherController {
             byte[] pdf = service.print(transactionPoid);
             return ResponseEntity.ok()
                     .headers(downloadHeaderService.buildAttachmentHeaders(
-                            UserContext.getDocumentId(),
+                            GLPaymentVoucherHDREntity.class,
                             transactionPoid,
                             "bank-payment-voucher",
                             "pdf"))
@@ -559,7 +560,7 @@ public class BankPaymentVoucherController {
             byte[] pdf = service.printchequeLeaf(transactionPoid);
             return ResponseEntity.ok()
                     .headers(downloadHeaderService.buildAttachmentHeaders(
-                            UserContext.getDocumentId(),
+                            GLPaymentVoucherHDREntity.class,
                             transactionPoid,
                             "bank-payment-voucher",
                             "pdf"))

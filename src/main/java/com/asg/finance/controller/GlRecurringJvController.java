@@ -11,6 +11,7 @@ import com.asg.finance.dto.CreateScheduleRequest;
 import com.asg.finance.dto.RecurringJvRequest;
 import com.asg.finance.dto.RecurringJvResponse;
 import com.asg.common.lib.dto.FilterRequestDto;
+import com.asg.finance.entity.GlRecurringJvHdr;
 import com.asg.finance.service.GlRecurringJvService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -295,7 +296,7 @@ public class GlRecurringJvController {
                         byte[] pdf = recurringJvService.print(transactionPoid);
                         return ResponseEntity.ok()
                                         .headers(downloadHeaderService.buildAttachmentHeaders(
-                                                        UserContext.getDocumentId(),
+                                                        GlRecurringJvHdr.class,
                                                         transactionPoid,
                                                         "recurring-jv",
                                                         "pdf"))

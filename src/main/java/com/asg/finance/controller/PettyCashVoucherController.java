@@ -8,6 +8,7 @@ import com.asg.finance.dto.*;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.service.DocumentDownloadHeaderService;
+import com.asg.finance.entity.GlPettyCashPaymentHdr;
 import com.asg.finance.service.PettyCashVoucherService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.enums.LogDetailsEnum;
@@ -623,7 +624,7 @@ public class PettyCashVoucherController {
             byte[] pdf = pettyCashVoucherService.print(transactionPoid);
             return ResponseEntity.ok()
                     .headers(downloadHeaderService.buildAttachmentHeaders(
-                            UserContext.getDocumentId(),
+                            GlPettyCashPaymentHdr.class,
                             transactionPoid,
                             "petty-cash-voucher",
                             "pdf"))

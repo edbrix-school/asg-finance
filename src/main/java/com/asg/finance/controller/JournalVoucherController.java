@@ -9,6 +9,7 @@ import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.service.DocumentDownloadHeaderService;
 import com.asg.finance.dto.*;
+import com.asg.finance.entity.GlJournalVoucherHdr;
 import jakarta.validation.Valid;
 import com.asg.finance.service.JournalVoucherService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -324,7 +325,7 @@ public class JournalVoucherController {
                         byte[] pdf = journalVoucherService.print(transactionPoid);
                         return ResponseEntity.ok()
                                         .headers(downloadHeaderService.buildAttachmentHeaders(
-                                                        UserContext.getDocumentId(),
+                                                        GlJournalVoucherHdr.class,
                                                         transactionPoid,
                                                         "journal-voucher",
                                                         "pdf"))

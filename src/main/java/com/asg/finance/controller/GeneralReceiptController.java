@@ -12,6 +12,7 @@ import com.asg.finance.dto.GeneralReceiptRequest;
 import com.asg.finance.dto.GeneralReceiptResponse;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.exception.ValidationException;
+import com.asg.finance.entity.ArGenReceiptHdr;
 import com.asg.finance.service.GeneralReceiptService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -489,7 +490,7 @@ public class GeneralReceiptController {
             byte[] pdf = generalReceiptService.print(transactionPoid);
             return ResponseEntity.ok()
                     .headers(downloadHeaderService.buildAttachmentHeaders(
-                            UserContext.getDocumentId(),
+                            ArGenReceiptHdr.class,
                             transactionPoid,
                             "general-receipt",
                             "pdf"))

@@ -14,6 +14,7 @@ import com.asg.finance.dto.ImcoDepositRefundRequestDTO;
 import com.asg.finance.dto.ImcoDepositRefundResponseDTO;
 import com.asg.finance.dto.ImcoRefundLoadResponseDto;
 import com.asg.common.lib.exception.ValidationException;
+import com.asg.finance.entity.GlImcoChequeRefundHdr;
 import com.asg.finance.service.ImcoDepositRefundService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -367,7 +368,7 @@ public class ImcoDepositRefundController {
             byte[] pdf = service.print(transactionPoid);
             return ResponseEntity.ok()
                     .headers(downloadHeaderService.buildAttachmentHeaders(
-                            UserContext.getDocumentId(),
+                            GlImcoChequeRefundHdr.class,
                             transactionPoid,
                             "imco-deposit-refund",
                             "pdf"))

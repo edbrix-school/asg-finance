@@ -13,6 +13,7 @@ import com.asg.finance.dto.PayGLValidationRequest;
 import com.asg.finance.dto.ItemDetailDto;
 import com.asg.finance.dto.PaymentGlDetails;
 import com.asg.common.lib.dto.FilterRequestDto;
+import com.asg.finance.entity.GlBankDebitHdr;
 import com.asg.finance.service.BankDebitVoucherService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -459,7 +460,7 @@ public class BankDebitVoucherController {
             byte[] pdf = bankDebitVoucherService.print(transactionPoid);
             return ResponseEntity.ok()
                     .headers(downloadHeaderService.buildAttachmentHeaders(
-                            UserContext.getDocumentId(),
+                            GlBankDebitHdr.class,
                             transactionPoid,
                             "bank-debit-voucher",
                             "pdf"))
@@ -490,7 +491,7 @@ public class BankDebitVoucherController {
             byte[] pdf = bankDebitVoucherService.printBillwise(transactionPoid);
             return ResponseEntity.ok()
                     .headers(downloadHeaderService.buildAttachmentHeaders(
-                            UserContext.getDocumentId(),
+                            GlBankDebitHdr.class,
                             transactionPoid,
                             "bank-debit-voucher-billwise",
                             "pdf"))

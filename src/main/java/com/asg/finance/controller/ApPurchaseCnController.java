@@ -9,6 +9,7 @@ import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.service.DocumentDownloadHeaderService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.finance.dto.ApPurchaseCnHdrDto;
+import com.asg.finance.entity.ApPurchaseCnHdr;
 import com.asg.finance.service.ApPurchaseCnService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -328,7 +329,7 @@ public class ApPurchaseCnController {
             byte[] pdf = service.print(transactionPoid);
             return ResponseEntity.ok()
                     .headers(downloadHeaderService.buildAttachmentHeaders(
-                            UserContext.getDocumentId(),
+                            ApPurchaseCnHdr.class,
                             transactionPoid,
                             "purchase-journal",
                             "pdf"))

@@ -10,6 +10,7 @@ import com.asg.common.lib.service.LoggingService;
 import com.asg.finance.dto.DebitNoteHeaderDto;
 import com.asg.finance.dto.ProcessFdaRequestDto;
 import com.asg.common.lib.dto.FilterRequestDto;
+import com.asg.finance.entity.ArDebitNoteHdr;
 import com.asg.finance.service.CreditNoteService;
 import com.asg.finance.service.DebitNoteService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -367,7 +368,7 @@ public class DebitNoteController {
             byte[] pdf = debitNoteService.print(transactionPoid);
             return ResponseEntity.ok()
                     .headers(downloadHeaderService.buildAttachmentHeaders(
-                            UserContext.getDocumentId(),
+                            ArDebitNoteHdr.class,
                             transactionPoid,
                             "debit-note",
                             "pdf"))

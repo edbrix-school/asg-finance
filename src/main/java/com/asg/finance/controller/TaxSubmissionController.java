@@ -10,6 +10,7 @@ import com.asg.common.lib.service.DocumentDownloadHeaderService;
 import com.asg.finance.dto.*;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.dto.FilterRequestDto;
+import com.asg.finance.entity.GlobalTaxSubmissionHdr;
 import com.asg.finance.service.TaxSubmissionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -421,7 +422,7 @@ public class TaxSubmissionController {
             byte[] pdf = taxSubmissionService.print(transactionPoid);
             return ResponseEntity.ok()
                     .headers(downloadHeaderService.buildAttachmentHeaders(
-                            UserContext.getDocumentId(),
+                            GlobalTaxSubmissionHdr.class,
                             transactionPoid,
                             "tax-submission",
                             "pdf"))

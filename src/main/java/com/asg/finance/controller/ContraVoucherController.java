@@ -9,6 +9,7 @@ import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.service.DocumentDownloadHeaderService;
 import com.asg.finance.dto.ContraVoucherRequest;
 import com.asg.finance.dto.ContraVoucherFullResponse;
+import com.asg.finance.entity.GlContraVoucherHdr;
 import com.asg.finance.service.ContraVoucherService;
 import com.asg.common.lib.security.util.UserContext;
 import io.swagger.v3.oas.annotations.Operation;
@@ -327,7 +328,7 @@ public class ContraVoucherController {
             byte[] pdf = contraVoucherService.print(transactionPoid);
             return ResponseEntity.ok()
                     .headers(downloadHeaderService.buildAttachmentHeaders(
-                            UserContext.getDocumentId(),
+                            GlContraVoucherHdr.class,
                             transactionPoid,
                             "contra-voucher",
                             "pdf"))

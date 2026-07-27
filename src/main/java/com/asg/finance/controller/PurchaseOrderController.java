@@ -12,6 +12,7 @@ import com.asg.finance.dto.PurchaseOrderResponse;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.finance.entity.PurchaseOrder;
 import com.asg.finance.service.PurchaseOrderService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -383,7 +384,7 @@ public class PurchaseOrderController {
             byte[] pdf = service.print(transactionPoid);
             return ResponseEntity.ok()
                     .headers(downloadHeaderService.buildAttachmentHeaders(
-                            UserContext.getDocumentId(),
+                            PurchaseOrder.class,
                             transactionPoid,
                             "purchase-order",
                             "pdf"))

@@ -3,6 +3,7 @@ package com.asg.finance.bankdepositvoucher.controller;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.DocumentDownloadHeaderService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.finance.controller.BankDepositVoucherController;
 import com.asg.finance.dto.BankDepositVoucherDtlDto;
@@ -21,6 +22,7 @@ import org.springframework.context.annotation.FilterType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -38,7 +40,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(value = BankDepositVoucherController.class,
         excludeFilters = @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.asg.finance.aspect.*"))
-@ContextConfiguration(classes = {BankDepositVoucherController.class})
+@ContextConfiguration(classes = {BankDepositVoucherController.class, DocumentDownloadHeaderService.class})
 class BankDepositVoucherControllerTest {
 
     @Autowired
@@ -46,6 +48,11 @@ class BankDepositVoucherControllerTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @MockBean
+
+    private JdbcTemplate jdbcTemplate;
+
 
     @MockBean
     private BankDepositVoucherService service;

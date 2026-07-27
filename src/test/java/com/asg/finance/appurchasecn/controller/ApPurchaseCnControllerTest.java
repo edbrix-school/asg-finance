@@ -5,6 +5,7 @@ import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.DocumentDownloadHeaderService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.finance.controller.ApPurchaseCnController;
 import com.asg.finance.dto.ApPurchaseCnGlDtlDto;
@@ -23,6 +24,7 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -53,7 +55,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(value = ApPurchaseCnController.class,
         excludeFilters = @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.asg.finance.aspect.*"))
 @AutoConfigureMockMvc(addFilters = false)
-@ContextConfiguration(classes = {ApPurchaseCnController.class, com.asg.finance.exceptions.GlobalExceptionHandler.class})
+@ContextConfiguration(classes = {ApPurchaseCnController.class, com.asg.finance.exceptions.GlobalExceptionHandler.class, DocumentDownloadHeaderService.class})
 class ApPurchaseCnControllerTest {
 
     @Autowired
@@ -61,6 +63,11 @@ class ApPurchaseCnControllerTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @MockBean
+
+    private JdbcTemplate jdbcTemplate;
+
 
     @MockBean
     private ApPurchaseCnService service;
@@ -219,7 +226,7 @@ class ApPurchaseCnControllerTest {
         mockMvc.perform(get("/v1/supplier-credit-note/print/10"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_PDF))
-                .andExpect(header().string("Content-Disposition", containsString("purchase-journal-10.pdf")));
+                .andExpect(header().string("Content-Disposition", containsString("Purchase-Journal-10.pdf")));
     }
 
     @Test

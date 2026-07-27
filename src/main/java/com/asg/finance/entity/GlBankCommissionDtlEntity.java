@@ -1,6 +1,7 @@
 package com.asg.finance.entity;
 
 import com.asg.common.lib.entity.BaseEntity;
+import com.asg.finance.entity.key.GlBankCommissionDtlKey;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -16,14 +17,20 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@IdClass(GlBankCommissionDtlKey.class)
 public class GlBankCommissionDtlEntity extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "commissionDtlSeq")
-    @SequenceGenerator(name = "commissionDtlSeq", sequenceName = "GL_BANK_MASTER_COMMISSION_DTL_SEQ", allocationSize = 1)
+    @SequenceGenerator(
+            name = "commissionDtlSeq",
+            sequenceName = "GL_BANK_MASTER_COMMISSION_DTL_SEQ",
+            allocationSize = 1
+    )
     @Column(name = "DET_ROW_ID", nullable = false)
     private Long detRowId;
 
+    @Id
     @Column(name = "BANK_POID", nullable = false)
     private Long bankPoid;
 

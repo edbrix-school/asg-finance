@@ -6,11 +6,13 @@ import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.DocumentDownloadHeaderService;
 import com.asg.finance.dto.CreditNoteHeaderDto;
 import com.asg.finance.dto.DefaultCreditValuesDto;
 import com.asg.finance.dto.FdaRefResponseDto;
 import com.asg.finance.dto.ChargeTaxDataDto;
 import com.asg.common.lib.dto.FilterRequestDto;
+import com.asg.finance.entity.ArCreditNoteHdr;
 import com.asg.finance.service.CreditNoteService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -51,6 +53,7 @@ import static com.asg.common.lib.dto.response.ApiResponse.*;
 public class CreditNoteController {
     private final CreditNoteService creditNoteService;
     private final LoggingService loggingService;
+    private final DocumentDownloadHeaderService downloadHeaderService;
 
     @Operation(
             summary = "Create Credit Note",
@@ -648,8 +651,11 @@ public class CreditNoteController {
         try {
             byte[] pdf = creditNoteService.print(transactionPoid);
             return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=credit-note-" + transactionPoid + ".pdf")
+                    .headers(downloadHeaderService.buildAttachmentHeaders(
+                            ArCreditNoteHdr.class,
+                            transactionPoid,
+                            "credit-note",
+                            "pdf"))
                     .contentType(MediaType.APPLICATION_PDF)
                     .body(pdf);
         } catch (Exception e) {

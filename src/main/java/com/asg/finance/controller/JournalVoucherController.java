@@ -7,7 +7,9 @@ import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.DocumentDownloadHeaderService;
 import com.asg.finance.dto.*;
+import com.asg.finance.entity.GlJournalVoucherHdr;
 import jakarta.validation.Valid;
 import com.asg.finance.service.JournalVoucherService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -38,6 +40,7 @@ public class JournalVoucherController {
 
         private final JournalVoucherService journalVoucherService;
         private final LoggingService loggingService;
+        private final DocumentDownloadHeaderService downloadHeaderService;
 
         @Operation(summary = "Create Journal Voucher", description = "Creates a new journal voucher with GL details, asset disposal, or asset capitalization")
         @ApiResponses({
@@ -321,9 +324,11 @@ public class JournalVoucherController {
                 try {
                         byte[] pdf = journalVoucherService.print(transactionPoid);
                         return ResponseEntity.ok()
-                                        .header(HttpHeaders.CONTENT_DISPOSITION,
-                                                        "attachment; filename=journal-voucher-" + transactionPoid
-                                                                        + ".pdf")
+                                        .headers(downloadHeaderService.buildAttachmentHeaders(
+                                                        GlJournalVoucherHdr.class,
+                                                        transactionPoid,
+                                                        "journal-voucher",
+                                                        "pdf"))
                                         .contentType(MediaType.APPLICATION_PDF)
                                         .body(pdf);
                 } catch (Exception e) {

@@ -9,6 +9,7 @@ import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.StoredProcedureQuery;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
+import com.asg.common.lib.security.util.UserContext;
 
 import java.math.BigDecimal;
 import java.sql.ResultSet;
@@ -130,7 +131,7 @@ public class CostCenterBreakupDtlRepositoryImpl implements CostCenterBreakupDtlR
                 query.setParameter("P_COST_GROUP", breakup.getCostGroup());
                 query.setParameter("P_COST_POID", breakup.getCostPoid());
                 query.setParameter("P_AMOUNT", breakup.getAmount());
-                query.setParameter("P_LOGIN_USER_POID", breakup.getLoginUserPoid());
+                query.setParameter("P_LOGIN_USER_POID", UserContext.getUserPoid());
 
                 query.execute();
             } catch (Exception e) {

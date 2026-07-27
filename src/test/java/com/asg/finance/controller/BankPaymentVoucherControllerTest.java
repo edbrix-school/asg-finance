@@ -7,6 +7,7 @@ import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ValidationException;
 import com.asg.common.lib.security.model.CustomAuthDetails;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.DocumentDownloadHeaderService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.finance.dto.*;
 import com.asg.finance.service.BankPaymentVoucherService;
@@ -20,6 +21,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
@@ -41,6 +43,11 @@ class BankPaymentVoucherControllerTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @MockBean
+
+    private JdbcTemplate jdbcTemplate;
+
 
     @MockBean
     private BankPaymentVoucherService service;

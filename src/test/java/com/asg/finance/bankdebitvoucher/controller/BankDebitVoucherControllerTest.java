@@ -5,6 +5,7 @@ import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.exception.ResourceNotFoundException;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.DocumentDownloadHeaderService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.finance.controller.BankDebitVoucherController;
 import com.asg.finance.dto.*;
@@ -20,6 +21,7 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -37,7 +39,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(value = BankDebitVoucherController.class,
         excludeFilters = @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.asg.finance.aspect.*"))
-@ContextConfiguration(classes = {BankDebitVoucherController.class})
+@ContextConfiguration(classes = {BankDebitVoucherController.class, DocumentDownloadHeaderService.class})
 class BankDebitVoucherControllerTest {
 
     @Autowired
@@ -45,6 +47,11 @@ class BankDebitVoucherControllerTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @MockBean
+
+    private JdbcTemplate jdbcTemplate;
+
 
     @MockBean
     private BankDebitVoucherService bankDebitVoucherService;
@@ -417,7 +424,7 @@ class BankDebitVoucherControllerTest {
 
         mockMvc.perform(get("/v1/bank-debit-voucher/print/1"))
                 .andExpect(status().isOk())
-                .andExpect(header().string("Content-Disposition", "attachment; filename=bank-debit-voucher-1.pdf"))
+                .andExpect(header().string("Content-Disposition", "attachment; filename=\"Bank-Debit-Voucher-1.pdf\""))
                 .andExpect(content().contentType(MediaType.APPLICATION_PDF));
 
         verify(bankDebitVoucherService).print(1L);

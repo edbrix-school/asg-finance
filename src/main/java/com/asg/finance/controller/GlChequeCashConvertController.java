@@ -4,12 +4,14 @@ import com.asg.common.lib.annotation.AllowedAction;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.enums.LogDetailsEnum;
+import com.asg.common.lib.service.DocumentDownloadHeaderService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.finance.dto.GlChequeCashConvertHdrDto;
 import com.asg.finance.dto.GlChequeCashConvertValidateEditResponseDto;
 import com.asg.finance.dto.GlChequeConversionLoadResponseDto;
 import com.asg.common.lib.dto.FilterRequestDto;
+import com.asg.finance.entity.GlChequeCashConvertHdrEntity;
 import com.asg.finance.service.GlChequeCashConvertService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -44,6 +46,7 @@ public class GlChequeCashConvertController {
 
     private final GlChequeCashConvertService service;
     private final LoggingService loggingService;
+    private final DocumentDownloadHeaderService downloadHeaderService;
 
     @Operation(
             summary = "Fetch GL Cheque Cash Convert Record by Transaction POID",
@@ -466,8 +469,11 @@ public class GlChequeCashConvertController {
         try {
             byte[] pdf = service.print(transactionPoid);
             return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=cheque-and-cash-conversion-" + transactionPoid + ".pdf")
+                    .headers(downloadHeaderService.buildAttachmentHeaders(
+                            GlChequeCashConvertHdrEntity.class,
+                            transactionPoid,
+                            "cheque-and-cash-conversion",
+                            "pdf"))
                     .contentType(MediaType.APPLICATION_PDF)
                     .body(pdf);
         } catch (Exception e) {

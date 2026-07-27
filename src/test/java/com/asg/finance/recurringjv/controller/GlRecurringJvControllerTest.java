@@ -4,6 +4,7 @@ import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.DocumentDownloadHeaderService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.finance.controller.GlRecurringJvController;
 import com.asg.finance.dto.RecurringJvCreateResponse;
@@ -22,6 +23,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -38,11 +40,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(value = GlRecurringJvController.class,
         excludeFilters = @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.asg.finance.aspect.*"))
-@ContextConfiguration(classes = {GlRecurringJvController.class})
+@ContextConfiguration(classes = {GlRecurringJvController.class, DocumentDownloadHeaderService.class})
 class GlRecurringJvControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockBean
+
+    private JdbcTemplate jdbcTemplate;
+
 
     @MockBean
     private GlRecurringJvService recurringJvService;

@@ -3,6 +3,7 @@ package com.asg.finance.journalvoucher.controller;
 import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.security.util.UserContext;
+import com.asg.common.lib.service.DocumentDownloadHeaderService;
 import com.asg.common.lib.service.LoggingService;
 import com.asg.finance.controller.JournalVoucherController;
 import com.asg.finance.dto.*;
@@ -20,6 +21,7 @@ import org.springframework.context.annotation.FilterType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -36,7 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(value = JournalVoucherController.class,
         excludeFilters = @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.asg.finance.aspect.*"))
-@ContextConfiguration(classes = {JournalVoucherController.class})
+@ContextConfiguration(classes = {JournalVoucherController.class, DocumentDownloadHeaderService.class})
 class JournalVoucherControllerTest {
 
     @Autowired
@@ -44,6 +46,11 @@ class JournalVoucherControllerTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @MockBean
+
+    private JdbcTemplate jdbcTemplate;
+
 
     @MockBean
     private JournalVoucherService journalVoucherService;

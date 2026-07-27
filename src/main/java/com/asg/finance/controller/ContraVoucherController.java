@@ -6,8 +6,10 @@ import com.asg.common.lib.dto.FilterRequestDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.service.DocumentDownloadHeaderService;
 import com.asg.finance.dto.ContraVoucherRequest;
 import com.asg.finance.dto.ContraVoucherFullResponse;
+import com.asg.finance.entity.GlContraVoucherHdr;
 import com.asg.finance.service.ContraVoucherService;
 import com.asg.common.lib.security.util.UserContext;
 import io.swagger.v3.oas.annotations.Operation;
@@ -41,6 +43,7 @@ public class ContraVoucherController {
 
     private final ContraVoucherService contraVoucherService;
     private final LoggingService loggingService;
+    private final DocumentDownloadHeaderService downloadHeaderService;
 
     @Operation(
             summary = "Get contra vouchers list",  
@@ -324,8 +327,11 @@ public class ContraVoucherController {
         try {
             byte[] pdf = contraVoucherService.print(transactionPoid);
             return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=contra-voucher-" + transactionPoid + ".pdf")
+                    .headers(downloadHeaderService.buildAttachmentHeaders(
+                            GlContraVoucherHdr.class,
+                            transactionPoid,
+                            "contra-voucher",
+                            "pdf"))
                     .contentType(MediaType.APPLICATION_PDF)
                     .body(pdf);
         } catch (Exception e) {
@@ -334,4 +340,3 @@ public class ContraVoucherController {
         }
     }
 }
-

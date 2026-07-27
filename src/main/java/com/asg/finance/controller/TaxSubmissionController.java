@@ -5,10 +5,12 @@ import com.asg.common.lib.dto.DeleteReasonDto;
 import com.asg.common.lib.enums.UserRolesRightsEnum;
 import com.asg.common.lib.enums.LogDetailsEnum;
 import com.asg.common.lib.service.LoggingService;
+import com.asg.common.lib.service.DocumentDownloadHeaderService;
 
 import com.asg.finance.dto.*;
 import com.asg.common.lib.security.util.UserContext;
 import com.asg.common.lib.dto.FilterRequestDto;
+import com.asg.finance.entity.GlobalTaxSubmissionHdr;
 import com.asg.finance.service.TaxSubmissionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -41,6 +43,7 @@ public class TaxSubmissionController {
 
     private final TaxSubmissionService taxSubmissionService;
     private final LoggingService loggingService;
+    private final DocumentDownloadHeaderService downloadHeaderService;
 
     @Operation(
             summary = "Create tax submission",
@@ -418,8 +421,11 @@ public class TaxSubmissionController {
         try {
             byte[] pdf = taxSubmissionService.print(transactionPoid);
             return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=tax-submission-" + transactionPoid + ".pdf")
+                    .headers(downloadHeaderService.buildAttachmentHeaders(
+                            GlobalTaxSubmissionHdr.class,
+                            transactionPoid,
+                            "tax-submission",
+                            "pdf"))
                     .contentType(MediaType.APPLICATION_PDF)
                     .body(pdf);
         } catch (Exception e) {
@@ -429,4 +435,3 @@ public class TaxSubmissionController {
     }
 
 }
-

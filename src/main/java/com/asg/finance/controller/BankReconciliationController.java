@@ -18,6 +18,7 @@ import jakarta.validation.constraints.PastOrPresent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -221,12 +222,13 @@ public class BankReconciliationController {
         try {
             byte[] pdf = service.print(1L, bankPoid, dateFrom, dateTill, balanceAsPerBank);
             return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=bank-reconciliation-" + 1 + ".pdf")
+                    .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                            .filename("Bank-Reconciliation-" + bankPoid + "-" + dateFrom + "_" + dateTill + ".pdf")
+                            .build().toString())
                     .contentType(MediaType.APPLICATION_PDF)
                     .body(pdf);
         } catch (Exception e) {
-            log.error("Failed to generate PDF for Bank Reconciliation: {}", 1, e);
+            log.error("Failed to generate PDF for Bank Reconciliation: bankPoid={}", bankPoid, e);
             return error("Failed to generate PDF: " + e.getMessage(), 500);
         }
     }
@@ -250,7 +252,7 @@ public class BankReconciliationController {
             ExcelFileData data = excelExportService.generateExcel("400-150", null, parameters, "BankReconciliation.xlsx");
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=" + data.getFileName())
+                            ContentDisposition.attachment().filename(data.getFileName()).build().toString())
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
                     .body(data.getContent());
         } catch (Exception e) {

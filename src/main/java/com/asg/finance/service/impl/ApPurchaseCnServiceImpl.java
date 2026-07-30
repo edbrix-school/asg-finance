@@ -61,6 +61,7 @@ import java.util.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @Service
@@ -1765,12 +1766,78 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         Long companyPoid = getLongValue(lineItem, FIELD_COMPANY_POID);
         Long glPoid = getLongValue(lineItem, FIELD_GL_POID);
 
-        lineItem.put(FIELD_COMPANY_DET, lovService.getDetailsByPoidAndLovName(companyPoid, LOV_COMPANY));
-        lineItem.put(FIELD_GL_DET, lovService.getDetailsByPoidAndLovName(glPoid, LOV_GL_MASTER_LEDGERS_PJ));
-        putTypeDetail(lineItem);
-        putTaxDetail(lineItem, LOV_PJ_GL_INPUT_TAX);
-        lineItem.put(FIELD_BILL_WISE_BREAK_UP_LIST, filterBillwiseBreakup(billResponse, glPoid));
-        lineItem.put(FIELD_COST_CENTER_BREAK_UP_LIST, filterCostCenterBreakup(costResponse, glPoid));
+        CompletableFuture<LovGetListDto> fieldCompanyDetFuture =
+                CompletableFuture.supplyAsync(() ->
+                        lovService.getDetailsByPoidAndLovName(companyPoid, LOV_COMPANY)
+                );
+
+        CompletableFuture<LovGetListDto> fieldGlDetFuture =
+                CompletableFuture.supplyAsync(() ->
+                        lovService.getDetailsByPoidAndLovName(glPoid, LOV_GL_MASTER_LEDGERS_PJ)
+                );
+
+        CompletableFuture<LovGetListDto> fieldTypeDetFuture =
+                CompletableFuture.completedFuture(null);
+        String type = (String) lineItem.get(FIELD_TYPE);
+        if (type != null) {
+
+            fieldTypeDetFuture =
+                    CompletableFuture.supplyAsync(() ->
+                            lovService.getDetailsByCodeAndLovName(type, LOV_ACC_TYPE_SHORT)
+                    );
+
+        }
+
+        CompletableFuture<LovGetListDto> fieldTaxDetFuture =
+                CompletableFuture.completedFuture(null);
+        Object taxPoidObj = lineItem.get(FIELD_TAX_POID);
+        if (taxPoidObj != null) {
+            Long taxPoid = ((Number) taxPoidObj).longValue();
+
+            fieldTaxDetFuture =
+                    CompletableFuture.supplyAsync(() ->
+                            lovService.getDetailsByPoidAndLovName(taxPoid, LOV_PJ_GL_INPUT_TAX)
+                    );
+
+        }
+
+        CompletableFuture<List<BillwiseBreakupPopupRequestDto>> fieldBillWiseBreakUpListFuture =
+                CompletableFuture.supplyAsync(() ->
+                        filterBillwiseBreakup(billResponse, glPoid)
+                );
+
+        CompletableFuture<List<CostCenterBreakupPopupRequestDto>> fieldCostCentreBreakUpListFuture =
+                CompletableFuture.supplyAsync(() ->
+                        filterCostCenterBreakup(costResponse, glPoid)
+                );
+
+        try {
+            CompletableFuture.allOf(
+                    fieldCompanyDetFuture,
+                    fieldGlDetFuture,
+                    fieldTypeDetFuture,
+                    fieldTaxDetFuture,
+                    fieldBillWiseBreakUpListFuture,
+                    fieldCostCentreBreakUpListFuture
+            ).join();
+        } catch (Exception e) {
+            Throwable cause = e.getCause();
+            throw (cause instanceof RuntimeException) ? (RuntimeException) cause : new RuntimeException(cause);
+        }
+
+        LovGetListDto fieldCompanyDet = fieldCompanyDetFuture.join();
+        LovGetListDto fieldGlDet =  fieldGlDetFuture.join();
+        LovGetListDto fieldTypeDet = fieldTypeDetFuture.join();
+        LovGetListDto fieldTaxDet = fieldTaxDetFuture.join();
+        List<BillwiseBreakupPopupRequestDto> fieldBillWiseBreakUpList = fieldBillWiseBreakUpListFuture.join();
+        List<CostCenterBreakupPopupRequestDto> fieldCostCentreBreakUpList = fieldCostCentreBreakUpListFuture.join();
+
+        lineItem.put(FIELD_COMPANY_DET, fieldCompanyDet);
+        lineItem.put(FIELD_GL_DET, fieldGlDet);
+        lineItem.put(FIELD_TYPE_DET, fieldTypeDet);
+        lineItem.put(FIELD_TAX_DET, fieldTaxDet);
+        lineItem.put(FIELD_BILL_WISE_BREAK_UP_LIST, fieldBillWiseBreakUpList);
+        lineItem.put(FIELD_COST_CENTER_BREAK_UP_LIST, fieldCostCentreBreakUpList);
     }
 
     private void mapFdaLineItems(List<Map<String, Object>> lineItems) {

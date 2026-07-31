@@ -15,4 +15,13 @@ public interface GlJournalFaCapitalizationRepository extends JpaRepository<GlJou
 
     @Query("SELECT COALESCE(MAX(d.detRowId), 0) FROM GlJournalFaCapitalization d WHERE d.transactionPoid = :transactionPoid")
     Long getMaxDetRowIdByTransactionPoid(@Param("transactionPoid") Long transactionPoid);
+
+    @Query(value = "SELECT COUNT(*) FROM GL_JOURNAL_FA_CAPITALIZATION d " +
+            "JOIN GL_JOURNAL_VOUCHER_HDR h ON h.TRANSACTION_POID = d.TRANSACTION_POID " +
+            "WHERE d.FA_POID = :faPoid " +
+            "AND (h.DELETED IS NULL OR h.DELETED = 'N') " +
+            "AND (:excludeTransactionPoid IS NULL OR d.TRANSACTION_POID <> :excludeTransactionPoid)",
+            nativeQuery = true)
+    long countActiveCapitalizationByFaPoid(@Param("faPoid") Long faPoid,
+            @Param("excludeTransactionPoid") Long excludeTransactionPoid);
 }

@@ -1754,23 +1754,64 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
     private void mapGeneralLineItems(List<Map<String, Object>> lineItems,
                                      GlVoucherLoadBillwiseBreakupResponseDto billResponse,
                                      GlVoucherCostCenterBreakupResponseDto costResponse) {
+
+        Set<Long> companyPoids = new HashSet<>();
+        Set<Long> glPoids = new HashSet<>();
+        Set<String> types = new HashSet<>();
+        Set<Long> taxPoids = new HashSet<>();
+
         for (Map<String, Object> lineItem : lineItems) {
-            mapGeneralLineItem(lineItem, billResponse, costResponse);
+            companyPoids.add(getLongValue(lineItem, FIELD_COMPANY_POID));
+            glPoids.add(getLongValue(lineItem, FIELD_GL_POID));
+            String type = (String) lineItem.get(FIELD_TYPE);
+            if (type != null) {
+                types.add(type);
+            }
+            Object taxPoidObj = lineItem.get(FIELD_TAX_POID);
+            if (taxPoidObj != null) {
+                Long taxPoid = ((Number) taxPoidObj).longValue();
+                taxPoids.add(taxPoid);
+            }
+        }
+
+        Map<Long, LovGetListDto> companyLovGetListDto = new HashMap<>();
+        if (!companyPoids.isEmpty())
+            companyLovGetListDto = lovService.getDetailsByPoidsAndLovName(companyPoids.stream().toList(), LOV_COMPANY);
+
+        Map<Long, LovGetListDto> glLovGetListDto = new HashMap<>();
+        if (!glPoids.isEmpty())
+            glLovGetListDto = lovService.getDetailsByPoidsAndLovName(glPoids.stream().toList(), LOV_GL_MASTER_LEDGERS_PJ);
+
+        Map<String, LovGetListDto> typesLovGetListDto = new HashMap<>();
+        if (!types.isEmpty())
+            typesLovGetListDto = lovService.getDetailsByCodesAndLovName(types.stream().toList(), LOV_ACC_TYPE_SHORT);
+
+        Map<Long, LovGetListDto> taxLovGetListDto = new HashMap<>();
+        if (!taxPoids.isEmpty())
+            taxLovGetListDto = lovService.getDetailsByPoidsAndLovName(taxPoids.stream().toList(), LOV_PJ_GL_INPUT_TAX);
+
+        for (Map<String, Object> lineItem : lineItems) {
+            mapGeneralLineItem(lineItem, companyLovGetListDto, glLovGetListDto, typesLovGetListDto, taxLovGetListDto, billResponse, costResponse);
         }
     }
-    
+
     private void mapGeneralLineItem(Map<String, Object> lineItem,
-                                   GlVoucherLoadBillwiseBreakupResponseDto billResponse,
-                                   GlVoucherCostCenterBreakupResponseDto costResponse) {
+                                    Map<Long, LovGetListDto> companyLovGetListDto,
+                                    Map<Long, LovGetListDto> glLovGetListDto,
+                                    Map<String, LovGetListDto> typesLovGetListDto,
+                                    Map<Long, LovGetListDto> taxLovGetListDto,
+                                    GlVoucherLoadBillwiseBreakupResponseDto billResponse,
+                                    GlVoucherCostCenterBreakupResponseDto costResponse) {
         Long companyPoid = getLongValue(lineItem, FIELD_COMPANY_POID);
         Long glPoid = getLongValue(lineItem, FIELD_GL_POID);
 
-        lineItem.put(FIELD_COMPANY_DET, lovService.getDetailsByPoidAndLovName(companyPoid, LOV_COMPANY));
-        lineItem.put(FIELD_GL_DET, lovService.getDetailsByPoidAndLovName(glPoid, LOV_GL_MASTER_LEDGERS_PJ));
-        putTypeDetail(lineItem);
-        putTaxDetail(lineItem, LOV_PJ_GL_INPUT_TAX);
         lineItem.put(FIELD_BILL_WISE_BREAK_UP_LIST, filterBillwiseBreakup(billResponse, glPoid));
         lineItem.put(FIELD_COST_CENTER_BREAK_UP_LIST, filterCostCenterBreakup(costResponse, glPoid));
+
+        lineItem.put(FIELD_COMPANY_DET, companyLovGetListDto.get(companyPoid));
+        lineItem.put(FIELD_GL_DET, glLovGetListDto.get(glPoid));
+        putTypeDetail(lineItem, typesLovGetListDto);
+        putTaxDetailByLovGetListDtoMap(lineItem, taxLovGetListDto);
     }
 
     private void mapFdaLineItems(List<Map<String, Object>> lineItems) {
@@ -1796,10 +1837,10 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         }
     }
 
-    private void putTypeDetail(Map<String, Object> lineItem) {
+    private void putTypeDetail(Map<String, Object> lineItem, Map<String, LovGetListDto> typesLovGetListDto) {
         String type = (String) lineItem.get(FIELD_TYPE);
         if (type != null) {
-            lineItem.put(FIELD_TYPE_DET, lovService.getDetailsByCodeAndLovName(type, LOV_ACC_TYPE_SHORT));
+            lineItem.put(FIELD_TYPE_DET, typesLovGetListDto.get(type));
         }
     }
 
@@ -1808,6 +1849,14 @@ public class ApPurchaseCnServiceImpl implements ApPurchaseCnService {
         if (taxPoidObj != null) {
             Long taxPoid = ((Number) taxPoidObj).longValue();
             lineItem.put(FIELD_TAX_DET, lovService.getDetailsByPoidAndLovName(taxPoid, lovName));
+        }
+    }
+
+    private void putTaxDetailByLovGetListDtoMap(Map<String, Object> lineItem, Map<Long, LovGetListDto> taxLovGetListDto) {
+        Object taxPoidObj = lineItem.get(FIELD_TAX_POID);
+        if (taxPoidObj != null) {
+            Long taxPoid = ((Number) taxPoidObj).longValue();
+            lineItem.put(FIELD_TAX_DET, taxLovGetListDto.get(taxPoid));
         }
     }
 

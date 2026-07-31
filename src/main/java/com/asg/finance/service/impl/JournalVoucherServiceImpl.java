@@ -97,7 +97,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
     public JournalVoucherResponse saveJournalVoucherData(JournalVoucherRequest request, String docId) {
         log.info("Saving Journal Voucher Data in REQUIRES_NEW - RefType: {}, docId: {}", request.getRefType(), docId);
         try {
-            validateJournalVoucher(request);
+            validateJournalVoucher(request, null);
             boolean isMultiCompany = Boolean.TRUE.equals(request.getMultiCompany());
 
             BigDecimal bhdAmount = calculateBhdAmount(request);
@@ -214,11 +214,11 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         }
     }
 
-    private void validateJournalVoucher(JournalVoucherRequest request) {
+    private void validateJournalVoucher(JournalVoucherRequest request, Long excludeTransactionPoid) {
         String refType = getString(request);
         validateCommonFields(request);
         handleCurrencyValidation(request);
-        validateSpecificRefType(request, refType);
+        validateSpecificRefType(request, refType, excludeTransactionPoid);
     }
 
     private void validateCommonFields(JournalVoucherRequest request) {
@@ -241,11 +241,11 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         }
     }
 
-    private void validateSpecificRefType(JournalVoucherRequest request, String refType) {
+    private void validateSpecificRefType(JournalVoucherRequest request, String refType, Long excludeTransactionPoid) {
         switch (refType.toUpperCase()) {
             case REF_TYPE_GENERAL -> validateGeneralType(request);
             case REF_TYPE_ASSET_DISPOSAL -> validateAssetDisposalType(request);
-            case REF_TYPE_ASSET_CAPITALIZATION -> validateAssetCapitalizationType(request);
+            case REF_TYPE_ASSET_CAPITALIZATION -> validateAssetCapitalizationType(request, excludeTransactionPoid);
             default -> throw new IllegalArgumentException("Unsupported RefType: " + refType);
         }
     }
@@ -271,7 +271,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         validateAssetDetailsForDisposal(request.getAssetDetails());
     }
 
-    private void validateAssetCapitalizationType(JournalVoucherRequest request) {
+    private void validateAssetCapitalizationType(JournalVoucherRequest request, Long excludeTransactionPoid) {
         if (request.getGlDetails() == null || request.getGlDetails().isEmpty()) {
             throw new IllegalArgumentException("At least one GL detail line is required for ASSET_CAPITALIZATION type");
         }
@@ -284,6 +284,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         validateDebitCreditBalance(request.getGlDetails(), calculateBhdAmount(request));
         validateUniqueAssetCapitalization(request.getAssetCapitalization());
         validateAssetDetailsForCapitalization(request.getAssetCapitalization());
+        validateAssetNotAlreadyCapitalized(request.getAssetCapitalization(), excludeTransactionPoid);
         validateCapitalizationNature(request.getGlDetails(), request.getAssetCapitalization());
     }
 
@@ -376,6 +377,21 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
             if (!assetIds.add(detail.getFaPoid())) {
                 throw new IllegalArgumentException(
                         "Duplicate asset capitalization entry found for asset poid: " + detail.getFaPoid());
+            }
+        }
+    }
+
+    private void validateAssetNotAlreadyCapitalized(List<JournalVoucherCapitalizationDto> capitalizationDetails,
+            Long excludeTransactionPoid) {
+        for (JournalVoucherCapitalizationDto detail : capitalizationDetails) {
+            if (ACTION_ISDELETED.equals(resolveAction(detail.getActionType()))) {
+                continue;
+            }
+            long count = glJournalFaCapitalizationRepository
+                    .countActiveCapitalizationByFaPoid(detail.getFaPoid(), excludeTransactionPoid);
+            if (count > 0) {
+                throw new IllegalArgumentException(
+                        "Asset is already capitalized in another transaction: " + detail.getFaPoid());
             }
         }
     }
@@ -708,7 +724,7 @@ public class JournalVoucherServiceImpl implements JournalVoucherService {
         GlJournalVoucherHdr oldEntity = new GlJournalVoucherHdr();
         BeanUtils.copyProperties(existing, oldEntity);
 
-        validateJournalVoucher(request);
+        validateJournalVoucher(request, transactionPoid);
 
         boolean isMultiCompany = Boolean.TRUE.equals(request.getMultiCompany());
         BigDecimal bhdAmount = request.getBhdAmount() != null ? request.getBhdAmount()

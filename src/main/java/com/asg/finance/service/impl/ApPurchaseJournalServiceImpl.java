@@ -657,16 +657,16 @@ public class ApPurchaseJournalServiceImpl implements ApPurchaseServiceJournal {
                     dto1.setBillRef(popup.getBillRef());
                     dto1.setGlCompanyPoid(popup.getGlCompanyPoid() != null ? popup.getGlCompanyPoid() : g.getCompanyPoid());
                     dto1.setBillDueDate(popup.getBillDueDate());
-                    BigDecimal amount = popup.getBillOriginalAmount();
+                    BigDecimal amount = popup.getAmount() != null ? popup.getAmount() : popup.getBillOriginalAmount();
                     if (amount != null && amount.compareTo(BigDecimal.ZERO) == 0) {
                         amount = null;
                     }
                     dto1.setBillOriginalAmount(amount);
 
-                    if ("DR".equalsIgnoreCase(g.getType())) {
+                    if ("DR".equalsIgnoreCase(popup.getType())) {
                         dto1.setDrAmt(amount);
                         dto1.setCrAmt(null);
-                    } else if ("CR".equalsIgnoreCase(g.getType())) {
+                    } else if ("CR".equalsIgnoreCase(popup.getType())) {
                         dto1.setDrAmt(null);
                         dto1.setCrAmt(amount);
                     } else {

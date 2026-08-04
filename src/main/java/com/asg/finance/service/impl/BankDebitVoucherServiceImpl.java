@@ -1533,7 +1533,7 @@ public class BankDebitVoucherServiceImpl implements BankDebitVoucherService {
                 header.getGroupPoid(),
                 header.getCompanyPoid(),
                 UserContext.getUserPoid(),
-                header.getDocRef(),
+                UserContext.getDocumentId(),
                 String.valueOf(transactionPoid),
                 "Y",comments
         );

@@ -284,9 +284,9 @@ public class GlRecurringJvController {
         }
 
         @AllowedAction(UserRolesRightsEnum.PRINT)
-        @Operation(summary = "Generate PDF for Recurring Jv", description = "Generate PDF report for a specific Recurring Jv transaction", responses = {
+        @Operation(summary = "Generate PDF for Recurring JV", description = "Generate PDF report for a specific Recurring JV transaction", responses = {
                         @ApiResponse(responseCode = "200", description = "PDF generated successfully", content = @Content(mediaType = "application/pdf")),
-                        @ApiResponse(responseCode = "404", description = "Recurring Jv not found"),
+                        @ApiResponse(responseCode = "404", description = "Recurring JV not found"),
                         @ApiResponse(responseCode = "500", description = "Failed to generate PDF")
         })
         @GetMapping("/print/{transactionPoid}")
@@ -303,7 +303,7 @@ public class GlRecurringJvController {
                                         .contentType(MediaType.APPLICATION_PDF)
                                         .body(pdf);
                 } catch (Exception e) {
-                        log.error("Failed to generate PDF for Recurring Jv: {}", transactionPoid, e);
+                        log.error("Failed to generate PDF for Recurring JV: {}", transactionPoid, e);
                         return error("Failed to generate PDF: " + e.getMessage(), 500);
                 }
         }

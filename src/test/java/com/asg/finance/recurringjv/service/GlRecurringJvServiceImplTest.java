@@ -466,7 +466,8 @@ class GlRecurringJvServiceImplTest {
         ));
         when(monthDtlRepository.findByTransactionPoid(poid)).thenReturn(Collections.singletonList(new GlRecurringJvMonthDtl()));
 
-        assertThrows(IllegalStateException.class, () -> glRecurringJvService.createSchedule(poid, request));
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> glRecurringJvService.createSchedule(poid, request));
+        assertEquals("Warning: Scheduled JV already created. Please verify.", ex.getMessage());
     }
 
     @Test
@@ -601,5 +602,46 @@ class GlRecurringJvServiceImplTest {
 
         verify(monthDtlRepository).saveAll(anyList());
         verify(loggingService).createLogBatch(anyList());
+    }
+
+    @Test
+    void createRecurringJv_ShouldPreserveSpacesBetweenWords() {
+        RecurringJvRequest request = new RecurringJvRequest();
+        request.setNarration("  Monthly salary entry with spaces  ");
+        request.setRemarks("  Valid multi word remarks  ");
+        request.setRefType("  EMPLOYEE  ");
+        request.setStartDate(LocalDate.now());
+        request.setTotalAmount(BigDecimal.TEN);
+        request.setNoOfMonths(1);
+        request.setMonthWiseAmount(BigDecimal.TEN);
+
+        RecurringJvDetailRequest dtl1 = new RecurringJvDetailRequest();
+        dtl1.setType("Dr");
+        dtl1.setDrAmt(BigDecimal.TEN);
+        dtl1.setGlPoid(123L);
+        dtl1.setRemarks("  Dr detail remarks  ");
+
+        RecurringJvDetailRequest dtl2 = new RecurringJvDetailRequest();
+        dtl2.setType("Cr");
+        dtl2.setCrAmt(BigDecimal.TEN);
+        dtl2.setGlPoid(456L);
+
+        request.setDetails(Arrays.asList(dtl1, dtl2));
+
+        when(glMasterRepository.existsByGlPoid(anyLong())).thenReturn(true);
+        when(hdrRepository.save(any(GlRecurringJvHdr.class))).thenAnswer(invocation -> {
+            GlRecurringJvHdr hdr = invocation.getArgument(0);
+            hdr.setTransactionPoid(1L);
+            hdr.setDocRef("RJV-001");
+            return hdr;
+        });
+
+        glRecurringJvService.createRecurringJv(request);
+
+        verify(hdrRepository).save(argThat(hdr -> 
+            "Monthly salary entry with spaces".equals(hdr.getNarration()) &&
+            "Valid multi word remarks".equals(hdr.getRemarks()) &&
+            "EMPLOYEE".equals(hdr.getRefType())
+        ));
     }
 }

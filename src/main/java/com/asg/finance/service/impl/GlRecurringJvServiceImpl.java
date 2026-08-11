@@ -337,16 +337,16 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
                 .transactionDate(request.getTransactionDate() != null ? request.getTransactionDate() : DateUtil.getCurrentDateInUserTimeZone())
                 .groupPoid(getGroupId())
                 .companyPoid(getCompanyId())
-                .narration(request.getNarration())
+                .narration(request.getNarration() != null ? request.getNarration().trim() : null)
                 .startDate(request.getStartDate())
                 .totalAmount(request.getTotalAmount())
                 .noOfMonths(request.getNoOfMonths())
                 .monthWiseAmt(request.getMonthWiseAmount())
-                .refType(request.getRefType())
+                .refType(request.getRefType() != null ? request.getRefType().trim() : null)
                 .employeePoid(request.getEmployeePoid())
                 .faPoid(request.getAssetPoid())
-                .policyNumber(request.getPolicyNumber())
-                .remarks(request.getRemarks())
+                .policyNumber(request.getPolicyNumber() != null ? request.getPolicyNumber().trim() : null)
+                .remarks(request.getRemarks() != null ? request.getRemarks().trim() : null)
                 .deleted(FLAG_NO)
                 .build();
 
@@ -566,7 +566,7 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
         dtl.setGlPoid(detail.getGlPoid());
         dtl.setDrAmt(detail.getDrAmt());
         dtl.setCrAmt(detail.getCrAmt());
-        dtl.setRemarks(detail.getRemarks());
+        dtl.setRemarks(detail.getRemarks() != null ? detail.getRemarks().trim() : null);
     }
 
     private void finalizeBatchSaves(List<LogRequestDto<GlRecurringJvDtl>> logRequests,
@@ -611,16 +611,16 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
         }
 
         header.setTransactionDate(request.getTransactionDate() != null ? request.getTransactionDate() : DateUtil.getCurrentDateInUserTimeZone());
-        header.setNarration(request.getNarration());
+        header.setNarration(request.getNarration() != null ? request.getNarration().trim() : null);
         header.setStartDate(request.getStartDate());
         header.setTotalAmount(request.getTotalAmount());
         header.setNoOfMonths(request.getNoOfMonths());
         header.setMonthWiseAmt(request.getMonthWiseAmount());
-        header.setRefType(request.getRefType());
+        header.setRefType(request.getRefType() != null ? request.getRefType().trim() : null);
         header.setEmployeePoid(request.getEmployeePoid());
         header.setFaPoid(request.getAssetPoid());
-        header.setPolicyNumber(request.getPolicyNumber());
-        header.setRemarks(request.getRemarks());
+        header.setPolicyNumber(request.getPolicyNumber() != null ? request.getPolicyNumber().trim() : null);
+        header.setRemarks(request.getRemarks() != null ? request.getRemarks().trim() : null);
         hdrRepository.save(header);
 
         saveDetails(transactionPoid, request.getDetails(), header, false);
@@ -730,7 +730,7 @@ public class GlRecurringJvServiceImpl implements GlRecurringJvService {
 
         List<GlRecurringJvMonthDtl> existingSchedule = monthDtlRepository.findByTransactionPoid(transactionPoid);
         if (!existingSchedule.isEmpty()) {
-            throw new IllegalStateException("Schedule already exists for this recurring JV");
+            throw new IllegalStateException("Warning: Scheduled JV already created. Please verify.");
         }
 
         try {

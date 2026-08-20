@@ -362,6 +362,11 @@ public class BankDepositVoucherServiceImpl implements BankDepositVoucherService 
         return hdrRepository.loadPendingPayments(bankPoid, type, bankFilter);
     }
 
+    @Override
+    public void callChequeStatusValidation(String refDocRef, Long refDocPoid) {
+        hdrRepository.callChequeStatusValidation(refDocRef, refDocPoid);
+    }
+
     private BigDecimal calculateGrandTotal(List<BankDepositVoucherDtlDto> details) {
         if (details == null)
             return BigDecimal.ZERO;

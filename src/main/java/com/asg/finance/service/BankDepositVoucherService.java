@@ -19,4 +19,5 @@ public interface BankDepositVoucherService {
     Map<String, Object> listBankDepositVouchers(String documentId, FilterRequestDto filters, LocalDate startDate, LocalDate endDate, Pageable pageable);
     List<BankDepositVoucherDtlDto> loadPendingPayments(Long bankPoid, String type, String bankFilter);
     byte[] print(Long transactionPoid) throws Exception;
+    void callChequeStatusValidation(String refDocRef, Long refDocPoid);
 }

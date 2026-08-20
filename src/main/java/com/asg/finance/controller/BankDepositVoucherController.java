@@ -273,6 +273,33 @@ public class BankDepositVoucherController {
         return success("Pending payments loaded successfully", pendingPayments);
     }
 
+    @Operation(
+            summary = "Validate cheque status",
+            description = "Validates the current status of a cheque by reference document reference and POID",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Cheque status is valid"),
+                    @ApiResponse(responseCode = "400", description = "Cheque already reconciled or action not allowed"),
+                    @ApiResponse(responseCode = "401", description = "Unauthorized")
+            }
+    )
+    @AllowedAction(UserRolesRightsEnum.VIEW)
+    @GetMapping("/validate/cheque-status")
+    public ResponseEntity<?> validateChequeStatus(
+            @Parameter(description = "Reference document reference", required = true)
+            @RequestParam String refDocRef,
+            @Parameter(description = "Reference document POID", required = true)
+            @RequestParam Long refDocPoid
+    ) {
+        try {
+            service.callChequeStatusValidation(refDocRef, refDocPoid);
+            return success("Cheque status validation passed successfully");
+        } catch (ValidationException ex) {
+            return internalServerError(ex.getMessage());
+        } catch (Exception ex) {
+            return internalServerError("Cheque status validation failed: " + ex.getMessage());
+        }
+    }
+
 
     @AllowedAction(UserRolesRightsEnum.PRINT)
     @Operation(

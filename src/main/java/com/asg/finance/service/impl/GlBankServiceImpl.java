@@ -202,6 +202,9 @@ public class GlBankServiceImpl implements GlBankService {
         BeanUtils.copyProperties(bankMasterDto, bankMaster);
         bankMaster.setGroupPoid(UserContext.getGroupPoid());
         bankMaster.setCompanyPoid(String.valueOf(UserContext.getCompanyPoid()));
+        bankMaster.setPeriodStart(null);
+        bankMaster.setPeriodEnd(null);
+        bankMaster.setBankStatementDate(null);
         return bankRepository.save(bankMaster);
     }
 
